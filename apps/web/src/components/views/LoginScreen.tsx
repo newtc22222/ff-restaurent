@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import type { Locale } from '../../i18n.js';
 import type { Theme } from '../../theme.js';
 import { seededUsers } from '../../utils/helpers.js';
@@ -67,16 +67,26 @@ export default function LoginScreen({
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [activeError, setActiveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveError(error);
+  }, [error]);
+
+  const clearError = () => {
+    if (activeError) {
+      setActiveError(null);
+    }
+  };
 
   const submitLogin = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
-    setLocalError(null);
+    setActiveError(null);
     try {
       await onLogin(identifier, password);
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Login failed');
+      setActiveError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setBusy(false);
     }
@@ -85,11 +95,13 @@ export default function LoginScreen({
   const submitRegister = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
-    setLocalError(null);
+    setActiveError(null);
     try {
       await onRegister(regName, regUsername, regPhone, regPassword);
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Registration failed');
+      setActiveError(
+        err instanceof Error ? err.message : 'Registration failed',
+      );
     } finally {
       setBusy(false);
     }
@@ -120,9 +132,9 @@ export default function LoginScreen({
                 {t('app.tagline')}
               </p>
             </div>
-            {(localError || error) && (
+            {activeError && (
               <div className="mb-5 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-                {localError || error}
+                {activeError}
               </div>
             )}
             <label className="mb-5 block space-y-2">
@@ -131,7 +143,11 @@ export default function LoginScreen({
                 className="field w-full"
                 type="text"
                 value={identifier}
-                onChange={(event) => setIdentifier(event.target.value)}
+                onChange={(event) => {
+                  setIdentifier(event.target.value);
+                  clearError();
+                }}
+                onFocus={clearError}
               />
             </label>
             <label className="mb-5 block space-y-2">
@@ -140,7 +156,11 @@ export default function LoginScreen({
                 className="field w-full"
                 type="password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  clearError();
+                }}
+                onFocus={clearError}
               />
             </label>
             <button className="btn btn-primary mb-5 w-full" disabled={busy}>
@@ -160,7 +180,10 @@ export default function LoginScreen({
                           ? 'border border-ink bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
                           : 'btn-soft'
                       }`}
-                      onClick={() => setIdentifier(seedId)}
+                      onClick={() => {
+                        setIdentifier(seedId);
+                        clearError();
+                      }}
                     >
                       {t(labelKey)}
                     </button>
@@ -173,7 +196,10 @@ export default function LoginScreen({
               <button
                 type="button"
                 className="font-semibold text-ink underline"
-                onClick={() => setMode('register')}
+                onClick={() => {
+                  setMode('register');
+                  clearError();
+                }}
               >
                 {t('auth.register')}
               </button>
@@ -190,9 +216,9 @@ export default function LoginScreen({
                 {t('auth.register')}
               </h1>
             </div>
-            {localError && (
+            {activeError && (
               <div className="mb-5 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-                {localError}
+                {activeError}
               </div>
             )}
             <label className="mb-4 block space-y-2">
@@ -201,7 +227,11 @@ export default function LoginScreen({
                 className="field w-full"
                 type="text"
                 value={regName}
-                onChange={(e) => setRegName(e.target.value)}
+                onChange={(e) => {
+                  setRegName(e.target.value);
+                  clearError();
+                }}
+                onFocus={clearError}
                 required
               />
             </label>
@@ -211,7 +241,11 @@ export default function LoginScreen({
                 className="field w-full"
                 type="text"
                 value={regUsername}
-                onChange={(e) => setRegUsername(e.target.value)}
+                onChange={(e) => {
+                  setRegUsername(e.target.value);
+                  clearError();
+                }}
+                onFocus={clearError}
                 required
               />
             </label>
@@ -221,7 +255,11 @@ export default function LoginScreen({
                 className="field w-full"
                 type="tel"
                 value={regPhone}
-                onChange={(e) => setRegPhone(e.target.value)}
+                onChange={(e) => {
+                  setRegPhone(e.target.value);
+                  clearError();
+                }}
+                onFocus={clearError}
               />
             </label>
             <label className="mb-5 block space-y-2">
@@ -230,7 +268,11 @@ export default function LoginScreen({
                 className="field w-full"
                 type="password"
                 value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
+                onChange={(e) => {
+                  setRegPassword(e.target.value);
+                  clearError();
+                }}
+                onFocus={clearError}
                 required
                 minLength={8}
               />
@@ -243,7 +285,10 @@ export default function LoginScreen({
               <button
                 type="button"
                 className="font-semibold text-ink underline"
-                onClick={() => setMode('login')}
+                onClick={() => {
+                  setMode('login');
+                  clearError();
+                }}
               >
                 {t('auth.signIn')}
               </button>
