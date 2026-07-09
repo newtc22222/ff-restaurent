@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@ff-restaurent/shared": ["../../packages/shared/src/index.ts"]
+    }
+  },
+  "include": ["src", "prisma"]
+}

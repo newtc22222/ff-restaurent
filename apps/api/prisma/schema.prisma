@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ChefRole {
+  SOUS_CHEF
+  HEAD_CHEF
+}
+
+enum EntryStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum PaymentStatus {
+  PAID
+  WAITING
+}
+
+model User {
+  id           String            @id @default(cuid())
+  username     String            @unique
+  phone        String?           @unique
+  name         String
+  passwordHash String
+  chefRole     ChefRole?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  billsCreated Bill[]            @relation("BillCreator")
+  restaurants  RestaurantEntry[] @relation("RestaurantCreator")
+  participants BillParticipant[]
+  notifications Notification[]
+  roleChangesMade RoleAuditLog[] @relation("RoleChangedBy")
+  roleChangesReceived RoleAuditLog[] @relation("RoleChangedUser")
+  billAuditLogs BillAuditLog[]
+  favorites    UserFavorite[]
+}
+
+model RestaurantEntry {
+  id            String      @id @default(cuid())
+  name          String
+  address       String
+  cuisineType   String
+  type          String
+  avatarUrl     String?
+  links         Json        @default("[]")
+  isRecommended Boolean     @default(false)
+  isFavorite    Boolean     @default(false)
+  status        EntryStatus @default(ACTIVE)
+  createdById   String
+  createdBy     User        @relation("RestaurantCreator", fields: [createdById], references: [id])
+  bills         Bill[]
+  favorites     UserFavorite[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Bill {
+  id              String            @id @default(cuid())
+  restaurantId    String
+  restaurant      RestaurantEntry   @relation(fields: [restaurantId], references: [id])
+  baseCost        Int
+  vat             Int
+  shippingFee     Int
+  discounts       Json              @default("[]")
+  vouchers        Json              @default("[]")
+  totalCost       Int
+  qrCodePath      String?
+  status          EntryStatus       @default(ACTIVE)
+  createdById     String
+  createdBy       User              @relation("BillCreator", fields: [createdById], references: [id])
+  participants    BillParticipant[]
+  auditLogs       BillAuditLog[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model BillParticipant {
+  billId            String
+  memberId          String
+  originCost        Int
+  allocatedVat      Int
+  allocatedShipping Int
+  discountApplied   Int
+  finalPrice        Int
+  paymentStatus     PaymentStatus @default(WAITING)
+  paidAt            DateTime?
+  bill              Bill          @relation(fields: [billId], references: [id], onDelete: Cascade)
+  member            User          @relation(fields: [memberId], references: [id])
+
+  @@id([billId, memberId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billId    String?
+  message   String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model RoleAuditLog {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation("RoleChangedUser", fields: [userId], references: [id])
+  changedById String
+  changedBy   User      @relation("RoleChangedBy", fields: [changedById], references: [id])
+  fromRole    ChefRole?
+  toRole      ChefRole?
+  createdAt   DateTime  @default(now())
+}
+
+model BillAuditLog {
+  id        String   @id @default(cuid())
+  billId    String
+  bill      Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+}
+
+model UserFavorite {
+  userId       String
+  restaurantId String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant   RestaurantEntry @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now())
+
+  @@id([userId, restaurantId])
+}

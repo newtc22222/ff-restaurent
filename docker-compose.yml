@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ff_restaurent
+      POSTGRES_USER: ff
+      POSTGRES_PASSWORD: ff
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ff -d ff_restaurent']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://ff:ff@postgres:5432/ff_restaurent?schema=public
+      JWT_SECRET: local-dev-change-me
+      API_PORT: 4000
+    command: sh -c "npx prisma migrate deploy && npx tsx prisma/seed-if-empty.ts && node dist/server.js"
+    ports:
+      - '4000:4000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: http://localhost:4000
+    ports:
+      - '5173:80'
+    depends_on:
+      - api
+
+volumes:
+  postgres-data:

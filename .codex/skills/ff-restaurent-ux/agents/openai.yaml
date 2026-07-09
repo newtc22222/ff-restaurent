@@ -1,0 +1,4 @@
+interface:
+  display_name: 'FF RESTaurent UX'
+  short_description: 'Apply FF RESTaurent UI and UX patterns'
+  default_prompt: 'Use $ff-restaurent-ux to apply the FF RESTaurent design language to a web flow.'

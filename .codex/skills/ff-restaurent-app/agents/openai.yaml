@@ -1,0 +1,4 @@
+interface:
+  display_name: 'FF RESTaurent App'
+  short_description: 'Build and maintain the FF RESTaurent app'
+  default_prompt: 'Use $ff-restaurent-app to implement a focused app change in FF RESTaurent.'
