@@ -71,6 +71,7 @@ model Bill {
   vouchers        Json              @default("[]")
   totalCost       Int
   qrCodePath      String?
+  paymentUrl      String?
   status          EntryStatus       @default(ACTIVE)
   createdById     String
   createdBy       User              @relation("BillCreator", fields: [createdById], references: [id])

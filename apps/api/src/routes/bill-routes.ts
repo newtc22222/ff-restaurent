@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { calculateBillSplit } from '@ff-restaurent/shared';
 import {
@@ -7,16 +7,23 @@ import {
   requireSousChefOrHeadChef,
 } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
-import { isHeadChef, isSousChefOrAbove } from '../roles.js';
-import { billSchema } from '../schemas.js';
+import { isHeadChef, isSousChefOrAbove, publicUserSelect } from '../roles.js';
+import { billSchema, paymentStatusSchema } from '../schemas.js';
 
-const billWithRestaurantCreatorAndParticipants = {
+const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
+
+export const billResponseInclude = {
   restaurant: true,
-  createdBy: true,
+  createdBy: { select: publicUserSelect },
   participants: {
-    include: { member: true },
+    include: { member: { select: publicUserSelect } },
     orderBy: { member: { name: 'asc' as const } },
   },
+};
+
+export const paymentResponseInclude = {
+  member: { select: publicUserSelect },
+  bill: true,
 };
 
 const canManageBill = (
@@ -35,6 +42,7 @@ const computeBillCreateData = (body: unknown, createdById: string) => {
       baseCost: parsed.baseCost,
       vat: parsed.vat,
       shippingFee: parsed.shippingFee,
+      paymentUrl: parsed.paymentUrl ?? null,
       discounts: (parsed.discounts ?? []) as Prisma.InputJsonValue,
       vouchers: (parsed.vouchers ?? []) as Prisma.InputJsonValue,
       totalCost: split.totalCost,
@@ -55,6 +63,51 @@ const participantCreateData = (
     discountApplied: participant.discountApplied,
     finalPrice: participant.finalPrice,
   }));
+
+type PersistedParticipant = {
+  memberId: string;
+  originCost: number;
+  allocatedVat: number;
+  allocatedShipping: number;
+  discountApplied: number;
+  finalPrice: number;
+};
+
+const participantAllocationsChanged = (
+  existing: PersistedParticipant[],
+  next: PersistedParticipant[],
+) => {
+  if (existing.length !== next.length) return true;
+  const byMember = new Map(existing.map((item) => [item.memberId, item]));
+  return next.some((participant) => {
+    const previous = byMember.get(participant.memberId);
+    return (
+      !previous ||
+      previous.originCost !== participant.originCost ||
+      previous.allocatedVat !== participant.allocatedVat ||
+      previous.allocatedShipping !== participant.allocatedShipping ||
+      previous.discountApplied !== participant.discountApplied ||
+      previous.finalPrice !== participant.finalPrice
+    );
+  });
+};
+
+const validateParticipantIds = async (
+  participantIds: string[],
+  reply: FastifyReply,
+) => {
+  const userCount = await prisma.user.count({
+    where: { id: { in: participantIds } },
+  });
+  if (userCount !== participantIds.length) {
+    reply.code(400).send({
+      code: 'INVALID_PARTICIPANTS',
+      message: 'One or more participants do not exist',
+    });
+    return false;
+  }
+  return true;
+};
 
 /**
  * Bill routes keep shared bill math close to bill persistence and permissions.
@@ -86,7 +139,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             };
       return prisma.bill.findMany({
         where,
-        include: billWithRestaurantCreatorAndParticipants,
+        include: billResponseInclude,
         orderBy: { createdAt: 'desc' },
       });
     },
@@ -99,7 +152,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const bill = await prisma.bill.findUnique({
         where: { id },
-        include: billWithRestaurantCreatorAndParticipants,
+        include: billResponseInclude,
       });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
       const allowed =
@@ -128,14 +181,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const participantIds = computed.participants.map(
         (participant) => participant.memberId,
       );
-      const users = await prisma.user.count({
-        where: { id: { in: participantIds } },
-      });
-      if (users !== participantIds.length) {
-        return reply
-          .code(400)
-          .send({ message: 'One or more participants do not exist' });
-      }
+      if (!(await validateParticipantIds(participantIds, reply))) return;
       const bill = await prisma.bill.create({
         data: {
           ...computed.bill,
@@ -143,8 +189,9 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             create: participantCreateData(computed.participants),
           },
         },
-        include: billWithRestaurantCreatorAndParticipants,
+        include: billResponseInclude,
       });
+      request.log.info({ event: 'bill_created', billId: bill.id });
       return reply.code(201).send(bill);
     },
   );
@@ -154,7 +201,10 @@ export const registerBillRoutes = (app: FastifyInstance) => {
     { preHandler: [requireAuthenticatedUser, requireSousChefOrHeadChef] },
     async (request, reply) => {
       const { id } = request.params as { id: string };
-      const existing = await prisma.bill.findUnique({ where: { id } });
+      const existing = await prisma.bill.findUnique({
+        where: { id },
+        include: { participants: true },
+      });
       if (!existing) return reply.code(404).send({ message: 'Bill not found' });
       if (!canManageBill(existing, request)) {
         return reply
@@ -165,18 +215,47 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         request.body,
         existing.createdById,
       );
+      const participantIds = computed.participants.map(
+        (participant) => participant.memberId,
+      );
+      if (!(await validateParticipantIds(participantIds, reply))) return;
+      const nextParticipants = participantCreateData(computed.participants);
+      const hasPaidParticipant = existing.participants.some(
+        (participant) => participant.paymentStatus === PaymentStatus.PAID,
+      );
+      if (
+        hasPaidParticipant &&
+        participantAllocationsChanged(existing.participants, nextParticipants)
+      ) {
+        return reply.code(409).send({
+          code: 'PAID_BILL_AMENDMENT_BLOCKED',
+          message:
+            'Participant or financial allocations cannot change after payment',
+        });
+      }
       const bill = await prisma.$transaction(async (tx) => {
-        await tx.billParticipant.deleteMany({ where: { billId: id } });
+        await tx.billParticipant.deleteMany({
+          where: { billId: id, memberId: { notIn: participantIds } },
+        });
+        for (const participant of nextParticipants) {
+          await tx.billParticipant.upsert({
+            where: {
+              billId_memberId: {
+                billId: id,
+                memberId: participant.memberId,
+              },
+            },
+            create: { billId: id, ...participant },
+            update: participant,
+          });
+        }
         const updated = await tx.bill.update({
           where: { id },
           data: {
             ...computed.bill,
             createdById: existing.createdById,
-            participants: {
-              create: participantCreateData(computed.participants),
-            },
           },
-          include: billWithRestaurantCreatorAndParticipants,
+          include: billResponseInclude,
         });
         await tx.billAuditLog.create({
           data: {
@@ -184,7 +263,10 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             userId: request.currentUser.id,
             action: 'UPDATED',
             before: existing as unknown as Prisma.InputJsonValue,
-            after: computed.bill as unknown as Prisma.InputJsonValue,
+            after: {
+              ...computed.bill,
+              participants: nextParticipants,
+            } as unknown as Prisma.InputJsonValue,
           },
         });
         return updated;
@@ -208,7 +290,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       return prisma.bill.update({
         where: { id },
         data: { status: EntryStatus.ARCHIVED },
-        include: billWithRestaurantCreatorAndParticipants,
+        include: billResponseInclude,
       });
     },
   );
@@ -223,19 +305,20 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       return prisma.bill.update({
         where: { id },
         data: { status: EntryStatus.ACTIVE },
-        include: billWithRestaurantCreatorAndParticipants,
+        include: billResponseInclude,
       });
     },
   );
 
   app.patch(
-    '/bills/:id/participants/:memberId/pay',
+    '/bills/:id/participants/:memberId/payment',
     { preHandler: requireAuthenticatedUser },
     async (request, reply) => {
       const { id, memberId } = request.params as {
         id: string;
         memberId: string;
       };
+      const body = paymentStatusSchema.parse(request.body);
       const bill = await prisma.bill.findUnique({ where: { id } });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
       const allowed =
@@ -245,11 +328,69 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           .code(403)
           .send({ message: 'Not allowed to update this payment' });
       }
-      return prisma.billParticipant.update({
+      if (body.status === body.expectedStatus) {
+        return reply.code(409).send({
+          code: 'PAYMENT_STATUS_UNCHANGED',
+          message: 'Payment status is already up to date',
+        });
+      }
+      const participant = await prisma.billParticipant.findUnique({
         where: { billId_memberId: { billId: id, memberId } },
-        data: { paymentStatus: PaymentStatus.PAID, paidAt: new Date() },
-        include: { member: true, bill: true },
       });
+      if (!participant) {
+        return reply
+          .code(404)
+          .send({ code: 'NOT_FOUND', message: 'Participant not found' });
+      }
+      const updated = await prisma.$transaction(async (tx) => {
+        const result = await tx.billParticipant.updateMany({
+          where: {
+            billId: id,
+            memberId,
+            paymentStatus: body.expectedStatus,
+          },
+          data: {
+            paymentStatus: body.status,
+            paidAt: body.status === PaymentStatus.PAID ? new Date() : null,
+          },
+        });
+        if (result.count !== 1) return null;
+        const changed = await tx.billParticipant.findUniqueOrThrow({
+          where: { billId_memberId: { billId: id, memberId } },
+          include: paymentResponseInclude,
+        });
+        await tx.billAuditLog.create({
+          data: {
+            billId: id,
+            userId: request.currentUser.id,
+            action: 'PAYMENT_STATUS_CHANGED',
+            before: {
+              memberId,
+              paymentStatus: participant.paymentStatus,
+              paidAt: participant.paidAt?.toISOString() ?? null,
+            },
+            after: {
+              memberId,
+              paymentStatus: changed.paymentStatus,
+              paidAt: changed.paidAt?.toISOString() ?? null,
+            },
+          },
+        });
+        return changed;
+      });
+      if (!updated) {
+        return reply.code(409).send({
+          code: 'PAYMENT_STATUS_CONFLICT',
+          message: 'Payment status changed; refresh and try again',
+        });
+      }
+      request.log.info({
+        event: 'payment_status_changed',
+        billId: id,
+        memberId,
+        status: body.status,
+      });
+      return updated;
     },
   );
 
@@ -260,7 +401,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const bill = await prisma.bill.findUnique({
         where: { id },
-        include: billWithRestaurantCreatorAndParticipants,
+        include: billResponseInclude,
       });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
       if (!canManageBill(bill, request)) {
@@ -271,14 +412,31 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const waiting = bill.participants.filter(
         (participant) => participant.paymentStatus === PaymentStatus.WAITING,
       );
+      const cutoff = new Date(Date.now() - REMINDER_COOLDOWN_MS);
+      const recent = await prisma.notification.findMany({
+        where: {
+          billId: bill.id,
+          userId: { in: waiting.map((participant) => participant.memberId) },
+          createdAt: { gte: cutoff },
+        },
+        select: { userId: true },
+      });
+      const recentlyReminded = new Set(recent.map((item) => item.userId));
+      const eligible = waiting.filter(
+        (participant) => !recentlyReminded.has(participant.memberId),
+      );
       await prisma.notification.createMany({
-        data: waiting.map((participant) => ({
+        data: eligible.map((participant) => ({
           userId: participant.memberId,
           billId: bill.id,
           message: `Payment reminder for ${bill.restaurant.name}: ${participant.finalPrice} VND waiting.`,
         })),
       });
-      return { sent: waiting.length };
+      return {
+        sent: eligible.length,
+        skipped: waiting.length - eligible.length,
+        cooldownSeconds: REMINDER_COOLDOWN_MS / 1000,
+      };
     },
   );
 };

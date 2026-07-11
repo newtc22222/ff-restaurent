@@ -16,3 +16,4 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 await app.listen({ port, host });
+// Trigger reload after env update

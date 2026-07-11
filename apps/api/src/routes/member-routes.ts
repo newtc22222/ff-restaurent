@@ -29,22 +29,48 @@ export const registerMemberRoutes = (app: FastifyInstance) => {
   app.patch(
     '/users/:id/chef-role',
     { preHandler: [requireAuthenticatedUser, requireHeadChef] },
-    async (request) => {
+    async (request, reply) => {
       const { id } = request.params as { id: string };
       const body = chefRoleSchema.parse(request.body);
-      const existing = await prisma.user.findUniqueOrThrow({ where: { id } });
-      const updated = await prisma.user.update({
-        where: { id },
-        data: { chefRole: body.chefRole as ChefRole | null },
+      if (id === request.currentUser.id) {
+        return reply.code(403).send({
+          code: 'SELF_ROLE_CHANGE_FORBIDDEN',
+          message: 'Administrators cannot change their own role',
+        });
+      }
+      const updated = await prisma.$transaction(async (tx) => {
+        const existing = await tx.user.findUniqueOrThrow({ where: { id } });
+        if (
+          existing.chefRole === ChefRole.HEAD_CHEF &&
+          body.chefRole !== ChefRole.HEAD_CHEF
+        ) {
+          const headChefCount = await tx.user.count({
+            where: { chefRole: ChefRole.HEAD_CHEF },
+          });
+          if (headChefCount <= 1) {
+            return null;
+          }
+        }
+        const changed = await tx.user.update({
+          where: { id },
+          data: { chefRole: body.chefRole as ChefRole | null },
+        });
+        await tx.roleAuditLog.create({
+          data: {
+            userId: id,
+            changedById: request.currentUser.id,
+            fromRole: existing.chefRole,
+            toRole: changed.chefRole,
+          },
+        });
+        return changed;
       });
-      await prisma.roleAuditLog.create({
-        data: {
-          userId: id,
-          changedById: request.currentUser.id,
-          fromRole: existing.chefRole,
-          toRole: updated.chefRole,
-        },
-      });
+      if (!updated) {
+        return reply.code(409).send({
+          code: 'FINAL_HEAD_CHEF_REQUIRED',
+          message: 'The final Head Chef cannot be demoted',
+        });
+      }
       return sanitizeUser(updated);
     },
   );
