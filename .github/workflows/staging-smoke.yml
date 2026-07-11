@@ -1,0 +1,22 @@
+name: Staging smoke
+
+on:
+  workflow_dispatch:
+  deployment_status:
+
+jobs:
+  smoke:
+    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run smoke
+        env:
+          API_URL: ${{ secrets.STAGING_API_URL }}
+          WEB_URL: ${{ secrets.STAGING_WEB_URL }}
+          SMOKE_USERNAME: ${{ secrets.STAGING_SMOKE_USERNAME }}
+          SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}

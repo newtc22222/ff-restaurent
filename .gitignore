@@ -9,3 +9,7 @@ coverage
 
 # docs
 # .codex
+
+.local
+playwright-report
+test-results
