@@ -1,6 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LayoutDashboard, Store, BarChart2, Users, type LucideIcon } from 'lucide-react';
-import { ApiClient, Bill, RestaurantEntry, Stats, User } from './api.js';
+import {
+  LayoutDashboard,
+  Store,
+  BarChart2,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
+import {
+  ApiClient,
+  ApiError,
+  Bill,
+  Notification,
+  RestaurantEntry,
+  Stats,
+  User,
+} from './api.js';
 import { useI18n } from './i18n.js';
 import { useTheme } from './theme.js';
 import { uniqueUsers, canChef, isHead } from './utils/helpers.js';
@@ -43,11 +57,14 @@ export function App() {
   const [tab, setTab] = useState<Tab>('bills');
   const [screen, setScreen] = useState<Screen>('dashboard');
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<
+    string | null
+  >(null);
   const [bills, setBills] = useState<Bill[]>([]);
   const [restaurants, setRestaurants] = useState<RestaurantEntry[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -59,27 +76,50 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const [me, billData, restaurantData, statsData, memberData] =
-        await Promise.all([
-          api.request<User>('/me'),
-          api.request<Bill[]>('/bills?includeArchived=true'),
-          api.request<RestaurantEntry[]>('/restaurants?includeArchived=true'),
-          api.request<Stats>('/stats/me?range=monthly'),
-          api.request<User[]>('/members'),
-        ]);
+      const me = await api.request<User>('/me');
       setUser(me);
-      setBills(billData);
-      setRestaurants(restaurantData);
-      setStats(statsData);
-      setUsers(
-        me.chefRole === 'HEAD_CHEF'
-          ? await api.request<User[]>('/users')
-          : memberData,
+      const results = await Promise.allSettled([
+        api.request<Bill[]>('/bills?includeArchived=true'),
+        api.request<RestaurantEntry[]>('/restaurants?includeArchived=true'),
+        api.request<Stats>('/stats/me?range=monthly'),
+        api.request<User[]>(
+          me.chefRole === 'HEAD_CHEF' ? '/users' : '/members',
+        ),
+        api.request<Notification[]>('/notifications'),
+      ]);
+      const [
+        billResult,
+        restaurantResult,
+        statsResult,
+        userResult,
+        notificationResult,
+      ] = results;
+      if (billResult.status === 'fulfilled') setBills(billResult.value);
+      if (restaurantResult.status === 'fulfilled')
+        setRestaurants(restaurantResult.value);
+      if (statsResult.status === 'fulfilled') setStats(statsResult.value);
+      if (userResult.status === 'fulfilled') setUsers(userResult.value);
+      if (notificationResult.status === 'fulfilled')
+        setNotifications(notificationResult.value);
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected',
       );
+      if (failures.length > 0) {
+        setError(
+          'Some data could not be refreshed. Your session is still active.',
+        );
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load app data');
-      localStorage.removeItem('ff-token');
-      setToken(null);
+      if (err instanceof ApiError && err.status === 401) {
+        localStorage.removeItem('ff-token');
+        setToken(null);
+        setUser(null);
+      } else {
+        setError(
+          err instanceof Error ? err.message : 'Failed to load app data',
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -109,8 +149,15 @@ export function App() {
     username: string,
     phone: string,
     password: string,
+    inviteCode: string,
   ) => {
-    const result = await api.register(name, username, phone, password);
+    const result = await api.register(
+      name,
+      username,
+      phone,
+      password,
+      inviteCode,
+    );
     localStorage.setItem('ff-token', result.token);
     setToken(result.token);
     api.setToken(result.token);
@@ -146,8 +193,39 @@ export function App() {
   }
 
   const selectedBill = bills.find((b) => b.id === selectedBillId);
-  const selectedRestaurant = restaurants.find((r) => r.id === selectedRestaurantId);
+  const selectedRestaurant = restaurants.find(
+    (r) => r.id === selectedRestaurantId,
+  );
   const teamMembers = uniqueUsers(users, user);
+
+  const openNotification = async (notification: Notification) => {
+    setNotifications((current) =>
+      current.map((item) =>
+        item.id === notification.id
+          ? { ...item, readAt: item.readAt ?? new Date().toISOString() }
+          : item,
+      ),
+    );
+    if (!notification.readAt) {
+      try {
+        await api.request(`/notifications/${notification.id}/read`, {
+          method: 'PATCH',
+        });
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : 'Could not read notification',
+        );
+      }
+    }
+    if (
+      notification.billId &&
+      bills.some((bill) => bill.id === notification.billId)
+    ) {
+      setSelectedBillId(notification.billId);
+      setTab('bills');
+      setScreen('bill-detail');
+    }
+  };
 
   // 2. Full-page views (profile, create/edit bill, details pages)
   if (screen === 'profile') {
@@ -248,6 +326,8 @@ export function App() {
         theme={theme}
         setTheme={setTheme}
         onProfile={() => setScreen('profile')}
+        notifications={notifications}
+        onOpenNotification={openNotification}
       />
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         <Sidebar nav={nav} active={tab} onSelect={setTab} />

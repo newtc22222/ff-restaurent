@@ -1,17 +1,23 @@
 import { useState } from 'react';
-import { ArrowLeft, CheckCircle2, Clock, Edit3 } from 'lucide-react';
 import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  Edit3,
+  ExternalLink,
+} from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import type { ApiClient, Bill, User } from '../../api.js';
 import { money } from '../../api.js';
 import type { Locale } from '../../i18n.js';
 import type { Theme } from '../../theme.js';
-import { PIE_COLORS, canChef, isHead, canManageBill, initials } from '../../utils/helpers.js';
+import {
+  PIE_COLORS,
+  canChef,
+  isHead,
+  canManageBill,
+  initials,
+} from '../../utils/helpers.js';
 import AppHeader from '../layout/AppHeader.js';
 import ConfirmDialog from '../ui/ConfirmDialog.js';
 
@@ -88,7 +94,14 @@ export default function BillDetailPage({
   setTheme,
   onEditBill,
 }: BillDetailPageProps) {
-  const [confirmAction, setConfirmAction] = useState<'archive' | 'restore' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<
+    'archive' | 'restore' | null
+  >(null);
+  const [pendingPayment, setPendingPayment] = useState<{
+    memberId: string;
+    current: 'PAID' | 'WAITING';
+  } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const paid = bill.participants.filter(
     (participant) => participant.paymentStatus === 'PAID',
   ).length;
@@ -98,7 +111,6 @@ export default function BillDetailPage({
   const allPaid =
     bill.participants.length > 0 && paid === bill.participants.length;
   const canManage = canManageBill(bill, user);
-  const isCustomer = !canChef(user);
   const pieData = bill.participants.map((p) => ({
     name: p.member.name.split(' ')[0],
     value: p.finalPrice,
@@ -175,6 +187,53 @@ export default function BillDetailPage({
             </div>
           </div>
         </section>
+
+        {notice && (
+          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+            {notice}
+          </div>
+        )}
+
+        {bill.paymentUrl && (
+          <a
+            className="btn btn-primary mb-4 w-full"
+            href={bill.paymentUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open secure payment link <ExternalLink size={14} />
+          </a>
+        )}
+
+        {(bill.discounts.length > 0 || bill.vouchers.length > 0) && (
+          <section className="mb-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
+            <h3 className="label mb-3">Adjustments</h3>
+            <div className="space-y-2 text-sm">
+              {bill.discounts.map((discount, index) => (
+                <div key={`discount-${index}`} className="flex justify-between">
+                  <span>
+                    {discount.label || `Discount ${index + 1}`} ({discount.type}
+                    )
+                  </span>
+                  <span className="font-semibold text-emerald-600">
+                    −
+                    {discount.type === 'PERCENTAGE'
+                      ? `${discount.value}%`
+                      : money(discount.value)}
+                  </span>
+                </div>
+              ))}
+              {bill.vouchers.map((voucher) => (
+                <div key={voucher.code} className="flex justify-between">
+                  <span>Voucher {voucher.code}</span>
+                  <span className="font-semibold text-emerald-600">
+                    −{money(voucher.value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {pieData.length > 1 && (
           <section className="mb-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
@@ -279,24 +338,21 @@ export default function BillDetailPage({
                       : t('bills.waiting')}
                   </span>
                 </div>
-                {participant.paymentStatus === 'WAITING' &&
-                  (!isCustomer || participant.memberId === user.id) && (
-                    <button
-                      className="btn btn-primary h-8 px-3 text-[12px]"
-                      onClick={() =>
-                        runAction(
-                          () =>
-                            api.request(
-                              `/bills/${bill.id}/participants/${participant.memberId}/pay`,
-                              { method: 'PATCH' },
-                            ),
-                          'Could not mark payment as paid',
-                        )
-                      }
-                    >
-                      {t('bills.markPaid')}
-                    </button>
-                  )}
+                {(canManage || participant.memberId === user.id) && (
+                  <button
+                    className="btn btn-soft h-8 px-3 text-[12px]"
+                    onClick={() =>
+                      setPendingPayment({
+                        memberId: participant.memberId,
+                        current: participant.paymentStatus,
+                      })
+                    }
+                  >
+                    {participant.paymentStatus === 'WAITING'
+                      ? t('bills.markPaid')
+                      : 'Correct to waiting'}
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -306,15 +362,27 @@ export default function BillDetailPage({
           <div className="flex gap-3">
             <button
               className="btn btn-soft flex-1"
-              onClick={() =>
-                runAction(
-                  () =>
-                    api.request(`/bills/${bill.id}/reminders`, {
-                      method: 'POST',
-                    }),
-                  'Could not send reminders',
-                )
-              }
+              onClick={() => {
+                setError(null);
+                void api
+                  .request<{ sent: number; skipped: number }>(
+                    `/bills/${bill.id}/reminders`,
+                    { method: 'POST' },
+                  )
+                  .then((result) => {
+                    setNotice(
+                      `${result.sent} reminder(s) sent; ${result.skipped} skipped by cooldown.`,
+                    );
+                    return refresh();
+                  })
+                  .catch((err) =>
+                    setError(
+                      err instanceof Error
+                        ? err.message
+                        : 'Could not send reminders',
+                    ),
+                  );
+              }}
             >
               {t('bills.sendReminders')}
             </button>
@@ -350,16 +418,43 @@ export default function BillDetailPage({
               : t('bills.confirmRestore')
           }
           onConfirm={() => {
+            const action = confirmAction;
             setConfirmAction(null);
-            runAction(
+            void runAction(
               () =>
-                api.request(`/bills/${bill.id}/${confirmAction}`, {
+                api.request(`/bills/${bill.id}/${action}`, {
                   method: 'PATCH',
                 }),
-              `Could not ${confirmAction} bill`,
+              `Could not ${action} bill`,
             );
           }}
           onCancel={() => setConfirmAction(null)}
+          t={t}
+        />
+      )}
+      {pendingPayment && (
+        <ConfirmDialog
+          title="Confirm payment status"
+          message={`Change this payment from ${pendingPayment.current} to ${pendingPayment.current === 'PAID' ? 'WAITING' : 'PAID'}? This change is audited.`}
+          onConfirm={() => {
+            const pending = pendingPayment;
+            setPendingPayment(null);
+            void runAction(
+              () =>
+                api.request(
+                  `/bills/${bill.id}/participants/${pending.memberId}/payment`,
+                  {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                      expectedStatus: pending.current,
+                      status: pending.current === 'PAID' ? 'WAITING' : 'PAID',
+                    }),
+                  },
+                ),
+              'Could not update payment status',
+            );
+          }}
+          onCancel={() => setPendingPayment(null)}
           t={t}
         />
       )}

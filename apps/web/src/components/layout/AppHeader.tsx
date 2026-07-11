@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { LogOut, UserCircle } from 'lucide-react';
-import type { User } from '../../api.js';
+import { Bell, LogOut, UserCircle } from 'lucide-react';
+import type { Notification, User } from '../../api.js';
 import type { Locale } from '../../i18n.js';
 import type { Theme } from '../../theme.js';
 import { roleLabel } from '../../utils/helpers.js';
@@ -42,6 +42,8 @@ interface AppHeaderProps {
    * Optional callback to navigate to profile page.
    */
   onProfile?: () => void;
+  notifications?: Notification[];
+  onOpenNotification?: (notification: Notification) => void;
 }
 
 /**
@@ -56,8 +58,12 @@ export default function AppHeader({
   theme,
   setTheme,
   onProfile,
+  notifications = [],
+  onOpenNotification,
 }: AppHeaderProps) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const unreadCount = notifications.filter((item) => !item.readAt).length;
 
   return (
     <>
@@ -69,6 +75,54 @@ export default function AppHeader({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {onOpenNotification && (
+            <div className="relative">
+              <button
+                className="relative flex h-8 w-8 items-center justify-center rounded-md border border-border text-slate-500 hover:bg-muted hover:text-ink"
+                onClick={() => setShowNotifications((current) => !current)}
+                aria-label={t('nav.notifications')}
+              >
+                <Bell size={15} />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#e9900c] px-1 text-[10px] font-bold leading-4 text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 top-10 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-surface shadow-panel">
+                  <div className="border-b border-border px-4 py-3 text-sm font-bold">
+                    {t('nav.notifications')}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="px-4 py-6 text-center text-sm text-slate-500">
+                        {t('notifications.empty')}
+                      </p>
+                    ) : (
+                      notifications.map((notification) => (
+                        <button
+                          key={notification.id}
+                          className={`block w-full border-b border-border px-4 py-3 text-left text-sm last:border-0 hover:bg-muted ${!notification.readAt ? 'bg-amber-50/60 dark:bg-amber-950/20' : ''}`}
+                          onClick={() => {
+                            setShowNotifications(false);
+                            onOpenNotification(notification);
+                          }}
+                        >
+                          <span className="block font-medium text-ink">
+                            {notification.message}
+                          </span>
+                          <span className="mt-1 block text-xs text-slate-500">
+                            {new Date(notification.createdAt).toLocaleString()}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <LocaleToggle locale={locale} setLocale={setLocale} />
           <ThemeToggle theme={theme} setTheme={setTheme} />
           <button

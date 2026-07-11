@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { ArrowLeft, ExternalLink, Heart, ThumbsUp } from 'lucide-react';
 import type { ApiClient, RestaurantEntry, User } from '../../api.js';
 import type { Locale } from '../../i18n.js';
 import type { Theme } from '../../theme.js';
-import { canChef, isHead } from '../../utils/helpers.js';
+import { isHead } from '../../utils/helpers.js';
 import AppHeader from '../layout/AppHeader.js';
 
 interface RestaurantDetailPageProps {

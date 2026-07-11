@@ -13,6 +13,7 @@ const translations = {
     'nav.restaurants': 'Nhà hàng',
     'nav.stats': 'Thống kê',
     'nav.notifications': 'Thông báo',
+    'notifications.empty': 'Chưa có thông báo.',
     'nav.members': 'Thành viên',
 
     // Auth
@@ -26,6 +27,7 @@ const translations = {
     'auth.name': 'Họ tên',
     'auth.username': 'Tên đăng nhập',
     'auth.phone': 'Số điện thoại',
+    'auth.inviteCode': 'Mã mời nhóm',
     'auth.role': 'Vai trò',
     'auth.confirmSignOut': 'Bạn có chắc chắn muốn đăng xuất?',
     'auth.confirmSignOutTitle': 'Xác nhận đăng xuất',
@@ -163,6 +165,7 @@ const translations = {
     'nav.restaurants': 'Restaurants',
     'nav.stats': 'Stats',
     'nav.notifications': 'Notifications',
+    'notifications.empty': 'No notifications yet.',
     'nav.members': 'Members',
 
     // Auth
@@ -176,6 +179,7 @@ const translations = {
     'auth.name': 'Full name',
     'auth.username': 'Username',
     'auth.phone': 'Phone number',
+    'auth.inviteCode': 'Group invite code',
     'auth.role': 'Role',
     'auth.confirmSignOut': 'Are you sure you want to sign out?',
     'auth.confirmSignOutTitle': 'Confirm sign out',

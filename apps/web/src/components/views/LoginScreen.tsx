@@ -19,6 +19,7 @@ interface LoginScreenProps {
     username: string,
     phone: string,
     password: string,
+    inviteCode: string,
   ) => Promise<void>;
   /**
    * Error message returned from authentication attempts.
@@ -60,12 +61,14 @@ export default function LoginScreen({
   setTheme,
 }: LoginScreenProps) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [identifier, setIdentifier] = useState('head');
-  const [password, setPassword] = useState('password123');
+  const showDemoUsers = import.meta.env.DEV;
+  const [identifier, setIdentifier] = useState(showDemoUsers ? 'head' : '');
+  const [password, setPassword] = useState(showDemoUsers ? 'password123' : '');
   const [regName, setRegName] = useState('');
   const [regUsername, setRegUsername] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [regInviteCode, setRegInviteCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [activeError, setActiveError] = useState<string | null>(null);
 
@@ -97,7 +100,13 @@ export default function LoginScreen({
     setBusy(true);
     setActiveError(null);
     try {
-      await onRegister(regName, regUsername, regPhone, regPassword);
+      await onRegister(
+        regName,
+        regUsername,
+        regPhone,
+        regPassword,
+        regInviteCode,
+      );
     } catch (err) {
       setActiveError(
         err instanceof Error ? err.message : 'Registration failed',
@@ -166,31 +175,33 @@ export default function LoginScreen({
             <button className="btn btn-primary mb-5 w-full" disabled={busy}>
               {busy ? t('auth.signingIn') : t('auth.signIn')}
             </button>
-            <div className="mb-4">
-              <div className="label mb-2">{t('auth.role')}</div>
-              <div className="grid grid-cols-3 gap-2">
-                {seededUsers.map(([seedId, labelKey]) => {
-                  const isActive = activeSeed === seedId;
-                  return (
-                    <button
-                      key={seedId}
-                      type="button"
-                      className={`btn px-2 ${
-                        isActive
-                          ? 'border border-ink bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
-                          : 'btn-soft'
-                      }`}
-                      onClick={() => {
-                        setIdentifier(seedId);
-                        clearError();
-                      }}
-                    >
-                      {t(labelKey)}
-                    </button>
-                  );
-                })}
+            {showDemoUsers && (
+              <div className="mb-4">
+                <div className="label mb-2">{t('auth.role')}</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {seededUsers.map(([seedId, labelKey]) => {
+                    const isActive = activeSeed === seedId;
+                    return (
+                      <button
+                        key={seedId}
+                        type="button"
+                        className={`btn px-2 ${
+                          isActive
+                            ? 'border border-ink bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
+                            : 'btn-soft'
+                        }`}
+                        onClick={() => {
+                          setIdentifier(seedId);
+                          clearError();
+                        }}
+                      >
+                        {t(labelKey)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
             <div className="text-center text-[13px] text-slate-500">
               {t('auth.noAccount')}{' '}
               <button
@@ -275,6 +286,20 @@ export default function LoginScreen({
                 onFocus={clearError}
                 required
                 minLength={8}
+              />
+            </label>
+            <label className="mb-5 block space-y-2">
+              <span className="label">{t('auth.inviteCode')}</span>
+              <input
+                className="field w-full"
+                type="password"
+                value={regInviteCode}
+                onChange={(event) => {
+                  setRegInviteCode(event.target.value);
+                  clearError();
+                }}
+                required
+                autoComplete="off"
               />
             </label>
             <button className="btn btn-primary mb-5 w-full" disabled={busy}>
