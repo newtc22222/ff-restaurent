@@ -27,6 +27,7 @@ import Sidebar from './components/layout/Sidebar.js';
 import LoginScreen from './components/views/LoginScreen.js';
 import ProfilePage from './components/views/ProfilePage.js';
 import CreateBillPage from './components/views/CreateBillPage.js';
+import ScrollArea from './components/ui/ScrollArea.js';
 import BillDetailPage from './components/views/BillDetailPage.js';
 import RestaurantDetailPage from './components/views/RestaurantDetailPage.js';
 import BillsView from './components/views/BillsView.js';
@@ -344,63 +345,65 @@ export function App() {
       />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <Sidebar nav={nav} active={tab} onSelect={setTab} />
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
-          <div
-            className={
-              tab === 'bills' ? 'mx-auto max-w-2xl' : 'mx-auto max-w-5xl'
-            }
-          >
-            {error && (
-              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
-                {error}
-              </div>
-            )}
-            {loading && (
-              <div className="mb-4 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-slate-500">
-                {t('common.loading')}
-              </div>
-            )}
-            {tab === 'bills' && (
-              <BillsView
-                api={api}
-                user={user}
-                bills={bills}
-                refresh={refresh}
-                setError={setError}
-                onCreateBill={() => setScreen('create-bill')}
-                onViewBill={(bill) => {
-                  setSelectedBillId(bill.id);
-                  setScreen('bill-detail');
-                }}
-                t={t}
-              />
-            )}
-            {tab === 'restaurants' && (
-              <RestaurantsView
-                api={api}
-                user={user}
-                restaurants={restaurants}
-                refresh={refresh}
-                setError={setError}
-                t={t}
-                locale={locale}
-                onViewDetail={(r) => {
-                  setSelectedRestaurantId(r.id);
-                  setScreen('restaurant-detail');
-                }}
-              />
-            )}
-            {tab === 'stats' && <StatsView stats={stats} t={t} />}
-            {tab === 'admin' && isHead(user) && (
-              <AdminView
-                api={api}
-                users={users}
-                refresh={refresh}
-                setError={setError}
-                t={t}
-              />
-            )}
-          </div>
+        <main className="min-h-0 flex-1 overflow-hidden py-3">
+          <ScrollArea className="h-full" contentClassName="p-4 md:p-6">
+            <div
+              className={
+                tab === 'bills' ? 'mx-auto max-w-2xl' : 'mx-auto max-w-5xl'
+              }
+            >
+              {error && (
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+                  {error}
+                </div>
+              )}
+              {loading && (
+                <div className="mb-4 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-slate-500">
+                  {t('common.loading')}
+                </div>
+              )}
+              {tab === 'bills' && (
+                <BillsView
+                  api={api}
+                  user={user}
+                  bills={bills}
+                  refresh={refresh}
+                  setError={setError}
+                  onCreateBill={() => setScreen('create-bill')}
+                  onViewBill={(bill) => {
+                    setSelectedBillId(bill.id);
+                    setScreen('bill-detail');
+                  }}
+                  t={t}
+                />
+              )}
+              {tab === 'restaurants' && (
+                <RestaurantsView
+                  api={api}
+                  user={user}
+                  restaurants={restaurants}
+                  refresh={refresh}
+                  setError={setError}
+                  t={t}
+                  locale={locale}
+                  onViewDetail={(r) => {
+                    setSelectedRestaurantId(r.id);
+                    setScreen('restaurant-detail');
+                  }}
+                />
+              )}
+              {tab === 'stats' && <StatsView stats={stats} t={t} />}
+              {tab === 'admin' && isHead(user) && (
+                <AdminView
+                  api={api}
+                  users={users}
+                  refresh={refresh}
+                  setError={setError}
+                  t={t}
+                />
+              )}
+            </div>
+          </ScrollArea>
         </main>
       </div>
     </div>

@@ -16,6 +16,7 @@
     "react": "^19.1.0",
     "react-currency-input-field": "^4.0.5",
     "react-dom": "^19.1.0",
+    "react-scrollbars-custom": "^4.1.1",
     "recharts": "^3.9.2"
   },
   "devDependencies": {
