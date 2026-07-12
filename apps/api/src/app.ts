@@ -27,7 +27,9 @@ const registerCorePlugins = async (app: FastifyInstance) => {
     secret: config.jwtSecret,
     sign: { expiresIn: config.jwtExpiresIn },
   });
-  await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+  if (config.isProduction) {
+    await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+  }
   await app.register(swagger, {
     openapi: {
       info: { title: 'FF RESTaurent API', version: '0.1.0' },

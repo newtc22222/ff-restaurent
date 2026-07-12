@@ -115,6 +115,10 @@ export function App() {
         localStorage.removeItem('ff-token');
         setToken(null);
         setUser(null);
+        setScreen('dashboard');
+        setTab('bills');
+        setSelectedBillId(null);
+        setSelectedRestaurantId(null);
       } else {
         setError(
           err instanceof Error ? err.message : 'Failed to load app data',
@@ -128,6 +132,13 @@ export function App() {
   useEffect(() => {
     void refresh();
   }, [token]);
+
+  // Reset tab to default if the user doesn't have HEAD_CHEF role but the active tab is admin
+  useEffect(() => {
+    if (user && tab === 'admin' && !isHead(user)) {
+      setTab('bills');
+    }
+  }, [user, tab]);
 
   /**
    * Handles user sign-in.
@@ -173,7 +184,9 @@ export function App() {
     setToken(null);
     setUser(null);
     setScreen('dashboard');
+    setTab('bills');
     setSelectedBillId(null);
+    setSelectedRestaurantId(null);
   };
 
   // 1. Non-authenticated guard

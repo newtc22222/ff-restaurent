@@ -9,5 +9,5 @@
       "@ff-restaurent/shared": ["../../packages/shared/src/index.ts"]
     }
   },
-  "include": ["src", "prisma"]
+  "include": ["src", "prisma", "prisma.config.ts"]
 }
