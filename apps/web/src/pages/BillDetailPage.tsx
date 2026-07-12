@@ -1,98 +1,33 @@
 import { useState } from 'react';
-import {
-  ArrowLeft,
-  CheckCircle2,
-  Clock,
-  Edit3,
-  ExternalLink,
-} from 'lucide-react';
-import { useFetcher } from 'react-router';
+import { CheckCircle2, Clock, Edit3, ExternalLink } from 'lucide-react';
+import { Navigate, useNavigate, useParams } from 'react-router';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import type { Bill, User } from '../../api.js';
-import { money } from '../../api.js';
-import type { Locale } from '../../i18n.js';
-import type { Theme } from '../../theme.js';
+import { money } from '../lib/api.js';
 import {
   PIE_COLORS,
   canChef,
   isHead,
   canManageBill,
   initials,
-} from '../../utils/helpers.js';
-import AppHeader from '../layout/AppHeader.js';
-import ConfirmDialog from '../ui/ConfirmDialog.js';
-import ScrollArea from '../ui/ScrollArea.js';
-
-interface BillDetailPageProps {
-  /**
-   * The API client instance.
-   */
-  /**
-   * The current logged-in user.
-   */
-  user: User;
-  /**
-   * The bill object to view in detail.
-   */
-  bill: Bill;
-  /**
-   * Function to refresh application data.
-   */
-  /**
-   * Action trigger to go back to bills list.
-   */
-  onBack: () => void;
-  /**
-   * Action trigger to sign out.
-   */
-  onSignOut: () => void;
-  /**
-   * Function to update global error state.
-   */
-  setError: (error: string | null) => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-  /**
-   * Current active locale.
-   */
-  locale: Locale;
-  /**
-   * Callback to set locale.
-   */
-  setLocale: (locale: Locale) => void;
-  /**
-   * Current active theme.
-   */
-  theme: Theme;
-  /**
-   * Callback to set theme.
-   */
-  setTheme: (theme: Theme) => void;
-  /**
-   * Action trigger to edit the bill.
-   */
-  onEditBill: () => void;
-}
+} from '../lib/helpers.js';
+import { useAppContext } from '../app/providers/app-context.js';
+import { useI18n } from '../app/providers/i18n.js';
+import { useMutation } from '../hooks/useMutation.js';
+import FullPageLayout, {
+  BackButton,
+} from '../components/layout/FullPageLayout.js';
+import ConfirmDialog from '../components/ui/ConfirmDialog.js';
+import ScrollArea from '../components/ui/ScrollArea.js';
 
 /**
  * BillDetailPage displays a breakdown of a single bill including participant costs and payment buttons.
  */
-export default function BillDetailPage({
-  user,
-  bill,
-  onBack,
-  onSignOut,
-  setError,
-  t,
-  locale,
-  setLocale,
-  theme,
-  setTheme,
-  onEditBill,
-}: BillDetailPageProps) {
-  const fetcher = useFetcher();
+export default function BillDetailPage() {
+  const navigate = useNavigate();
+  const { billId } = useParams();
+  const { user, bills, setError } = useAppContext();
+  const { t } = useI18n();
+  const { mutate } = useMutation(setError);
   const [confirmAction, setConfirmAction] = useState<
     'archive' | 'restore' | null
   >(null);
@@ -101,6 +36,12 @@ export default function BillDetailPage({
     current: 'PAID' | 'WAITING';
   } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const bill = bills.find((candidate) => candidate.id === billId);
+  if (!bill) return <Navigate to="/bills" replace />;
+
+  const onBack = () => navigate('/bills');
+
   const paid = bill.participants.filter(
     (participant) => participant.paymentStatus === 'PAID',
   ).length;
@@ -115,35 +56,11 @@ export default function BillDetailPage({
     value: p.finalPrice,
   }));
 
-  const runAction = async (action: () => Promise<void>, fallback: string) => {
-    setError(null);
-    try {
-      await action();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : fallback);
-    }
-  };
-
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-bg font-sans text-ink">
-      <AppHeader
-        user={user}
-        onSignOut={onSignOut}
-        t={t}
-        locale={locale}
-        setLocale={setLocale}
-        theme={theme}
-        setTheme={setTheme}
-        onProfile={onBack} // Send to dashboard/profile
-      />
+    <FullPageLayout onProfile={onBack}>
       <ScrollArea className="h-full" contentClassName="px-4 py-8">
         <main className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-hidden py-3">
-          <button
-            className="mb-6 flex items-center gap-1.5 text-[13px] text-slate-500 transition-colors hover:text-ink"
-            onClick={onBack}
-          >
-            <ArrowLeft size={14} /> {t('bills.backToBills')}
-          </button>
+          <BackButton onClick={onBack} label={t('bills.backToBills')} />
 
           <section className="mb-4 rounded-xl border border-border bg-surface p-6 shadow-sm">
             <div className="mb-4 flex items-start justify-between gap-4">
@@ -285,7 +202,10 @@ export default function BillDetailPage({
 
           {canManage && canChef(user) && (
             <div className="mb-4 flex gap-3">
-              <button className="btn btn-soft flex-1" onClick={onEditBill}>
+              <button
+                className="btn btn-soft flex-1"
+                onClick={() => navigate(`/bills/${bill.id}/edit`)}
+              >
                 <Edit3 size={14} /> {t('bills.editBill')}
               </button>
             </div>
@@ -369,22 +289,16 @@ export default function BillDetailPage({
                 className="btn btn-soft flex-1"
                 disabled={allPaid}
                 title={allPaid ? 'All members have paid' : undefined}
-                onClick={() => {
-                  setError(null);
-                  void fetcher
-                    .submit(
-                      { intent: 'bill-reminders' },
-                      { method: 'post', encType: 'application/json' },
-                    )
-                    .then(() => setNotice('Payment reminders processed.'))
-                    .catch((err) =>
-                      setError(
-                        err instanceof Error
-                          ? err.message
-                          : 'Could not send reminders',
-                      ),
-                    );
-                }}
+                onClick={() =>
+                  void mutate(
+                    { intent: 'bill-reminders' },
+                    {
+                      fallback: 'Could not send reminders',
+                      onSuccess: () =>
+                        setNotice('Payment reminders processed.'),
+                    },
+                  )
+                }
               >
                 {t('bills.sendReminders')}
               </button>
@@ -423,13 +337,9 @@ export default function BillDetailPage({
           onConfirm={() => {
             const action = confirmAction;
             setConfirmAction(null);
-            void runAction(
-              () =>
-                fetcher.submit(
-                  { intent: 'bill-status', status: action },
-                  { method: 'post', encType: 'application/json' },
-                ),
-              `Could not ${action} bill`,
+            void mutate(
+              { intent: 'bill-status', status: action },
+              { fallback: `Could not ${action} bill` },
             );
           }}
           onCancel={() => setConfirmAction(null)}
@@ -443,24 +353,20 @@ export default function BillDetailPage({
           onConfirm={() => {
             const pending = pendingPayment;
             setPendingPayment(null);
-            void runAction(
-              () =>
-                fetcher.submit(
-                  {
-                    intent: 'payment',
-                    memberId: pending.memberId,
-                    expectedStatus: pending.current,
-                    status: pending.current === 'PAID' ? 'WAITING' : 'PAID',
-                  },
-                  { method: 'post', encType: 'application/json' },
-                ),
-              'Could not update payment status',
+            void mutate(
+              {
+                intent: 'payment',
+                memberId: pending.memberId,
+                expectedStatus: pending.current,
+                status: pending.current === 'PAID' ? 'WAITING' : 'PAID',
+              },
+              { fallback: 'Could not update payment status' },
             );
           }}
           onCancel={() => setPendingPayment(null)}
           t={t}
         />
       )}
-    </div>
+    </FullPageLayout>
   );
 }

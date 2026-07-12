@@ -6,7 +6,7 @@ vi.mock('react-router', async (importOriginal) => {
   return { ...actual, createBrowserRouter: vi.fn(() => ({})) };
 });
 
-import { appLoader, mutationAction } from './routes.js';
+import { appLoader, mutationAction } from './router.js';
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {

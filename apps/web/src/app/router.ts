@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react';
 import {
   createBrowserRouter,
   redirect,
@@ -5,7 +6,7 @@ import {
   type LoaderFunctionArgs,
 } from 'react-router';
 import { App, AuthenticatedRoot, RouteErrorBoundary } from './App.js';
-import type { AppLoaderData } from './app-context.js';
+import type { AppLoaderData } from './providers/app-context.js';
 import {
   ApiError,
   type Bill,
@@ -13,9 +14,9 @@ import {
   type RestaurantEntry,
   type Stats,
   type User,
-} from './api.js';
-import { session } from './session.js';
-import { canChef, isHead } from './utils/helpers.js';
+} from '../lib/api.js';
+import { session } from '../lib/session.js';
+import { canChef, isHead } from '../lib/helpers.js';
 
 export async function appLoader(): Promise<AppLoaderData> {
   if (!session.getToken()) throw redirect('/login');
@@ -169,19 +170,17 @@ async function roleGuard(
   }
 }
 
-const lazyPage = async <K extends keyof typeof import('./route-pages.js')>(
-  name: K,
-) => {
-  const pages = await import('./route-pages.js');
-  return { Component: pages[name] };
-};
+const page =
+  (load: () => Promise<{ default: ComponentType }>) => async () => ({
+    Component: (await load()).default,
+  });
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     loader: loginLoader,
     action: loginAction,
-    lazy: () => lazyPage('LoginRoute'),
+    lazy: page(() => import('../pages/LoginPage.js')),
     ErrorBoundary: RouteErrorBoundary,
   },
   {
@@ -198,19 +197,19 @@ export const router = createBrowserRouter([
           {
             path: 'bills',
             action: mutationAction,
-            lazy: () => lazyPage('BillsRoute'),
+            lazy: page(() => import('../pages/BillsPage.js')),
           },
           {
             path: 'restaurants',
             action: mutationAction,
-            lazy: () => lazyPage('RestaurantsRoute'),
+            lazy: page(() => import('../pages/RestaurantsPage.js')),
           },
-          { path: 'stats', lazy: () => lazyPage('StatsRoute') },
+          { path: 'stats', lazy: page(() => import('../pages/StatsPage.js')) },
           {
             path: 'admin',
             loader: (args) => roleGuard(isHead, args),
             action: mutationAction,
-            lazy: () => lazyPage('AdminRoute'),
+            lazy: page(() => import('../pages/AdminPage.js')),
           },
         ],
       },
@@ -218,28 +217,28 @@ export const router = createBrowserRouter([
         path: 'bills/new',
         loader: (args) => roleGuard(canChef, args),
         action: mutationAction,
-        lazy: () => lazyPage('CreateBillRoute'),
+        lazy: page(() => import('../pages/CreateBillPage.js')),
       },
       {
         path: 'bills/:billId/edit',
         loader: (args) => roleGuard(canChef, args),
         action: mutationAction,
-        lazy: () => lazyPage('CreateBillRoute'),
+        lazy: page(() => import('../pages/CreateBillPage.js')),
       },
       {
         path: 'bills/:billId',
         action: mutationAction,
-        lazy: () => lazyPage('BillDetailRoute'),
+        lazy: page(() => import('../pages/BillDetailPage.js')),
       },
       {
         path: 'restaurants/:restaurantId',
         action: mutationAction,
-        lazy: () => lazyPage('RestaurantDetailRoute'),
+        lazy: page(() => import('../pages/RestaurantDetailPage.js')),
       },
       {
         path: 'profile',
         action: mutationAction,
-        lazy: () => lazyPage('ProfileRoute'),
+        lazy: page(() => import('../pages/ProfilePage.js')),
       },
       { path: '*', loader: () => redirect('/bills') },
     ],

@@ -1,65 +1,19 @@
-import { FormEvent, useEffect, useState } from 'react';
-import type { Locale } from '../../i18n.js';
-import type { Theme } from '../../theme.js';
-import { seededUsers } from '../../utils/helpers.js';
-import BrandIcon from '../ui/BrandIcon.js';
-import ThemeToggle from '../ui/ThemeToggle.js';
-import LocaleToggle from '../ui/LocaleToggle.js';
-
-interface LoginScreenProps {
-  /**
-   * Callback to perform authentication/login api request.
-   */
-  onLogin: (identifier: string, password: string) => Promise<void>;
-  /**
-   * Callback to perform user registration api request.
-   */
-  onRegister: (
-    name: string,
-    username: string,
-    phone: string,
-    password: string,
-    inviteCode: string,
-  ) => Promise<void>;
-  /**
-   * Error message returned from authentication attempts.
-   */
-  error: string | null;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-  /**
-   * Current active locale.
-   */
-  locale: Locale;
-  /**
-   * Callback to set locale.
-   */
-  setLocale: (locale: Locale) => void;
-  /**
-   * Current active theme.
-   */
-  theme: Theme;
-  /**
-   * Callback to set theme.
-   */
-  setTheme: (theme: Theme) => void;
-}
+import { FormEvent, useState } from 'react';
+import { useFetcher } from 'react-router';
+import { seededUsers } from '../lib/helpers.js';
+import { useI18n } from '../app/providers/i18n.js';
+import { useTheme } from '../app/providers/theme.js';
+import BrandIcon from '../components/ui/BrandIcon.js';
+import ThemeToggle from '../components/ui/ThemeToggle.js';
+import LocaleToggle from '../components/ui/LocaleToggle.js';
 
 /**
- * LoginScreen handles sign-in and user registration, including pre-seeded quick logins.
+ * LoginPage handles sign-in and user registration, including pre-seeded quick logins.
  */
-export default function LoginScreen({
-  onLogin,
-  onRegister,
-  error,
-  t,
-  locale,
-  setLocale,
-  theme,
-  setTheme,
-}: LoginScreenProps) {
+export default function LoginPage() {
+  const { locale, setLocale, t } = useI18n();
+  const { theme, setTheme } = useTheme();
+  const fetcher = useFetcher();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const showDemoUsers = import.meta.env.DEV;
   const [identifier, setIdentifier] = useState(showDemoUsers ? 'head' : '');
@@ -72,10 +26,6 @@ export default function LoginScreen({
   const [busy, setBusy] = useState(false);
   const [activeError, setActiveError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setActiveError(error);
-  }, [error]);
-
   const clearError = () => {
     if (activeError) {
       setActiveError(null);
@@ -87,7 +37,10 @@ export default function LoginScreen({
     setBusy(true);
     setActiveError(null);
     try {
-      await onLogin(identifier, password);
+      await fetcher.submit(
+        { intent: 'login', identifier, password },
+        { method: 'post', encType: 'application/json' },
+      );
     } catch (err) {
       setActiveError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -100,12 +53,16 @@ export default function LoginScreen({
     setBusy(true);
     setActiveError(null);
     try {
-      await onRegister(
-        regName,
-        regUsername,
-        regPhone,
-        regPassword,
-        regInviteCode,
+      await fetcher.submit(
+        {
+          intent: 'register',
+          name: regName,
+          username: regUsername,
+          phone: regPhone,
+          password: regPassword,
+          inviteCode: regInviteCode,
+        },
+        { method: 'post', encType: 'application/json' },
       );
     } catch (err) {
       setActiveError(

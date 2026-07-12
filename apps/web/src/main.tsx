@@ -1,11 +1,17 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
-import { router } from './routes.js';
+import { router } from './app/router.js';
+import { I18nProvider } from './app/providers/i18n.js';
+import { ThemeProvider } from './app/providers/theme.js';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <ThemeProvider>
+      <I18nProvider>
+        <RouterProvider router={router} />
+      </I18nProvider>
+    </ThemeProvider>
   </React.StrictMode>,
 );

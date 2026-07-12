@@ -1,6 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
 import {
-  ArrowLeft,
   CheckCircle2,
   ChevronRight,
   Plus,
@@ -9,16 +8,19 @@ import {
   X,
 } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
-import { useFetcher } from 'react-router';
+import { Navigate, useNavigate, useParams } from 'react-router';
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
-import type { Bill, User, RestaurantEntry } from '../../api.js';
-import { money } from '../../api.js';
-import type { Locale } from '../../i18n.js';
-import type { Theme } from '../../theme.js';
-import AppHeader from '../layout/AppHeader.js';
-import AmountInput from '../ui/AmountInput.js';
-import SummaryLine from '../ui/SummaryLine.js';
-import ScrollArea from '../ui/ScrollArea.js';
+import { money } from '../lib/api.js';
+import { canChef, uniqueUsers } from '../lib/helpers.js';
+import { useAppContext } from '../app/providers/app-context.js';
+import { useI18n } from '../app/providers/i18n.js';
+import { useMutation } from '../hooks/useMutation.js';
+import FullPageLayout, {
+  BackButton,
+} from '../components/layout/FullPageLayout.js';
+import AmountInput from '../components/ui/AmountInput.js';
+import SummaryLine from '../components/ui/SummaryLine.js';
+import ScrollArea from '../components/ui/ScrollArea.js';
 
 interface ParticipantDraft {
   memberId: string;
@@ -36,76 +38,22 @@ interface VoucherDraft {
   value: number;
 }
 
-interface CreateBillPageProps {
-  /**
-   * The current logged-in user.
-   */
-  user: User;
-  /**
-   * List of team members.
-   */
-  members: User[];
-  /**
-   * List of available restaurants.
-   */
-  restaurants: RestaurantEntry[];
-  /**
-   * Action trigger to go back to dashboard.
-   */
-  onBack: () => void;
-  /**
-   * Action trigger to sign out.
-   */
-  onSignOut: () => void;
-  /**
-   * Function to update global error state.
-   */
-  setError: (error: string | null) => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-  /**
-   * Current active locale.
-   */
-  locale: Locale;
-  /**
-   * Callback to set locale.
-   */
-  setLocale: (locale: Locale) => void;
-  /**
-   * Current active theme.
-   */
-  theme: Theme;
-  /**
-   * Callback to set theme.
-   */
-  setTheme: (theme: Theme) => void;
-  /**
-   * Optional bill to edit (if in edit mode).
-   */
-  editBill?: Bill;
-}
-
 /**
  * CreateBillPage displays forms to create a new bill or edit an existing one.
+ * Serves both /bills/new and /bills/:billId/edit.
  */
-export default function CreateBillPage({
-  user,
-  members,
-  restaurants,
-  onBack,
-  onSignOut,
-  setError,
-  t,
-  locale,
-  setLocale,
-  theme,
-  setTheme,
-  editBill,
-}: CreateBillPageProps) {
-  const fetcher = useFetcher();
+export default function CreateBillPage() {
+  const navigate = useNavigate();
+  const { billId } = useParams();
+  const { user, users, bills, restaurants, setError } = useAppContext();
+  const { t } = useI18n();
+
+  const members = uniqueUsers(users, user);
+  const editBill = billId
+    ? bills.find((candidate) => candidate.id === billId)
+    : undefined;
   const isEditing = !!editBill;
+
   const [restaurantId, setRestaurantId] = useState(
     editBill?.restaurant?.id ?? '',
   );
@@ -132,6 +80,7 @@ export default function CreateBillPage({
   );
   const [submitted, setSubmitted] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const { mutate } = useMutation(setLocalError);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [restaurantSearch, setRestaurantSearch] = useState(
@@ -191,6 +140,11 @@ export default function CreateBillPage({
     adjustmentsAreValid &&
     !calculationError;
 
+  if (!canChef(user)) return <Navigate to="/bills" replace />;
+  if (billId && !editBill) return <Navigate to="/bills" replace />;
+
+  const onBack = () => navigate('/bills');
+
   const updateParticipant = (memberId: string, originCost: number) => {
     setParticipants((current) =>
       current.map((p) =>
@@ -201,7 +155,7 @@ export default function CreateBillPage({
     );
   };
 
-  const submit = async (event: FormEvent) => {
+  const submit = (event: FormEvent) => {
     event.preventDefault();
     setLocalError(null);
     setError(null);
@@ -240,45 +194,20 @@ export default function CreateBillPage({
       })),
     };
 
-    try {
-      await fetcher.submit(
-        {
-          intent: isEditing ? 'update-bill' : 'create-bill',
-          payload,
-        } as unknown as Parameters<typeof fetcher.submit>[0],
-        { method: 'post', encType: 'application/json' },
-      );
-      setSubmitted(true);
-    } catch (err) {
-      setLocalError(
-        err instanceof Error
-          ? err.message
-          : isEditing
-            ? 'Could not update bill'
-            : 'Could not create bill',
-      );
-    }
+    void mutate(
+      { intent: isEditing ? 'update-bill' : 'create-bill', payload },
+      {
+        fallback: isEditing ? 'Could not update bill' : 'Could not create bill',
+        clearFirst: false, // errors are already cleared before validation above
+        onSuccess: () => setSubmitted(true),
+      },
+    );
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-bg font-sans text-ink">
-      <AppHeader
-        user={user}
-        onSignOut={onSignOut}
-        t={t}
-        locale={locale}
-        setLocale={setLocale}
-        theme={theme}
-        setTheme={setTheme}
-        onProfile={onBack}
-      />
+    <FullPageLayout onProfile={onBack}>
       <main className="mx-auto min-h-0 w-full max-w-[1500px] flex-1 overflow-y-auto px-4 py-8 xl:flex xl:flex-col xl:overflow-hidden">
-        <button
-          className="mb-6 flex items-center gap-1.5 text-[13px] text-slate-500 transition-colors hover:text-ink"
-          onClick={onBack}
-        >
-          <ArrowLeft size={14} /> {t('bills.backToBills')}
-        </button>
+        <BackButton onClick={onBack} label={t('bills.backToBills')} />
 
         <form
           className="grid gap-5 xl:min-h-0 xl:flex-1 xl:grid-cols-[1.05fr_1.1fr_0.85fr] xl:grid-rows-[auto_minmax(0,1fr)]"
@@ -879,6 +808,6 @@ export default function CreateBillPage({
           </section>
         </form>
       </main>
-    </div>
+    </FullPageLayout>
   );
 }

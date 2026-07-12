@@ -6,60 +6,26 @@ import {
   LayoutDashboard,
   Plus,
 } from 'lucide-react';
-import { useFetcher } from 'react-router';
-import type { Bill, BillParticipant, User } from '../../api.js';
-import { money } from '../../api.js';
-import { canChef, isHead, canManageBill } from '../../utils/helpers.js';
-import SelectDropdown from '../ui/SelectDropdown.js';
-import MultiSelectDropdown from '../ui/MultiSelectDropdown.js';
-import EmptyState from '../ui/EmptyState.js';
-import ConfirmDialog from '../ui/ConfirmDialog.js';
-
-interface BillsViewProps {
-  /**
-   * The API client instance.
-   */
-  /**
-   * The current logged-in user.
-   */
-  user: User;
-  /**
-   * The list of bills.
-   */
-  bills: Bill[];
-  /**
-   * Function to refresh application data.
-   */
-  /**
-   * Function to update global error state.
-   */
-  setError: (error: string | null) => void;
-  /**
-   * Action trigger to open the "create bill" page.
-   */
-  onCreateBill: () => void;
-  /**
-   * Action trigger to open a specific bill details page.
-   */
-  onViewBill: (bill: Bill) => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-}
+import { useNavigate } from 'react-router';
+import type { Bill, BillParticipant, User } from '../lib/api.js';
+import { money } from '../lib/api.js';
+import { canChef, isHead, canManageBill } from '../lib/helpers.js';
+import { useAppContext } from '../app/providers/app-context.js';
+import { useI18n } from '../app/providers/i18n.js';
+import { useMutation } from '../hooks/useMutation.js';
+import SelectDropdown from '../components/ui/SelectDropdown.js';
+import MultiSelectDropdown from '../components/ui/MultiSelectDropdown.js';
+import EmptyState from '../components/ui/EmptyState.js';
+import ConfirmDialog from '../components/ui/ConfirmDialog.js';
 
 /**
- * BillsView displays the list of bills with filters and action triggers for managing bills.
+ * BillsPage displays the list of bills with filters and action triggers for managing bills.
  */
-export default function BillsView({
-  user,
-  bills,
-  setError,
-  onCreateBill,
-  onViewBill,
-  t,
-}: BillsViewProps) {
-  const fetcher = useFetcher();
+export default function BillsPage() {
+  const navigate = useNavigate();
+  const { user, bills, setError } = useAppContext();
+  const { t } = useI18n();
+  const { mutate } = useMutation(setError);
   const [filterRestaurant, setFilterRestaurant] = useState('');
   const [filterMembers, setFilterMembers] = useState<string[]>([]);
   const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid'>(
@@ -114,31 +80,21 @@ export default function BillsView({
     (filterMembers.length > 0 ? 1 : 0) +
     (filterPayment !== 'all' ? 1 : 0);
 
-  const runAction = async (
+  const runAction = (
     intent: 'bill-reminders' | 'bill-status',
     billId: string,
     fallback: string,
     status?: 'archive' | 'restore',
-  ) => {
-    setError(null);
-    try {
-      await fetcher.submit(
-        { intent, billId, ...(status ? { status } : {}) },
-        { method: 'post', encType: 'application/json' },
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : fallback);
-    }
-  };
+  ) => mutate({ intent, billId, ...(status ? { status } : {}) }, { fallback });
 
   return (
-    <div>
+    <div className="mx-auto max-w-2xl">
       <div className="mb-1 flex items-center justify-between gap-3">
         <h2 className="text-[22px] font-bold text-ink">{t('bills.title')}</h2>
         {canChef(user) && (
           <button
             className="btn btn-primary h-9 px-4 text-[13px]"
-            onClick={onCreateBill}
+            onClick={() => navigate('/bills/new')}
           >
             <Plus size={14} /> {t('bills.createBill')}
           </button>
@@ -219,7 +175,7 @@ export default function BillsView({
             key={bill.id}
             bill={bill}
             user={user}
-            onView={() => onViewBill(bill)}
+            onView={() => navigate(`/bills/${bill.id}`)}
             onRemind={() =>
               runAction('bill-reminders', bill.id, 'Could not send reminders')
             }

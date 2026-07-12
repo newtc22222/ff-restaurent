@@ -1,43 +1,16 @@
 import { useState } from 'react';
 import { Bell, LogOut, UserCircle } from 'lucide-react';
-import type { Notification, User } from '../../api.js';
-import type { Locale } from '../../i18n.js';
-import type { Theme } from '../../theme.js';
-import { roleLabel } from '../../utils/helpers.js';
+import type { Notification } from '../../lib/api.js';
+import { roleLabel } from '../../lib/helpers.js';
+import { useAppContext } from '../../app/providers/app-context.js';
+import { useI18n } from '../../app/providers/i18n.js';
+import { useTheme } from '../../app/providers/theme.js';
 import BrandIcon from '../ui/BrandIcon.js';
 import ThemeToggle from '../ui/ThemeToggle.js';
 import LocaleToggle from '../ui/LocaleToggle.js';
 import ConfirmDialog from '../ui/ConfirmDialog.js';
 
 interface AppHeaderProps {
-  /**
-   * Current authenticated user.
-   */
-  user: User;
-  /**
-   * Callback fired when signing out.
-   */
-  onSignOut: () => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-  /**
-   * Current active locale.
-   */
-  locale: Locale;
-  /**
-   * Callback to update locale.
-   */
-  setLocale: (locale: Locale) => void;
-  /**
-   * Current active theme.
-   */
-  theme: Theme;
-  /**
-   * Callback to update theme.
-   */
-  setTheme: (theme: Theme) => void;
   /**
    * Optional callback to navigate to profile page.
    */
@@ -48,19 +21,17 @@ interface AppHeaderProps {
 
 /**
  * AppHeader renders the top navigation bar containing branding, setting toggles, and user actions.
+ * Reads the current user and sign-out action from the app context, so it can only be rendered
+ * inside an authenticated route.
  */
 export default function AppHeader({
-  user,
-  onSignOut,
-  t,
-  locale,
-  setLocale,
-  theme,
-  setTheme,
   onProfile,
   notifications = [],
   onOpenNotification,
 }: AppHeaderProps) {
+  const { user, logout } = useAppContext();
+  const { locale, setLocale, t } = useI18n();
+  const { theme, setTheme } = useTheme();
   const [showConfirm, setShowConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const unreadCount = notifications.filter((item) => !item.readAt).length;
@@ -150,7 +121,7 @@ export default function AppHeader({
           message={t('auth.confirmSignOut')}
           onConfirm={() => {
             setShowConfirm(false);
-            onSignOut();
+            logout();
           }}
           onCancel={() => setShowConfirm(false)}
           t={t}

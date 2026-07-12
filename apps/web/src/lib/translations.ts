@@ -1,8 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
-
 export type Locale = 'vi' | 'en';
 
-const translations = {
+export const translations = {
   vi: {
     // App
     'app.name': 'FF RESTaurent',
@@ -311,33 +309,10 @@ const translations = {
 
 export type TranslationKey = keyof (typeof translations)['vi'];
 
-const STORAGE_KEY = 'ff-locale';
+export const LOCALE_STORAGE_KEY = 'ff-locale';
 
 export const getStoredLocale = (): Locale => {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
   if (stored === 'en' || stored === 'vi') return stored;
   return 'vi';
-};
-
-export const useI18n = () => {
-  const [locale, setLocaleState] = useState<Locale>(getStoredLocale);
-
-  const setLocale = useCallback((newLocale: Locale) => {
-    localStorage.setItem(STORAGE_KEY, newLocale);
-    setLocaleState(newLocale);
-  }, []);
-
-  const t = useCallback(
-    (key: string): string => {
-      const k = key as TranslationKey;
-      return (
-        (translations[locale] as Record<string, string>)[k] ??
-        (translations['en'] as Record<string, string>)[k] ??
-        key
-      );
-    },
-    [locale],
-  );
-
-  return useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
 };

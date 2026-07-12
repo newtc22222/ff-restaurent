@@ -5,50 +5,37 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import {
-  NavLink,
-  Outlet,
-  useFetcher,
-  useLoaderData,
-  useNavigate,
-} from 'react-router';
-import type { Notification } from './api.js';
+import { NavLink, Outlet, useLoaderData, useNavigate } from 'react-router';
+import type { Notification } from '../lib/api.js';
 import {
   AppProvider,
   type AppLoaderData,
   useAppContext,
-} from './app-context.js';
-import { useI18n } from './i18n.js';
-import { useTheme } from './theme.js';
-import { isHead } from './utils/helpers.js';
-import AppHeader from './components/layout/AppHeader.js';
-import Sidebar from './components/layout/Sidebar.js';
-import ScrollArea from './components/ui/ScrollArea.js';
+} from './providers/app-context.js';
+import { useI18n } from './providers/i18n.js';
+import { isHead } from '../lib/helpers.js';
+import { useMutation } from '../hooks/useMutation.js';
+import AppHeader from '../components/layout/AppHeader.js';
+import Sidebar from '../components/layout/Sidebar.js';
+import ScrollArea from '../components/ui/ScrollArea.js';
 
 function AppShellContent() {
-  const { locale, setLocale, t } = useI18n();
-  const { theme, setTheme } = useTheme();
+  const { t } = useI18n();
   const navigate = useNavigate();
-  const notificationFetcher = useFetcher();
-  const { user, notifications, warning, error, loading, setError, logout } =
+  const { user, notifications, warning, error, loading, setError } =
     useAppContext();
+  const { mutate } = useMutation(setError);
 
   const openNotification = async (notification: Notification) => {
     if (!notification.readAt) {
-      try {
-        await notificationFetcher.submit(
-          { intent: 'read-notification', notificationId: notification.id },
-          {
-            action: '/bills',
-            method: 'post',
-            encType: 'application/json',
-          },
-        );
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Could not read notification',
-        );
-      }
+      await mutate(
+        { intent: 'read-notification', notificationId: notification.id },
+        {
+          action: '/bills',
+          clearFirst: false,
+          fallback: 'Could not read notification',
+        },
+      );
     }
     if (notification.billId) navigate(`/bills/${notification.billId}`);
   };
@@ -69,13 +56,6 @@ function AppShellContent() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-bg font-sans text-ink">
       <AppHeader
-        user={user}
-        onSignOut={logout}
-        t={t}
-        locale={locale}
-        setLocale={setLocale}
-        theme={theme}
-        setTheme={setTheme}
         onProfile={() => navigate('/profile')}
         notifications={notifications}
         onOpenNotification={openNotification}

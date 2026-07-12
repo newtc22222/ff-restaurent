@@ -1,62 +1,22 @@
 import { FormEvent, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Edit3 } from 'lucide-react';
-import { useFetcher } from 'react-router';
-import type { User } from '../../api.js';
-import type { Locale } from '../../i18n.js';
-import type { Theme } from '../../theme.js';
-import { roleLabel, initials } from '../../utils/helpers.js';
-import AppHeader from '../layout/AppHeader.js';
-import ScrollArea from '../ui/ScrollArea.js';
-
-interface ProfilePageProps {
-  /**
-   * The currently logged-in user.
-   */
-  user: User;
-  /**
-   * Action trigger to go back.
-   */
-  onBack: () => void;
-  /**
-   * Action trigger to sign out.
-   */
-  onSignOut: () => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-  /**
-   * Current active locale.
-   */
-  locale: Locale;
-  /**
-   * Callback to set locale.
-   */
-  setLocale: (locale: Locale) => void;
-  /**
-   * Current active theme.
-   */
-  theme: Theme;
-  /**
-   * Callback to set theme.
-   */
-  setTheme: (theme: Theme) => void;
-}
+import { CheckCircle2, Edit3 } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { roleLabel, initials } from '../lib/helpers.js';
+import { useAppContext } from '../app/providers/app-context.js';
+import { useI18n } from '../app/providers/i18n.js';
+import { useMutation } from '../hooks/useMutation.js';
+import FullPageLayout, {
+  BackButton,
+} from '../components/layout/FullPageLayout.js';
+import ScrollArea from '../components/ui/ScrollArea.js';
 
 /**
  * ProfilePage displays user profile credentials and displays a form to update them.
  */
-export default function ProfilePage({
-  user,
-  onBack,
-  onSignOut,
-  t,
-  locale,
-  setLocale,
-  theme,
-  setTheme,
-}: ProfilePageProps) {
-  const fetcher = useFetcher();
+export default function ProfilePage() {
+  const navigate = useNavigate();
+  const { user } = useAppContext();
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: user.name,
@@ -65,55 +25,40 @@ export default function ProfilePage({
   });
   const [saved, setSaved] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const { mutate } = useMutation(setLocalError);
 
-  const submit = async (event: FormEvent) => {
+  const onBack = () => navigate('/bills');
+
+  const submit = (event: FormEvent) => {
     event.preventDefault();
-    setLocalError(null);
-    try {
-      await fetcher.submit(
-        {
-          intent: 'update-profile',
-          payload: {
-            name: form.name,
-            username: form.username,
-            ...(form.phone ? { phone: form.phone } : {}),
-          },
+    void mutate(
+      {
+        intent: 'update-profile',
+        payload: {
+          name: form.name,
+          username: form.username,
+          ...(form.phone ? { phone: form.phone } : {}),
         },
-        { method: 'post', encType: 'application/json' },
-      );
-      setSaved(true);
-      setTimeout(() => {
-        setSaved(false);
-        setEditing(false);
-      }, 1000);
-    } catch (err) {
-      setLocalError(
-        err instanceof Error ? err.message : 'Could not update profile',
-      );
-    }
+      },
+      {
+        fallback: 'Could not update profile',
+        onSuccess: () => {
+          setSaved(true);
+          setTimeout(() => {
+            setSaved(false);
+            setEditing(false);
+          }, 1000);
+        },
+      },
+    );
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-bg font-sans text-ink">
-      <AppHeader
-        user={user}
-        onSignOut={onSignOut}
-        t={t}
-        locale={locale}
-        setLocale={setLocale}
-        theme={theme}
-        setTheme={setTheme}
-        onProfile={onBack}
-      />
+    <FullPageLayout onProfile={onBack}>
       <main className="mx-auto min-h-0 w-full max-w-md flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="px-4 py-8">
-            <button
-              className="mb-6 flex items-center gap-1.5 text-[13px] text-slate-500 transition-colors hover:text-ink"
-              onClick={onBack}
-            >
-              <ArrowLeft size={14} /> {t('bills.backToBills')}
-            </button>
+            <BackButton onClick={onBack} label={t('bills.backToBills')} />
 
             <div className="panel p-6">
               <div className="mb-6 flex items-center gap-4">
@@ -206,6 +151,6 @@ export default function ProfilePage({
           </div>
         </ScrollArea>
       </main>
-    </div>
+    </FullPageLayout>
   );
 }

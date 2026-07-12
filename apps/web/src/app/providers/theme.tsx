@@ -1,4 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 export type Theme = 'light' | 'dark' | 'system';
 
@@ -12,7 +20,14 @@ const applyTheme = (theme: Theme) => {
   document.documentElement.classList.toggle('dark', resolved === 'dark');
 };
 
-export const useTheme = () => {
+interface ThemeContextValue {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === 'light' || stored === 'dark' || stored === 'system')
@@ -37,5 +52,15 @@ export const useTheme = () => {
     return () => mediaQuery.removeEventListener('change', handler);
   }, [theme]);
 
-  return useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
+  const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
+
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
+}
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) throw new Error('useTheme must be used within ThemeProvider');
+  return context;
 };

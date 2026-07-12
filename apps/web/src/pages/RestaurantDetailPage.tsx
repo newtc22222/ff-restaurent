@@ -1,124 +1,49 @@
-import { ArrowLeft, ExternalLink, Heart, ThumbsUp } from 'lucide-react';
-import { useFetcher } from 'react-router';
-import type { RestaurantEntry, User } from '../../api.js';
-import type { Locale } from '../../i18n.js';
-import type { Theme } from '../../theme.js';
-import { isHead } from '../../utils/helpers.js';
-import AppHeader from '../layout/AppHeader.js';
-import ScrollArea from '../ui/ScrollArea.js';
-
-interface RestaurantDetailPageProps {
-  /**
-   * The API client instance.
-   */
-  /**
-   * The current logged-in user.
-   */
-  user: User;
-  /**
-   * The restaurant entry to display.
-   */
-  restaurant: RestaurantEntry;
-  /**
-   * Function to refresh application data.
-   */
-  /**
-   * Action trigger to go back.
-   */
-  onBack: () => void;
-  /**
-   * Action trigger to sign out.
-   */
-  onSignOut: () => void;
-  /**
-   * Function to update global error state.
-   */
-  setError: (error: string | null) => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-  /**
-   * Current active locale.
-   */
-  locale: Locale;
-  /**
-   * Callback to set locale.
-   */
-  setLocale: (locale: Locale) => void;
-  /**
-   * Current active theme.
-   */
-  theme: Theme;
-  /**
-   * Callback to set theme.
-   */
-  setTheme: (theme: Theme) => void;
-}
+import { ExternalLink, Heart, ThumbsUp } from 'lucide-react';
+import { Navigate, useNavigate, useParams } from 'react-router';
+import { isHead } from '../lib/helpers.js';
+import { useAppContext } from '../app/providers/app-context.js';
+import { useI18n } from '../app/providers/i18n.js';
+import { useMutation } from '../hooks/useMutation.js';
+import FullPageLayout, {
+  BackButton,
+} from '../components/layout/FullPageLayout.js';
+import ScrollArea from '../components/ui/ScrollArea.js';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,
  * and enables managers to archive/restore entries.
  */
-export default function RestaurantDetailPage({
-  user,
-  restaurant,
-  onBack,
-  onSignOut,
-  setError,
-  t,
-  locale,
-  setLocale,
-  theme,
-  setTheme,
-}: RestaurantDetailPageProps) {
-  const fetcher = useFetcher();
-  const toggleFavorite = async () => {
-    try {
-      await fetcher.submit(
-        { intent: 'restaurant-favorite' },
-        { method: 'post', encType: 'application/json' },
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not toggle favorite',
-      );
-    }
-  };
+export default function RestaurantDetailPage() {
+  const navigate = useNavigate();
+  const { restaurantId } = useParams();
+  const { user, restaurants, setError } = useAppContext();
+  const { t } = useI18n();
+  const { mutate } = useMutation(setError);
 
-  const runAction = async (status: 'archive' | 'restore', fallback: string) => {
-    setError(null);
-    try {
-      await fetcher.submit(
-        { intent: 'restaurant-status', status },
-        { method: 'post', encType: 'application/json' },
-      );
-      onBack(); // Go back after archiving/restoring
-    } catch (err) {
-      setError(err instanceof Error ? err.message : fallback);
-    }
-  };
+  const restaurant = restaurants.find(
+    (candidate) => candidate.id === restaurantId,
+  );
+  if (!restaurant) return <Navigate to="/restaurants" replace />;
+
+  const onBack = () => navigate('/restaurants');
+
+  const toggleFavorite = () =>
+    mutate(
+      { intent: 'restaurant-favorite' },
+      { fallback: 'Could not toggle favorite', clearFirst: false },
+    );
+
+  const runAction = (status: 'archive' | 'restore', fallback: string) =>
+    mutate(
+      { intent: 'restaurant-status', status },
+      { fallback, onSuccess: onBack }, // Go back after archiving/restoring
+    );
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-bg font-sans text-ink">
-      <AppHeader
-        user={user}
-        onSignOut={onSignOut}
-        t={t}
-        locale={locale}
-        setLocale={setLocale}
-        theme={theme}
-        setTheme={setTheme}
-        onProfile={onBack}
-      />
+    <FullPageLayout onProfile={onBack}>
       <main className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-hidden">
         <ScrollArea className="h-full" contentClassName="px-4 py-8">
-          <button
-            className="mb-6 flex items-center gap-1.5 text-[13px] text-slate-500 transition-colors hover:text-ink"
-            onClick={onBack}
-          >
-            <ArrowLeft size={14} /> {t('nav.restaurants')}
-          </button>
+          <BackButton onClick={onBack} label={t('nav.restaurants')} />
 
           <section className="panel p-6">
             <div className="mb-4 flex items-start justify-between gap-4">
@@ -208,6 +133,6 @@ export default function RestaurantDetailPage({
           </section>
         </ScrollArea>
       </main>
-    </div>
+    </FullPageLayout>
   );
 }

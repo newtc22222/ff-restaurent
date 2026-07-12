@@ -1,43 +1,28 @@
 import { Users } from 'lucide-react';
-import { useFetcher } from 'react-router';
-import type { ChefRole, User } from '../../api.js';
-import { roleLabel } from '../../utils/helpers.js';
-import SectionTitle from '../ui/SectionTitle.js';
-import EmptyState from '../ui/EmptyState.js';
-
-interface AdminViewProps {
-  /**
-   * List of all users/members.
-   */
-  users: User[];
-  /**
-   * Function to update global error state.
-   */
-  setError: (error: string | null) => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-}
+import { Navigate } from 'react-router';
+import type { ChefRole } from '../lib/api.js';
+import { isHead, roleLabel } from '../lib/helpers.js';
+import { useAppContext } from '../app/providers/app-context.js';
+import { useI18n } from '../app/providers/i18n.js';
+import { useMutation } from '../hooks/useMutation.js';
+import SectionTitle from '../components/ui/SectionTitle.js';
+import EmptyState from '../components/ui/EmptyState.js';
 
 /**
- * AdminView lists all workspace members and allows a Head Chef to update their system roles.
+ * AdminPage lists all workspace members and allows a Head Chef to update their system roles.
  */
-export default function AdminView({ users, setError, t }: AdminViewProps) {
-  const fetcher = useFetcher();
-  const updateRole = async (id: string, chefRole: ChefRole) => {
-    setError(null);
-    try {
-      await fetcher.submit(
-        { intent: 'update-role', userId: id, chefRole },
-        { method: 'post', encType: 'application/json' },
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not update user role',
-      );
-    }
-  };
+export default function AdminPage() {
+  const { user, users, setError } = useAppContext();
+  const { t } = useI18n();
+  const { mutate } = useMutation(setError);
+
+  if (!isHead(user)) return <Navigate to="/bills" replace />;
+
+  const updateRole = (id: string, chefRole: ChefRole) =>
+    mutate(
+      { intent: 'update-role', userId: id, chefRole },
+      { fallback: 'Could not update user role' },
+    );
 
   return (
     <div className="space-y-4">

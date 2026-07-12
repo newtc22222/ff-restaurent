@@ -1,63 +1,27 @@
 import { FormEvent, useState } from 'react';
 import { Heart, Store, ThumbsUp } from 'lucide-react';
-import { useFetcher } from 'react-router';
-import type { RestaurantEntry, User } from '../../api.js';
-import type { Locale } from '../../i18n.js';
+import { useNavigate } from 'react-router';
 import {
   CUISINE_OPTIONS,
   TYPE_OPTIONS_VI,
   TYPE_OPTIONS_EN,
   canChef,
-} from '../../utils/helpers.js';
-import SectionTitle from '../ui/SectionTitle.js';
-import EmptyState from '../ui/EmptyState.js';
-
-interface RestaurantsViewProps {
-  /**
-   * The API client instance.
-   */
-  /**
-   * The current logged-in user.
-   */
-  user: User;
-  /**
-   * List of restaurants.
-   */
-  restaurants: RestaurantEntry[];
-  /**
-   * Function to refresh application data.
-   */
-  /**
-   * Function to update global error state.
-   */
-  setError: (error: string | null) => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-  /**
-   * Current active locale.
-   */
-  locale: Locale;
-  /**
-   * Action trigger when selecting a restaurant.
-   */
-  onViewDetail: (restaurant: RestaurantEntry) => void;
-}
+} from '../lib/helpers.js';
+import { useAppContext } from '../app/providers/app-context.js';
+import { useI18n } from '../app/providers/i18n.js';
+import { useMutation } from '../hooks/useMutation.js';
+import SectionTitle from '../components/ui/SectionTitle.js';
+import EmptyState from '../components/ui/EmptyState.js';
 
 /**
- * RestaurantsView displays the list of restaurants, allows filtering by type/favorites/recommendations,
+ * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
  * and contains the submission form to add new restaurant entries.
  */
-export default function RestaurantsView({
-  user,
-  restaurants,
-  setError,
-  t,
-  locale,
-  onViewDetail,
-}: RestaurantsViewProps) {
-  const fetcher = useFetcher();
+export default function RestaurantsPage() {
+  const navigate = useNavigate();
+  const { user, restaurants, setError } = useAppContext();
+  const { locale, t } = useI18n();
+  const { mutate } = useMutation(setError);
   const typeOptions = locale === 'vi' ? TYPE_OPTIONS_VI : TYPE_OPTIONS_EN;
   const [sortByName, setSortByName] = useState(false);
   const [filterCuisine, setFilterCuisine] = useState('');
@@ -89,52 +53,34 @@ export default function RestaurantsView({
     new Set(restaurants.map((e) => e.cuisineType).filter(Boolean)),
   ).sort();
 
-  const toggleFavorite = async (id: string) => {
-    try {
-      await fetcher.submit(
-        { intent: 'restaurant-favorite', restaurantId: id },
-        { method: 'post', encType: 'application/json' },
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not toggle favorite',
-      );
-    }
-  };
+  const toggleFavorite = (id: string) =>
+    mutate(
+      { intent: 'restaurant-favorite', restaurantId: id },
+      { fallback: 'Could not toggle favorite', clearFirst: false },
+    );
 
-  const toggleRecommend = async (id: string) => {
-    try {
-      await fetcher.submit(
-        { intent: 'restaurant-recommend', restaurantId: id },
-        { method: 'post', encType: 'application/json' },
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not toggle recommend',
-      );
-    }
-  };
+  const toggleRecommend = (id: string) =>
+    mutate(
+      { intent: 'restaurant-recommend', restaurantId: id },
+      { fallback: 'Could not toggle recommend', clearFirst: false },
+    );
 
-  const submit = async (event: FormEvent) => {
+  const submit = (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    try {
-      await fetcher.submit(
-        { intent: 'create-restaurant', payload: form },
-        { method: 'post', encType: 'application/json' },
-      );
-      setForm({
-        name: '',
-        address: '',
-        cuisineType: '',
-        type: typeOptions[0] ?? 'Restaurant',
-        isRecommended: false,
-      });
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not save restaurant',
-      );
-    }
+    void mutate(
+      { intent: 'create-restaurant', payload: form },
+      {
+        fallback: 'Could not save restaurant',
+        onSuccess: () =>
+          setForm({
+            name: '',
+            address: '',
+            cuisineType: '',
+            type: typeOptions[0] ?? 'Restaurant',
+            isRecommended: false,
+          }),
+      },
+    );
   };
 
   return (
@@ -202,7 +148,7 @@ export default function RestaurantsView({
             <article
               key={entry.id}
               className="panel cursor-pointer p-4 transition-shadow hover:shadow-md"
-              onClick={() => onViewDetail(entry)}
+              onClick={() => navigate(`/restaurants/${entry.id}`)}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">

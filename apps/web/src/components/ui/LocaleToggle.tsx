@@ -1,5 +1,5 @@
 import { Globe } from 'lucide-react';
-import type { Locale } from '../../i18n.js';
+import type { Locale } from '../../lib/translations.js';
 
 interface LocaleToggleProps {
   /**
