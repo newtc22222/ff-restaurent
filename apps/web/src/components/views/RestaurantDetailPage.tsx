@@ -1,5 +1,6 @@
 import { ArrowLeft, ExternalLink, Heart, ThumbsUp } from 'lucide-react';
-import type { ApiClient, RestaurantEntry, User } from '../../api.js';
+import { useFetcher } from 'react-router';
+import type { RestaurantEntry, User } from '../../api.js';
 import type { Locale } from '../../i18n.js';
 import type { Theme } from '../../theme.js';
 import { isHead } from '../../utils/helpers.js';
@@ -10,7 +11,6 @@ interface RestaurantDetailPageProps {
   /**
    * The API client instance.
    */
-  api: ApiClient;
   /**
    * The current logged-in user.
    */
@@ -22,7 +22,6 @@ interface RestaurantDetailPageProps {
   /**
    * Function to refresh application data.
    */
-  refresh: () => Promise<void>;
   /**
    * Action trigger to go back.
    */
@@ -62,10 +61,8 @@ interface RestaurantDetailPageProps {
  * and enables managers to archive/restore entries.
  */
 export default function RestaurantDetailPage({
-  api,
   user,
   restaurant,
-  refresh,
   onBack,
   onSignOut,
   setError,
@@ -75,12 +72,13 @@ export default function RestaurantDetailPage({
   theme,
   setTheme,
 }: RestaurantDetailPageProps) {
+  const fetcher = useFetcher();
   const toggleFavorite = async () => {
     try {
-      await api.request(`/restaurants/${restaurant.id}/favorite`, {
-        method: 'POST',
-      });
-      await refresh();
+      await fetcher.submit(
+        { intent: 'restaurant-favorite' },
+        { method: 'post', encType: 'application/json' },
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not toggle favorite',
@@ -88,11 +86,13 @@ export default function RestaurantDetailPage({
     }
   };
 
-  const runAction = async (action: () => Promise<void>, fallback: string) => {
+  const runAction = async (status: 'archive' | 'restore', fallback: string) => {
     setError(null);
     try {
-      await action();
-      await refresh();
+      await fetcher.submit(
+        { intent: 'restaurant-status', status },
+        { method: 'post', encType: 'application/json' },
+      );
       onBack(); // Go back after archiving/restoring
     } catch (err) {
       setError(err instanceof Error ? err.message : fallback);
@@ -190,15 +190,7 @@ export default function RestaurantDetailPage({
                 {restaurant.status === 'ACTIVE' && (
                   <button
                     className="btn btn-soft flex-1 hover:border-red-300 hover:text-red-500"
-                    onClick={() =>
-                      runAction(
-                        () =>
-                          api.request(`/restaurants/${restaurant.id}/archive`, {
-                            method: 'PATCH',
-                          }),
-                        'Could not archive',
-                      )
-                    }
+                    onClick={() => runAction('archive', 'Could not archive')}
                   >
                     {t('bills.archive')}
                   </button>
@@ -206,15 +198,7 @@ export default function RestaurantDetailPage({
                 {restaurant.status === 'ARCHIVED' && (
                   <button
                     className="btn btn-soft flex-1 hover:border-emerald-300 hover:text-emerald-500"
-                    onClick={() =>
-                      runAction(
-                        () =>
-                          api.request(`/restaurants/${restaurant.id}/restore`, {
-                            method: 'PATCH',
-                          }),
-                        'Could not restore',
-                      )
-                    }
+                    onClick={() => runAction('restore', 'Could not restore')}
                   >
                     {t('bills.restore')}
                   </button>

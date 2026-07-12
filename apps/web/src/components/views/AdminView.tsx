@@ -1,22 +1,15 @@
 import { Users } from 'lucide-react';
-import type { ApiClient, ChefRole, User } from '../../api.js';
+import { useFetcher } from 'react-router';
+import type { ChefRole, User } from '../../api.js';
 import { roleLabel } from '../../utils/helpers.js';
 import SectionTitle from '../ui/SectionTitle.js';
 import EmptyState from '../ui/EmptyState.js';
 
 interface AdminViewProps {
   /**
-   * The API client instance.
-   */
-  api: ApiClient;
-  /**
    * List of all users/members.
    */
   users: User[];
-  /**
-   * Function to refresh application data.
-   */
-  refresh: () => Promise<void>;
   /**
    * Function to update global error state.
    */
@@ -30,23 +23,19 @@ interface AdminViewProps {
 /**
  * AdminView lists all workspace members and allows a Head Chef to update their system roles.
  */
-export default function AdminView({
-  api,
-  users,
-  refresh,
-  setError,
-  t,
-}: AdminViewProps) {
+export default function AdminView({ users, setError, t }: AdminViewProps) {
+  const fetcher = useFetcher();
   const updateRole = async (id: string, chefRole: ChefRole) => {
     setError(null);
     try {
-      await api.request(`/users/${id}/chef-role`, {
-        method: 'PATCH',
-        body: JSON.stringify({ chefRole }),
-      });
-      await refresh();
+      await fetcher.submit(
+        { intent: 'update-role', userId: id, chefRole },
+        { method: 'post', encType: 'application/json' },
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update user role');
+      setError(
+        err instanceof Error ? err.message : 'Could not update user role',
+      );
     }
   };
 

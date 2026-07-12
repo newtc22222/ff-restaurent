@@ -6,8 +6,9 @@ import {
   Edit3,
   ExternalLink,
 } from 'lucide-react';
+import { useFetcher } from 'react-router';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import type { ApiClient, Bill, User } from '../../api.js';
+import type { Bill, User } from '../../api.js';
 import { money } from '../../api.js';
 import type { Locale } from '../../i18n.js';
 import type { Theme } from '../../theme.js';
@@ -26,7 +27,6 @@ interface BillDetailPageProps {
   /**
    * The API client instance.
    */
-  api: ApiClient;
   /**
    * The current logged-in user.
    */
@@ -38,7 +38,6 @@ interface BillDetailPageProps {
   /**
    * Function to refresh application data.
    */
-  refresh: () => Promise<void>;
   /**
    * Action trigger to go back to bills list.
    */
@@ -81,10 +80,8 @@ interface BillDetailPageProps {
  * BillDetailPage displays a breakdown of a single bill including participant costs and payment buttons.
  */
 export default function BillDetailPage({
-  api,
   user,
   bill,
-  refresh,
   onBack,
   onSignOut,
   setError,
@@ -95,6 +92,7 @@ export default function BillDetailPage({
   setTheme,
   onEditBill,
 }: BillDetailPageProps) {
+  const fetcher = useFetcher();
   const [confirmAction, setConfirmAction] = useState<
     'archive' | 'restore' | null
   >(null);
@@ -121,7 +119,6 @@ export default function BillDetailPage({
     setError(null);
     try {
       await action();
-      await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : fallback);
     }
@@ -139,8 +136,8 @@ export default function BillDetailPage({
         setTheme={setTheme}
         onProfile={onBack} // Send to dashboard/profile
       />
-      <main className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-hidden">
-        <ScrollArea className="h-full" contentClassName="px-4 py-8">
+      <ScrollArea className="h-full" contentClassName="px-4 py-8">
+        <main className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-hidden py-3">
           <button
             className="mb-6 flex items-center gap-1.5 text-[13px] text-slate-500 transition-colors hover:text-ink"
             onClick={onBack}
@@ -274,7 +271,9 @@ export default function BillDetailPage({
                   >
                     <div
                       className="h-2.5 w-2.5 rounded-full"
-                      style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
+                      style={{
+                        background: PIE_COLORS[i % PIE_COLORS.length],
+                      }}
                     />
                     <span className="font-medium">{d.name}</span>
                     <span className="text-slate-500">{money(d.value)}</span>
@@ -372,17 +371,12 @@ export default function BillDetailPage({
                 title={allPaid ? 'All members have paid' : undefined}
                 onClick={() => {
                   setError(null);
-                  void api
-                    .request<{ sent: number; skipped: number }>(
-                      `/bills/${bill.id}/reminders`,
-                      { method: 'POST' },
+                  void fetcher
+                    .submit(
+                      { intent: 'bill-reminders' },
+                      { method: 'post', encType: 'application/json' },
                     )
-                    .then((result) => {
-                      setNotice(
-                        `${result.sent} reminder(s) sent; ${result.skipped} skipped by cooldown.`,
-                      );
-                      return refresh();
-                    })
+                    .then(() => setNotice('Payment reminders processed.'))
                     .catch((err) =>
                       setError(
                         err instanceof Error
@@ -412,8 +406,8 @@ export default function BillDetailPage({
               )}
             </div>
           )}
-        </ScrollArea>
-      </main>
+        </main>
+      </ScrollArea>
       {confirmAction && (
         <ConfirmDialog
           title={
@@ -431,9 +425,10 @@ export default function BillDetailPage({
             setConfirmAction(null);
             void runAction(
               () =>
-                api.request(`/bills/${bill.id}/${action}`, {
-                  method: 'PATCH',
-                }),
+                fetcher.submit(
+                  { intent: 'bill-status', status: action },
+                  { method: 'post', encType: 'application/json' },
+                ),
               `Could not ${action} bill`,
             );
           }}
@@ -450,15 +445,14 @@ export default function BillDetailPage({
             setPendingPayment(null);
             void runAction(
               () =>
-                api.request(
-                  `/bills/${bill.id}/participants/${pending.memberId}/payment`,
+                fetcher.submit(
                   {
-                    method: 'PATCH',
-                    body: JSON.stringify({
-                      expectedStatus: pending.current,
-                      status: pending.current === 'PAID' ? 'WAITING' : 'PAID',
-                    }),
+                    intent: 'payment',
+                    memberId: pending.memberId,
+                    expectedStatus: pending.current,
+                    status: pending.current === 'PAID' ? 'WAITING' : 'PAID',
                   },
+                  { method: 'post', encType: 'application/json' },
                 ),
               'Could not update payment status',
             );

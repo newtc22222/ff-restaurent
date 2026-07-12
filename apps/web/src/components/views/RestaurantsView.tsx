@@ -1,8 +1,14 @@
 import { FormEvent, useState } from 'react';
 import { Heart, Store, ThumbsUp } from 'lucide-react';
-import type { ApiClient, RestaurantEntry, User } from '../../api.js';
+import { useFetcher } from 'react-router';
+import type { RestaurantEntry, User } from '../../api.js';
 import type { Locale } from '../../i18n.js';
-import { CUISINE_OPTIONS, TYPE_OPTIONS_VI, TYPE_OPTIONS_EN, canChef } from '../../utils/helpers.js';
+import {
+  CUISINE_OPTIONS,
+  TYPE_OPTIONS_VI,
+  TYPE_OPTIONS_EN,
+  canChef,
+} from '../../utils/helpers.js';
 import SectionTitle from '../ui/SectionTitle.js';
 import EmptyState from '../ui/EmptyState.js';
 
@@ -10,7 +16,6 @@ interface RestaurantsViewProps {
   /**
    * The API client instance.
    */
-  api: ApiClient;
   /**
    * The current logged-in user.
    */
@@ -22,7 +27,6 @@ interface RestaurantsViewProps {
   /**
    * Function to refresh application data.
    */
-  refresh: () => Promise<void>;
   /**
    * Function to update global error state.
    */
@@ -46,15 +50,14 @@ interface RestaurantsViewProps {
  * and contains the submission form to add new restaurant entries.
  */
 export default function RestaurantsView({
-  api,
   user,
   restaurants,
-  refresh,
   setError,
   t,
   locale,
   onViewDetail,
 }: RestaurantsViewProps) {
+  const fetcher = useFetcher();
   const typeOptions = locale === 'vi' ? TYPE_OPTIONS_VI : TYPE_OPTIONS_EN;
   const [sortByName, setSortByName] = useState(false);
   const [filterCuisine, setFilterCuisine] = useState('');
@@ -88,8 +91,10 @@ export default function RestaurantsView({
 
   const toggleFavorite = async (id: string) => {
     try {
-      await api.request(`/restaurants/${id}/favorite`, { method: 'POST' });
-      await refresh();
+      await fetcher.submit(
+        { intent: 'restaurant-favorite', restaurantId: id },
+        { method: 'post', encType: 'application/json' },
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not toggle favorite',
@@ -99,8 +104,10 @@ export default function RestaurantsView({
 
   const toggleRecommend = async (id: string) => {
     try {
-      await api.request(`/restaurants/${id}/recommend`, { method: 'PATCH' });
-      await refresh();
+      await fetcher.submit(
+        { intent: 'restaurant-recommend', restaurantId: id },
+        { method: 'post', encType: 'application/json' },
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not toggle recommend',
@@ -112,10 +119,10 @@ export default function RestaurantsView({
     event.preventDefault();
     setError(null);
     try {
-      await api.request('/restaurants', {
-        method: 'POST',
-        body: JSON.stringify(form),
-      });
+      await fetcher.submit(
+        { intent: 'create-restaurant', payload: form },
+        { method: 'post', encType: 'application/json' },
+      );
       setForm({
         name: '',
         address: '',
@@ -123,7 +130,6 @@ export default function RestaurantsView({
         type: typeOptions[0] ?? 'Restaurant',
         isRecommended: false,
       });
-      await refresh();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not save restaurant',

@@ -1,6 +1,13 @@
 import { useState } from 'react';
-import { ChevronRight, CheckCircle2, Clock, LayoutDashboard, Plus } from 'lucide-react';
-import type { ApiClient, Bill, BillParticipant, User } from '../../api.js';
+import {
+  ChevronRight,
+  CheckCircle2,
+  Clock,
+  LayoutDashboard,
+  Plus,
+} from 'lucide-react';
+import { useFetcher } from 'react-router';
+import type { Bill, BillParticipant, User } from '../../api.js';
 import { money } from '../../api.js';
 import { canChef, isHead, canManageBill } from '../../utils/helpers.js';
 import SelectDropdown from '../ui/SelectDropdown.js';
@@ -12,7 +19,6 @@ interface BillsViewProps {
   /**
    * The API client instance.
    */
-  api: ApiClient;
   /**
    * The current logged-in user.
    */
@@ -24,7 +30,6 @@ interface BillsViewProps {
   /**
    * Function to refresh application data.
    */
-  refresh: () => Promise<void>;
   /**
    * Function to update global error state.
    */
@@ -47,18 +52,19 @@ interface BillsViewProps {
  * BillsView displays the list of bills with filters and action triggers for managing bills.
  */
 export default function BillsView({
-  api,
   user,
   bills,
-  refresh,
   setError,
   onCreateBill,
   onViewBill,
   t,
 }: BillsViewProps) {
+  const fetcher = useFetcher();
   const [filterRestaurant, setFilterRestaurant] = useState('');
   const [filterMembers, setFilterMembers] = useState<string[]>([]);
-  const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid'>('all');
+  const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid'>(
+    'all',
+  );
 
   const restaurantOptions = Array.from(
     new Map(
@@ -108,11 +114,18 @@ export default function BillsView({
     (filterMembers.length > 0 ? 1 : 0) +
     (filterPayment !== 'all' ? 1 : 0);
 
-  const runAction = async (action: () => Promise<void>, fallback: string) => {
+  const runAction = async (
+    intent: 'bill-reminders' | 'bill-status',
+    billId: string,
+    fallback: string,
+    status?: 'archive' | 'restore',
+  ) => {
     setError(null);
     try {
-      await action();
-      await refresh();
+      await fetcher.submit(
+        { intent, billId, ...(status ? { status } : {}) },
+        { method: 'post', encType: 'application/json' },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : fallback);
     }
@@ -208,26 +221,22 @@ export default function BillsView({
             user={user}
             onView={() => onViewBill(bill)}
             onRemind={() =>
-              runAction(
-                () =>
-                  api.request(`/bills/${bill.id}/reminders`, {
-                    method: 'POST',
-                  }),
-                'Could not send reminders',
-              )
+              runAction('bill-reminders', bill.id, 'Could not send reminders')
             }
             onArchive={() =>
               runAction(
-                () =>
-                  api.request(`/bills/${bill.id}/archive`, { method: 'PATCH' }),
+                'bill-status',
+                bill.id,
                 'Could not archive bill',
+                'archive',
               )
             }
             onRestore={() =>
               runAction(
-                () =>
-                  api.request(`/bills/${bill.id}/restore`, { method: 'PATCH' }),
+                'bill-status',
+                bill.id,
                 'Could not restore bill',
+                'restore',
               )
             }
             t={t}
@@ -260,7 +269,9 @@ function BillCard({
   onRestore,
   t,
 }: BillCardProps) {
-  const [confirmAction, setConfirmAction] = useState<'archive' | 'restore' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<
+    'archive' | 'restore' | null
+  >(null);
   const paid = bill.participants.filter(
     (participant) => participant.paymentStatus === 'PAID',
   ).length;

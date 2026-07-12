@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { ArrowLeft, CheckCircle2, Edit3 } from 'lucide-react';
-import type { ApiClient, User } from '../../api.js';
+import { useFetcher } from 'react-router';
+import type { User } from '../../api.js';
 import type { Locale } from '../../i18n.js';
 import type { Theme } from '../../theme.js';
 import { roleLabel, initials } from '../../utils/helpers.js';
@@ -8,10 +9,6 @@ import AppHeader from '../layout/AppHeader.js';
 import ScrollArea from '../ui/ScrollArea.js';
 
 interface ProfilePageProps {
-  /**
-   * The API client instance.
-   */
-  api: ApiClient;
   /**
    * The currently logged-in user.
    */
@@ -24,10 +21,6 @@ interface ProfilePageProps {
    * Action trigger to sign out.
    */
   onSignOut: () => void;
-  /**
-   * Function to refresh application data.
-   */
-  refresh: () => Promise<void>;
   /**
    * Translation utility function.
    */
@@ -54,17 +47,16 @@ interface ProfilePageProps {
  * ProfilePage displays user profile credentials and displays a form to update them.
  */
 export default function ProfilePage({
-  api,
   user,
   onBack,
   onSignOut,
-  refresh,
   t,
   locale,
   setLocale,
   theme,
   setTheme,
 }: ProfilePageProps) {
+  const fetcher = useFetcher();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: user.name,
@@ -78,16 +70,18 @@ export default function ProfilePage({
     event.preventDefault();
     setLocalError(null);
     try {
-      await api.request('/me/profile', {
-        method: 'PUT',
-        body: JSON.stringify({
-          name: form.name,
-          username: form.username,
-          phone: form.phone || undefined,
-        }),
-      });
+      await fetcher.submit(
+        {
+          intent: 'update-profile',
+          payload: {
+            name: form.name,
+            username: form.username,
+            ...(form.phone ? { phone: form.phone } : {}),
+          },
+        },
+        { method: 'post', encType: 'application/json' },
+      );
       setSaved(true);
-      await refresh();
       setTimeout(() => {
         setSaved(false);
         setEditing(false);

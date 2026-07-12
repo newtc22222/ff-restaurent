@@ -9,8 +9,9 @@ import {
   X,
 } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
+import { useFetcher } from 'react-router';
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
-import type { ApiClient, Bill, User, RestaurantEntry } from '../../api.js';
+import type { Bill, User, RestaurantEntry } from '../../api.js';
 import { money } from '../../api.js';
 import type { Locale } from '../../i18n.js';
 import type { Theme } from '../../theme.js';
@@ -37,10 +38,6 @@ interface VoucherDraft {
 
 interface CreateBillPageProps {
   /**
-   * The API client instance.
-   */
-  api: ApiClient;
-  /**
    * The current logged-in user.
    */
   user: User;
@@ -52,10 +49,6 @@ interface CreateBillPageProps {
    * List of available restaurants.
    */
   restaurants: RestaurantEntry[];
-  /**
-   * Function to refresh application data.
-   */
-  refresh: () => Promise<void>;
   /**
    * Action trigger to go back to dashboard.
    */
@@ -98,11 +91,9 @@ interface CreateBillPageProps {
  * CreateBillPage displays forms to create a new bill or edit an existing one.
  */
 export default function CreateBillPage({
-  api,
   user,
   members,
   restaurants,
-  refresh,
   onBack,
   onSignOut,
   setError,
@@ -113,6 +104,7 @@ export default function CreateBillPage({
   setTheme,
   editBill,
 }: CreateBillPageProps) {
+  const fetcher = useFetcher();
   const isEditing = !!editBill;
   const [restaurantId, setRestaurantId] = useState(
     editBill?.restaurant?.id ?? '',
@@ -241,7 +233,7 @@ export default function CreateBillPage({
       shippingFee,
       discounts,
       vouchers,
-      paymentUrl: paymentUrl || undefined,
+      ...(paymentUrl ? { paymentUrl } : {}),
       participants: participants.map((p) => ({
         memberId: p.memberId,
         originCost: p.originCost,
@@ -249,20 +241,14 @@ export default function CreateBillPage({
     };
 
     try {
-      if (isEditing) {
-        await api.request(`/bills/${editBill.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await api.request('/bills', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-      }
+      await fetcher.submit(
+        {
+          intent: isEditing ? 'update-bill' : 'create-bill',
+          payload,
+        } as unknown as Parameters<typeof fetcher.submit>[0],
+        { method: 'post', encType: 'application/json' },
+      );
       setSubmitted(true);
-      await refresh();
-      window.setTimeout(onBack, 600);
     } catch (err) {
       setLocalError(
         err instanceof Error
