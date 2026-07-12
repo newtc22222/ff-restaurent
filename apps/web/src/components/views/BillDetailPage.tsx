@@ -127,7 +127,7 @@ export default function BillDetailPage({
   };
 
   return (
-    <div className="min-h-screen bg-bg font-sans text-ink">
+    <div className="flex h-screen flex-col overflow-hidden bg-bg font-sans text-ink">
       <AppHeader
         user={user}
         onSignOut={onSignOut}
@@ -138,7 +138,7 @@ export default function BillDetailPage({
         setTheme={setTheme}
         onProfile={onBack} // Send to dashboard/profile
       />
-      <main className="mx-auto max-w-2xl px-4 py-8">
+      <main className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-4 py-8">
         <button
           className="mb-6 flex items-center gap-1.5 text-[13px] text-slate-500 transition-colors hover:text-ink"
           onClick={onBack}
@@ -341,6 +341,7 @@ export default function BillDetailPage({
                 {(canManage || participant.memberId === user.id) && (
                   <button
                     className="btn btn-soft h-8 px-3 text-[12px]"
+                    disabled={participant.paymentStatus === 'PAID'}
                     onClick={() =>
                       setPendingPayment({
                         memberId: participant.memberId,
@@ -350,7 +351,7 @@ export default function BillDetailPage({
                   >
                     {participant.paymentStatus === 'WAITING'
                       ? t('bills.markPaid')
-                      : 'Correct to waiting'}
+                      : 'Done'}
                   </button>
                 )}
               </div>
@@ -362,6 +363,8 @@ export default function BillDetailPage({
           <div className="flex gap-3">
             <button
               className="btn btn-soft flex-1"
+              disabled={allPaid}
+              title={allPaid ? 'All members have paid' : undefined}
               onClick={() => {
                 setError(null);
                 void api

@@ -67,7 +67,7 @@ export default function AppHeader({
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 md:px-5">
+      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 md:px-5">
         <BrandIcon size={32} />
         <div className="min-w-0 flex-1">
           <span className="text-[15px] font-bold text-ink">
@@ -143,6 +143,7 @@ export default function AppHeader({
           </button>
         </div>
       </header>
+      <div className="h-14 shrink-0" aria-hidden="true" />
       {showConfirm && (
         <ConfirmDialog
           title={t('auth.confirmSignOutTitle')}

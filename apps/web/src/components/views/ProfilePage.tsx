@@ -99,7 +99,7 @@ export default function ProfilePage({
   };
 
   return (
-    <div className="min-h-screen bg-bg font-sans text-ink">
+    <div className="flex h-screen flex-col overflow-hidden bg-bg font-sans text-ink">
       <AppHeader
         user={user}
         onSignOut={onSignOut}
@@ -110,7 +110,7 @@ export default function ProfilePage({
         setTheme={setTheme}
         onProfile={onBack}
       />
-      <main className="mx-auto max-w-md px-4 py-8">
+      <main className="mx-auto min-h-0 w-full max-w-md flex-1 overflow-y-auto px-4 py-8">
         <button
           className="mb-6 flex items-center gap-1.5 text-[13px] text-slate-500 transition-colors hover:text-ink"
           onClick={onBack}

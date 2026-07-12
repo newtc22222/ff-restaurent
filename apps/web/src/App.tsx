@@ -329,7 +329,7 @@ export function App() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg font-sans text-ink">
+    <div className="flex h-screen flex-col overflow-hidden bg-bg font-sans text-ink">
       <AppHeader
         user={user}
         onSignOut={logout}
@@ -342,9 +342,9 @@ export function App() {
         notifications={notifications}
         onOpenNotification={openNotification}
       />
-      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <Sidebar nav={nav} active={tab} onSelect={setTab} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <div
             className={
               tab === 'bills' ? 'mx-auto max-w-2xl' : 'mx-auto max-w-5xl'

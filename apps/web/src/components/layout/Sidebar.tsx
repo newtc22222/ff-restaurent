@@ -20,7 +20,7 @@ interface SidebarProps {
  */
 export default function Sidebar({ nav, active, onSelect }: SidebarProps) {
   return (
-    <aside className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface p-2 md:w-56 md:flex-col md:overflow-visible md:border-b-0 md:border-r md:py-4">
+    <aside className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface p-2 md:h-full md:w-56 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r md:py-4">
       {nav.map(([id, Icon, label]) => (
         <button
           key={id}
