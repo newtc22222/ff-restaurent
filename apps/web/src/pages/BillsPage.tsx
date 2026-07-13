@@ -1,64 +1,35 @@
 import { useState } from 'react';
-import { ChevronRight, CheckCircle2, Clock, LayoutDashboard, Plus } from 'lucide-react';
-import type { ApiClient, Bill, BillParticipant, User } from '../../api.js';
-import { money } from '../../api.js';
-import { canChef, isHead, canManageBill } from '../../utils/helpers.js';
-import SelectDropdown from '../ui/SelectDropdown.js';
-import MultiSelectDropdown from '../ui/MultiSelectDropdown.js';
-import EmptyState from '../ui/EmptyState.js';
-import ConfirmDialog from '../ui/ConfirmDialog.js';
-
-interface BillsViewProps {
-  /**
-   * The API client instance.
-   */
-  api: ApiClient;
-  /**
-   * The current logged-in user.
-   */
-  user: User;
-  /**
-   * The list of bills.
-   */
-  bills: Bill[];
-  /**
-   * Function to refresh application data.
-   */
-  refresh: () => Promise<void>;
-  /**
-   * Function to update global error state.
-   */
-  setError: (error: string | null) => void;
-  /**
-   * Action trigger to open the "create bill" page.
-   */
-  onCreateBill: () => void;
-  /**
-   * Action trigger to open a specific bill details page.
-   */
-  onViewBill: (bill: Bill) => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-}
+import {
+  ChevronRight,
+  CheckCircle2,
+  Clock,
+  LayoutDashboard,
+  Plus,
+} from 'lucide-react';
+import { useNavigate } from 'react-router';
+import type { Bill, BillParticipant, User } from '../lib/api';
+import { money } from '../lib/api';
+import { canChef, isHead, canManageBill } from '../lib/helpers';
+import { useAppContext } from '../app/providers/app-context';
+import { useI18n } from '../app/providers/i18n';
+import { useMutation } from '../hooks/useMutation';
+import Dropdown from '../components/ui/Dropdown';
+import EmptyState from '../components/ui/EmptyState';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 /**
- * BillsView displays the list of bills with filters and action triggers for managing bills.
+ * BillsPage displays the list of bills with filters and action triggers for managing bills.
  */
-export default function BillsView({
-  api,
-  user,
-  bills,
-  refresh,
-  setError,
-  onCreateBill,
-  onViewBill,
-  t,
-}: BillsViewProps) {
+export default function BillsPage() {
+  const navigate = useNavigate();
+  const { user, bills, setError } = useAppContext();
+  const { t } = useI18n();
+  const { mutate } = useMutation(setError);
   const [filterRestaurant, setFilterRestaurant] = useState('');
   const [filterMembers, setFilterMembers] = useState<string[]>([]);
-  const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid'>('all');
+  const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid'>(
+    'all',
+  );
 
   const restaurantOptions = Array.from(
     new Map(
@@ -108,24 +79,21 @@ export default function BillsView({
     (filterMembers.length > 0 ? 1 : 0) +
     (filterPayment !== 'all' ? 1 : 0);
 
-  const runAction = async (action: () => Promise<void>, fallback: string) => {
-    setError(null);
-    try {
-      await action();
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : fallback);
-    }
-  };
+  const runAction = (
+    intent: 'bill-reminders' | 'bill-status',
+    billId: string,
+    fallback: string,
+    status?: 'archive' | 'restore',
+  ) => mutate({ intent, billId, ...(status ? { status } : {}) }, { fallback });
 
   return (
-    <div>
+    <div className="mx-auto max-w-2xl">
       <div className="mb-1 flex items-center justify-between gap-3">
         <h2 className="text-[22px] font-bold text-ink">{t('bills.title')}</h2>
         {canChef(user) && (
           <button
             className="btn btn-primary h-9 px-4 text-[13px]"
-            onClick={onCreateBill}
+            onClick={() => navigate('/bills/new')}
           >
             <Plus size={14} /> {t('bills.createBill')}
           </button>
@@ -134,18 +102,36 @@ export default function BillsView({
       <p className="mb-4 text-[13px] text-slate-500">{t('bills.scopeNote')}</p>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <SelectDropdown
+        <Dropdown
           label={t('bills.filterRestaurant')}
           value={filterRestaurant}
           options={restaurantOptions}
           onChange={setFilterRestaurant}
+          variant="filter"
+          allowClear
+          clearLabel={t('bills.clearAll')}
+          searchable
+          searchPlaceholder={t('bills.searchRestaurants')}
+          emptyMessage={t('bills.noFilterResults')}
         />
         {canChef(user) && (
-          <MultiSelectDropdown
+          <Dropdown
+            multiple
             label={t('bills.filterMember')}
             values={filterMembers}
             options={memberOptions}
             onChange={setFilterMembers}
+            variant="filter"
+            allowClear
+            clearLabel={t('bills.clearAll')}
+            formatSelection={(selected) =>
+              selected.length === 1
+                ? (selected[0]?.label.split(' ')[0] ?? '')
+                : `${selected.length} ${t('bills.filterMember')}`
+            }
+            searchable
+            searchPlaceholder={t('bills.searchMembers')}
+            emptyMessage={t('bills.noFilterResults')}
           />
         )}
         {!canChef(user) && (
@@ -206,28 +192,24 @@ export default function BillsView({
             key={bill.id}
             bill={bill}
             user={user}
-            onView={() => onViewBill(bill)}
+            onView={() => navigate(`/bills/${bill.id}`)}
             onRemind={() =>
-              runAction(
-                () =>
-                  api.request(`/bills/${bill.id}/reminders`, {
-                    method: 'POST',
-                  }),
-                'Could not send reminders',
-              )
+              runAction('bill-reminders', bill.id, 'Could not send reminders')
             }
             onArchive={() =>
               runAction(
-                () =>
-                  api.request(`/bills/${bill.id}/archive`, { method: 'PATCH' }),
+                'bill-status',
+                bill.id,
                 'Could not archive bill',
+                'archive',
               )
             }
             onRestore={() =>
               runAction(
-                () =>
-                  api.request(`/bills/${bill.id}/restore`, { method: 'PATCH' }),
+                'bill-status',
+                bill.id,
                 'Could not restore bill',
+                'restore',
               )
             }
             t={t}
@@ -260,7 +242,9 @@ function BillCard({
   onRestore,
   t,
 }: BillCardProps) {
-  const [confirmAction, setConfirmAction] = useState<'archive' | 'restore' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<
+    'archive' | 'restore' | null
+  >(null);
   const paid = bill.participants.filter(
     (participant) => participant.paymentStatus === 'PAID',
   ).length;

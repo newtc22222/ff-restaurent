@@ -1,60 +1,28 @@
 import { FormEvent, useState } from 'react';
 import { Heart, Store, ThumbsUp } from 'lucide-react';
-import type { ApiClient, RestaurantEntry, User } from '../../api.js';
-import type { Locale } from '../../i18n.js';
-import { CUISINE_OPTIONS, TYPE_OPTIONS_VI, TYPE_OPTIONS_EN, canChef } from '../../utils/helpers.js';
-import SectionTitle from '../ui/SectionTitle.js';
-import EmptyState from '../ui/EmptyState.js';
-
-interface RestaurantsViewProps {
-  /**
-   * The API client instance.
-   */
-  api: ApiClient;
-  /**
-   * The current logged-in user.
-   */
-  user: User;
-  /**
-   * List of restaurants.
-   */
-  restaurants: RestaurantEntry[];
-  /**
-   * Function to refresh application data.
-   */
-  refresh: () => Promise<void>;
-  /**
-   * Function to update global error state.
-   */
-  setError: (error: string | null) => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-  /**
-   * Current active locale.
-   */
-  locale: Locale;
-  /**
-   * Action trigger when selecting a restaurant.
-   */
-  onViewDetail: (restaurant: RestaurantEntry) => void;
-}
+import { useNavigate } from 'react-router';
+import {
+  CUISINE_OPTIONS,
+  TYPE_OPTIONS_VI,
+  TYPE_OPTIONS_EN,
+  canChef,
+} from '../lib/helpers';
+import { useAppContext } from '../app/providers/app-context';
+import { useI18n } from '../app/providers/i18n';
+import { useMutation } from '../hooks/useMutation';
+import SectionTitle from '../components/ui/SectionTitle';
+import EmptyState from '../components/ui/EmptyState';
+import Dropdown from '../components/ui/Dropdown';
 
 /**
- * RestaurantsView displays the list of restaurants, allows filtering by type/favorites/recommendations,
+ * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
  * and contains the submission form to add new restaurant entries.
  */
-export default function RestaurantsView({
-  api,
-  user,
-  restaurants,
-  refresh,
-  setError,
-  t,
-  locale,
-  onViewDetail,
-}: RestaurantsViewProps) {
+export default function RestaurantsPage() {
+  const navigate = useNavigate();
+  const { user, restaurants, setError } = useAppContext();
+  const { locale, t } = useI18n();
+  const { mutate } = useMutation(setError);
   const typeOptions = locale === 'vi' ? TYPE_OPTIONS_VI : TYPE_OPTIONS_EN;
   const [sortByName, setSortByName] = useState(false);
   const [filterCuisine, setFilterCuisine] = useState('');
@@ -86,49 +54,34 @@ export default function RestaurantsView({
     new Set(restaurants.map((e) => e.cuisineType).filter(Boolean)),
   ).sort();
 
-  const toggleFavorite = async (id: string) => {
-    try {
-      await api.request(`/restaurants/${id}/favorite`, { method: 'POST' });
-      await refresh();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not toggle favorite',
-      );
-    }
-  };
+  const toggleFavorite = (id: string) =>
+    mutate(
+      { intent: 'restaurant-favorite', restaurantId: id },
+      { fallback: 'Could not toggle favorite', clearFirst: false },
+    );
 
-  const toggleRecommend = async (id: string) => {
-    try {
-      await api.request(`/restaurants/${id}/recommend`, { method: 'PATCH' });
-      await refresh();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not toggle recommend',
-      );
-    }
-  };
+  const toggleRecommend = (id: string) =>
+    mutate(
+      { intent: 'restaurant-recommend', restaurantId: id },
+      { fallback: 'Could not toggle recommend', clearFirst: false },
+    );
 
-  const submit = async (event: FormEvent) => {
+  const submit = (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    try {
-      await api.request('/restaurants', {
-        method: 'POST',
-        body: JSON.stringify(form),
-      });
-      setForm({
-        name: '',
-        address: '',
-        cuisineType: '',
-        type: typeOptions[0] ?? 'Restaurant',
-        isRecommended: false,
-      });
-      await refresh();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not save restaurant',
-      );
-    }
+    void mutate(
+      { intent: 'create-restaurant', payload: form },
+      {
+        fallback: 'Could not save restaurant',
+        onSuccess: () =>
+          setForm({
+            name: '',
+            address: '',
+            cuisineType: '',
+            type: typeOptions[0] ?? 'Restaurant',
+            isRecommended: false,
+          }),
+      },
+    );
   };
 
   return (
@@ -145,18 +98,21 @@ export default function RestaurantsView({
           >
             {t('restaurants.sortByName')}
           </button>
-          <select
-            className="field h-8 text-[12px]"
+          <Dropdown
+            variant="filter"
+            label={t('restaurants.filterCuisine')}
             value={filterCuisine}
-            onChange={(e) => setFilterCuisine(e.target.value)}
-          >
-            <option value="">{t('restaurants.filterCuisine')}</option>
-            {cuisineOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+            onChange={setFilterCuisine}
+            options={cuisineOptions.map((cuisine) => ({
+              value: cuisine,
+              label: cuisine,
+            }))}
+            searchable
+            searchPlaceholder={t('restaurants.searchCuisine')}
+            emptyMessage={t('bills.noFilterResults')}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+          />
           <button
             className={`flex h-8 items-center gap-1.5 rounded-md border px-3 text-[12px] font-semibold transition-all ${
               filterFav
@@ -196,7 +152,7 @@ export default function RestaurantsView({
             <article
               key={entry.id}
               className="panel cursor-pointer p-4 transition-shadow hover:shadow-md"
-              onClick={() => onViewDetail(entry)}
+              onClick={() => navigate(`/restaurants/${entry.id}`)}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -292,45 +248,41 @@ export default function RestaurantsView({
               required
             />
           </label>
-          <label className="block space-y-1">
+          <div className="block space-y-1">
             <span className="label">
               {locale === 'vi' ? 'Loại ẩm thực' : 'Cuisine type'}
             </span>
-            <select
-              className="field w-full"
+            <Dropdown
+              fullWidth
+              label={locale === 'vi' ? 'Chọn...' : 'Choose...'}
+              ariaLabel={locale === 'vi' ? 'Loại ẩm thực' : 'Cuisine type'}
               value={form.cuisineType}
-              onChange={(e) =>
-                setForm({ ...form, cuisineType: e.target.value })
-              }
-              required
-            >
-              <option value="">
-                {locale === 'vi' ? 'Chọn...' : 'Choose...'}
-              </option>
-              {CUISINE_OPTIONS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block space-y-1">
+              onChange={(cuisineType) => setForm({ ...form, cuisineType })}
+              options={CUISINE_OPTIONS.map((cuisine) => ({
+                value: cuisine,
+                label: cuisine,
+              }))}
+              searchable
+              searchPlaceholder={t('restaurants.searchCuisine')}
+              emptyMessage={t('bills.noFilterResults')}
+            />
+          </div>
+          <div className="block space-y-1">
             <span className="label">
               {locale === 'vi' ? 'Loại hình' : 'Type'}
             </span>
-            <select
-              className="field w-full"
+            <Dropdown
+              fullWidth
+              label={locale === 'vi' ? 'Chọn...' : 'Choose...'}
+              ariaLabel={locale === 'vi' ? 'Loại hình' : 'Type'}
               value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value })}
-              required
-            >
-              {typeOptions.map((tp) => (
-                <option key={tp} value={tp}>
-                  {tp}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(type) => setForm({ ...form, type })}
+              options={typeOptions.map((type) => ({
+                value: type,
+                label: type,
+              }))}
+            />
+          </div>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -341,7 +293,15 @@ export default function RestaurantsView({
             />
             {t('restaurants.recommended')}
           </label>
-          <button className="btn btn-primary w-full">
+          <button
+            className="btn btn-primary w-full"
+            disabled={
+              !form.name.trim() ||
+              !form.address.trim() ||
+              !form.cuisineType ||
+              !form.type
+            }
+          >
             {t('restaurants.createEntry')}
           </button>
         </form>

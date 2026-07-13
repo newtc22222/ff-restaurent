@@ -11,12 +11,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        projectService: {
-          allowDefaultProject: [
-            'packages/shared/src/*.test.ts',
-            'src/*.test.ts',
-          ],
-        },
+        projectService: true,
       },
       globals: {
         Buffer: 'readonly',
@@ -41,6 +36,12 @@ export default [
         'error',
         { argsIgnorePattern: '^_' },
       ],
+    },
+  },
+  {
+    files: ['packages/shared/src/*.test.ts', 'src/*.test.ts'],
+    languageOptions: {
+      parserOptions: { projectService: false },
     },
   },
   {

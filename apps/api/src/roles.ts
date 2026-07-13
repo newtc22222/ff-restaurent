@@ -1,4 +1,13 @@
-import { ChefRole, User } from '@prisma/client';
+import { ChefRole, Prisma, User } from '@prisma/client';
+
+export const publicUserSelect = {
+  id: true,
+  username: true,
+  phone: true,
+  name: true,
+  chefRole: true,
+  createdAt: true,
+} satisfies Prisma.UserSelect;
 
 export type CurrentUser = Pick<User, 'id' | 'username' | 'name' | 'chefRole'>;
 

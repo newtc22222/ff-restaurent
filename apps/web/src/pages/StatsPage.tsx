@@ -11,28 +11,21 @@ import {
   Cell,
 } from 'recharts';
 import { CircleDollarSign, BarChart2 } from 'lucide-react';
-import type { Stats } from '../../api.js';
-import { money } from '../../api.js';
-import { PIE_COLORS } from '../../utils/helpers.js';
-import EmptyState from '../ui/EmptyState.js';
-import SectionTitle from '../ui/SectionTitle.js';
-import StatCard from '../ui/StatCard.js';
-
-interface StatsViewProps {
-  /**
-   * The stats data. Can be null if no data is available.
-   */
-  stats: Stats | null;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-}
+import { money } from '../lib/api';
+import { PIE_COLORS } from '../lib/helpers';
+import { useAppContext } from '../app/providers/app-context';
+import { useI18n } from '../app/providers/i18n';
+import EmptyState from '../components/ui/EmptyState';
+import SectionTitle from '../components/ui/SectionTitle';
+import StatCard from '../components/ui/StatCard';
 
 /**
- * StatsView displays overall expenditure charts, status breakdowns, and monthly trends.
+ * StatsPage displays overall expenditure charts, status breakdowns, and monthly trends.
  */
-export default function StatsView({ stats, t }: StatsViewProps) {
+export default function StatsPage() {
+  const { stats } = useAppContext();
+  const { t } = useI18n();
+
   if (!stats) {
     return (
       <EmptyState

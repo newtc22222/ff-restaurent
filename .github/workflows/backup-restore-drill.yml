@@ -1,0 +1,31 @@
+name: Backup restore drill
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
+jobs:
+  restore-drill:
+    runs-on: ubuntu-latest
+    environment: production
+    services:
+      restore-db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ff_restore_drill
+          POSTGRES_USER: ff
+          POSTGRES_PASSWORD: ff
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ff -d ff_restore_drill"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/backup-restore-drill.sh
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          RESTORE_DATABASE_URL: postgresql://ff:ff@localhost:5432/ff_restore_drill

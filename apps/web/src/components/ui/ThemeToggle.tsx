@@ -1,42 +1,47 @@
 import { Monitor, Moon, Sun, type LucideIcon } from 'lucide-react';
-import type { Theme } from '../../theme.js';
+import type { Theme } from '../../app/providers/theme';
+import Dropdown, { type DropdownOption } from './Dropdown';
 
 interface ThemeToggleProps {
-  /**
-   * Current active theme: 'light' | 'dark' | 'system'
-   */
   theme: Theme;
-  /**
-   * Callback to set a new theme.
-   */
   setTheme: (theme: Theme) => void;
+  label?: string;
+  lightLabel?: string;
+  darkLabel?: string;
+  systemLabel?: string;
 }
 
-/**
- * ThemeToggle renders a button that cycles through light, dark, and system themes.
- */
-export default function ThemeToggle({ theme, setTheme }: ThemeToggleProps) {
+/** Compact themed dropdown for choosing the application theme. */
+export default function ThemeToggle({
+  theme,
+  setTheme,
+  label = 'Theme',
+  lightLabel = 'Light',
+  darkLabel = 'Dark',
+  systemLabel = 'System',
+}: ThemeToggleProps) {
   const icons: Record<Theme, LucideIcon> = {
     light: Sun,
     dark: Moon,
     system: Monitor,
   };
-
-  const nextTheme: Record<Theme, Theme> = {
-    light: 'dark',
-    dark: 'system',
-    system: 'light',
-  };
-
   const Icon = icons[theme];
+  const options: DropdownOption[] = [
+    { value: 'light', label: lightLabel, icon: <Sun size={13} /> },
+    { value: 'dark', label: darkLabel, icon: <Moon size={13} /> },
+    { value: 'system', label: systemLabel, icon: <Monitor size={13} /> },
+  ];
 
   return (
-    <button
-      className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-muted hover:text-ink"
-      onClick={() => setTheme(nextTheme[theme])}
-      title={`Theme: ${theme}`}
-    >
-      <Icon size={16} />
-    </button>
+    <Dropdown
+      label={label}
+      value={theme}
+      icon={<Icon size={14} />}
+      options={options}
+      variant="header"
+      menuAlign="right"
+      ariaLabel={`${label}: ${options.find((option) => option.value === theme)?.label ?? theme}`}
+      onChange={(value) => setTheme(value as Theme)}
+    />
   );
 }

@@ -11,6 +11,7 @@ export const registerSchema = z.object({
   username: z.string().min(3).max(30),
   phone: z.string().optional(),
   password: z.string().min(8),
+  inviteCode: z.string().min(1),
 });
 
 export const profileUpdateSchema = z.object({
@@ -53,6 +54,13 @@ export const billSchema = z.object({
   baseCost: z.number().int().nonnegative(),
   vat: z.number().int().nonnegative(),
   shippingFee: z.number().int().nonnegative(),
+  paymentUrl: z
+    .string()
+    .url()
+    .refine((value) => value.startsWith('https://'), {
+      message: 'Payment URL must use HTTPS',
+    })
+    .optional(),
   discounts: z.array(discountSchema).optional(),
   vouchers: z.array(voucherSchema).optional(),
   participants: z.array(participantSchema).min(2),
@@ -60,4 +68,9 @@ export const billSchema = z.object({
 
 export const chefRoleSchema = z.object({
   chefRole: z.enum(['SOUS_CHEF', 'HEAD_CHEF']).nullable(),
+});
+
+export const paymentStatusSchema = z.object({
+  status: z.enum(['PAID', 'WAITING']),
+  expectedStatus: z.enum(['PAID', 'WAITING']),
 });

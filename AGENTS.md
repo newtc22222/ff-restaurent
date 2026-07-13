@@ -2,6 +2,12 @@
 
 This document provides guidance for AI coding agents working in this repository.
 
+## Current Project State
+
+Read `.codex/PHASE_1_HANDOFF.md` before starting release, production-promotion,
+or Phase 2 work. It records the published Phase 1 commit boundary, verification
+evidence, remaining release operation, and post-release uncommitted changes.
+
 ## Project Overview
 
 FF RESTaurent is a group bill-splitting and restaurant tracker for a shared team.

@@ -8,14 +8,40 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ff_restaurent_test
+          POSTGRES_USER: ff
+          POSTGRES_PASSWORD: ff
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ff -d ff_restaurent_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://ff:ff@localhost:5432/ff_restaurent_test?schema=public
+      JWT_SECRET: ci-only-secret-that-is-at-least-32-characters
+      REGISTRATION_INVITE_CODE: ci-invite-code
+      CORS_ORIGINS: http://localhost:5173
+      RUN_INTEGRATION_TESTS: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm install
+      - run: npm ci
       - run: npm run build -w @ff-restaurent/shared
+      - run: npm run lint
+      - name: Generate Prisma client (workspace)
+        run: npm run prisma:generate --workspace @ff-restaurent/api
       - run: npm run typecheck
+      - run: npm run prisma:migrate:deploy -w @ff-restaurent/api
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

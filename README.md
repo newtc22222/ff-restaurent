@@ -10,11 +10,21 @@ Web-first group bill-splitting and restaurant tracker for a single shared group.
 - Shared TypeScript package for enums, DTO-shaped types, and bill-splitting math
 - Docker Compose for Postgres, API, and static web frontend
 
-## Run locally with Docker
+## Run locally
+
+### Docker Compose
+
+Use Docker Compose for the fastest full-stack setup. It starts PostgreSQL, runs
+API migrations, seeds demo data when the database is empty, and serves the web
+app.
 
 ```bash
 docker compose up --build
 ```
+
+No `.env` file is required for local Docker usage. The Compose file defaults to
+development settings. If you provide overrides, keep `NODE_ENV=development`
+locally so demo seeding remains enabled.
 
 Then open:
 
@@ -22,27 +32,46 @@ Then open:
 - API health: http://localhost:4000/health
 - API docs: http://localhost:4000/api/docs
 
-The first API start seeds demo data if the database is empty.
-
 Demo logins, all using `password123`:
 
 - `customer` (Casey Customer)
 - `sous` (Sam Sous Chef)
 - `head` (Hana Head Chef)
 
-## Run locally without Docker
+### Manual npm setup
+
+Use this path when you want to run the API and Vite dev servers directly. Start
+a PostgreSQL 16-compatible database first, then create `.env` with a host URL
+reachable from your machine:
+
+```env
+DATABASE_URL=postgresql://ff:ff@localhost:5432/ff_restaurent?schema=public
+JWT_SECRET=replace-with-a-long-random-secret
+JWT_EXPIRES_IN=8h
+CORS_ORIGINS=http://localhost:5173
+REGISTRATION_INVITE_CODE=replace-with-a-private-group-invite
+API_PORT=4000
+VITE_API_URL=http://localhost:4000
+```
 
 ```bash
 npm install
-cp .env.example .env
 npm run build -w @ff-restaurent/shared
 npm run prisma:migrate -w @ff-restaurent/api
 npm run prisma:seed -w @ff-restaurent/api
+```
+
+Run the API and web app in separate terminals:
+
+```bash
 npm run dev -w @ff-restaurent/api
+```
+
+```bash
 npm run dev -w @ff-restaurent/web
 ```
 
-Use a local `DATABASE_URL` in `.env` before running Prisma commands.
+Open the same local URLs listed above.
 
 ## Verification
 

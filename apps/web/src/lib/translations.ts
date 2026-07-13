@@ -1,9 +1,12 @@
-import { useState, useCallback, useMemo } from 'react';
-
 export type Locale = 'vi' | 'en';
 
-const translations = {
+export const translations = {
   vi: {
+    'language.english': 'English',
+    'language.vietnamese': 'Tiếng Việt',
+    'bills.searchRestaurants': 'Tìm nhà hàng / quán ăn...',
+    'bills.searchMembers': 'Tìm thành viên...',
+    'bills.noFilterResults': 'Không tìm thấy kết quả.',
     // App
     'app.name': 'FF RESTaurent',
     'app.tagline': 'Theo dõi hóa đơn nhóm, tình trạng thanh toán và chi tiêu.',
@@ -13,6 +16,10 @@ const translations = {
     'nav.restaurants': 'Nhà hàng',
     'nav.stats': 'Thống kê',
     'nav.notifications': 'Thông báo',
+    'nav.menu': 'Tùy chọn',
+    'nav.language': 'Ngôn ngữ',
+    'nav.theme': 'Giao diện',
+    'notifications.empty': 'Chưa có thông báo.',
     'nav.members': 'Thành viên',
 
     // Auth
@@ -26,6 +33,7 @@ const translations = {
     'auth.name': 'Họ tên',
     'auth.username': 'Tên đăng nhập',
     'auth.phone': 'Số điện thoại',
+    'auth.inviteCode': 'Mã mời nhóm',
     'auth.role': 'Vai trò',
     'auth.confirmSignOut': 'Bạn có chắc chắn muốn đăng xuất?',
     'auth.confirmSignOutTitle': 'Xác nhận đăng xuất',
@@ -88,7 +96,7 @@ const translations = {
     'createBill.grandTotal': 'Tổng cộng',
     'createBill.base': 'Gốc (tổng thành viên)',
     'createBill.created': 'Đã tạo hóa đơn!',
-    'createBill.submit': 'Tạo hóa đơn',
+    'createBill.submit': 'Lưu hóa đơn',
 
     // Restaurants
     'restaurants.title': 'Nhà hàng & quán ăn',
@@ -104,6 +112,7 @@ const translations = {
     'restaurants.recommended': 'Được đề xuất',
     'restaurants.sortByName': 'Sắp xếp theo tên',
     'restaurants.filterCuisine': 'Lọc theo ẩm thực',
+    'restaurants.searchCuisine': 'Tìm loại ẩm thực...',
     'restaurants.filterFavorite': 'Yêu thích',
     'restaurants.filterRecommended': 'Đề xuất',
 
@@ -153,6 +162,11 @@ const translations = {
     'common.no': 'Không',
   },
   en: {
+    'language.english': 'English',
+    'language.vietnamese': 'Vietnamese',
+    'bills.searchRestaurants': 'Search restaurants / eateries...',
+    'bills.searchMembers': 'Search members...',
+    'bills.noFilterResults': 'No matching results.',
     // App
     'app.name': 'FF RESTaurent',
     'app.tagline':
@@ -163,6 +177,10 @@ const translations = {
     'nav.restaurants': 'Restaurants',
     'nav.stats': 'Stats',
     'nav.notifications': 'Notifications',
+    'nav.menu': 'Options',
+    'nav.language': 'Language',
+    'nav.theme': 'Theme',
+    'notifications.empty': 'No notifications yet.',
     'nav.members': 'Members',
 
     // Auth
@@ -176,6 +194,7 @@ const translations = {
     'auth.name': 'Full name',
     'auth.username': 'Username',
     'auth.phone': 'Phone number',
+    'auth.inviteCode': 'Group invite code',
     'auth.role': 'Role',
     'auth.confirmSignOut': 'Are you sure you want to sign out?',
     'auth.confirmSignOutTitle': 'Confirm sign out',
@@ -238,7 +257,7 @@ const translations = {
     'createBill.grandTotal': 'Grand total',
     'createBill.base': 'Base (sum of members)',
     'createBill.created': 'Bill created!',
-    'createBill.submit': 'Create bill',
+    'createBill.submit': 'Save bill',
 
     // Restaurants
     'restaurants.title': 'Restaurants & eateries',
@@ -254,6 +273,7 @@ const translations = {
     'restaurants.recommended': 'Recommended',
     'restaurants.sortByName': 'Sort by name',
     'restaurants.filterCuisine': 'Filter by cuisine',
+    'restaurants.searchCuisine': 'Search cuisines...',
     'restaurants.filterFavorite': 'Favorite',
     'restaurants.filterRecommended': 'Recommended',
 
@@ -307,33 +327,10 @@ const translations = {
 
 export type TranslationKey = keyof (typeof translations)['vi'];
 
-const STORAGE_KEY = 'ff-locale';
+export const LOCALE_STORAGE_KEY = 'ff-locale';
 
 export const getStoredLocale = (): Locale => {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
   if (stored === 'en' || stored === 'vi') return stored;
   return 'vi';
-};
-
-export const useI18n = () => {
-  const [locale, setLocaleState] = useState<Locale>(getStoredLocale);
-
-  const setLocale = useCallback((newLocale: Locale) => {
-    localStorage.setItem(STORAGE_KEY, newLocale);
-    setLocaleState(newLocale);
-  }, []);
-
-  const t = useCallback(
-    (key: string): string => {
-      const k = key as TranslationKey;
-      return (
-        (translations[locale] as Record<string, string>)[k] ??
-        (translations['en'] as Record<string, string>)[k] ??
-        key
-      );
-    },
-    [locale],
-  );
-
-  return useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
 };

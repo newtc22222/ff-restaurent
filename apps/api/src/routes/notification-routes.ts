@@ -21,10 +21,19 @@ export const registerNotificationRoutes = (app: FastifyInstance) => {
   app.patch(
     '/notifications/:id/read',
     { preHandler: requireAuthenticatedUser },
-    async (request) => {
+    async (request, reply) => {
       const { id } = request.params as { id: string };
+      const notification = await prisma.notification.findFirst({
+        where: { id, userId: request.currentUser.id },
+      });
+      if (!notification) {
+        return reply.code(404).send({
+          code: 'NOT_FOUND',
+          message: 'Notification not found',
+        });
+      }
       return prisma.notification.update({
-        where: { id },
+        where: { id: notification.id },
         data: { readAt: new Date() },
       });
     },

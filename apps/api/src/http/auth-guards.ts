@@ -35,10 +35,10 @@ export const requireAuthenticatedUser = async (
  * Allows bill and restaurant managers while keeping customer-only users out.
  * This guard must run after requireAuthenticatedUser.
  */
-export const requireSousChefOrHeadChef = (
+export const requireSousChefOrHeadChef = async (
   request: FastifyRequest,
   reply: FastifyReply,
-): void => {
+): Promise<void> => {
   if (!isSousChefOrAbove(request.currentUser)) {
     reply.code(403).send({ message: 'SOUS_CHEF or HEAD_CHEF required' });
   }
@@ -48,10 +48,10 @@ export const requireSousChefOrHeadChef = (
  * Allows only HEAD_CHEF users for administrative actions.
  * This guard must run after requireAuthenticatedUser.
  */
-export const requireHeadChef = (
+export const requireHeadChef = async (
   request: FastifyRequest,
   reply: FastifyReply,
-): void => {
+): Promise<void> => {
   if (!isHeadChef(request.currentUser)) {
     reply.code(403).send({ message: 'HEAD_CHEF required' });
   }

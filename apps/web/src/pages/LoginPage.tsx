@@ -1,77 +1,37 @@
-import { FormEvent, useEffect, useState } from 'react';
-import type { Locale } from '../../i18n.js';
-import type { Theme } from '../../theme.js';
-import { seededUsers } from '../../utils/helpers.js';
-import BrandIcon from '../ui/BrandIcon.js';
-import ThemeToggle from '../ui/ThemeToggle.js';
-import LocaleToggle from '../ui/LocaleToggle.js';
-
-interface LoginScreenProps {
-  /**
-   * Callback to perform authentication/login api request.
-   */
-  onLogin: (identifier: string, password: string) => Promise<void>;
-  /**
-   * Callback to perform user registration api request.
-   */
-  onRegister: (
-    name: string,
-    username: string,
-    phone: string,
-    password: string,
-  ) => Promise<void>;
-  /**
-   * Error message returned from authentication attempts.
-   */
-  error: string | null;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
-  /**
-   * Current active locale.
-   */
-  locale: Locale;
-  /**
-   * Callback to set locale.
-   */
-  setLocale: (locale: Locale) => void;
-  /**
-   * Current active theme.
-   */
-  theme: Theme;
-  /**
-   * Callback to set theme.
-   */
-  setTheme: (theme: Theme) => void;
-}
+import { useEffect, useState, type SubmitEvent } from 'react';
+import { useFetcher } from 'react-router';
+import type { LoginActionData } from '../app/router';
+import { seededUsers } from '../lib/helpers';
+import { useI18n } from '../app/providers/i18n';
+import { useTheme } from '../app/providers/theme';
+import BrandIcon from '../components/ui/BrandIcon';
+import ThemeToggle from '../components/ui/ThemeToggle';
+import LocaleToggle from '../components/ui/LocaleToggle';
 
 /**
- * LoginScreen handles sign-in and user registration, including pre-seeded quick logins.
+ * LoginPage handles sign-in and user registration, including pre-seeded quick logins.
  */
-export default function LoginScreen({
-  onLogin,
-  onRegister,
-  error,
-  t,
-  locale,
-  setLocale,
-  theme,
-  setTheme,
-}: LoginScreenProps) {
+export default function LoginPage() {
+  const { locale, setLocale, t } = useI18n();
+  const { theme, setTheme } = useTheme();
+  const fetcher = useFetcher<LoginActionData>();
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [identifier, setIdentifier] = useState('head');
-  const [password, setPassword] = useState('password123');
+  const showDemoUsers = import.meta.env.DEV;
+  const [identifier, setIdentifier] = useState(showDemoUsers ? 'head' : '');
+  const [password, setPassword] = useState(showDemoUsers ? 'password123' : '');
   const [regName, setRegName] = useState('');
   const [regUsername, setRegUsername] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [regInviteCode, setRegInviteCode] = useState('');
   const [activeError, setActiveError] = useState<string | null>(null);
+  const busy = fetcher.state !== 'idle';
 
   useEffect(() => {
-    setActiveError(error);
-  }, [error]);
+    if (fetcher.state === 'idle' && fetcher.data?.error) {
+      setActiveError(fetcher.data.error);
+    }
+  }, [fetcher.data, fetcher.state]);
 
   const clearError = () => {
     if (activeError) {
@@ -79,32 +39,29 @@ export default function LoginScreen({
     }
   };
 
-  const submitLogin = async (event: FormEvent) => {
+  const submitLogin = (event: SubmitEvent) => {
     event.preventDefault();
-    setBusy(true);
     setActiveError(null);
-    try {
-      await onLogin(identifier, password);
-    } catch (err) {
-      setActiveError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setBusy(false);
-    }
+    fetcher.submit(
+      { intent: 'login', identifier, password },
+      { method: 'post', encType: 'application/json' },
+    );
   };
 
-  const submitRegister = async (event: FormEvent) => {
+  const submitRegister = (event: SubmitEvent) => {
     event.preventDefault();
-    setBusy(true);
     setActiveError(null);
-    try {
-      await onRegister(regName, regUsername, regPhone, regPassword);
-    } catch (err) {
-      setActiveError(
-        err instanceof Error ? err.message : 'Registration failed',
-      );
-    } finally {
-      setBusy(false);
-    }
+    fetcher.submit(
+      {
+        intent: 'register',
+        name: regName,
+        username: regUsername,
+        phone: regPhone,
+        password: regPassword,
+        inviteCode: regInviteCode,
+      },
+      { method: 'post', encType: 'application/json' },
+    );
   };
 
   const activeSeed =
@@ -166,31 +123,33 @@ export default function LoginScreen({
             <button className="btn btn-primary mb-5 w-full" disabled={busy}>
               {busy ? t('auth.signingIn') : t('auth.signIn')}
             </button>
-            <div className="mb-4">
-              <div className="label mb-2">{t('auth.role')}</div>
-              <div className="grid grid-cols-3 gap-2">
-                {seededUsers.map(([seedId, labelKey]) => {
-                  const isActive = activeSeed === seedId;
-                  return (
-                    <button
-                      key={seedId}
-                      type="button"
-                      className={`btn px-2 ${
-                        isActive
-                          ? 'border border-ink bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
-                          : 'btn-soft'
-                      }`}
-                      onClick={() => {
-                        setIdentifier(seedId);
-                        clearError();
-                      }}
-                    >
-                      {t(labelKey)}
-                    </button>
-                  );
-                })}
+            {showDemoUsers && (
+              <div className="mb-4">
+                <div className="label mb-2">{t('auth.role')}</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {seededUsers.map(([seedId, labelKey]) => {
+                    const isActive = activeSeed === seedId;
+                    return (
+                      <button
+                        key={seedId}
+                        type="button"
+                        className={`btn px-2 ${
+                          isActive
+                            ? 'border border-ink bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
+                            : 'btn-soft'
+                        }`}
+                        onClick={() => {
+                          setIdentifier(seedId);
+                          clearError();
+                        }}
+                      >
+                        {t(labelKey)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
             <div className="text-center text-[13px] text-slate-500">
               {t('auth.noAccount')}{' '}
               <button
@@ -275,6 +234,20 @@ export default function LoginScreen({
                 onFocus={clearError}
                 required
                 minLength={8}
+              />
+            </label>
+            <label className="mb-5 block space-y-2">
+              <span className="label">{t('auth.inviteCode')}</span>
+              <input
+                className="field w-full"
+                type="password"
+                value={regInviteCode}
+                onChange={(event) => {
+                  setRegInviteCode(event.target.value);
+                  clearError();
+                }}
+                required
+                autoComplete="off"
               />
             </label>
             <button className="btn btn-primary mb-5 w-full" disabled={busy}>

@@ -46,9 +46,13 @@ export type Bill = {
   vat: number;
   shippingFee: number;
   totalCost: number;
+  discounts: { type: 'FIXED' | 'PERCENTAGE'; value: number; label?: string }[];
+  vouchers: { code: string; value: number }[];
   qrCodePath?: string | null;
+  paymentUrl?: string | null;
   status: EntryStatus;
   createdAt: string;
+  updatedAt: string;
   participants: BillParticipant[];
 };
 
@@ -64,12 +68,24 @@ export type Stats = {
 
 export type Notification = {
   id: string;
+  billId?: string | null;
   message: string;
   readAt?: string | null;
   createdAt: string;
 };
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
 
 export class ApiClient {
   constructor(private token: string | null) {}
@@ -82,7 +98,7 @@ export class ApiClient {
     const response = await fetch(`${API_URL}${path}`, {
       ...init,
       headers: {
-        'Content-Type': 'application/json',
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
         ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
         ...init.headers,
       },
@@ -91,7 +107,11 @@ export class ApiClient {
       const error = await response
         .json()
         .catch(() => ({ message: response.statusText }));
-      throw new Error(error.message ?? 'Request failed');
+      throw new ApiError(
+        error.message ?? 'Request failed',
+        response.status,
+        error.code,
+      );
     }
     return response.json() as Promise<T>;
   }
@@ -103,7 +123,13 @@ export class ApiClient {
     });
   }
 
-  register(name: string, username: string, phone: string, password: string) {
+  register(
+    name: string,
+    username: string,
+    phone: string,
+    password: string,
+    inviteCode: string,
+  ) {
     return this.request<{ token: string; user: User }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
@@ -111,6 +137,7 @@ export class ApiClient {
         username,
         phone: phone || undefined,
         password,
+        inviteCode,
       }),
     });
   }
