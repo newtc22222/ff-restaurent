@@ -6,7 +6,7 @@ vi.mock('react-router', async (importOriginal) => {
   return { ...actual, createBrowserRouter: vi.fn(() => ({})) };
 });
 
-import { appLoader, mutationAction } from './router';
+import { appLoader, loginAction, mutationAction } from './router';
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -69,6 +69,88 @@ describe('appLoader', () => {
     const data = await appLoader();
     expect(data.bills).toEqual([]);
     expect(data.warning).toMatch(/Some data/);
+  });
+});
+
+describe('loginAction', () => {
+  it('returns invalid credentials as handled action data', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        jsonResponse(
+          { code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' },
+          401,
+        ),
+      ),
+    );
+    const request = new Request('http://localhost/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'login',
+        identifier: 'missing',
+        password: 'wrong-password',
+      }),
+    });
+
+    const result = await loginAction({
+      request,
+      params: {},
+      context: {},
+    } as never);
+
+    expect(result).toMatchObject({
+      data: {
+        error: 'Invalid credentials',
+        code: 'INVALID_CREDENTIALS',
+        intent: 'login',
+      },
+      init: { status: 401 },
+    });
+    expect(localStorage.getItem('ff-token')).toBeNull();
+  });
+
+  it('returns an invalid invite code as handled action data', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            code: 'REGISTRATION_NOT_AUTHORIZED',
+            message: 'Registration is not authorized',
+          },
+          403,
+        ),
+      ),
+    );
+    const request = new Request('http://localhost/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'register',
+        name: 'New Member',
+        username: 'new-member',
+        phone: '',
+        password: 'password123',
+        inviteCode: 'invalid',
+      }),
+    });
+
+    const result = await loginAction({
+      request,
+      params: {},
+      context: {},
+    } as never);
+
+    expect(result).toMatchObject({
+      data: {
+        error: 'Registration is not authorized',
+        code: 'REGISTRATION_NOT_AUTHORIZED',
+        intent: 'register',
+      },
+      init: { status: 403 },
+    });
+    expect(localStorage.getItem('ff-token')).toBeNull();
   });
 });
 

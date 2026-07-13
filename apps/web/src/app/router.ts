@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import {
   createBrowserRouter,
+  data,
   redirect,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
@@ -59,21 +60,43 @@ async function loginLoader() {
   return null;
 }
 
+export type LoginActionData = {
+  error: string;
+  code?: string;
+  intent: 'login' | 'register';
+};
+
 export async function loginAction({ request }: ActionFunctionArgs) {
   const body = await request.json();
   const api = session.api();
-  const result =
-    body.intent === 'register'
-      ? await api.register(
-          body.name,
-          body.username,
-          body.phone,
-          body.password,
-          body.inviteCode,
-        )
-      : await api.login(body.identifier, body.password);
-  session.setToken(result.token);
-  return redirect('/bills');
+  const intent = body.intent === 'register' ? 'register' : 'login';
+
+  try {
+    const result =
+      intent === 'register'
+        ? await api.register(
+            body.name,
+            body.username,
+            body.phone,
+            body.password,
+            body.inviteCode,
+          )
+        : await api.login(body.identifier, body.password);
+    session.setToken(result.token);
+    return redirect('/bills');
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      error.status >= 400 &&
+      error.status < 500
+    ) {
+      return data<LoginActionData>(
+        { error: error.message, code: error.code, intent },
+        { status: error.status },
+      );
+    }
+    throw error;
+  }
 }
 
 export async function mutationAction({ request, params }: ActionFunctionArgs) {

@@ -1,5 +1,6 @@
-import { FormEvent, useState } from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
 import { useFetcher } from 'react-router';
+import type { LoginActionData } from '../app/router';
 import { seededUsers } from '../lib/helpers';
 import { useI18n } from '../app/providers/i18n';
 import { useTheme } from '../app/providers/theme';
@@ -13,7 +14,7 @@ import LocaleToggle from '../components/ui/LocaleToggle';
 export default function LoginPage() {
   const { locale, setLocale, t } = useI18n();
   const { theme, setTheme } = useTheme();
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<LoginActionData>();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const showDemoUsers = import.meta.env.DEV;
   const [identifier, setIdentifier] = useState(showDemoUsers ? 'head' : '');
@@ -23,8 +24,14 @@ export default function LoginPage() {
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regInviteCode, setRegInviteCode] = useState('');
-  const [busy, setBusy] = useState(false);
   const [activeError, setActiveError] = useState<string | null>(null);
+  const busy = fetcher.state !== 'idle';
+
+  useEffect(() => {
+    if (fetcher.state === 'idle' && fetcher.data?.error) {
+      setActiveError(fetcher.data.error);
+    }
+  }, [fetcher.data, fetcher.state]);
 
   const clearError = () => {
     if (activeError) {
@@ -32,45 +39,29 @@ export default function LoginPage() {
     }
   };
 
-  const submitLogin = async (event: FormEvent) => {
+  const submitLogin = (event: SubmitEvent) => {
     event.preventDefault();
-    setBusy(true);
     setActiveError(null);
-    try {
-      await fetcher.submit(
-        { intent: 'login', identifier, password },
-        { method: 'post', encType: 'application/json' },
-      );
-    } catch (err) {
-      setActiveError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setBusy(false);
-    }
+    fetcher.submit(
+      { intent: 'login', identifier, password },
+      { method: 'post', encType: 'application/json' },
+    );
   };
 
-  const submitRegister = async (event: FormEvent) => {
+  const submitRegister = (event: SubmitEvent) => {
     event.preventDefault();
-    setBusy(true);
     setActiveError(null);
-    try {
-      await fetcher.submit(
-        {
-          intent: 'register',
-          name: regName,
-          username: regUsername,
-          phone: regPhone,
-          password: regPassword,
-          inviteCode: regInviteCode,
-        },
-        { method: 'post', encType: 'application/json' },
-      );
-    } catch (err) {
-      setActiveError(
-        err instanceof Error ? err.message : 'Registration failed',
-      );
-    } finally {
-      setBusy(false);
-    }
+    fetcher.submit(
+      {
+        intent: 'register',
+        name: regName,
+        username: regUsername,
+        phone: regPhone,
+        password: regPassword,
+        inviteCode: regInviteCode,
+      },
+      { method: 'post', encType: 'application/json' },
+    );
   };
 
   const activeSeed =
