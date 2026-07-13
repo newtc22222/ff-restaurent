@@ -1,4 +1,4 @@
-import { User, Bill } from './api.js';
+import { User, Bill } from './api';
 
 /**
  * Array of Vietnamese cuisine options displayed when creating a restaurant.

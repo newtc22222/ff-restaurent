@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
-import type { Option } from './SelectDropdown.js';
+import type { Option } from './SelectDropdown';
 
 interface MultiSelectDropdownProps {
   /**

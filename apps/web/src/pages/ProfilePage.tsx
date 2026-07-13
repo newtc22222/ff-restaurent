@@ -1,14 +1,14 @@
 import { FormEvent, useState } from 'react';
 import { CheckCircle2, Edit3 } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { roleLabel, initials } from '../lib/helpers.js';
-import { useAppContext } from '../app/providers/app-context.js';
-import { useI18n } from '../app/providers/i18n.js';
-import { useMutation } from '../hooks/useMutation.js';
+import { roleLabel, initials } from '../lib/helpers';
+import { useAppContext } from '../app/providers/app-context';
+import { useI18n } from '../app/providers/i18n';
+import { useMutation } from '../hooks/useMutation';
 import FullPageLayout, {
   BackButton,
-} from '../components/layout/FullPageLayout.js';
-import ScrollArea from '../components/ui/ScrollArea.js';
+} from '../components/layout/FullPageLayout';
+import ScrollArea from '../components/ui/ScrollArea';
 
 /**
  * ProfilePage displays user profile credentials and displays a form to update them.

@@ -1,4 +1,4 @@
-import { ApiClient } from './api.js';
+import { ApiClient } from './api';
 
 const TOKEN_KEY = 'ff-token';
 

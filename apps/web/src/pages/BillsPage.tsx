@@ -7,16 +7,16 @@ import {
   Plus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import type { Bill, BillParticipant, User } from '../lib/api.js';
-import { money } from '../lib/api.js';
-import { canChef, isHead, canManageBill } from '../lib/helpers.js';
-import { useAppContext } from '../app/providers/app-context.js';
-import { useI18n } from '../app/providers/i18n.js';
-import { useMutation } from '../hooks/useMutation.js';
-import SelectDropdown from '../components/ui/SelectDropdown.js';
-import MultiSelectDropdown from '../components/ui/MultiSelectDropdown.js';
-import EmptyState from '../components/ui/EmptyState.js';
-import ConfirmDialog from '../components/ui/ConfirmDialog.js';
+import type { Bill, BillParticipant, User } from '../lib/api';
+import { money } from '../lib/api';
+import { canChef, isHead, canManageBill } from '../lib/helpers';
+import { useAppContext } from '../app/providers/app-context';
+import { useI18n } from '../app/providers/i18n';
+import { useMutation } from '../hooks/useMutation';
+import SelectDropdown from '../components/ui/SelectDropdown';
+import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
+import EmptyState from '../components/ui/EmptyState';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 /**
  * BillsPage displays the list of bills with filters and action triggers for managing bills.

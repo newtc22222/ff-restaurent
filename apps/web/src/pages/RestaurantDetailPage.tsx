@@ -1,13 +1,13 @@
 import { ExternalLink, Heart, ThumbsUp } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router';
-import { isHead } from '../lib/helpers.js';
-import { useAppContext } from '../app/providers/app-context.js';
-import { useI18n } from '../app/providers/i18n.js';
-import { useMutation } from '../hooks/useMutation.js';
+import { isHead } from '../lib/helpers';
+import { useAppContext } from '../app/providers/app-context';
+import { useI18n } from '../app/providers/i18n';
+import { useMutation } from '../hooks/useMutation';
 import FullPageLayout, {
   BackButton,
-} from '../components/layout/FullPageLayout.js';
-import ScrollArea from '../components/ui/ScrollArea.js';
+} from '../components/layout/FullPageLayout';
+import ScrollArea from '../components/ui/ScrollArea';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,

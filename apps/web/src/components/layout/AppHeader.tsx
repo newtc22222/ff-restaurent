@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Bell, LogOut, UserCircle } from 'lucide-react';
-import type { Notification } from '../../lib/api.js';
-import { roleLabel } from '../../lib/helpers.js';
-import { useAppContext } from '../../app/providers/app-context.js';
-import { useI18n } from '../../app/providers/i18n.js';
-import { useTheme } from '../../app/providers/theme.js';
-import BrandIcon from '../ui/BrandIcon.js';
-import ThemeToggle from '../ui/ThemeToggle.js';
-import LocaleToggle from '../ui/LocaleToggle.js';
-import ConfirmDialog from '../ui/ConfirmDialog.js';
+import type { Notification } from '../../lib/api';
+import { roleLabel } from '../../lib/helpers';
+import { useAppContext } from '../../app/providers/app-context';
+import { useI18n } from '../../app/providers/i18n';
+import { useTheme } from '../../app/providers/theme';
+import BrandIcon from '../ui/BrandIcon';
+import ThemeToggle from '../ui/ThemeToggle';
+import LocaleToggle from '../ui/LocaleToggle';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface AppHeaderProps {
   /**

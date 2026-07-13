@@ -1,4 +1,4 @@
-import { money } from '../../lib/api.js';
+import { money } from '../../lib/api';
 
 interface StatCardProps {
   /**

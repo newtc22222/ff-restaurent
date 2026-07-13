@@ -6,12 +6,12 @@ import {
   TYPE_OPTIONS_VI,
   TYPE_OPTIONS_EN,
   canChef,
-} from '../lib/helpers.js';
-import { useAppContext } from '../app/providers/app-context.js';
-import { useI18n } from '../app/providers/i18n.js';
-import { useMutation } from '../hooks/useMutation.js';
-import SectionTitle from '../components/ui/SectionTitle.js';
-import EmptyState from '../components/ui/EmptyState.js';
+} from '../lib/helpers';
+import { useAppContext } from '../app/providers/app-context';
+import { useI18n } from '../app/providers/i18n';
+import { useMutation } from '../hooks/useMutation';
+import SectionTitle from '../components/ui/SectionTitle';
+import EmptyState from '../components/ui/EmptyState';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,

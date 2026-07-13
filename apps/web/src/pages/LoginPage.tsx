@@ -1,11 +1,11 @@
 import { FormEvent, useState } from 'react';
 import { useFetcher } from 'react-router';
-import { seededUsers } from '../lib/helpers.js';
-import { useI18n } from '../app/providers/i18n.js';
-import { useTheme } from '../app/providers/theme.js';
-import BrandIcon from '../components/ui/BrandIcon.js';
-import ThemeToggle from '../components/ui/ThemeToggle.js';
-import LocaleToggle from '../components/ui/LocaleToggle.js';
+import { seededUsers } from '../lib/helpers';
+import { useI18n } from '../app/providers/i18n';
+import { useTheme } from '../app/providers/theme';
+import BrandIcon from '../components/ui/BrandIcon';
+import ThemeToggle from '../components/ui/ThemeToggle';
+import LocaleToggle from '../components/ui/LocaleToggle';
 
 /**
  * LoginPage handles sign-in and user registration, including pre-seeded quick logins.

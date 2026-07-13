@@ -10,17 +10,17 @@ import {
 import CurrencyInput from 'react-currency-input-field';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
-import { money } from '../lib/api.js';
-import { canChef, uniqueUsers } from '../lib/helpers.js';
-import { useAppContext } from '../app/providers/app-context.js';
-import { useI18n } from '../app/providers/i18n.js';
-import { useMutation } from '../hooks/useMutation.js';
+import { money } from '../lib/api';
+import { canChef, uniqueUsers } from '../lib/helpers';
+import { useAppContext } from '../app/providers/app-context';
+import { useI18n } from '../app/providers/i18n';
+import { useMutation } from '../hooks/useMutation';
 import FullPageLayout, {
   BackButton,
-} from '../components/layout/FullPageLayout.js';
-import AmountInput from '../components/ui/AmountInput.js';
-import SummaryLine from '../components/ui/SummaryLine.js';
-import ScrollArea from '../components/ui/ScrollArea.js';
+} from '../components/layout/FullPageLayout';
+import AmountInput from '../components/ui/AmountInput';
+import SummaryLine from '../components/ui/SummaryLine';
+import ScrollArea from '../components/ui/ScrollArea';
 
 interface ParticipantDraft {
   memberId: string;

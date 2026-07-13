@@ -11,13 +11,13 @@ import {
   Cell,
 } from 'recharts';
 import { CircleDollarSign, BarChart2 } from 'lucide-react';
-import { money } from '../lib/api.js';
-import { PIE_COLORS } from '../lib/helpers.js';
-import { useAppContext } from '../app/providers/app-context.js';
-import { useI18n } from '../app/providers/i18n.js';
-import EmptyState from '../components/ui/EmptyState.js';
-import SectionTitle from '../components/ui/SectionTitle.js';
-import StatCard from '../components/ui/StatCard.js';
+import { money } from '../lib/api';
+import { PIE_COLORS } from '../lib/helpers';
+import { useAppContext } from '../app/providers/app-context';
+import { useI18n } from '../app/providers/i18n';
+import EmptyState from '../components/ui/EmptyState';
+import SectionTitle from '../components/ui/SectionTitle';
+import StatCard from '../components/ui/StatCard';
 
 /**
  * StatsPage displays overall expenditure charts, status breakdowns, and monthly trends.

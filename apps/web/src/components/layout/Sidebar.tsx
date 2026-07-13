@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { NavLink } from 'react-router';
-import ScrollArea from '../ui/ScrollArea.js';
+import ScrollArea from '../ui/ScrollArea';
 
 interface SidebarProps {
   /**

@@ -12,9 +12,9 @@ import {
   translations,
   type Locale,
   type TranslationKey,
-} from '../../lib/translations.js';
+} from '../../lib/translations';
 
-export type { Locale } from '../../lib/translations.js';
+export type { Locale } from '../../lib/translations';
 
 interface I18nContextValue {
   locale: Locale;

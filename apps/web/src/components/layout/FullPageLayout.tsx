@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import AppHeader from './AppHeader.js';
+import AppHeader from './AppHeader';
 
 interface FullPageLayoutProps {
   /**

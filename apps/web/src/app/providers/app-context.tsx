@@ -6,8 +6,8 @@ import type {
   RestaurantEntry,
   Stats,
   User,
-} from '../../lib/api.js';
-import { session } from '../../lib/session.js';
+} from '../../lib/api';
+import { session } from '../../lib/session';
 
 export interface AppLoaderData {
   user: User;

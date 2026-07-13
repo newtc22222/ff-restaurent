@@ -2,22 +2,22 @@ import { useState } from 'react';
 import { CheckCircle2, Clock, Edit3, ExternalLink } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { money } from '../lib/api.js';
+import { money } from '../lib/api';
 import {
   PIE_COLORS,
   canChef,
   isHead,
   canManageBill,
   initials,
-} from '../lib/helpers.js';
-import { useAppContext } from '../app/providers/app-context.js';
-import { useI18n } from '../app/providers/i18n.js';
-import { useMutation } from '../hooks/useMutation.js';
+} from '../lib/helpers';
+import { useAppContext } from '../app/providers/app-context';
+import { useI18n } from '../app/providers/i18n';
+import { useMutation } from '../hooks/useMutation';
 import FullPageLayout, {
   BackButton,
-} from '../components/layout/FullPageLayout.js';
-import ConfirmDialog from '../components/ui/ConfirmDialog.js';
-import ScrollArea from '../components/ui/ScrollArea.js';
+} from '../components/layout/FullPageLayout';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import ScrollArea from '../components/ui/ScrollArea';
 
 /**
  * BillDetailPage displays a breakdown of a single bill including participant costs and payment buttons.
