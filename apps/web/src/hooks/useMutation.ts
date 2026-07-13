@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useFetcher } from 'react-router';
 
 interface MutateOptions {
@@ -12,6 +12,16 @@ interface MutateOptions {
   onSuccess?: () => void;
 }
 
+type MutationResult = {
+  error?: unknown;
+};
+
+const hasMutationError = (data: unknown): data is { error: string } =>
+  typeof data === 'object' &&
+  data !== null &&
+  'error' in data &&
+  typeof (data as MutationResult).error === 'string';
+
 /**
  * Wraps a fetcher submit to the router's mutationAction with the shared
  * clear-error / submit / set-error-on-failure flow used across pages.
@@ -19,6 +29,29 @@ interface MutateOptions {
  */
 export function useMutation(setError: (error: string | null) => void) {
   const fetcher = useFetcher();
+  const pendingResult = useRef<{
+    fallback: string;
+    onSuccess?: () => void;
+  } | null>(null);
+
+  useEffect(() => {
+    if (fetcher.state !== 'idle' || !pendingResult.current) return;
+
+    const { fallback, onSuccess } = pendingResult.current;
+    pendingResult.current = null;
+
+    if (hasMutationError(fetcher.data)) {
+      setError(fetcher.data.error);
+      return;
+    }
+
+    if (fetcher.data instanceof Error) {
+      setError(fetcher.data.message || fallback);
+      return;
+    }
+
+    onSuccess?.();
+  }, [fetcher.data, fetcher.state, setError]);
 
   const mutate = useCallback(
     async (
@@ -26,14 +59,15 @@ export function useMutation(setError: (error: string | null) => void) {
       { fallback, clearFirst = true, action, onSuccess }: MutateOptions,
     ) => {
       if (clearFirst) setError(null);
+      pendingResult.current = { fallback, onSuccess };
       try {
         await fetcher.submit(body as never, {
           method: 'post',
           encType: 'application/json',
           ...(action ? { action } : {}),
         });
-        onSuccess?.();
       } catch (err) {
+        pendingResult.current = null;
         setError(err instanceof Error ? err.message : fallback);
       }
     },
