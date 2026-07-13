@@ -1,12 +1,17 @@
 # Phase 1 Handoff
 
-Last updated: 2026-07-12
+Last updated: 2026-07-13
 
 ## Resume here
 
 Phase 1 / version 1.0.0 implementation is complete and was pushed to
-`origin/develop`. The release commit at the tip of that published work is
-`2c1f3d86a4efc834e4774170bda969151a4148cd`.
+`origin/develop`. The current published commit at the tip of `develop` is
+`09bc3c15f379b8fe341ed7fc64161358040aba46`.
+
+The original Phase 1 release-documentation boundary remains
+`2c1f3d86a4efc834e4774170bda969151a4148cd`. Subsequent commits on `develop`
+contain configuration, app-shell, routing, scrolling, bill-form, filtering,
+header, and reusable dropdown improvements made after that boundary.
 
 Read these files before continuing release or Phase 2 work:
 
@@ -24,6 +29,18 @@ Read these files before continuing release or Phase 2 work:
 - `bef5cd2` — `feat(web): complete phase 1 payment and notification flows`
 - `c546bdc` — `test(ci): enforce phase 1 release gates`
 - `2c1f3d8` — `docs(release): document version 1.0.0`
+
+## Published post-release updates
+
+- `7ccfa0d` — `feat(api): add dotenv support and configure API settings`
+- `b5092cf` — `docs: update AGENTS.md and add PHASE_1_HANDOFF.md for Phase 1 release guidance`
+- `9b6aa48` — `Refine bill screens and create form controls`
+- `1e7b8c8` — `feat(web): add custom application scrollbars`
+- `3b8138b` — `feat(web): migrate to react-router v7 data router`
+- `cd53144` — `refactor(web): restructure src into app/pages/components/hooks/lib layers`
+- `78e77a9` — `feat: add codex configuration with workspace-write sandbox mode enabled`
+- `6cebd0d` — `refactor(web): remove JavaScript import extensions`
+- `09bc3c1` — `feat(web): refine app shell and selection controls`
 
 The `develop` branch tracks `origin/develop`. Do not recreate or squash these
 commits unless explicitly requested.
@@ -76,24 +93,10 @@ Before promoting 1.0.0:
 
 ## Important current worktree boundary
 
-After the Phase 1 push, additional uncommitted work appeared in the worktree.
-It is **not** part of the published 1.0.0 commit set. At the time of this
-handoff, it includes modifications to:
-
-- `.env.example`
-- `apps/api/package.json`
-- `apps/api/src/app.ts`
-- `apps/api/tsconfig.json`
-- `apps/web/src/App.tsx`
-- `package-lock.json`
-
-and the untracked file:
-
-- `apps/api/prisma.config.ts`
-
-Inspect `git status`, `git diff`, and the intent of these changes before
-editing, staging, or committing them. Preserve them as user-owned work unless
-the user explicitly assigns their completion or publication.
+Before this handoff-only edit, `develop` and `origin/develop` both pointed to
+`09bc3c15f379b8fe341ed7fc64161358040aba46`, and the worktree was clean. The
+only expected uncommitted change is this document; there are no known
+uncommitted application changes to preserve.
 
 ## Suggested next-chat opening checks
 
