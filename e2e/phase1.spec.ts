@@ -116,9 +116,9 @@ test('Customer views notifications, pays, corrects, and is denied chef actions',
   ).toBeVisible();
   await page.getByRole('button', { name: 'Mark paid' }).click();
   await page.getByRole('button', { name: 'Confirm' }).click();
-  const paidButton = page.getByRole('button', { name: 'Done' });
+  const paidButton = page.getByRole('button', { name: 'Correct' });
   await expect(paidButton).toBeVisible();
-  await expect(paidButton).toBeDisabled();
+  await expect(paidButton).toBeEnabled();
 
   const token = await page.evaluate(() => localStorage.getItem('ff-token'));
   const denied = await page.request.post('http://127.0.0.1:4000/bills', {

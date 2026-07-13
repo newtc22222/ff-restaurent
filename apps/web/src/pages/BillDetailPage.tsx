@@ -258,7 +258,6 @@ export default function BillDetailPage() {
                 {(canManage || participant.memberId === user.id) && (
                   <button
                     className="btn btn-soft h-8 px-3 text-[12px]"
-                    disabled={!canManage && participant.paymentStatus === 'PAID'}
                     onClick={() =>
                       setPendingPayment({
                         memberId: participant.memberId,
@@ -268,9 +267,7 @@ export default function BillDetailPage() {
                   >
                     {participant.paymentStatus === 'WAITING'
                       ? t('bills.markPaid')
-                      : canManage
-                        ? 'Correct'
-                        : 'Done'}
+                      : 'Correct'}
                   </button>
                 )}
               </div>
