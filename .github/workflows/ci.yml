@@ -37,6 +37,8 @@ jobs:
       - run: npm ci
       - run: npm run build -w @ff-restaurent/shared
       - run: npm run lint
+      - name: Generate Prisma client (workspace)
+        run: npm run prisma:generate --workspace @ff-restaurent/api
       - run: npm run typecheck
       - run: npm run prisma:migrate:deploy -w @ff-restaurent/api
       - run: npm test

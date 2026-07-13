@@ -2,8 +2,19 @@ import { Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 
+function isPrismaClientKnownRequestError(
+  e: unknown,
+): e is Prisma.PrismaClientKnownRequestError {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'code' in e &&
+    typeof (e as any).code === 'string'
+  );
+}
+
 export const registerErrorHandler = (app: FastifyInstance) => {
-  app.setErrorHandler((error, request, reply) => {
+  app.setErrorHandler((error: unknown, request, reply) => {
     if (error instanceof ZodError) {
       return reply.code(400).send({
         code: 'VALIDATION_ERROR',
@@ -15,7 +26,7 @@ export const registerErrorHandler = (app: FastifyInstance) => {
       });
     }
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (isPrismaClientKnownRequestError(error)) {
       if (error.code === 'P2002') {
         return reply.code(409).send({
           code: 'UNIQUE_CONFLICT',
