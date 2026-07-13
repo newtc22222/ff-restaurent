@@ -29,16 +29,36 @@ export async function appLoader(): Promise<AppLoaderData> {
   if (!session.getToken()) throw redirect('/login');
   const api = session.api();
   try {
-    const user = await api.request<User>('/me');
-    const results = await Promise.allSettled([
+    const userPromise = api.request<User>('/me');
+    const sharedResultsPromise = Promise.allSettled([
       api.request<Bill[]>('/bills?includeArchived=true'),
       api.request<RestaurantEntry[]>('/restaurants?includeArchived=true'),
       api.request<Stats>('/stats/me?range=monthly'),
-      api.request<User[]>(
-        user.chefRole === 'HEAD_CHEF' ? '/users' : '/members',
-      ),
       api.request<Notification[]>('/notifications'),
     ]);
+    const user = await userPromise;
+    const [sharedResults, usersResult] = await Promise.all([
+      sharedResultsPromise,
+      api
+        .request<User[]>(user.chefRole === 'HEAD_CHEF' ? '/users' : '/members')
+        .then(
+          (value): PromiseSettledResult<User[]> => ({
+            status: 'fulfilled',
+            value,
+          }),
+          (reason): PromiseSettledResult<User[]> => ({
+            status: 'rejected',
+            reason,
+          }),
+        ),
+    ]);
+    const results = [
+      sharedResults[0],
+      sharedResults[1],
+      sharedResults[2],
+      usersResult,
+      sharedResults[3],
+    ] as const;
     const value = <T>(result: PromiseSettledResult<T>, fallback: T) =>
       result.status === 'fulfilled' ? result.value : fallback;
     return {
@@ -61,8 +81,12 @@ export async function appLoader(): Promise<AppLoaderData> {
   }
 }
 
-async function loginLoader() {
+export async function loginLoader() {
   if (session.getToken()) throw redirect('/bills');
+  void session
+    .api()
+    .request('/health')
+    .catch(() => undefined);
   return null;
 }
 

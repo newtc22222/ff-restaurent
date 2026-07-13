@@ -4,7 +4,17 @@ import { RouterProvider } from 'react-router/dom';
 import { router } from './app/router';
 import { I18nProvider } from './app/providers/i18n';
 import { ThemeProvider } from './app/providers/theme';
+import { API_URL } from './lib/api';
 import './index.css';
+
+const apiOrigin = new URL(API_URL, window.location.href).origin;
+if (apiOrigin !== window.location.origin) {
+  const preconnect = document.createElement('link');
+  preconnect.rel = 'preconnect';
+  preconnect.href = apiOrigin;
+  preconnect.crossOrigin = 'anonymous';
+  document.head.append(preconnect);
+}
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
