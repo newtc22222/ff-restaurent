@@ -6,7 +6,8 @@ vi.mock('react-router', async (importOriginal) => {
   return { ...actual, createBrowserRouter: vi.fn(() => ({})) };
 });
 
-import { appLoader, loginAction, mutationAction } from './router';
+import { matchRoutes } from 'react-router';
+import { appLoader, loginAction, mutationAction, routes } from './router';
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -25,6 +26,24 @@ const user = {
 afterEach(() => {
   localStorage.clear();
   vi.restoreAllMocks();
+});
+
+describe('routes', () => {
+  it('renders a component while redirecting from root and unknown paths', () => {
+    for (const pathname of ['/', '/unknown']) {
+      const matches = matchRoutes(routes, pathname);
+      expect(matches).not.toBeNull();
+      expect(matches?.at(-1)?.route.Component).toBeDefined();
+    }
+  });
+
+  it('provides initial hydration UI for top-level data routes', () => {
+    const loginRoute = routes.find((route) => route.path === '/login');
+    const appRoute = routes.find((route) => route.id === 'app');
+
+    expect(loginRoute?.HydrateFallback).toBeDefined();
+    expect(appRoute?.HydrateFallback).toBeDefined();
+  });
 });
 
 describe('appLoader', () => {
