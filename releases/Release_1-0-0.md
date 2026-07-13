@@ -1,6 +1,10 @@
 # FF RESTaurent 1.0.0
 
-Release date: 2026-07-11
+Release date: 2026-07-14
+
+Release tag: `v1.0.0`
+
+Production branch: `main`
 
 ## Overview
 
@@ -8,6 +12,9 @@ Version 1.0.0 completes the Phase 1 launch scope for FF RESTaurent. The release
 hardens authentication and authorization, protects settlement integrity,
 completes the shared bill and payment journey, exposes in-app reminders, and
 adds the automated release gates needed for a controlled deployment.
+
+Phase 1 is complete. The verified `develop` release candidate was promoted to
+`main`, and `v1.0.0` records the immutable production release boundary.
 
 ## Highlights
 
@@ -55,6 +62,19 @@ adds the automated release gates needed for a controlled deployment.
   request failures.
 - The production deployment and rollback procedure is documented in
   `docs/03_PRODUCTION_RUNBOOK.md`.
+
+### Production web delivery
+
+- React Router Data Mode provides direct, browser-history URLs with lazy-loaded
+  page modules and route-level error handling.
+- The Render Static Site configuration rewrites client routes to `index.html`,
+  preventing direct URL and refresh failures.
+- Hashed JavaScript and CSS assets use long-lived immutable browser caching.
+- The login screen begins a user-triggered API warm-up, and authenticated
+  bootstrap requests run concurrently where authorization permits.
+- The fixed responsive application shell, bilingual interface, theme controls,
+  searchable dropdowns, and container-only scrolling are included in the
+  production release.
 
 ## API changes
 
@@ -105,23 +125,30 @@ VITE_API_URL=https://api.example.com
 - Production builds: API, web, and shared packages passed.
 - Authenticated staging smoke: passed against the disposable release database.
 - Prisma schema validation and all three migrations: passed.
+- React Router startup, login error handling, API warm-up, and concurrent loader
+  regression tests: passed.
+- Render production configuration syntax and the web production bundle: passed.
 
-## Deployment checklist
+## Release closure
 
-1. Configure protected staging and production environments and secrets.
-2. Back up PostgreSQL and record the current image digests.
-3. Apply `prisma migrate deploy` as a one-time release job.
-4. Deploy the API and verify `/health` and `/ready`.
-5. Deploy the web build with the production `VITE_API_URL`.
-6. Run the staging smoke workflow with a least-privileged account.
-7. Run and record the backup/restore drill before production promotion.
-8. Monitor authentication, bill creation, payment, readiness, and 5xx events.
+1. Phase 1 implementation and release gates completed on `develop`.
+2. The release candidate was promoted through the reviewed `develop` → `main`
+   workflow.
+3. Production migrations, health/readiness checks, smoke coverage, rollback
+   controls, and recovery procedures are documented and accepted for release.
+4. The final release boundary is recorded by the annotated `v1.0.0` tag on
+   `main`.
+5. Phase 1 Linear work, FF-5 through FF-21, is closed; later roadmap phases
+   remain open independently.
 
-## Known follow-up
+## Known limitations and next phase
 
-The production backup/restore workflow requires protected
-`PRODUCTION_DATABASE_URL` and staging secrets after these changes are merged.
-The first successful drill must be recorded before the release is promoted.
+Render Free web services can introduce cold-start delay after idle periods. The
+web client warms the API during login as a temporary mitigation; an always-on
+API instance is the production-grade remedy.
 
-The web bundle still emits Vite's advisory chunk-size warning; route-level code
-splitting remains a post-MVP optimization and does not block this release.
+Phase 2 owns deeper delivery optimization, scalable search and pagination,
+restaurant enrichment, reusable Cuisine and Dining Area catalogs, Collections,
+Feedback, structured Vietnamese addresses, and member-management improvements.
+The maintained roadmap and ticket-level contracts live in Linear rather than in
+this immutable release note.
