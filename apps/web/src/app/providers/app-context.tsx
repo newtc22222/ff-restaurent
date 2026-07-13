@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useNavigate, useRevalidator } from 'react-router';
 import type {
   Bill,
@@ -37,21 +44,20 @@ export function AppProvider({
   children: ReactNode;
 }) {
   const navigate = useNavigate();
-  const revalidator = useRevalidator();
+  const { revalidate, state: revalidationState } = useRevalidator();
   const [error, setError] = useState<string | null>(null);
-  const value: AppContextValue = {
-    ...data,
-    error,
-    loading: revalidator.state !== 'idle',
-    setError,
-    refresh: async () => {
-      await revalidator.revalidate();
-    },
-    logout: () => {
-      session.clear();
-      navigate('/login', { replace: true });
-    },
-  };
+  const loading = revalidationState !== 'idle';
+  const refresh = useCallback(async () => {
+    await revalidate();
+  }, [revalidate]);
+  const logout = useCallback(() => {
+    session.clear();
+    navigate('/login', { replace: true });
+  }, [navigate]);
+  const value = useMemo<AppContextValue>(
+    () => ({ ...data, error, loading, setError, refresh, logout }),
+    [data, error, loading, refresh, logout],
+  );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

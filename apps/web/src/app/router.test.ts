@@ -7,7 +7,13 @@ vi.mock('react-router', async (importOriginal) => {
 });
 
 import { matchRoutes } from 'react-router';
-import { appLoader, loginAction, mutationAction, routes } from './router';
+import {
+  appLoader,
+  loginAction,
+  loginLoader,
+  mutationAction,
+  routes,
+} from './router';
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -73,6 +79,36 @@ describe('appLoader', () => {
     expect(data.warning).toBeNull();
   });
 
+  it('starts shared snapshot requests without waiting for the user request', async () => {
+    localStorage.setItem('ff-token', 'token');
+    let resolveUser!: (response: Response) => void;
+    const userResponse = new Promise<Response>((resolve) => {
+      resolveUser = resolve;
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/me')) return userResponse;
+      if (url.includes('/stats/me')) return jsonResponse({ total: 0 });
+      return jsonResponse([]);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const loaderPromise = appLoader();
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/\/bills\?/),
+        expect.any(Object),
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/\/notifications$/),
+        expect.any(Object),
+      );
+    });
+
+    resolveUser(jsonResponse(user));
+    await loaderPromise;
+  });
+
   it('returns a warning when a secondary request fails', async () => {
     localStorage.setItem('ff-token', 'token');
     vi.stubGlobal(
@@ -88,6 +124,21 @@ describe('appLoader', () => {
     const data = await appLoader();
     expect(data.bills).toEqual([]);
     expect(data.warning).toMatch(/Some data/);
+  });
+});
+
+describe('loginLoader', () => {
+  it('warms the API while an unauthenticated user views login', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(loginLoader()).resolves.toBeNull();
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/\/health$/),
+        expect.any(Object),
+      );
+    });
   });
 });
 
