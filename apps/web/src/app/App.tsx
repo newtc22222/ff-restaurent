@@ -130,6 +130,21 @@ export function App() {
   return <AppShellContent />;
 }
 
+export function RouteHydrateFallback() {
+  const { t } = useI18n();
+
+  return (
+    <div
+      className="grid h-screen place-items-center bg-bg px-4 text-center text-ink"
+      role="status"
+    >
+      <p className="text-sm font-medium text-slate-500">
+        {t('common.loading')}
+      </p>
+    </div>
+  );
+}
+
 export function RouteErrorBoundary() {
   const error = useRouteError();
   const message = isRouteErrorResponse(error)
