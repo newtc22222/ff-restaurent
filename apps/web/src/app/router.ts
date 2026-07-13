@@ -5,8 +5,14 @@ import {
   redirect,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
+  type RouteObject,
 } from 'react-router';
-import { App, AuthenticatedRoot, RouteErrorBoundary } from './App';
+import {
+  App,
+  AuthenticatedRoot,
+  RouteErrorBoundary,
+  RouteHydrateFallback,
+} from './App';
 import type { AppLoaderData } from './providers/app-context';
 import {
   ApiError,
@@ -197,13 +203,16 @@ const page = (load: () => Promise<{ default: ComponentType }>) => async () => ({
   Component: (await load()).default,
 });
 
-export const router = createBrowserRouter([
+const RedirectingRoute = () => null;
+
+export const routes = [
   {
     path: '/login',
     loader: loginLoader,
     action: loginAction,
     lazy: page(() => import('../pages/LoginPage')),
     ErrorBoundary: RouteErrorBoundary,
+    HydrateFallback: RouteHydrateFallback,
   },
   {
     id: 'app',
@@ -211,8 +220,13 @@ export const router = createBrowserRouter([
     loader: appLoader,
     Component: AuthenticatedRoot,
     ErrorBoundary: RouteErrorBoundary,
+    HydrateFallback: RouteHydrateFallback,
     children: [
-      { index: true, loader: () => redirect('/bills') },
+      {
+        index: true,
+        loader: () => redirect('/bills'),
+        Component: RedirectingRoute,
+      },
       {
         Component: App,
         children: [
@@ -260,7 +274,11 @@ export const router = createBrowserRouter([
             action: mutationAction,
             lazy: page(() => import('../pages/ProfilePage')),
           },
-          { path: '*', loader: () => redirect('/bills') },
+          {
+            path: '*',
+            loader: () => redirect('/bills'),
+            Component: RedirectingRoute,
+          },
         ],
       },
     ],
@@ -268,5 +286,8 @@ export const router = createBrowserRouter([
   {
     path: '*',
     loader: () => redirect(session.getToken() ? '/bills' : '/login'),
+    Component: RedirectingRoute,
   },
-]);
+] satisfies RouteObject[];
+
+export const router = createBrowserRouter(routes);
