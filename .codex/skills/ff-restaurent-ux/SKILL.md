@@ -11,7 +11,7 @@ description: Apply and maintain the FF RESTaurent web design language in the Rea
 2. If matching the reference design, inspect `Design app UX focus/src/app/App.tsx` and use it as the interaction/style source, not as a direct drop-in replacement.
 3. Read `references/design-system.md` for the app's visual and interaction rules.
 4. Preserve real API behavior. Design changes must keep existing auth, role gating, bill actions, and forms wired to `ApiClient`.
-5. Prefer the existing Tailwind utility style and app-local helpers. Do not add a UI library unless explicitly requested.
+5. Prefer the existing Tailwind utility style and app-local helpers. Inspect `apps/web/src/components/ui/Dropdown.tsx` before implementing any select, filter, or searchable picker. Reuse it unless the interaction cannot fit its single/multi-select contract. Do not add a UI library unless explicitly requested.
 6. Verify desktop and mobile layouts. Use screenshots or Playwright when available; otherwise run typecheck/build and inspect in the browser.
 
 ## UX Priorities
@@ -21,6 +21,7 @@ description: Apply and maintain the FF RESTaurent web design language in the Rea
 - Keep operational views dense but readable. Avoid marketing-page structure.
 - Maintain role-aware controls. Hide chef/admin actions from users who cannot perform them.
 - Avoid layout clipping on mobile. Use horizontal nav only when it fits better than a cramped sidebar.
+- Keep selection controls consistent: use the themed `Dropdown` variants for header controls, compact filters, and form fields; enable its search mode for Restaurant/Eatery, Member, and other potentially large option sets.
 
 ## Validation
 

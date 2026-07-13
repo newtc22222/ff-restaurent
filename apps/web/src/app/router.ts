@@ -170,10 +170,9 @@ async function roleGuard(
   }
 }
 
-const page =
-  (load: () => Promise<{ default: ComponentType }>) => async () => ({
-    Component: (await load()).default,
-  });
+const page = (load: () => Promise<{ default: ComponentType }>) => async () => ({
+  Component: (await load()).default,
+});
 
 export const router = createBrowserRouter([
   {
@@ -211,36 +210,36 @@ export const router = createBrowserRouter([
             action: mutationAction,
             lazy: page(() => import('../pages/AdminPage')),
           },
+          {
+            path: 'bills/new',
+            loader: (args) => roleGuard(canChef, args),
+            action: mutationAction,
+            lazy: page(() => import('../pages/CreateBillPage')),
+          },
+          {
+            path: 'bills/:billId/edit',
+            loader: (args) => roleGuard(canChef, args),
+            action: mutationAction,
+            lazy: page(() => import('../pages/CreateBillPage')),
+          },
+          {
+            path: 'bills/:billId',
+            action: mutationAction,
+            lazy: page(() => import('../pages/BillDetailPage')),
+          },
+          {
+            path: 'restaurants/:restaurantId',
+            action: mutationAction,
+            lazy: page(() => import('../pages/RestaurantDetailPage')),
+          },
+          {
+            path: 'profile',
+            action: mutationAction,
+            lazy: page(() => import('../pages/ProfilePage')),
+          },
+          { path: '*', loader: () => redirect('/bills') },
         ],
       },
-      {
-        path: 'bills/new',
-        loader: (args) => roleGuard(canChef, args),
-        action: mutationAction,
-        lazy: page(() => import('../pages/CreateBillPage')),
-      },
-      {
-        path: 'bills/:billId/edit',
-        loader: (args) => roleGuard(canChef, args),
-        action: mutationAction,
-        lazy: page(() => import('../pages/CreateBillPage')),
-      },
-      {
-        path: 'bills/:billId',
-        action: mutationAction,
-        lazy: page(() => import('../pages/BillDetailPage')),
-      },
-      {
-        path: 'restaurants/:restaurantId',
-        action: mutationAction,
-        lazy: page(() => import('../pages/RestaurantDetailPage')),
-      },
-      {
-        path: 'profile',
-        action: mutationAction,
-        lazy: page(() => import('../pages/ProfilePage')),
-      },
-      { path: '*', loader: () => redirect('/bills') },
     ],
   },
   {

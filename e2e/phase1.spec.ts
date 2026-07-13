@@ -103,6 +103,12 @@ test('Customer views notifications, pays, corrects, and is denied chef actions',
   page,
 }) => {
   await login(page, 'e2e-customer');
+  await page.getByRole('button', { name: 'Customer E2E, Customer' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Profile' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Sign out' })).toBeVisible();
+  await page.getByRole('menuitem', { name: 'Profile' }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await page.goBack();
   await page.getByLabel('Notifications').click();
   await page.getByText('E2E payment reminder').click();
   await expect(
@@ -110,9 +116,9 @@ test('Customer views notifications, pays, corrects, and is denied chef actions',
   ).toBeVisible();
   await page.getByRole('button', { name: 'Mark paid' }).click();
   await page.getByRole('button', { name: 'Confirm' }).click();
-  await expect(
-    page.getByRole('button', { name: 'Correct to waiting' }),
-  ).toBeVisible();
+  const paidButton = page.getByRole('button', { name: 'Done' });
+  await expect(paidButton).toBeVisible();
+  await expect(paidButton).toBeDisabled();
 
   const token = await page.evaluate(() => localStorage.getItem('ff-token'));
   const denied = await page.request.post('http://127.0.0.1:4000/bills', {
@@ -126,10 +132,14 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   page,
 }) => {
   await login(page, 'e2e-sous');
-  await page.getByRole('button', { name: 'Restaurants' }).click();
+  await page.getByRole('link', { name: 'Restaurants' }).click();
   await page.getByLabel('Name').fill('Created E2E Restaurant');
   await page.getByLabel('Address').fill('2 Browser Street');
-  await page.getByLabel('Cuisine type').selectOption('Chay');
+  await page.getByRole('button', { name: 'Cuisine type' }).click();
+  await page
+    .getByRole('searchbox', { name: 'Search cuisines...' })
+    .fill('Chay');
+  await page.getByRole('option', { name: 'Chay' }).click();
   const restaurantResponsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith('/restaurants') &&
@@ -142,17 +152,30 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   );
   await expect(page.getByText('Created E2E Restaurant')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Bills' }).click();
+  await page.getByRole('link', { name: 'Bills' }).click();
   await page.getByRole('button', { name: 'Create bill' }).click();
-  await page.getByLabel('Restaurant / Eatery').selectOption({
-    label: 'Created E2E Restaurant',
-  });
-  await page.getByRole('button', { name: 'Customer', exact: true }).click();
-  await page.getByRole('button', { name: 'Sous', exact: true }).click();
+  await expect(page).toHaveURL(/\/bills\/new$/);
+  await page.getByRole('button', { name: 'Restaurant / Eatery' }).click();
+  await page
+    .getByRole('searchbox', { name: 'Search restaurants or eateries…' })
+    .fill('Created E2E Restaurant');
+  await page
+    .getByRole('option')
+    .filter({ hasText: 'Created E2E Restaurant' })
+    .click();
+  const memberSearch = page.getByPlaceholder(
+    'Search by full name or username…',
+  );
+  await page.getByRole('button', { name: 'Add participant' }).click();
+  await memberSearch.fill('Customer E2E');
+  await page.getByRole('option').filter({ hasText: 'Customer E2E' }).click();
+  await memberSearch.fill('Sous E2E');
+  await page.getByRole('option').filter({ hasText: 'Sous E2E' }).click();
+  await memberSearch.press('Escape');
   await page.getByLabel('Base amount for Customer E2E').fill('50000');
   await page.getByLabel('Base amount for Sous E2E').fill('50000');
   await expect(page.getByText(/Reconciled:/)).toBeVisible();
-  await page.getByRole('button', { name: 'Create bill' }).click();
+  await page.getByRole('button', { name: 'Save bill' }).click();
   await expect(page.getByText('Created E2E Restaurant')).toBeVisible();
 
   const token = await page.evaluate(() => localStorage.getItem('ff-token'));
@@ -180,11 +203,16 @@ test('Head Chef archives, restores, administers roles, and cannot self-demote', 
     page.getByRole('button', { name: 'Restore bill' }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Back to Bills' }).click();
-  await page.getByRole('button', { name: 'Members' }).click();
+  await page.getByRole('link', { name: 'Members' }).click();
+  const headRow = page.getByRole('article').filter({ hasText: 'Head E2E' });
+  await expect(
+    headRow.getByRole('button', { name: 'Head E2E role' }),
+  ).toHaveCount(0);
   const customerRow = page
     .getByRole('article')
     .filter({ hasText: 'Customer E2E' });
-  await customerRow.locator('select').selectOption('SOUS_CHEF');
+  await customerRow.getByRole('button', { name: 'Customer E2E role' }).click();
+  await customerRow.getByRole('option', { name: 'Sous chef' }).click();
   await expect(customerRow).toContainText('Sous chef');
 
   const token = await page.evaluate(() => localStorage.getItem('ff-token'));
@@ -206,8 +234,32 @@ test('mobile app shell and bill list fit without page overflow', async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page, 'e2e-customer');
-  await expect(page.getByRole('button', { name: 'Restaurants' })).toBeVisible();
-  await expect(page.getByLabel('Notifications')).toBeVisible();
+
+  const header = page.getByRole('banner');
+  const brand = header.getByTestId('app-brand');
+  await expect(brand).toBeVisible();
+  const [headerBox, brandBox] = await Promise.all([
+    header.boundingBox(),
+    brand.boundingBox(),
+  ]);
+  expect(headerBox).not.toBeNull();
+  expect(brandBox).not.toBeNull();
+  expect(
+    Math.abs(
+      brandBox!.x + brandBox!.width / 2 - (headerBox!.x + headerBox!.width / 2),
+    ),
+  ).toBeLessThan(2);
+
+  await page.getByRole('button', { name: 'Options' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Notifications' }),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Expand navigation' }).click();
+  const restaurantsLink = page.getByRole('link', { name: 'Restaurants' });
+  await expect(restaurantsLink).toBeVisible();
+  await expect(restaurantsLink.locator('span')).not.toHaveClass(/sr-only/);
+  await expect(page.locator('main')).toHaveCount(1);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

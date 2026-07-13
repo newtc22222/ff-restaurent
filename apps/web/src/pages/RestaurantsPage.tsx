@@ -12,6 +12,7 @@ import { useI18n } from '../app/providers/i18n';
 import { useMutation } from '../hooks/useMutation';
 import SectionTitle from '../components/ui/SectionTitle';
 import EmptyState from '../components/ui/EmptyState';
+import Dropdown from '../components/ui/Dropdown';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
@@ -97,18 +98,21 @@ export default function RestaurantsPage() {
           >
             {t('restaurants.sortByName')}
           </button>
-          <select
-            className="field h-8 text-[12px]"
+          <Dropdown
+            variant="filter"
+            label={t('restaurants.filterCuisine')}
             value={filterCuisine}
-            onChange={(e) => setFilterCuisine(e.target.value)}
-          >
-            <option value="">{t('restaurants.filterCuisine')}</option>
-            {cuisineOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+            onChange={setFilterCuisine}
+            options={cuisineOptions.map((cuisine) => ({
+              value: cuisine,
+              label: cuisine,
+            }))}
+            searchable
+            searchPlaceholder={t('restaurants.searchCuisine')}
+            emptyMessage={t('bills.noFilterResults')}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+          />
           <button
             className={`flex h-8 items-center gap-1.5 rounded-md border px-3 text-[12px] font-semibold transition-all ${
               filterFav
@@ -244,45 +248,41 @@ export default function RestaurantsPage() {
               required
             />
           </label>
-          <label className="block space-y-1">
+          <div className="block space-y-1">
             <span className="label">
               {locale === 'vi' ? 'Loại ẩm thực' : 'Cuisine type'}
             </span>
-            <select
-              className="field w-full"
+            <Dropdown
+              fullWidth
+              label={locale === 'vi' ? 'Chọn...' : 'Choose...'}
+              ariaLabel={locale === 'vi' ? 'Loại ẩm thực' : 'Cuisine type'}
               value={form.cuisineType}
-              onChange={(e) =>
-                setForm({ ...form, cuisineType: e.target.value })
-              }
-              required
-            >
-              <option value="">
-                {locale === 'vi' ? 'Chọn...' : 'Choose...'}
-              </option>
-              {CUISINE_OPTIONS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block space-y-1">
+              onChange={(cuisineType) => setForm({ ...form, cuisineType })}
+              options={CUISINE_OPTIONS.map((cuisine) => ({
+                value: cuisine,
+                label: cuisine,
+              }))}
+              searchable
+              searchPlaceholder={t('restaurants.searchCuisine')}
+              emptyMessage={t('bills.noFilterResults')}
+            />
+          </div>
+          <div className="block space-y-1">
             <span className="label">
               {locale === 'vi' ? 'Loại hình' : 'Type'}
             </span>
-            <select
-              className="field w-full"
+            <Dropdown
+              fullWidth
+              label={locale === 'vi' ? 'Chọn...' : 'Choose...'}
+              ariaLabel={locale === 'vi' ? 'Loại hình' : 'Type'}
               value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value })}
-              required
-            >
-              {typeOptions.map((tp) => (
-                <option key={tp} value={tp}>
-                  {tp}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(type) => setForm({ ...form, type })}
+              options={typeOptions.map((type) => ({
+                value: type,
+                label: type,
+              }))}
+            />
+          </div>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -293,7 +293,15 @@ export default function RestaurantsPage() {
             />
             {t('restaurants.recommended')}
           </label>
-          <button className="btn btn-primary w-full">
+          <button
+            className="btn btn-primary w-full"
+            disabled={
+              !form.name.trim() ||
+              !form.address.trim() ||
+              !form.cuisineType ||
+              !form.type
+            }
+          >
             {t('restaurants.createEntry')}
           </button>
         </form>

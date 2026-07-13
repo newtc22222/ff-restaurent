@@ -13,8 +13,7 @@ import { canChef, isHead, canManageBill } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
 import { useI18n } from '../app/providers/i18n';
 import { useMutation } from '../hooks/useMutation';
-import SelectDropdown from '../components/ui/SelectDropdown';
-import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
+import Dropdown from '../components/ui/Dropdown';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 
@@ -103,18 +102,36 @@ export default function BillsPage() {
       <p className="mb-4 text-[13px] text-slate-500">{t('bills.scopeNote')}</p>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <SelectDropdown
+        <Dropdown
           label={t('bills.filterRestaurant')}
           value={filterRestaurant}
           options={restaurantOptions}
           onChange={setFilterRestaurant}
+          variant="filter"
+          allowClear
+          clearLabel={t('bills.clearAll')}
+          searchable
+          searchPlaceholder={t('bills.searchRestaurants')}
+          emptyMessage={t('bills.noFilterResults')}
         />
         {canChef(user) && (
-          <MultiSelectDropdown
+          <Dropdown
+            multiple
             label={t('bills.filterMember')}
             values={filterMembers}
             options={memberOptions}
             onChange={setFilterMembers}
+            variant="filter"
+            allowClear
+            clearLabel={t('bills.clearAll')}
+            formatSelection={(selected) =>
+              selected.length === 1
+                ? (selected[0]?.label.split(' ')[0] ?? '')
+                : `${selected.length} ${t('bills.filterMember')}`
+            }
+            searchable
+            searchPlaceholder={t('bills.searchMembers')}
+            emptyMessage={t('bills.noFilterResults')}
           />
         )}
         {!canChef(user) && (

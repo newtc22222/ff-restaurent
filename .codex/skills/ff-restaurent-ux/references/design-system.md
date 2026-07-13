@@ -16,6 +16,17 @@
 - Use centered max-width panels for detail and create flows (`max-w-2xl` or `max-w-xl`).
 - Avoid nested cards unless representing rows inside a detail panel.
 
+## Dropdowns and Pickers
+
+- Use `apps/web/src/components/ui/Dropdown.tsx` for single selects, multi-selects, filters, header controls, and searchable pickers.
+- Choose the `header`, `filter`, or `field` variant instead of styling a new trigger.
+- Enable `searchable` for Restaurant/Eatery, Member, Cuisine, and any option set expected to grow. Supply localized search, empty, and clear text.
+- Preserve selected values while filtering, reset the query when the menu closes, and keep long option lists internally scrollable.
+- Use option `description` and `searchText` for secondary searchable metadata such as cuisine, restaurant type, or username.
+- Keep panels on `bg-surface`, `border-border`, `text-ink`, and `bg-muted` interaction tokens so light and dark themes remain aligned.
+- When replacing a native required select, enforce required state in form readiness because custom dropdown buttons do not participate in native select validation.
+- Do not create page-specific select popovers unless `Dropdown` cannot represent the required behavior; extend the shared component when the behavior is broadly reusable.
+
 ## App Shell
 
 - Header: white, 56px tall, brand icon, app name, current user/role, sign out.

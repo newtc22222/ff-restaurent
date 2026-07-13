@@ -7,6 +7,7 @@ import { useI18n } from '../app/providers/i18n';
 import { useMutation } from '../hooks/useMutation';
 import SectionTitle from '../components/ui/SectionTitle';
 import EmptyState from '../components/ui/EmptyState';
+import Dropdown from '../components/ui/Dropdown';
 
 /**
  * AdminPage lists all workspace members and allows a Head Chef to update their system roles.
@@ -46,17 +47,24 @@ export default function AdminPage() {
               @{member.username} / {roleLabel(member, t)}
             </p>
           </div>
-          <select
-            className="field"
-            value={member.chefRole ?? ''}
-            onChange={(event) =>
-              updateRole(member.id, (event.target.value || null) as ChefRole)
-            }
-          >
-            <option value="">{t('admin.customerOnly')}</option>
-            <option value="SOUS_CHEF">{t('role.souschef')}</option>
-            <option value="HEAD_CHEF">{t('role.headchef')}</option>
-          </select>
+          {member.id !== user.id && (
+            <div style={{ minWidth: 160 }}>
+              <Dropdown
+                label={t('admin.customerOnly')}
+                ariaLabel={`${member.name} role`}
+                value={member.chefRole ?? ''}
+                onChange={(role) =>
+                  updateRole(member.id, (role || null) as ChefRole)
+                }
+                options={[
+                  { value: '', label: t('admin.customerOnly') },
+                  { value: 'SOUS_CHEF', label: t('role.souschef') },
+                  { value: 'HEAD_CHEF', label: t('role.headchef') },
+                ]}
+                menuAlign="right"
+              />
+            </div>
+          )}
         </article>
       ))}
     </div>

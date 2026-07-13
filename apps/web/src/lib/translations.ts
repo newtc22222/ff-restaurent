@@ -2,6 +2,11 @@ export type Locale = 'vi' | 'en';
 
 export const translations = {
   vi: {
+    'language.english': 'English',
+    'language.vietnamese': 'Tiếng Việt',
+    'bills.searchRestaurants': 'Tìm nhà hàng / quán ăn...',
+    'bills.searchMembers': 'Tìm thành viên...',
+    'bills.noFilterResults': 'Không tìm thấy kết quả.',
     // App
     'app.name': 'FF RESTaurent',
     'app.tagline': 'Theo dõi hóa đơn nhóm, tình trạng thanh toán và chi tiêu.',
@@ -11,6 +16,9 @@ export const translations = {
     'nav.restaurants': 'Nhà hàng',
     'nav.stats': 'Thống kê',
     'nav.notifications': 'Thông báo',
+    'nav.menu': 'Tùy chọn',
+    'nav.language': 'Ngôn ngữ',
+    'nav.theme': 'Giao diện',
     'notifications.empty': 'Chưa có thông báo.',
     'nav.members': 'Thành viên',
 
@@ -88,7 +96,7 @@ export const translations = {
     'createBill.grandTotal': 'Tổng cộng',
     'createBill.base': 'Gốc (tổng thành viên)',
     'createBill.created': 'Đã tạo hóa đơn!',
-    'createBill.submit': 'Tạo hóa đơn',
+    'createBill.submit': 'Lưu hóa đơn',
 
     // Restaurants
     'restaurants.title': 'Nhà hàng & quán ăn',
@@ -104,6 +112,7 @@ export const translations = {
     'restaurants.recommended': 'Được đề xuất',
     'restaurants.sortByName': 'Sắp xếp theo tên',
     'restaurants.filterCuisine': 'Lọc theo ẩm thực',
+    'restaurants.searchCuisine': 'Tìm loại ẩm thực...',
     'restaurants.filterFavorite': 'Yêu thích',
     'restaurants.filterRecommended': 'Đề xuất',
 
@@ -153,6 +162,11 @@ export const translations = {
     'common.no': 'Không',
   },
   en: {
+    'language.english': 'English',
+    'language.vietnamese': 'Vietnamese',
+    'bills.searchRestaurants': 'Search restaurants / eateries...',
+    'bills.searchMembers': 'Search members...',
+    'bills.noFilterResults': 'No matching results.',
     // App
     'app.name': 'FF RESTaurent',
     'app.tagline':
@@ -163,6 +177,9 @@ export const translations = {
     'nav.restaurants': 'Restaurants',
     'nav.stats': 'Stats',
     'nav.notifications': 'Notifications',
+    'nav.menu': 'Options',
+    'nav.language': 'Language',
+    'nav.theme': 'Theme',
     'notifications.empty': 'No notifications yet.',
     'nav.members': 'Members',
 
@@ -240,7 +257,7 @@ export const translations = {
     'createBill.grandTotal': 'Grand total',
     'createBill.base': 'Base (sum of members)',
     'createBill.created': 'Bill created!',
-    'createBill.submit': 'Create bill',
+    'createBill.submit': 'Save bill',
 
     // Restaurants
     'restaurants.title': 'Restaurants & eateries',
@@ -256,6 +273,7 @@ export const translations = {
     'restaurants.recommended': 'Recommended',
     'restaurants.sortByName': 'Sort by name',
     'restaurants.filterCuisine': 'Filter by cuisine',
+    'restaurants.searchCuisine': 'Search cuisines...',
     'restaurants.filterFavorite': 'Favorite',
     'restaurants.filterRecommended': 'Recommended',
 
