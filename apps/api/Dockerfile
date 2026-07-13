@@ -8,6 +8,7 @@ RUN npm install
 FROM deps AS build
 WORKDIR /app
 COPY . .
+ENV DATABASE_URL=postgresql://ff:ff@localhost:5432/ff_restaurent?schema=public
 RUN npm run build -w @ff-restaurent/shared
 RUN npm run build -w @ff-restaurent/api
 
