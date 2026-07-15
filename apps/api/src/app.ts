@@ -16,6 +16,7 @@ import { registerFeedbackRoutes } from './routes/feedback-routes.js';
 import { registerMemberRoutes } from './routes/member-routes.js';
 import { registerNotificationRoutes } from './routes/notification-routes.js';
 import { registerPasswordResetRoutes } from './routes/password-reset-routes.js';
+import { registerParticipantGroupRoutes } from './routes/participant-group-routes.js';
 import { registerProfileRoutes } from './routes/profile-routes.js';
 import { registerRestaurantRoutes } from './routes/restaurant-routes.js';
 import { registerStatsRoutes } from './routes/stats-routes.js';
@@ -63,6 +64,7 @@ const registerRoutes = (app: FastifyInstance) => {
   registerCollectionRoutes(app);
   registerFeedbackRoutes(app);
   registerPasswordResetRoutes(app);
+  registerParticipantGroupRoutes(app);
   registerProfileRoutes(app);
   registerMemberRoutes(app);
   registerRestaurantRoutes(app);

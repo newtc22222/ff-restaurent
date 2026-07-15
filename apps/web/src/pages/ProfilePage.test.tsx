@@ -21,6 +21,7 @@ vi.mock('../app/providers/app-context', () => ({
       phone: '+84901234567',
       chefRole: null,
       roles: ['CUSTOMER'],
+      paymentRemindersEnabled: true,
     },
   }),
 }));
@@ -114,6 +115,29 @@ describe('ProfilePage account forms', () => {
       expect.objectContaining({
         fallback: 'Could not change the password.',
         success: 'Password changed and other sessions were signed out.',
+      }),
+    );
+  });
+
+  it('updates payment reminder preferences from the profile', () => {
+    render(
+      <I18nProvider>
+        <ProfilePage />
+      </I18nProvider>,
+    );
+
+    const reminders = screen.getByRole('checkbox', {
+      name: 'Receive payment reminders',
+    });
+    expect((reminders as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(reminders);
+    expect(mutate).toHaveBeenCalledWith(
+      {
+        intent: 'notification-preferences',
+        payload: { paymentRemindersEnabled: false },
+      },
+      expect.objectContaining({
+        success: 'Notification preferences updated.',
       }),
     );
   });

@@ -1,4 +1,5 @@
 const errorTranslationKeys: Record<string, string> = {
+  BILL_DUPLICATE_DETECTED: 'error.billDuplicateDetected',
   FINAL_HEAD_CHEF_REQUIRED: 'error.finalHeadChefRequired',
   FEEDBACK_ALREADY_EXISTS: 'error.feedbackAlreadyExists',
   FEEDBACK_CURSOR_INVALID: 'error.feedbackCursorInvalid',
@@ -15,6 +16,8 @@ const errorTranslationKeys: Record<string, string> = {
   PASSWORD_REUSE_FORBIDDEN: 'error.passwordReuseForbidden',
   PASSWORD_RESET_INVALID: 'error.passwordResetInvalid',
   PASSWORD_RESET_CONFLICT: 'error.passwordResetConflict',
+  PARTICIPANT_GROUP_NAME_TAKEN: 'error.participantGroupNameTaken',
+  PARTICIPANT_GROUP_NOT_FOUND: 'error.participantGroupNotFound',
   PAID_BILL_AMENDMENT_BLOCKED: 'error.paidBillAmendmentBlocked',
   PAYMENT_STATUS_CONFLICT: 'error.paymentStatusConflict',
   PAYMENT_STATUS_UNCHANGED: 'error.paymentStatusUnchanged',

@@ -1754,3 +1754,182 @@ integrationTest(
     assert.equal(afterDelete.json().aggregates.foodRating, 9.5);
   },
 );
+
+integrationTest(
+  'notification controls, private repeat groups, and duplicate override are enforced',
+  async () => {
+    const freshTokenFor = async (id: string) => {
+      const user = await prisma.user.findUniqueOrThrow({ where: { id } });
+      return tokenFor(id, '8h', user.sessionVersion);
+    };
+    const [customerAToken, customerBToken, sousToken] = await Promise.all([
+      freshTokenFor(customerAId),
+      freshTokenFor(customerBId),
+      freshTokenFor(sousId),
+    ]);
+
+    const group = await app.inject({
+      method: 'POST',
+      url: '/participant-groups',
+      headers: auth(customerAToken),
+      payload: {
+        name: 'Lunch crew',
+        memberIds: [customerAId, customerBId],
+      },
+    });
+    assert.equal(group.statusCode, 201);
+    assert.equal(group.json().members.length, 2);
+    assert.equal(JSON.stringify(group.json()).includes('passwordHash'), false);
+    const ownerGroups = await app.inject({
+      method: 'GET',
+      url: '/participant-groups',
+      headers: auth(customerAToken),
+    });
+    assert.equal(ownerGroups.json().length, 1);
+    const privateGroups = await app.inject({
+      method: 'GET',
+      url: '/participant-groups',
+      headers: auth(customerBToken),
+    });
+    assert.deepEqual(privateGroups.json(), []);
+    const foreignDelete = await app.inject({
+      method: 'DELETE',
+      url: `/participant-groups/${group.json().id}`,
+      headers: auth(customerBToken),
+    });
+    assert.equal(foreignDelete.statusCode, 404);
+
+    await prisma.notification.createMany({
+      data: [
+        { userId: customerAId, message: 'Bulk one' },
+        { userId: customerAId, message: 'Bulk two' },
+        { userId: customerBId, message: 'Private unread' },
+      ],
+    });
+    const bulkRead = await app.inject({
+      method: 'PATCH',
+      url: '/notifications/read-all',
+      headers: auth(customerAToken),
+    });
+    assert.equal(bulkRead.statusCode, 200);
+    assert.ok(bulkRead.json().updated >= 2);
+    assert.equal(
+      await prisma.notification.count({
+        where: { userId: customerAId, readAt: null },
+      }),
+      0,
+    );
+    assert.ok(
+      (await prisma.notification.count({
+        where: { userId: customerBId, readAt: null },
+      })) >= 1,
+    );
+
+    await app.inject({
+      method: 'PATCH',
+      url: '/me/notification-preferences',
+      headers: auth(customerAToken),
+      payload: { paymentRemindersEnabled: true },
+    });
+    const optedOut = await app.inject({
+      method: 'PATCH',
+      url: '/me/notification-preferences',
+      headers: auth(customerBToken),
+      payload: { paymentRemindersEnabled: false },
+    });
+    assert.equal(optedOut.statusCode, 200);
+    assert.equal(optedOut.json().paymentRemindersEnabled, false);
+
+    const reminderBill = await prisma.bill.create({
+      data: {
+        restaurantId,
+        createdById: sousId,
+        baseCost: 10300,
+        vat: 0,
+        shippingFee: 0,
+        totalCost: 10300,
+        participants: {
+          create: [
+            {
+              memberId: customerAId,
+              originCost: 5100,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 5100,
+            },
+            {
+              memberId: customerBId,
+              originCost: 5200,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 5200,
+            },
+          ],
+        },
+      },
+    });
+    const reminders = await app.inject({
+      method: 'POST',
+      url: `/bills/${reminderBill.id}/reminders`,
+      headers: auth(sousToken),
+    });
+    assert.equal(reminders.statusCode, 200);
+    assert.equal(reminders.json().sent, 1);
+    assert.equal(reminders.json().preferenceSkipped, 1);
+    assert.equal(
+      await prisma.notification.count({
+        where: { userId: customerBId, billId: reminderBill.id },
+      }),
+      0,
+    );
+
+    const duplicatePayload = {
+      restaurantId,
+      baseCost: 12345,
+      vat: 1000,
+      shippingFee: 2000,
+      participants: [
+        { memberId: customerAId, originCost: 6000 },
+        { memberId: customerBId, originCost: 6345 },
+      ],
+    };
+    const duplicateRace = await Promise.all([
+      app.inject({
+        method: 'POST',
+        url: '/bills',
+        headers: auth(sousToken),
+        payload: duplicatePayload,
+      }),
+      app.inject({
+        method: 'POST',
+        url: '/bills',
+        headers: auth(sousToken),
+        payload: {
+          ...duplicatePayload,
+          participants: [...duplicatePayload.participants].reverse(),
+        },
+      }),
+    ]);
+    assert.deepEqual(
+      duplicateRace.map(({ statusCode }) => statusCode).sort(),
+      [201, 409],
+    );
+    assert.equal(
+      duplicateRace.find(({ statusCode }) => statusCode === 409)?.json().code,
+      'BILL_DUPLICATE_DETECTED',
+    );
+    assert.ok(
+      duplicateRace.find(({ statusCode }) => statusCode === 409)?.json()
+        .existingBillId,
+    );
+    const override = await app.inject({
+      method: 'POST',
+      url: '/bills',
+      headers: auth(sousToken),
+      payload: { ...duplicatePayload, allowDuplicate: true },
+    });
+    assert.equal(override.statusCode, 201);
+  },
+);

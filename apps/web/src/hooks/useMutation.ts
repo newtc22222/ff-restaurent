@@ -15,6 +15,8 @@ interface MutateOptions {
   action?: string;
   /** Runs after a successful submit. */
   onSuccess?: (data: unknown) => void;
+  /** Runs after an API action returns a structured error. */
+  onError?: (code: unknown, data: unknown) => void;
 }
 
 type MutationResult = {
@@ -41,16 +43,18 @@ export function useMutation() {
     fallback: string;
     success?: string;
     onSuccess?: (data: unknown) => void;
+    onError?: (code: unknown, data: unknown) => void;
   } | null>(null);
 
   useEffect(() => {
     if (fetcher.state !== 'idle' || !pendingResult.current) return;
 
-    const { fallback, success, onSuccess } = pendingResult.current;
+    const { fallback, success, onSuccess, onError } = pendingResult.current;
     pendingResult.current = null;
 
     if (hasMutationError(fetcher.data)) {
       toast.error(resultErrorMessage(fetcher.data.code, fallback, t));
+      onError?.(fetcher.data.code, fetcher.data);
       return;
     }
 
@@ -72,12 +76,14 @@ export function useMutation() {
         redirects = false,
         action,
         onSuccess,
+        onError,
       }: MutateOptions,
     ) => {
       pendingResult.current = {
         fallback,
         success: redirects ? undefined : success,
         onSuccess,
+        onError,
       };
       try {
         await fetcher.submit(

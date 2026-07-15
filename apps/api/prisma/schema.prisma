@@ -52,30 +52,33 @@ enum CollectionSystemType {
 }
 
 model User {
-  id                    String                   @id @default(cuid())
-  username              String                   @unique
-  phone                 String?                  @unique
-  name                  String
-  passwordHash          String
-  chefRole              ChefRole?
-  systemRole            SystemRole?              @unique
-  sessionVersion        Int                      @default(0)
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
-  billsCreated          Bill[]                   @relation("BillCreator")
-  restaurants           RestaurantEntry[]        @relation("RestaurantCreator")
-  participants          BillParticipant[]
-  notifications         Notification[]
-  roleChangesMade       RoleAuditLog[]           @relation("RoleChangedBy")
-  roleChangesReceived   RoleAuditLog[]           @relation("RoleChangedUser")
-  billAuditLogs         BillAuditLog[]
-  favorites             UserFavorite[]
-  rootTransfersFrom     RootAdminTransferAudit[] @relation("RootTransferredFrom")
-  rootTransfersTo       RootAdminTransferAudit[] @relation("RootTransferredTo")
-  passwordResetRequests PasswordResetRequest[]
-  ownedCollections      Collection[]             @relation("CollectionOwner")
-  collectionShares      CollectionShare[]
-  feedback              Feedback[]
+  id                          String                   @id @default(cuid())
+  username                    String                   @unique
+  phone                       String?                  @unique
+  name                        String
+  passwordHash                String
+  chefRole                    ChefRole?
+  systemRole                  SystemRole?              @unique
+  sessionVersion              Int                      @default(0)
+  paymentRemindersEnabled     Boolean                  @default(true)
+  createdAt                   DateTime                 @default(now())
+  updatedAt                   DateTime                 @updatedAt
+  billsCreated                Bill[]                   @relation("BillCreator")
+  restaurants                 RestaurantEntry[]        @relation("RestaurantCreator")
+  participants                BillParticipant[]
+  notifications               Notification[]
+  roleChangesMade             RoleAuditLog[]           @relation("RoleChangedBy")
+  roleChangesReceived         RoleAuditLog[]           @relation("RoleChangedUser")
+  billAuditLogs               BillAuditLog[]
+  favorites                   UserFavorite[]
+  rootTransfersFrom           RootAdminTransferAudit[] @relation("RootTransferredFrom")
+  rootTransfersTo             RootAdminTransferAudit[] @relation("RootTransferredTo")
+  passwordResetRequests       PasswordResetRequest[]
+  ownedCollections            Collection[]             @relation("CollectionOwner")
+  collectionShares            CollectionShare[]
+  feedback                    Feedback[]
+  ownedParticipantGroups      ParticipantGroup[]       @relation("ParticipantGroupOwner")
+  participantGroupMemberships ParticipantGroupMember[]
 }
 
 model PasswordResetRequest {
@@ -191,25 +194,28 @@ model RestaurantPlatformLink {
 }
 
 model Bill {
-  id           String            @id @default(cuid())
-  restaurantId String
-  restaurant   RestaurantEntry   @relation(fields: [restaurantId], references: [id])
-  baseCost     Int
-  vat          Int
-  shippingFee  Int
-  discounts    Json              @default("[]")
-  vouchers     Json              @default("[]")
-  totalCost    Int
-  qrCodePath   String?
-  paymentUrl   String?
-  status       EntryStatus       @default(ACTIVE)
-  createdById  String
-  createdBy    User              @relation("BillCreator", fields: [createdById], references: [id])
-  participants BillParticipant[]
-  auditLogs    BillAuditLog[]
-  feedback     Feedback[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id                   String            @id @default(cuid())
+  restaurantId         String
+  restaurant           RestaurantEntry   @relation(fields: [restaurantId], references: [id])
+  baseCost             Int
+  vat                  Int
+  shippingFee          Int
+  discounts            Json              @default("[]")
+  vouchers             Json              @default("[]")
+  totalCost            Int
+  qrCodePath           String?
+  paymentUrl           String?
+  status               EntryStatus       @default(ACTIVE)
+  createdById          String
+  createdBy            User              @relation("BillCreator", fields: [createdById], references: [id])
+  participants         BillParticipant[]
+  auditLogs            BillAuditLog[]
+  feedback             Feedback[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  duplicateFingerprint String?
+
+  @@index([createdById, duplicateFingerprint, status])
 }
 
 model BillParticipant {
@@ -245,6 +251,30 @@ model Feedback {
   @@unique([billId, userId])
   @@index([restaurantId, createdAt, id])
   @@index([userId, createdAt])
+}
+
+model ParticipantGroup {
+  id        String                   @id @default(cuid())
+  name      String
+  ownerId   String
+  owner     User                     @relation("ParticipantGroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   ParticipantGroupMember[]
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+
+  @@unique([ownerId, name])
+  @@index([ownerId, updatedAt])
+}
+
+model ParticipantGroupMember {
+  groupId   String
+  userId    String
+  group     ParticipantGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@id([groupId, userId])
+  @@index([userId])
 }
 
 model Notification {

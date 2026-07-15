@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { createHash } from 'node:crypto';
 import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { calculateBillSplit } from '@ff-restaurent/shared';
 import {
@@ -182,10 +183,42 @@ const canViewBill = (
     (participant) => participant.memberId === request.currentUser.id,
   );
 
+type FingerprintBill = {
+  restaurantId: string;
+  baseCost: number;
+  vat: number;
+  shippingFee: number;
+  paymentUrl?: string | null;
+  discounts?: unknown[];
+  vouchers?: unknown[];
+  participants: Array<{ memberId: string; originCost?: number }>;
+};
+
+export const createBillFingerprint = (bill: FingerprintBill) => {
+  const canonical = {
+    restaurantId: bill.restaurantId,
+    baseCost: bill.baseCost,
+    vat: bill.vat,
+    shippingFee: bill.shippingFee,
+    paymentUrl: bill.paymentUrl ?? null,
+    discounts: [...(bill.discounts ?? [])].sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    ),
+    vouchers: [...(bill.vouchers ?? [])].sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    ),
+    participants: bill.participants
+      .map(({ memberId, originCost }) => ({ memberId, originCost }))
+      .sort((left, right) => left.memberId.localeCompare(right.memberId)),
+  };
+  return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
+};
+
 const computeBillCreateData = (body: unknown, createdById: string) => {
   const parsed = billSchema.parse(body);
   const split = calculateBillSplit(parsed);
   return {
+    allowDuplicate: parsed.allowDuplicate,
     bill: {
       restaurantId: parsed.restaurantId,
       baseCost: parsed.baseCost,
@@ -196,6 +229,7 @@ const computeBillCreateData = (body: unknown, createdById: string) => {
       vouchers: (parsed.vouchers ?? []) as Prisma.InputJsonValue,
       totalCost: split.totalCost,
       createdById,
+      duplicateFingerprint: createBillFingerprint(parsed),
     },
     participants: split.participants,
   };
@@ -365,15 +399,80 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         (participant) => participant.memberId,
       );
       if (!(await validateParticipantIds(participantIds, reply))) return;
-      const bill = await prisma.bill.create({
-        data: {
-          ...computed.bill,
-          participants: {
-            create: participantCreateData(computed.participants),
+      const created = await prisma.$transaction(async (tx) => {
+        if (!computed.allowDuplicate) {
+          const lockKey = `${request.currentUser.id}:${computed.bill.duplicateFingerprint}`;
+          await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+          let duplicate = await tx.bill.findFirst({
+            where: {
+              createdById: request.currentUser.id,
+              duplicateFingerprint: computed.bill.duplicateFingerprint,
+              status: EntryStatus.ACTIVE,
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true },
+          });
+          if (!duplicate) {
+            const legacyCandidates = await tx.bill.findMany({
+              where: {
+                createdById: request.currentUser.id,
+                duplicateFingerprint: null,
+                status: EntryStatus.ACTIVE,
+                restaurantId: computed.bill.restaurantId,
+                baseCost: computed.bill.baseCost,
+                vat: computed.bill.vat,
+                shippingFee: computed.bill.shippingFee,
+                paymentUrl: computed.bill.paymentUrl,
+              },
+              include: {
+                participants: {
+                  select: { memberId: true, originCost: true },
+                },
+              },
+            });
+            const matchingLegacy = legacyCandidates.find(
+              (candidate) =>
+                createBillFingerprint({
+                  ...candidate,
+                  discounts: Array.isArray(candidate.discounts)
+                    ? candidate.discounts
+                    : [],
+                  vouchers: Array.isArray(candidate.vouchers)
+                    ? candidate.vouchers
+                    : [],
+                }) === computed.bill.duplicateFingerprint,
+            );
+            if (matchingLegacy) {
+              await tx.bill.update({
+                where: { id: matchingLegacy.id },
+                data: {
+                  duplicateFingerprint: computed.bill.duplicateFingerprint,
+                },
+              });
+              duplicate = { id: matchingLegacy.id };
+            }
+          }
+          if (duplicate) return { duplicate } as const;
+        }
+        const bill = await tx.bill.create({
+          data: {
+            ...computed.bill,
+            participants: {
+              create: participantCreateData(computed.participants),
+            },
           },
-        },
-        include: billResponseInclude,
+          include: billResponseInclude,
+        });
+        return { bill } as const;
       });
+      if (created.duplicate) {
+        return reply.code(409).send({
+          code: 'BILL_DUPLICATE_DETECTED',
+          message: 'An identical active bill already exists',
+          existingBillId: created.duplicate.id,
+        });
+      }
+      const { bill } = created;
       request.log.info({ event: 'bill_created', billId: bill.id });
       return reply.code(201).send(bill);
     },
@@ -629,12 +728,28 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         select: { userId: true },
       });
       const recentlyReminded = new Set(recent.map((item) => item.userId));
+      const optedOut = new Set(
+        (
+          await prisma.user.findMany({
+            where: {
+              id: { in: waiting.map((participant) => participant.memberId) },
+              paymentRemindersEnabled: false,
+            },
+            select: { id: true },
+          })
+        ).map((user) => user.id),
+      );
       const eligible = waiting.filter(
-        (participant) => !recentlyReminded.has(participant.memberId),
+        (participant) =>
+          !recentlyReminded.has(participant.memberId) &&
+          !optedOut.has(participant.memberId),
       );
       const result = {
         sent: eligible.length,
         skipped: waiting.length - eligible.length,
+        preferenceSkipped: waiting.filter((participant) =>
+          optedOut.has(participant.memberId),
+        ).length,
         cooldownSeconds: REMINDER_COOLDOWN_MS / 1000,
       };
       await prisma.$transaction(async (tx) => {
