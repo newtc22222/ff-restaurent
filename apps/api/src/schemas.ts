@@ -323,6 +323,18 @@ export const catalogQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
 
+export const collectionSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  description: z.string().trim().max(500).nullable().optional(),
+  isPublic: z.boolean().default(false),
+});
+
+export const collectionUpdateSchema = collectionSchema.partial();
+
+export const collectionShareSchema = z.object({
+  userId: z.string().min(1),
+});
+
 export const participantSchema = z.object({
   memberId: z.string().min(1),
   originCost: z.number().int().nonnegative().optional(),

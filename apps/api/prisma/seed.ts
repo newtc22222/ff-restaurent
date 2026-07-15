@@ -1,6 +1,11 @@
 import bcrypt from 'bcryptjs';
 import { pathToFileURL } from 'node:url';
-import { ChefRole, PrismaClient, SystemRole } from '@prisma/client';
+import {
+  ChefRole,
+  CollectionSystemType,
+  PrismaClient,
+  SystemRole,
+} from '@prisma/client';
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
 
 const prisma = new PrismaClient();
@@ -55,6 +60,7 @@ const createBill = async (input: {
 export async function seed({ reset = true }: { reset?: boolean } = {}) {
   if (reset) {
     await prisma.passwordResetRequest.deleteMany();
+    await prisma.collection.deleteMany();
     await prisma.userFavorite.deleteMany();
     await prisma.notification.deleteMany();
     await prisma.billAuditLog.deleteMany();
@@ -150,6 +156,44 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
           create: { cuisineId: bakeryCuisine.id, isPrimary: true },
         },
       },
+    }),
+  ]);
+
+  const [customerFavorites, recommended] = await Promise.all([
+    prisma.collection.create({
+      data: {
+        name: 'Favorites',
+        systemType: CollectionSystemType.FAVORITES,
+        ownerId: customer.id,
+      },
+    }),
+    prisma.collection.create({
+      data: {
+        name: 'Recommended',
+        isPublic: true,
+        systemType: CollectionSystemType.RECOMMENDED,
+      },
+    }),
+    ...[sousChef, headChef].map((user) =>
+      prisma.collection.create({
+        data: {
+          name: 'Favorites',
+          systemType: CollectionSystemType.FAVORITES,
+          ownerId: user.id,
+        },
+      }),
+    ),
+  ]);
+  await Promise.all([
+    prisma.userFavorite.create({
+      data: { userId: customer.id, restaurantId: pho.id },
+    }),
+    prisma.collectionRestaurant.createMany({
+      data: [
+        { collectionId: customerFavorites.id, restaurantId: pho.id },
+        { collectionId: recommended.id, restaurantId: pho.id },
+        { collectionId: recommended.id, restaurantId: sushi.id },
+      ],
     }),
   ]);
 

@@ -5,6 +5,7 @@ import { loadConfig } from '../config.js';
 import { prisma } from '../prisma.js';
 import { sanitizeUser } from '../roles.js';
 import { loginSchema, registerSchema } from '../schemas.js';
+import { ensureDefaultCollections } from '../collection-service.js';
 
 /**
  * Authentication routes issue JWTs and return sanitized user profiles.
@@ -34,6 +35,7 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
           message: 'Invalid credentials',
         });
       }
+      await ensureDefaultCollections(user.id);
       request.log.info({ event: 'login_succeeded', userId: user.id });
       return {
         token: app.jwt.sign({ sub: user.id, ver: user.sessionVersion }),
@@ -75,6 +77,7 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
           passwordHash: await bcrypt.hash(body.password, 12),
         },
       });
+      await ensureDefaultCollections(user.id);
       return reply.code(201).send({
         token: app.jwt.sign({ sub: user.id, ver: user.sessionVersion }),
         user: sanitizeUser(user),
