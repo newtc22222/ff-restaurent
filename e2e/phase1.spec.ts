@@ -253,6 +253,24 @@ test('server-backed directory filters survive direct links and reloads', async (
 test('member discovers, manages, shares, and reviews Collection places', async ({
   page,
 }) => {
+  const [customer, restaurant] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { username: 'e2e-customer' } }),
+    prisma.restaurantEntry.findFirstOrThrow({
+      where: { name: 'Existing E2E Restaurant' },
+    }),
+  ]);
+  await prisma.$transaction([
+    prisma.feedback.deleteMany({
+      where: { userId: customer.id, restaurantId: restaurant.id },
+    }),
+    prisma.userFavorite.deleteMany({
+      where: { userId: customer.id, restaurantId: restaurant.id },
+    }),
+    prisma.collection.deleteMany({
+      where: { ownerId: customer.id, name: 'E2E Team Spots' },
+    }),
+  ]);
+
   await login(page, 'e2e-customer');
   await page.getByRole('link', { name: 'Restaurants' }).click();
   await page
@@ -264,13 +282,24 @@ test('member discovers, manages, shares, and reviews Collection places', async (
     name: 'Food and service feedback',
   });
   await expect(feedback).toBeVisible();
-  await page.getByRole('button', { name: 'Favorite', exact: true }).click();
-  const feedbackSelects = feedback.getByRole('combobox');
-  await feedbackSelects.nth(1).selectOption('8.5');
-  await feedbackSelects.nth(2).selectOption('9');
+  await feedback.getByLabel('Food', { exact: true }).selectOption('8.5');
+  await feedback.getByLabel('Service', { exact: true }).selectOption('9');
   await feedback.getByLabel('Comment (optional)').fill('Reliable team lunch.');
+  const feedbackResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/feedback') &&
+      response.request().method() === 'POST',
+  );
   await feedback.getByRole('button', { name: 'Submit feedback' }).click();
+  expect((await feedbackResponse).status()).toBe(201);
   await expect(page.getByText('Feedback submitted.')).toBeVisible();
+  const favoriteResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/favorite') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Favorite', exact: true }).click();
+  expect((await favoriteResponse).status()).toBe(200);
 
   await page.getByRole('link', { name: 'Collections' }).click();
   await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
@@ -288,17 +317,30 @@ test('member discovers, manages, shares, and reviews Collection places', async (
 
   await page.getByRole('button', { name: 'Add a place' }).click();
   await page.getByRole('option', { name: /Existing E2E Restaurant/ }).click();
+  const addRestaurantResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/restaurants/') &&
+      response.request().method() === 'POST',
+  );
   await page.getByRole('button', { name: 'Add' }).click();
+  expect((await addRestaurantResponse).status()).toBe(201);
   await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
   await page.getByRole('button', { name: 'Choose a member' }).click();
   await page.getByRole('option', { name: /Sous E2E/ }).click();
+  const shareResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/shares') &&
+      response.request().method() === 'POST',
+  );
   await page.getByRole('button', { name: 'Share' }).click();
+  expect((await shareResponse).status()).toBe(201);
   await expect(page.getByText('Sous E2E')).toBeVisible();
 
   await page.evaluate(() => localStorage.removeItem('ff-token'));
   await login(page, 'e2e-sous');
   await page.getByRole('link', { name: 'Collections' }).click();
   await page.getByLabel('Visibility').selectOption('shared');
+  await expect(page).toHaveURL(/visibility=shared/);
   await page.getByRole('button', { name: /E2E Team Spots/ }).click();
   await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
