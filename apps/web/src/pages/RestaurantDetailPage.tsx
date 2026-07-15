@@ -1,4 +1,4 @@
-import { ExternalLink, Heart, Pencil, ThumbsUp } from 'lucide-react';
+import { ExternalLink, Heart, Pencil, Phone, ThumbsUp } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { canChef, isHead } from '../lib/helpers';
@@ -10,6 +10,12 @@ import BackButton from '../components/ui/BackButton';
 import VietnamAddressFields, {
   isVietnamAddressComplete,
 } from '../components/address/VietnamAddressFields';
+import RestaurantProfileFields, {
+  isRestaurantProfileValid,
+  type RestaurantProfileDraft,
+} from '../components/restaurants/RestaurantProfileFields';
+import RestaurantBanner from '../components/restaurants/RestaurantBanner';
+import { platformLabel } from '../components/restaurants/PlatformLinksEditor';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,
@@ -25,7 +31,7 @@ export default function RestaurantDetailPage() {
   const restaurant = restaurants.find(
     (candidate) => candidate.id === restaurantId,
   );
-  const [editingAddress, setEditingAddress] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const [address, setAddress] = useState<VietnamAddress>(() => ({
     address: restaurant?.address ?? '',
     addressLine: restaurant?.addressLine ?? null,
@@ -33,6 +39,11 @@ export default function RestaurantDetailPage() {
     provinceName: restaurant?.provinceName ?? null,
     wardCode: restaurant?.wardCode ?? null,
     wardName: restaurant?.wardName ?? null,
+  }));
+  const [profile, setProfile] = useState<RestaurantProfileDraft>(() => ({
+    phone: restaurant?.phone ?? '',
+    bannerImageUrl: restaurant?.bannerImageUrl ?? '',
+    platformLinks: restaurant?.platformLinks ?? [],
   }));
   if (!restaurant) return <Navigate to="/restaurants" replace />;
 
@@ -57,16 +68,29 @@ export default function RestaurantDetailPage() {
       { fallback, success, onSuccess: onBack },
     );
 
-  const saveAddress = () =>
+  const saveProfile = () =>
     mutate(
-      { intent: 'update-restaurant', payload: address },
+      {
+        intent: 'update-restaurant',
+        payload: {
+          ...address,
+          phone: profile.phone.trim() || null,
+          bannerImageUrl: profile.bannerImageUrl.trim() || null,
+          platformLinks: profile.platformLinks.map(
+            ({ platform, label, url }) => ({ platform, label, url }),
+          ),
+        },
+      },
       {
         fallback:
           locale === 'vi'
-            ? 'Không thể cập nhật địa chỉ.'
-            : 'Could not update the address.',
-        success: locale === 'vi' ? 'Đã cập nhật địa chỉ.' : 'Address updated.',
-        onSuccess: () => setEditingAddress(false),
+            ? 'Không thể cập nhật hồ sơ địa điểm.'
+            : 'Could not update the restaurant profile.',
+        success:
+          locale === 'vi'
+            ? 'Đã cập nhật hồ sơ địa điểm.'
+            : 'Restaurant profile updated.',
+        onSuccess: () => setEditingProfile(false),
       },
     );
 
@@ -75,6 +99,10 @@ export default function RestaurantDetailPage() {
       <BackButton onClick={onBack} label={t('nav.restaurants')} />
 
       <section className="panel p-6">
+        <RestaurantBanner
+          name={restaurant.name}
+          url={restaurant.bannerImageUrl}
+        />
         <div className="mb-4 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h2 className="text-[22px] font-bold text-ink">
@@ -96,32 +124,36 @@ export default function RestaurantDetailPage() {
           </span>
         </div>
 
-        {canChef(user) && !editingAddress && (
+        {canChef(user) && !editingProfile && (
           <button
             className="btn btn-soft mb-4 flex items-center gap-2"
-            onClick={() => setEditingAddress(true)}
+            onClick={() => setEditingProfile(true)}
           >
             <Pencil size={13} />
-            {locale === 'vi' ? 'Sửa địa chỉ' : 'Edit address'}
+            {locale === 'vi' ? 'Sửa hồ sơ' : 'Edit profile'}
           </button>
         )}
 
-        {editingAddress && (
+        {editingProfile && (
           <div className="mb-4 space-y-3 rounded-lg border border-border bg-muted/40 p-4">
             <VietnamAddressFields value={address} onChange={setAddress} />
+            <RestaurantProfileFields value={profile} onChange={setProfile} />
             <div className="flex justify-end gap-2">
               <button
                 className="btn btn-soft"
-                onClick={() => setEditingAddress(false)}
+                onClick={() => setEditingProfile(false)}
               >
                 {locale === 'vi' ? 'Hủy' : 'Cancel'}
               </button>
               <button
                 className="btn btn-primary"
-                disabled={!isVietnamAddressComplete(address)}
-                onClick={() => void saveAddress()}
+                disabled={
+                  !isVietnamAddressComplete(address) ||
+                  !isRestaurantProfileValid(profile)
+                }
+                onClick={() => void saveProfile()}
               >
-                {locale === 'vi' ? 'Lưu địa chỉ' : 'Save address'}
+                {locale === 'vi' ? 'Lưu hồ sơ' : 'Save profile'}
               </button>
             </div>
           </div>
@@ -151,19 +183,29 @@ export default function RestaurantDetailPage() {
           )}
         </div>
 
-        {restaurant.links && restaurant.links.length > 0 && (
+        {restaurant.phone && (
+          <a
+            className="mb-4 flex w-fit items-center gap-2 text-sm font-semibold text-ink hover:underline"
+            href={`tel:${restaurant.phone}`}
+          >
+            <Phone aria-hidden="true" size={14} /> {restaurant.phone}
+          </a>
+        )}
+
+        {(restaurant.platformLinks?.length ?? 0) > 0 && (
           <div className="mb-4">
             <h3 className="label mb-2">Links</h3>
             <div className="flex flex-wrap gap-2">
-              {restaurant.links.map((link, i) => (
+              {restaurant.platformLinks?.map((link) => (
                 <a
-                  key={i}
+                  key={link.id ?? `${link.platform}:${link.url}`}
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-muted"
                 >
-                  <ExternalLink size={12} /> {link.label || link.url}
+                  <ExternalLink aria-hidden="true" size={12} />{' '}
+                  {link.label || platformLabel(link.platform)}
                 </a>
               ))}
             </div>

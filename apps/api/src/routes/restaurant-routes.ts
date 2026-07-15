@@ -7,6 +7,7 @@ import {
 } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import { isHeadChef } from '../roles.js';
+import { publicRestaurantSelect } from '../restaurant-contract.js';
 import {
   normalizeVietnamAddressSnapshot,
   restaurantSchema,
@@ -58,7 +59,8 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       const restaurants = await prisma.restaurantEntry.findMany({
         where,
         orderBy,
-        include: {
+        select: {
+          ...publicRestaurantSelect,
           favorites: {
             where: { userId: request.currentUser.id },
             select: { userId: true },
@@ -79,13 +81,20 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
     async (request, reply) => {
       const body = restaurantSchema.parse(request.body);
       const data = normalizeVietnamAddressSnapshot(body);
+      const { platformLinks, ...restaurantData } = data;
       return reply.code(201).send(
         await prisma.restaurantEntry.create({
           data: {
-            ...data,
-            links: data.links ?? [],
+            ...restaurantData,
             createdById: request.currentUser.id,
+            platformLinks: {
+              create: (platformLinks ?? []).map((link, sortOrder) => ({
+                ...link,
+                sortOrder,
+              })),
+            },
           },
+          select: publicRestaurantSelect,
         }),
       );
     },
@@ -98,9 +107,24 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const body = restaurantUpdateSchema.parse(request.body);
       const data = normalizeVietnamAddressSnapshot(body);
+      const { platformLinks, ...restaurantData } = data;
       return prisma.restaurantEntry.update({
         where: { id },
-        data: { ...data, links: data.links ?? undefined },
+        data: {
+          ...restaurantData,
+          ...(platformLinks
+            ? {
+                platformLinks: {
+                  deleteMany: {},
+                  create: platformLinks.map((link, sortOrder) => ({
+                    ...link,
+                    sortOrder,
+                  })),
+                },
+              }
+            : {}),
+        },
+        select: publicRestaurantSelect,
       });
     },
   );
@@ -113,6 +137,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       return prisma.restaurantEntry.update({
         where: { id },
         data: { status: EntryStatus.ARCHIVED },
+        select: publicRestaurantSelect,
       });
     },
   );
@@ -125,6 +150,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       return prisma.restaurantEntry.update({
         where: { id },
         data: { status: EntryStatus.ACTIVE },
+        select: publicRestaurantSelect,
       });
     },
   );
@@ -171,6 +197,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       return prisma.restaurantEntry.update({
         where: { id },
         data: { isRecommended: !entry.isRecommended },
+        select: publicRestaurantSelect,
       });
     },
   );

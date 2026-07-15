@@ -17,6 +17,10 @@ import VietnamAddressFields, {
   emptyVietnamAddress,
   isVietnamAddressComplete,
 } from '../components/address/VietnamAddressFields';
+import RestaurantProfileFields, {
+  emptyRestaurantProfile,
+  isRestaurantProfileValid,
+} from '../components/restaurants/RestaurantProfileFields';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
@@ -35,6 +39,7 @@ export default function RestaurantsPage() {
   const [form, setForm] = useState({
     name: '',
     ...emptyVietnamAddress(),
+    ...emptyRestaurantProfile(),
     cuisineType: '',
     type: typeOptions[0] ?? 'Restaurant',
     isRecommended: false,
@@ -87,6 +92,7 @@ export default function RestaurantsPage() {
           setForm({
             name: '',
             ...emptyVietnamAddress(),
+            ...emptyRestaurantProfile(),
             cuisineType: '',
             type: typeOptions[0] ?? 'Restaurant',
             isRecommended: false,
@@ -252,6 +258,10 @@ export default function RestaurantsPage() {
             value={form}
             onChange={(address) => setForm({ ...form, ...address })}
           />
+          <RestaurantProfileFields
+            value={form}
+            onChange={(profile) => setForm({ ...form, ...profile })}
+          />
           <div className="block space-y-1">
             <span className="label">
               {locale === 'vi' ? 'Loại ẩm thực' : 'Cuisine type'}
@@ -302,6 +312,7 @@ export default function RestaurantsPage() {
             disabled={
               !form.name.trim() ||
               !isVietnamAddressComplete(form) ||
+              !isRestaurantProfileValid(form) ||
               !form.cuisineType ||
               !form.type
             }

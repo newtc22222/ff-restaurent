@@ -113,25 +113,150 @@ export const vietnamAddressSchema = z
   .object(vietnamAddressShape)
   .superRefine(validateStructuredAddress);
 
+const normalizePlatformUrl = (value: string) => {
+  const url = new URL(value);
+  url.hash = '';
+  return url.toString();
+};
+
+const httpsUrlSchema = z
+  .string()
+  .trim()
+  .url()
+  .refine((value) => new URL(value).protocol === 'https:', {
+    message: 'URL must use HTTPS',
+  })
+  .transform(normalizePlatformUrl);
+
+const optionalHttpsUrlSchema = z
+  .union([httpsUrlSchema, z.literal(''), z.null()])
+  .transform((value) => (value ? value : null));
+
+const legacyUrlSchema = z.string().trim().url().transform(normalizePlatformUrl);
+
+export const restaurantPlatformLinkSchema = z
+  .object({
+    platform: z.enum([
+      'GRAB',
+      'SHOPEE_FOOD',
+      'BE_FOOD',
+      'GOJEK',
+      'WEBSITE',
+      'FACEBOOK',
+      'OTHER',
+    ]),
+    label: z.string().trim().max(60).nullable().optional(),
+    url: httpsUrlSchema,
+  })
+  .superRefine((value, context) => {
+    if (value.platform === 'OTHER' && !value.label) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['label'],
+        message: 'OTHER platform links require a custom label',
+      });
+    }
+  })
+  .transform((value) => ({
+    ...value,
+    label: value.platform === 'OTHER' ? value.label : null,
+  }));
+
+type RestaurantProfileInput = {
+  platformLinks?: Array<z.infer<typeof restaurantPlatformLinkSchema>>;
+  links?: Array<{ label?: string; url: string }>;
+};
+
+const validatePlatformLinks = (
+  value: RestaurantProfileInput,
+  context: z.RefinementCtx,
+) => {
+  if (value.platformLinks && value.links) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['platformLinks'],
+      message: 'Use platformLinks instead of sending both link formats',
+    });
+  }
+  const platformLinks =
+    value.platformLinks ??
+    value.links?.map((link) => ({
+      platform: 'OTHER' as const,
+      label: link.label || 'Legacy link',
+      url: link.url,
+    }));
+  const urls = new Set<string>();
+  const exclusivePlatforms = new Set<string>();
+  for (const [index, link] of (platformLinks ?? []).entries()) {
+    const normalizedUrl = link.url.toLocaleLowerCase();
+    if (urls.has(normalizedUrl)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['platformLinks', index, 'url'],
+        message: 'Platform link URLs must be unique per restaurant',
+      });
+    }
+    urls.add(normalizedUrl);
+
+    if (link.platform !== 'OTHER') {
+      if (exclusivePlatforms.has(link.platform)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['platformLinks', index, 'platform'],
+          message: 'Only one link is allowed for each named platform',
+        });
+      }
+      exclusivePlatforms.add(link.platform);
+    }
+  }
+};
+
+const migrateLegacyPlatformLinks = <T extends RestaurantProfileInput>(
+  value: T,
+) => {
+  const { links, ...current } = value;
+  if (current.platformLinks || !links) return current;
+  return {
+    ...current,
+    platformLinks: links.map((link) => ({
+      platform: 'OTHER' as const,
+      label: link.label || 'Legacy link',
+      url: link.url,
+    })),
+  };
+};
+
 const restaurantObjectSchema = z.object({
   ...vietnamAddressShape,
   name: z.string().min(1),
   cuisineType: z.string().min(1),
   type: z.string().min(1),
   avatarUrl: z.string().optional(),
+  phone: vietnamMobilePhoneSchema.optional(),
+  bannerImageUrl: optionalHttpsUrlSchema.optional(),
+  platformLinks: z.array(restaurantPlatformLinkSchema).max(20).optional(),
   links: z
-    .array(z.object({ label: z.string().optional(), url: z.string().url() }))
+    .array(
+      z.object({
+        label: z.string().trim().max(60).optional(),
+        url: legacyUrlSchema,
+      }),
+    )
+    .max(20)
     .optional(),
   isRecommended: z.boolean().optional(),
   isFavorite: z.boolean().optional(),
 });
 
-export const restaurantSchema = restaurantObjectSchema.superRefine(
-  validateStructuredAddress,
-);
+export const restaurantSchema = restaurantObjectSchema
+  .superRefine(validateStructuredAddress)
+  .superRefine(validatePlatformLinks)
+  .transform(migrateLegacyPlatformLinks);
 export const restaurantUpdateSchema = restaurantObjectSchema
   .partial()
-  .superRefine(validateStructuredAddress);
+  .superRefine(validateStructuredAddress)
+  .superRefine(validatePlatformLinks)
+  .transform(migrateLegacyPlatformLinks);
 
 export const participantSchema = z.object({
   memberId: z.string().min(1),
