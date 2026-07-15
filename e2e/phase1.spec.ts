@@ -261,10 +261,21 @@ test('member discovers, manages, shares, and reviews Collection places', async (
     .click();
   await expect(page).toHaveURL(/\/restaurants\/[^/?]+$/);
   await page.getByRole('button', { name: 'Favorite', exact: true }).click();
-  await page.getByLabel('Food').selectOption('8.5');
-  await page.getByLabel('Service').selectOption('9');
-  await page.getByLabel('Comment (optional)').fill('Reliable team lunch.');
-  await page.getByRole('button', { name: 'Submit feedback' }).click();
+  const feedback = page.getByRole('region', {
+    name: 'Food and service feedback',
+  });
+  await feedback
+    .locator('label')
+    .filter({ hasText: 'Food' })
+    .getByRole('combobox')
+    .selectOption('8.5');
+  await feedback
+    .locator('label')
+    .filter({ hasText: 'Service' })
+    .getByRole('combobox')
+    .selectOption('9');
+  await feedback.getByLabel('Comment (optional)').fill('Reliable team lunch.');
+  await feedback.getByRole('button', { name: 'Submit feedback' }).click();
   await expect(page.getByText('Feedback submitted.')).toBeVisible();
 
   await page.getByRole('link', { name: 'Collections' }).click();
