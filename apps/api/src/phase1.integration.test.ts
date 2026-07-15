@@ -316,6 +316,61 @@ integrationTest('the database permits exactly one ROOT_ADMIN', async () => {
 });
 
 integrationTest(
+  'restaurant profiles normalize phone and platform links without legacy JSON',
+  async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/restaurants',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        name: 'Enriched Integration Restaurant',
+        address: '2 Test Street',
+        cuisineType: 'Vietnamese',
+        type: 'Restaurant',
+        phone: '0901234567',
+        bannerImageUrl: 'https://images.example.test/banner.jpg',
+        platformLinks: [
+          { platform: 'WEBSITE', url: 'https://example.test/menu' },
+          {
+            platform: 'OTHER',
+            label: 'Reserve',
+            url: 'https://booking.example.test/table',
+          },
+        ],
+      },
+    });
+    assert.equal(created.statusCode, 201);
+    const profile = created.json();
+    assert.equal(profile.phone, '+84901234567');
+    assert.equal(profile.platformLinks.length, 2);
+    assert.equal('links' in profile, false);
+
+    const updated = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${profile.id}`,
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        phone: null,
+        bannerImageUrl: null,
+        platformLinks: [profile.platformLinks[1]],
+      },
+    });
+    assert.equal(updated.statusCode, 200);
+    assert.equal(updated.json().phone, null);
+    assert.equal(updated.json().platformLinks.length, 1);
+    assert.equal(updated.json().platformLinks[0].sortOrder, 0);
+
+    const unsafe = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${profile.id}`,
+      headers: auth(tokenFor(sousId)),
+      payload: { bannerImageUrl: 'http://images.example.test/banner.jpg' },
+    });
+    assert.equal(unsafe.statusCode, 400);
+  },
+);
+
+integrationTest(
   'bill lifecycle preserves settlement and blocks risky paid edits',
   async () => {
     const customerCreate = await app.inject({

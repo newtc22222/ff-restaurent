@@ -336,6 +336,34 @@ describe('loginAction', () => {
 });
 
 describe('mutationAction', () => {
+  it('submits the enriched restaurant profile contract for editing', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const payload = {
+      phone: '0901234567',
+      bannerImageUrl: 'https://image.test/banner.jpg',
+      platformLinks: [
+        { platform: 'WEBSITE', url: 'https://example.test/menu' },
+      ],
+    };
+    const request = new Request('http://localhost/restaurants/restaurant-1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intent: 'update-restaurant', payload }),
+    });
+
+    await mutationAction({
+      request,
+      params: { restaurantId: 'restaurant-1' },
+      context: {},
+    } as never);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/restaurants\/restaurant-1$/),
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify(payload) }),
+    );
+  });
+
   it('dispatches a bill status intent to the API', async () => {
     localStorage.setItem('ff-token', 'token');
     const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));

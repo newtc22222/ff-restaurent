@@ -9,11 +9,12 @@ import {
 import { prisma } from '../prisma.js';
 import { isHeadChef, isSousChefOrAbove, publicUserSelect } from '../roles.js';
 import { billSchema, paymentStatusSchema } from '../schemas.js';
+import { publicRestaurantSelect } from '../restaurant-contract.js';
 
 const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
 
 export const billResponseInclude = {
-  restaurant: true,
+  restaurant: { select: publicRestaurantSelect },
   createdBy: { select: publicUserSelect },
   participants: {
     include: { member: { select: publicUserSelect } },

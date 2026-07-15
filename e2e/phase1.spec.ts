@@ -143,6 +143,14 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   await page.getByLabel('Name').fill('Created E2E Restaurant');
   await page.getByRole('button', { name: 'Enter address manually' }).click();
   await page.getByLabel('Address').fill('2 Browser Street');
+  await page.getByLabel('Phone (optional)').fill('0901234567');
+  await page
+    .getByLabel('Banner image URL')
+    .fill('https://images.example.test/e2e-banner.jpg');
+  await page.getByRole('button', { name: 'Add link' }).click();
+  await page
+    .getByRole('textbox', { name: 'Link URL 1' })
+    .fill('https://example.test/e2e-menu');
   await page.getByRole('button', { name: 'Cuisine type' }).click();
   await page
     .getByRole('searchbox', { name: 'Search cuisines...' })
@@ -158,6 +166,10 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   expect(restaurantResponse.status(), await restaurantResponse.text()).toBe(
     201,
   );
+  const restaurantProfile = await restaurantResponse.json();
+  expect(restaurantProfile.phone).toBe('+84901234567');
+  expect(restaurantProfile.platformLinks).toHaveLength(1);
+  expect(restaurantProfile.links).toBeUndefined();
   await expect(page.getByText('Created E2E Restaurant')).toBeVisible();
 
   await page.getByRole('link', { name: 'Bills' }).click();

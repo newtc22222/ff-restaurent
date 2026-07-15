@@ -2,6 +2,22 @@ export type ChefRole = 'SOUS_CHEF' | 'HEAD_CHEF' | null;
 export type SystemRole = 'ROOT_ADMIN' | null;
 export type PaymentStatus = 'PAID' | 'WAITING';
 export type EntryStatus = 'ACTIVE' | 'ARCHIVED';
+export type RestaurantPlatform =
+  | 'GRAB'
+  | 'SHOPEE_FOOD'
+  | 'BE_FOOD'
+  | 'GOJEK'
+  | 'WEBSITE'
+  | 'FACEBOOK'
+  | 'OTHER';
+
+export type RestaurantPlatformLink = {
+  id?: string;
+  platform: RestaurantPlatform;
+  label?: string | null;
+  url: string;
+  sortOrder?: number;
+};
 
 export type User = {
   id: string;
@@ -22,10 +38,12 @@ export type RestaurantEntry = {
   provinceName?: string | null;
   wardCode?: string | null;
   wardName?: string | null;
+  phone?: string | null;
+  bannerImageUrl?: string | null;
   cuisineType: string;
   type: string;
   avatarUrl?: string | null;
-  links: { label?: string; url: string }[];
+  platformLinks?: RestaurantPlatformLink[];
   isRecommended: boolean;
   isFavorite: boolean;
   isFavoritedByMe?: boolean;

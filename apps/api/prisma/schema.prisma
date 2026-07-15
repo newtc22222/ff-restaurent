@@ -36,6 +36,16 @@ enum PaymentStatus {
   WAITING
 }
 
+enum RestaurantPlatform {
+  GRAB
+  SHOPEE_FOOD
+  BE_FOOD
+  GOJEK
+  WEBSITE
+  FACEBOOK
+  OTHER
+}
+
 model User {
   id                  String                   @id @default(cuid())
   username            String                   @unique
@@ -95,6 +105,8 @@ model RestaurantEntry {
   provinceName  String?
   wardCode      String?
   wardName      String?
+  phone          String?
+  bannerImageUrl String?
   cuisineType   String
   type          String
   avatarUrl     String?
@@ -106,8 +118,23 @@ model RestaurantEntry {
   createdBy     User           @relation("RestaurantCreator", fields: [createdById], references: [id])
   bills         Bill[]
   favorites     UserFavorite[]
+  platformLinks RestaurantPlatformLink[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+}
+
+model RestaurantPlatformLink {
+  id           String             @id @default(cuid())
+  restaurantId String
+  restaurant   RestaurantEntry    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  platform     RestaurantPlatform
+  label        String?
+  url          String
+  sortOrder    Int
+
+  @@unique([restaurantId, url])
+  @@unique([restaurantId, sortOrder])
+  @@index([restaurantId, platform])
 }
 
 model Bill {
