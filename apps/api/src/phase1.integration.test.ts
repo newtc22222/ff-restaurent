@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { ChefRole, PaymentStatus, SystemRole } from '@prisma/client';
+import {
+  ChefRole,
+  CollectionSystemType,
+  PaymentStatus,
+  Prisma,
+  SystemRole,
+} from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
@@ -42,6 +48,7 @@ before(async () => {
   await prisma.roleAuditLog.deleteMany();
   await prisma.billParticipant.deleteMany();
   await prisma.bill.deleteMany();
+  await prisma.collection.deleteMany();
   await prisma.userFavorite.deleteMany();
   await prisma.restaurantEntry.deleteMany();
   await prisma.cuisine.deleteMany();
@@ -316,6 +323,247 @@ integrationTest('the database permits exactly one ROOT_ADMIN', async () => {
     1,
   );
 });
+
+integrationTest(
+  'Collections enforce visibility, ownership, system invariants, pagination, and shortcut compatibility',
+  async () => {
+    const defaults = await app.inject({
+      method: 'GET',
+      url: '/collections',
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(defaults.statusCode, 200);
+    const favorites = defaults
+      .json()
+      .items.find(
+        (collection: { systemType: CollectionSystemType | null }) =>
+          collection.systemType === CollectionSystemType.FAVORITES,
+      );
+    const recommended = defaults
+      .json()
+      .items.find(
+        (collection: { systemType: CollectionSystemType | null }) =>
+          collection.systemType === CollectionSystemType.RECOMMENDED,
+      );
+    assert.ok(favorites);
+    assert.ok(recommended);
+    assert.equal(favorites.isPublic, false);
+    assert.equal(recommended.isPublic, true);
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/collections',
+      headers: auth(tokenFor(customerAId)),
+      payload: {
+        name: 'Team lunches',
+        description: 'Places to try together',
+        isPublic: false,
+      },
+    });
+    assert.equal(created.statusCode, 201);
+    const collectionId = created.json().id as string;
+
+    const hidden = await app.inject({
+      method: 'GET',
+      url: `/collections/${collectionId}`,
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(hidden.statusCode, 404);
+
+    const shared = await app.inject({
+      method: 'POST',
+      url: `/collections/${collectionId}/shares`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { userId: customerBId },
+    });
+    assert.equal(shared.statusCode, 201);
+    assert.equal(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/collections/${collectionId}`,
+          headers: auth(tokenFor(customerBId)),
+        })
+      ).statusCode,
+      200,
+    );
+
+    const sharedMutation = await app.inject({
+      method: 'POST',
+      url: `/collections/${collectionId}/restaurants/${restaurantId}`,
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(sharedMutation.statusCode, 403);
+
+    const addRestaurant = await app.inject({
+      method: 'POST',
+      url: `/collections/${collectionId}/restaurants/${restaurantId}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(addRestaurant.statusCode, 201);
+    const restaurants = await app.inject({
+      method: 'GET',
+      url: `/collections/${collectionId}/restaurants?limit=1&search=Integration`,
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(restaurants.statusCode, 200);
+    assert.equal(restaurants.json().items[0].id, restaurantId);
+    assert.deepEqual(Object.keys(restaurants.json().pageInfo).sort(), [
+      'endCursor',
+      'hasNextPage',
+    ]);
+
+    const removeShare = await app.inject({
+      method: 'DELETE',
+      url: `/collections/${collectionId}/shares/${customerBId}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(removeShare.statusCode, 204);
+    assert.equal(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/collections/${collectionId}`,
+          headers: auth(tokenFor(customerBId)),
+        })
+      ).statusCode,
+      404,
+    );
+
+    const madePublic = await app.inject({
+      method: 'PUT',
+      url: `/collections/${collectionId}`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { isPublic: true },
+    });
+    assert.equal(madePublic.statusCode, 200);
+    const secondPublic = await app.inject({
+      method: 'POST',
+      url: '/collections',
+      headers: auth(tokenFor(customerAId)),
+      payload: { name: 'Team dinners', isPublic: true },
+    });
+    assert.equal(secondPublic.statusCode, 201);
+    const publicSearch = await app.inject({
+      method: 'GET',
+      url: '/collections?search=team&limit=1',
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(publicSearch.statusCode, 200);
+    assert.equal(publicSearch.json().items.length, 1);
+    assert.equal(publicSearch.json().pageInfo.hasNextPage, true);
+    assert.ok(publicSearch.json().pageInfo.endCursor);
+    const nextPage = await app.inject({
+      method: 'GET',
+      url: `/collections?search=team&limit=1&cursor=${publicSearch.json().pageInfo.endCursor}`,
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(nextPage.statusCode, 200);
+    assert.equal(nextPage.json().items.length, 1);
+    assert.notEqual(
+      nextPage.json().items[0].id,
+      publicSearch.json().items[0].id,
+    );
+
+    const immutable = await app.inject({
+      method: 'PUT',
+      url: `/collections/${favorites.id}`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { name: 'Renamed' },
+    });
+    assert.equal(immutable.statusCode, 409);
+    assert.equal(immutable.json().code, 'SYSTEM_COLLECTION_IMMUTABLE');
+
+    const deniedRecommendation = await app.inject({
+      method: 'POST',
+      url: `/collections/${recommended.id}/restaurants/${restaurantId}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(deniedRecommendation.statusCode, 403);
+    const chefRecommendation = await app.inject({
+      method: 'POST',
+      url: `/collections/${recommended.id}/restaurants/${restaurantId}`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(chefRecommendation.statusCode, 201);
+    assert.equal(
+      (
+        await prisma.restaurantEntry.findUniqueOrThrow({
+          where: { id: restaurantId },
+        })
+      ).isRecommended,
+      true,
+    );
+    const recommendationShortcutOff = await app.inject({
+      method: 'PATCH',
+      url: `/restaurants/${restaurantId}/recommend`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(recommendationShortcutOff.statusCode, 200);
+    assert.equal(recommendationShortcutOff.json().isRecommended, false);
+    assert.equal(
+      await prisma.collectionRestaurant.count({
+        where: { collectionId: recommended.id, restaurantId },
+      }),
+      0,
+    );
+    const recommendationShortcutOn = await app.inject({
+      method: 'PATCH',
+      url: `/restaurants/${restaurantId}/recommend`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(recommendationShortcutOn.statusCode, 200);
+    assert.equal(recommendationShortcutOn.json().isRecommended, true);
+
+    const favoriteShortcut = await app.inject({
+      method: 'POST',
+      url: `/restaurants/${restaurantId}/favorite`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(favoriteShortcut.statusCode, 200);
+    assert.equal(favoriteShortcut.json().favorited, true);
+    assert.ok(
+      await prisma.collectionRestaurant.findUnique({
+        where: {
+          collectionId_restaurantId: {
+            collectionId: favorites.id,
+            restaurantId,
+          },
+        },
+      }),
+    );
+    assert.ok(
+      await prisma.userFavorite.findUnique({
+        where: { userId_restaurantId: { userId: customerAId, restaurantId } },
+      }),
+    );
+
+    await assert.rejects(
+      prisma.collection.create({
+        data: {
+          name: 'Duplicate Favorites',
+          ownerId: customerAId,
+          systemType: CollectionSystemType.FAVORITES,
+        },
+      }),
+      (error: unknown) =>
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002',
+    );
+    await assert.rejects(
+      prisma.collection.create({
+        data: {
+          name: 'Duplicate Recommended',
+          isPublic: true,
+          systemType: CollectionSystemType.RECOMMENDED,
+        },
+      }),
+      (error: unknown) =>
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002',
+    );
+  },
+);
 
 integrationTest(
   'Cuisine and Dining Area catalogs enforce normalized relationships and permissions',

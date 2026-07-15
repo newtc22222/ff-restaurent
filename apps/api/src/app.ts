@@ -11,6 +11,7 @@ import { registerAuthRoutes } from './routes/auth-routes.js';
 import { registerAddressRoutes } from './routes/address-routes.js';
 import { registerBillRoutes } from './routes/bill-routes.js';
 import { registerCatalogRoutes } from './routes/catalog-routes.js';
+import { registerCollectionRoutes } from './routes/collection-routes.js';
 import { registerMemberRoutes } from './routes/member-routes.js';
 import { registerNotificationRoutes } from './routes/notification-routes.js';
 import { registerPasswordResetRoutes } from './routes/password-reset-routes.js';
@@ -58,6 +59,7 @@ const registerRoutes = (app: FastifyInstance) => {
   registerAuthRoutes(app);
   registerAddressRoutes(app);
   registerCatalogRoutes(app);
+  registerCollectionRoutes(app);
   registerPasswordResetRoutes(app);
   registerProfileRoutes(app);
   registerMemberRoutes(app);

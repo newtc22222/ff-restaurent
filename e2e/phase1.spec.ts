@@ -22,6 +22,7 @@ test.beforeAll(async () => {
   await prisma.roleAuditLog.deleteMany();
   await prisma.billParticipant.deleteMany();
   await prisma.bill.deleteMany();
+  await prisma.collection.deleteMany();
   await prisma.userFavorite.deleteMany();
   await prisma.restaurantEntry.deleteMany();
   await prisma.cuisine.deleteMany();

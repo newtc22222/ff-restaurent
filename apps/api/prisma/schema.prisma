@@ -46,6 +46,11 @@ enum RestaurantPlatform {
   OTHER
 }
 
+enum CollectionSystemType {
+  FAVORITES
+  RECOMMENDED
+}
+
 model User {
   id                    String                   @id @default(cuid())
   username              String                   @unique
@@ -68,6 +73,8 @@ model User {
   rootTransfersFrom     RootAdminTransferAudit[] @relation("RootTransferredFrom")
   rootTransfersTo       RootAdminTransferAudit[] @relation("RootTransferredTo")
   passwordResetRequests PasswordResetRequest[]
+  ownedCollections      Collection[]             @relation("CollectionOwner")
+  collectionShares      CollectionShare[]
 }
 
 model PasswordResetRequest {
@@ -122,6 +129,7 @@ model RestaurantEntry {
   favorites      UserFavorite[]
   platformLinks  RestaurantPlatformLink[]
   cuisines       RestaurantCuisine[]
+  collections    CollectionRestaurant[]
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
 
@@ -258,4 +266,43 @@ model UserFavorite {
   createdAt    DateTime        @default(now())
 
   @@id([userId, restaurantId])
+}
+
+model Collection {
+  id          String                 @id @default(cuid())
+  name        String
+  description String?
+  isPublic    Boolean                @default(false)
+  systemType  CollectionSystemType?
+  ownerId     String?
+  owner       User?                  @relation("CollectionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  shares      CollectionShare[]
+  restaurants CollectionRestaurant[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([ownerId, createdAt])
+  @@index([isPublic, createdAt])
+}
+
+model CollectionShare {
+  collectionId String
+  userId       String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@id([collectionId, userId])
+  @@index([userId, createdAt])
+}
+
+model CollectionRestaurant {
+  collectionId String
+  restaurantId String
+  collection   Collection      @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  restaurant   RestaurantEntry @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now())
+
+  @@id([collectionId, restaurantId])
+  @@index([restaurantId, createdAt])
 }
