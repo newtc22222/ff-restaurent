@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Heart, Store, ThumbsUp } from 'lucide-react';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
 import type { CatalogPage, RestaurantEntry } from '../lib/api';
@@ -36,6 +36,10 @@ export default function RestaurantsPage() {
   const page = useLoaderData() as CatalogPage<RestaurantEntry>;
   const restaurants = page.items;
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  }, [searchParams]);
   const { locale, t } = useI18n();
   const { mutate } = useMutation();
   const typeOptions = locale === 'vi' ? TYPE_OPTIONS_VI : TYPE_OPTIONS_EN;
@@ -56,21 +60,19 @@ export default function RestaurantsPage() {
   });
 
   const setQuery = (key: string, value?: string) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.delete('cursor');
-      if (value) next.set(key, value);
-      else next.delete(key);
-      return next;
-    });
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.delete('cursor');
+    if (value) next.set(key, value);
+    else next.delete(key);
+    searchParamsRef.current = next;
+    setSearchParams(next);
   };
 
   const goToNextPage = (cursor: string) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set('cursor', cursor);
-      return next;
-    });
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.set('cursor', cursor);
+    searchParamsRef.current = next;
+    setSearchParams(next);
   };
 
   const cuisineOptions = Array.from(

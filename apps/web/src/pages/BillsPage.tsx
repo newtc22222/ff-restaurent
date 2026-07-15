@@ -5,7 +5,7 @@ import {
   LayoutDashboard,
   Plus,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
 import type { Bill, BillParticipant, CatalogPage, User } from '../lib/api';
 import { money } from '../lib/api';
@@ -26,6 +26,10 @@ export default function BillsPage() {
   const page = useLoaderData() as CatalogPage<Bill>;
   const bills = page.items;
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  }, [searchParams]);
   const { t } = useI18n();
   const { mutate } = useMutation();
   const filterRestaurant = searchParams.get('restaurantId') ?? '';
@@ -39,21 +43,19 @@ export default function BillsPage() {
   const sort = searchParams.get('sort') ?? 'created-desc';
 
   const setQuery = (key: string, value?: string) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.delete('cursor');
-      if (value) next.set(key, value);
-      else next.delete(key);
-      return next;
-    });
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.delete('cursor');
+    if (value) next.set(key, value);
+    else next.delete(key);
+    searchParamsRef.current = next;
+    setSearchParams(next);
   };
 
   const goToNextPage = (cursor: string) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set('cursor', cursor);
-      return next;
-    });
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.set('cursor', cursor);
+    searchParamsRef.current = next;
+    setSearchParams(next);
   };
 
   const restaurantOptions = Array.from(
