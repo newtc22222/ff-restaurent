@@ -162,7 +162,7 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
     .getByRole('searchbox', { name: 'Search cuisines...' })
     .fill('Vietnamese');
   await page.getByRole('option', { name: /Vietnamese/ }).click();
-  await page.getByRole('button', { name: 'Cuisines' }).click();
+  await page.keyboard.press('Escape');
   const restaurantResponsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith('/restaurants') &&
