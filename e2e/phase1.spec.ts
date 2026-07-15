@@ -299,6 +299,7 @@ test('member discovers, manages, shares, and reviews Collection places', async (
 
   await login(page, 'e2e-customer');
   await page.getByRole('link', { name: 'Restaurants' }).click();
+  await expect(page).toHaveURL(/\/restaurants$/);
   await page
     .locator('article')
     .filter({ hasText: 'Existing E2E Restaurant' })
@@ -328,6 +329,7 @@ test('member discovers, manages, shares, and reviews Collection places', async (
   expect((await favoriteResponse).status()).toBe(200);
 
   await page.getByRole('link', { name: 'Collections' }).click();
+  await expect(page).toHaveURL(/\/collections$/);
   await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
   await expect(page.getByText('Recommended', { exact: true })).toBeVisible();
   await page.getByLabel('Name').fill('E2E Team Spots');
@@ -365,6 +367,7 @@ test('member discovers, manages, shares, and reviews Collection places', async (
   await page.evaluate(() => localStorage.removeItem('ff-token'));
   await login(page, 'e2e-sous');
   await page.getByRole('link', { name: 'Collections' }).click();
+  await expect(page).toHaveURL(/\/collections$/);
   await page.getByLabel('Visibility').selectOption('shared');
   await expect(page).toHaveURL(/visibility=shared/);
   await page.getByRole('button', { name: /E2E Team Spots/ }).click();
