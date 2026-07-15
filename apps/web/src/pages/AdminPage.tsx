@@ -1,7 +1,8 @@
 import { Users } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
 import type { ChefRole } from '../lib/api';
-import { isHead, roleLabel } from '../lib/helpers';
+import { isRootAdmin, roleLabel } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
 import { useI18n } from '../app/providers/i18n';
 import { useMutation } from '../hooks/useMutation';
@@ -10,14 +11,17 @@ import EmptyState from '../components/ui/EmptyState';
 import Dropdown from '../components/ui/Dropdown';
 
 /**
- * AdminPage lists all workspace members and allows a Head Chef to update their system roles.
+ * AdminPage is the ROOT_ADMIN-only role governance and ownership-transfer UI.
  */
 export default function AdminPage() {
   const { user, users } = useAppContext();
   const { t } = useI18n();
   const { mutate } = useMutation();
+  const [targetUsername, setTargetUsername] = useState('');
+  const [confirmationUsername, setConfirmationUsername] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
 
-  if (!isHead(user)) return <Navigate to="/bills" replace />;
+  if (!isRootAdmin(user)) return <Navigate to="/bills" replace />;
 
   const updateRole = (id: string, chefRole: ChefRole) =>
     mutate(
@@ -27,6 +31,29 @@ export default function AdminPage() {
         success: t('toast.roleUpdated'),
       },
     );
+
+  const transferRoot = (event: FormEvent) => {
+    event.preventDefault();
+    void mutate(
+      {
+        intent: 'root-transfer',
+        payload: {
+          targetUsername,
+          confirmationUsername,
+          currentPassword,
+        },
+      },
+      {
+        fallback: t('toast.rootTransferFailed'),
+        success: t('toast.rootTransferred'),
+        redirects: true,
+      },
+    );
+  };
+
+  const transferTargets = users.filter(
+    (member) => member.id !== user.id && member.systemRole !== 'ROOT_ADMIN',
+  );
 
   return (
     <div className="space-y-4">
@@ -70,6 +97,71 @@ export default function AdminPage() {
           )}
         </article>
       ))}
+
+      <section className="panel p-4 sm:p-6">
+        <h2 className="text-lg font-bold text-ink">
+          {t('admin.transferTitle')}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {t('admin.transferDescription')}
+        </p>
+        <form
+          className="mt-5 grid gap-4 md:grid-cols-2"
+          onSubmit={transferRoot}
+        >
+          <label className="block space-y-2">
+            <span className="label">{t('admin.transferTarget')}</span>
+            <Dropdown
+              label={t('admin.chooseMember')}
+              ariaLabel={t('admin.transferTarget')}
+              value={targetUsername}
+              onChange={setTargetUsername}
+              options={transferTargets.map((member) => ({
+                value: member.username,
+                label: member.name,
+                description: `@${member.username} / ${roleLabel(member, t)}`,
+                searchText: `${member.name} ${member.username}`,
+              }))}
+              searchable
+              searchPlaceholder={t('bills.searchMembers')}
+              emptyMessage={t('admin.noTransferTargets')}
+            />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">{t('admin.confirmTargetUsername')}</span>
+            <input
+              className="field w-full"
+              aria-label={t('admin.confirmTargetUsername')}
+              value={confirmationUsername}
+              onChange={(event) => setConfirmationUsername(event.target.value)}
+              autoComplete="off"
+              required
+            />
+          </label>
+          <label className="block space-y-2 md:col-span-2">
+            <span className="label">{t('admin.currentPassword')}</span>
+            <input
+              className="field w-full"
+              type="password"
+              aria-label={t('admin.currentPassword')}
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </label>
+          <button
+            className="btn btn-primary md:col-span-2 md:justify-self-start"
+            disabled={
+              !targetUsername ||
+              confirmationUsername !== targetUsername ||
+              !currentPassword
+            }
+          >
+            {t('admin.transferAction')}
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

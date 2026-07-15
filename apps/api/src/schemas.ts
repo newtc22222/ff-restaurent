@@ -84,6 +84,12 @@ export const chefRoleSchema = z.object({
   chefRole: z.enum(['SOUS_CHEF', 'HEAD_CHEF']).nullable(),
 });
 
+export const rootAdminTransferSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  targetUsername: z.string().min(3).max(30),
+  confirmationUsername: z.string().min(3).max(30),
+});
+
 export const paymentStatusSchema = z.object({
   status: z.enum(['PAID', 'WAITING']),
   expectedStatus: z.enum(['PAID', 'WAITING']),

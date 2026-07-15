@@ -14,7 +14,8 @@ description: Work on the FF RESTaurent monorepo, a React/Vite web app plus Fasti
 5. Preserve role semantics:
    - CUSTOMER: own participant bills, own stats, own notifications, own payment status.
    - SOUS_CHEF: create restaurants and manage owned bills.
-   - HEAD_CHEF: global bill visibility, member role changes, archive/restore admin actions.
+   - HEAD_CHEF: global bill visibility and archive/restore admin actions.
+   - ROOT_ADMIN: singleton highest role, member role governance, and system administration.
 6. Validate at the narrowest useful scope, then broaden when shared behavior changes.
 
 ## Common Commands

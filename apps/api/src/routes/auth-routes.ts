@@ -36,7 +36,7 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
       }
       request.log.info({ event: 'login_succeeded', userId: user.id });
       return {
-        token: app.jwt.sign({ sub: user.id }),
+        token: app.jwt.sign({ sub: user.id, ver: user.sessionVersion }),
         user: sanitizeUser(user),
       };
     },
@@ -76,7 +76,7 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
         },
       });
       return reply.code(201).send({
-        token: app.jwt.sign({ sub: user.id }),
+        token: app.jwt.sign({ sub: user.id, ver: user.sessionVersion }),
         user: sanitizeUser(user),
       });
     },

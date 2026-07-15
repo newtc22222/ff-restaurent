@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { pathToFileURL } from 'node:url';
-import { ChefRole, PrismaClient } from '@prisma/client';
+import { ChefRole, PrismaClient, SystemRole } from '@prisma/client';
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
 
 const prisma = new PrismaClient();
@@ -57,6 +57,7 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
     await prisma.userFavorite.deleteMany();
     await prisma.notification.deleteMany();
     await prisma.billAuditLog.deleteMany();
+    await prisma.rootAdminTransferAudit.deleteMany();
     await prisma.roleAuditLog.deleteMany();
     await prisma.billParticipant.deleteMany();
     await prisma.bill.deleteMany();
@@ -90,6 +91,7 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
         phone: '+84901000003',
         passwordHash,
         chefRole: ChefRole.HEAD_CHEF,
+        systemRole: SystemRole.ROOT_ADMIN,
       },
     }),
   ]);

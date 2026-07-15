@@ -1,4 +1,4 @@
-import { ChefRole, Prisma, User } from '@prisma/client';
+import { ChefRole, Prisma, SystemRole, User } from '@prisma/client';
 
 export const publicUserSelect = {
   id: true,
@@ -6,16 +6,25 @@ export const publicUserSelect = {
   phone: true,
   name: true,
   chefRole: true,
+  systemRole: true,
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
-export type CurrentUser = Pick<User, 'id' | 'username' | 'name' | 'chefRole'>;
+export type CurrentUser = Pick<
+  User,
+  'id' | 'username' | 'name' | 'chefRole' | 'systemRole'
+>;
+
+export const isRootAdmin = (user: CurrentUser) =>
+  user.systemRole === SystemRole.ROOT_ADMIN;
 
 export const isSousChefOrAbove = (user: CurrentUser) =>
-  user.chefRole === ChefRole.SOUS_CHEF || user.chefRole === ChefRole.HEAD_CHEF;
+  isRootAdmin(user) ||
+  user.chefRole === ChefRole.SOUS_CHEF ||
+  user.chefRole === ChefRole.HEAD_CHEF;
 
 export const isHeadChef = (user: CurrentUser) =>
-  user.chefRole === ChefRole.HEAD_CHEF;
+  isRootAdmin(user) || user.chefRole === ChefRole.HEAD_CHEF;
 
 export const sanitizeUser = (user: User) => ({
   id: user.id,
@@ -23,6 +32,11 @@ export const sanitizeUser = (user: User) => ({
   phone: user.phone,
   name: user.name,
   chefRole: user.chefRole,
-  roles: ['CUSTOMER', ...(user.chefRole ? [user.chefRole] : [])],
+  systemRole: user.systemRole,
+  roles: [
+    'CUSTOMER',
+    ...(user.chefRole ? [user.chefRole] : []),
+    ...(user.systemRole ? [user.systemRole] : []),
+  ],
   createdAt: user.createdAt,
 });

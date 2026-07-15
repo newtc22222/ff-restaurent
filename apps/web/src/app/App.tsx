@@ -22,7 +22,7 @@ import {
   useAppContext,
 } from './providers/app-context';
 import { useI18n } from './providers/i18n';
-import { isHead } from '../lib/helpers';
+import { isRootAdmin } from '../lib/helpers';
 import { useMutation } from '../hooks/useMutation';
 import AppHeader from '../components/layout/AppHeader';
 import Sidebar from '../components/layout/Sidebar';
@@ -72,7 +72,7 @@ function AppShellContent() {
     ['/bills', LayoutDashboard, t('nav.bills')],
     ['/restaurants', Store, t('nav.restaurants')],
     ['/stats', BarChart2, t('nav.stats')],
-    ...(isHead(user)
+    ...(isRootAdmin(user)
       ? ([['/admin', Users, t('nav.members')]] as [
           string,
           LucideIcon,

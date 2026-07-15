@@ -1,24 +1,32 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { ChefRole, PaymentStatus } from '@prisma/client';
+import { ChefRole, PaymentStatus, SystemRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
 import { prisma } from './prisma.js';
+import {
+  RootAdminTransferError,
+  transferRootAdmin,
+} from './root-admin-service.js';
 
 const integrationTest =
   process.env.RUN_INTEGRATION_TESTS === '1' ? test : test.skip;
 
 let app: FastifyInstance;
 let headId: string;
+let rootId: string;
 let sousId: string;
 let customerAId: string;
 let customerBId: string;
 let restaurantId: string;
 let billId: string;
 
-const tokenFor = (id: string, expiresIn = '8h') =>
-  app.jwt.sign({ sub: id }, { expiresIn });
+const tokenFor = (id: string, expiresIn = '8h', version?: number) =>
+  app.jwt.sign(
+    { sub: id, ...(version === undefined ? {} : { ver: version }) },
+    { expiresIn },
+  );
 const auth = (token: string) => ({ authorization: `Bearer ${token}` });
 
 before(async () => {
@@ -29,6 +37,7 @@ before(async () => {
   app = await buildApp();
   await prisma.notification.deleteMany();
   await prisma.billAuditLog.deleteMany();
+  await prisma.rootAdminTransferAudit.deleteMany();
   await prisma.roleAuditLog.deleteMany();
   await prisma.billParticipant.deleteMany();
   await prisma.bill.deleteMany();
@@ -36,7 +45,15 @@ before(async () => {
   await prisma.restaurantEntry.deleteMany();
   await prisma.user.deleteMany();
   const passwordHash = await bcrypt.hash('password123', 4);
-  const [head, sous, customerA, customerB] = await Promise.all([
+  const [root, head, sous, customerA, customerB] = await Promise.all([
+    prisma.user.create({
+      data: {
+        username: 'root-int',
+        name: 'Root Admin',
+        passwordHash,
+        systemRole: SystemRole.ROOT_ADMIN,
+      },
+    }),
     prisma.user.create({
       data: {
         username: 'head-int',
@@ -60,6 +77,7 @@ before(async () => {
       data: { username: 'customer-b-int', name: 'Customer B', passwordHash },
     }),
   ]);
+  rootId = root.id;
   headId = head.id;
   sousId = sous.id;
   customerAId = customerA.id;
@@ -207,30 +225,94 @@ integrationTest(
   },
 );
 
-integrationTest(
-  'role boundaries and final Head Chef safeguards hold',
-  async () => {
-    const denied = await app.inject({
-      method: 'GET',
-      url: '/users',
-      headers: auth(tokenFor(customerAId)),
-    });
-    assert.equal(denied.statusCode, 403);
+integrationTest('ROOT_ADMIN exclusively governs chef roles', async () => {
+  const denied = await app.inject({
+    method: 'GET',
+    url: '/users',
+    headers: auth(tokenFor(customerAId)),
+  });
+  assert.equal(denied.statusCode, 403);
 
-    const selfChange = await app.inject({
+  const headList = await app.inject({
+    method: 'GET',
+    url: '/users',
+    headers: auth(tokenFor(headId)),
+  });
+  assert.equal(headList.statusCode, 403);
+  assert.equal(headList.json().code, 'ROOT_ADMIN_REQUIRED');
+
+  for (const targetId of [customerAId, sousId, headId, rootId]) {
+    const headChange = await app.inject({
       method: 'PATCH',
-      url: `/users/${headId}/chef-role`,
+      url: `/users/${targetId}/chef-role`,
       headers: auth(tokenFor(headId)),
-      payload: { chefRole: null },
+      payload: { chefRole: ChefRole.SOUS_CHEF },
     });
-    assert.equal(selfChange.statusCode, 403);
-    assert.equal(selfChange.json().code, 'SELF_ROLE_CHANGE_FORBIDDEN');
-    assert.equal(
-      await prisma.user.count({ where: { chefRole: ChefRole.HEAD_CHEF } }),
-      1,
-    );
-  },
-);
+    assert.equal(headChange.statusCode, 403);
+    assert.equal(headChange.json().code, 'ROOT_ADMIN_REQUIRED');
+  }
+
+  const rootList = await app.inject({
+    method: 'GET',
+    url: '/users',
+    headers: auth(tokenFor(rootId)),
+  });
+  assert.equal(rootList.statusCode, 200);
+  assert.equal(JSON.stringify(rootList.json()).includes('passwordHash'), false);
+  assert.equal(
+    JSON.stringify(rootList.json()).includes('sessionVersion'),
+    false,
+  );
+
+  const rootTarget = await app.inject({
+    method: 'PATCH',
+    url: `/users/${rootId}/chef-role`,
+    headers: auth(tokenFor(rootId)),
+    payload: { chefRole: ChefRole.HEAD_CHEF },
+  });
+  assert.equal(rootTarget.statusCode, 403);
+  assert.equal(rootTarget.json().code, 'ROOT_ADMIN_ROLE_CHANGE_FORBIDDEN');
+
+  const promoted = await app.inject({
+    method: 'PATCH',
+    url: `/users/${customerAId}/chef-role`,
+    headers: auth(tokenFor(rootId)),
+    payload: { chefRole: ChefRole.SOUS_CHEF },
+  });
+  assert.equal(promoted.statusCode, 200);
+  assert.equal(promoted.json().chefRole, ChefRole.SOUS_CHEF);
+  const restored = await app.inject({
+    method: 'PATCH',
+    url: `/users/${customerAId}/chef-role`,
+    headers: auth(tokenFor(rootId)),
+    payload: { chefRole: null },
+  });
+  assert.equal(restored.statusCode, 200);
+});
+
+integrationTest('the database permits exactly one ROOT_ADMIN', async () => {
+  await assert.rejects(
+    prisma.user.create({
+      data: {
+        username: 'second-root-int',
+        name: 'Second Root',
+        passwordHash: await bcrypt.hash('password123', 4),
+        systemRole: SystemRole.ROOT_ADMIN,
+      },
+    }),
+    (error: unknown) =>
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'P2002',
+  );
+  assert.equal(
+    await prisma.user.count({
+      where: { systemRole: SystemRole.ROOT_ADMIN },
+    }),
+    1,
+  );
+});
 
 integrationTest(
   'bill lifecycle preserves settlement and blocks risky paid edits',
@@ -454,3 +536,87 @@ integrationTest('validation failures use stable client contracts', async () => {
   assert.equal(response.json().code, 'VALIDATION_ERROR');
   assert.ok(Array.isArray(response.json().issues));
 });
+
+integrationTest(
+  'root transfer is audited, conflict-safe, and invalidates both sessions',
+  async () => {
+    const wrongPassword = await app.inject({
+      method: 'POST',
+      url: '/admin/root-transfer',
+      headers: auth(tokenFor(rootId)),
+      payload: {
+        currentPassword: 'wrong-password',
+        targetUsername: 'customer-a-int',
+        confirmationUsername: 'customer-a-int',
+      },
+    });
+    assert.equal(wrongPassword.statusCode, 403);
+    assert.equal(wrongPassword.json().code, 'ROOT_TRANSFER_PASSWORD_INVALID');
+
+    const results = await Promise.allSettled([
+      transferRootAdmin({
+        currentUserId: rootId,
+        currentPassword: 'password123',
+        targetUsername: 'customer-a-int',
+        confirmationUsername: 'customer-a-int',
+      }),
+      transferRootAdmin({
+        currentUserId: rootId,
+        currentPassword: 'password123',
+        targetUsername: 'customer-b-int',
+        confirmationUsername: 'customer-b-int',
+      }),
+    ]);
+    assert.equal(
+      results.filter((result) => result.status === 'fulfilled').length,
+      1,
+    );
+    const rejected = results.find((result) => result.status === 'rejected');
+    assert.ok(rejected && rejected.status === 'rejected');
+    assert.ok(rejected.reason instanceof RootAdminTransferError);
+    assert.equal(rejected.reason.code, 'ROOT_TRANSFER_CONFLICT');
+
+    const newRoot = await prisma.user.findFirstOrThrow({
+      where: { systemRole: SystemRole.ROOT_ADMIN },
+    });
+    assert.ok([customerAId, customerBId].includes(newRoot.id));
+    assert.equal(await prisma.rootAdminTransferAudit.count(), 1);
+
+    const oldRootSession = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(oldRootSession.statusCode, 401);
+    assert.equal(oldRootSession.json().code, 'SESSION_INVALIDATED');
+    const newRootOldSession = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(tokenFor(newRoot.id)),
+    });
+    assert.equal(newRootOldSession.statusCode, 401);
+
+    const freshNewRootToken = tokenFor(
+      newRoot.id,
+      '8h',
+      newRoot.sessionVersion,
+    );
+    const transferBack = await app.inject({
+      method: 'POST',
+      url: '/admin/root-transfer',
+      headers: auth(freshNewRootToken),
+      payload: {
+        currentPassword: 'password123',
+        targetUsername: 'root-int',
+        confirmationUsername: 'root-int',
+      },
+    });
+    assert.equal(transferBack.statusCode, 200);
+    assert.equal(await prisma.rootAdminTransferAudit.count(), 2);
+    assert.equal(
+      (await prisma.user.findUniqueOrThrow({ where: { id: rootId } }))
+        .systemRole,
+      SystemRole.ROOT_ADMIN,
+    );
+  },
+);

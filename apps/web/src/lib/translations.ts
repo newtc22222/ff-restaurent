@@ -45,6 +45,7 @@ export const translations = {
     'role.customer': 'Khách hàng',
     'role.headchef': 'Bếp trưởng',
     'role.souschef': 'Bếp phó',
+    'role.rootadmin': 'Quản trị viên gốc',
 
     // Bills
     'bills.title': 'Hóa đơn',
@@ -137,10 +138,20 @@ export const translations = {
 
     // Admin
     'admin.title': 'Thành viên',
-    'admin.subtitle': 'Bếp trưởng có thể cấp hoặc thay đổi vai trò.',
+    'admin.subtitle':
+      'Chỉ Quản trị viên gốc có thể thay đổi vai trò thành viên.',
     'admin.noMembers': 'Chưa tải thành viên',
     'admin.noMembersDesc': 'Thành viên sẽ hiển thị sau khi API trả về dữ liệu.',
-    'admin.customerOnly': 'Chỉ Khách hàng',
+    'admin.customerOnly': 'Khách hàng',
+    'admin.transferTitle': 'Chuyển quyền Quản trị viên gốc',
+    'admin.transferDescription':
+      'Thao tác này đăng xuất cả hai tài khoản và yêu cầu đăng nhập lại.',
+    'admin.transferTarget': 'Thành viên nhận quyền',
+    'admin.chooseMember': 'Chọn thành viên',
+    'admin.confirmTargetUsername': 'Nhập lại tên đăng nhập người nhận',
+    'admin.currentPassword': 'Mật khẩu hiện tại của bạn',
+    'admin.transferAction': 'Chuyển quyền và đăng xuất',
+    'admin.noTransferTargets': 'Không có thành viên phù hợp.',
 
     // Validation
     'validation.vietnamMobilePhone':
@@ -155,6 +166,9 @@ export const translations = {
     'toast.authFailed': 'Không thể hoàn tất xác thực.',
     'toast.roleUpdated': 'Đã cập nhật vai trò thành viên.',
     'toast.roleUpdateFailed': 'Không thể cập nhật vai trò thành viên.',
+    'toast.rootTransferred':
+      'Đã chuyển quyền Quản trị viên gốc. Vui lòng đăng nhập lại.',
+    'toast.rootTransferFailed': 'Không thể chuyển quyền Quản trị viên gốc.',
     'toast.billCreated': 'Đã tạo hóa đơn.',
     'toast.billCreateFailed': 'Không thể tạo hóa đơn.',
     'toast.billUpdated': 'Đã cập nhật hóa đơn.',
@@ -200,6 +214,18 @@ export const translations = {
     'error.finalHeadChefRequired': 'Nhóm phải giữ lại ít nhất một Bếp trưởng.',
     'error.selfRoleChangeForbidden':
       'Bạn không thể thay đổi vai trò của chính mình.',
+    'error.rootAdminRequired':
+      'Chỉ Quản trị viên gốc có quyền thực hiện thao tác này.',
+    'error.rootAdminRoleChangeForbidden':
+      'Không thể thay đổi vai trò của Quản trị viên gốc tại đây.',
+    'error.rootTransferConfirmationMismatch':
+      'Tên đăng nhập xác nhận không khớp.',
+    'error.rootTransferConflict':
+      'Quyền quản trị vừa thay đổi. Vui lòng đăng nhập lại.',
+    'error.rootTransferPasswordInvalid': 'Mật khẩu hiện tại không đúng.',
+    'error.rootTransferTargetInvalid': 'Chọn một thành viên hiện có khác.',
+    'error.sessionInvalidated':
+      'Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.',
 
     // Profile
     'profile.title': 'Hồ sơ',
@@ -264,7 +290,8 @@ export const translations = {
     // Roles
     'role.customer': 'Customer',
     'role.souschef': 'Sous chef',
-    'role.headchef': 'Executive chef',
+    'role.headchef': 'Head Chef',
+    'role.rootadmin': 'Root Admin',
 
     // Bills
     'bills.title': 'Bills',
@@ -356,12 +383,20 @@ export const translations = {
 
     // Admin
     'admin.title': 'Members',
-    'admin.subtitle':
-      'HEAD_CHEF can grant or change the one optional chef role.',
+    'admin.subtitle': 'Only the Root Admin can change member roles.',
     'admin.noMembers': 'No members loaded',
     'admin.noMembersDesc':
-      'Members appear here after the API returns team users. Head chefs can promote one optional chef role per member.',
-    'admin.customerOnly': 'CUSTOMER only',
+      'Members appear here after the API returns team users.',
+    'admin.customerOnly': 'Customer',
+    'admin.transferTitle': 'Transfer Root Admin ownership',
+    'admin.transferDescription':
+      'This signs out both accounts and requires each person to sign in again.',
+    'admin.transferTarget': 'New Root Admin',
+    'admin.chooseMember': 'Choose a member',
+    'admin.confirmTargetUsername': 'Repeat the target username',
+    'admin.currentPassword': 'Your current password',
+    'admin.transferAction': 'Transfer ownership and sign out',
+    'admin.noTransferTargets': 'No eligible members.',
 
     // Profile
     'profile.title': 'Profile',
@@ -382,6 +417,8 @@ export const translations = {
     'toast.authFailed': 'Could not complete authentication.',
     'toast.roleUpdated': 'Member role updated.',
     'toast.roleUpdateFailed': 'Could not update the member role.',
+    'toast.rootTransferred': 'Root Admin ownership transferred. Sign in again.',
+    'toast.rootTransferFailed': 'Could not transfer Root Admin ownership.',
     'toast.billCreated': 'Bill created.',
     'toast.billCreateFailed': 'Could not create the bill.',
     'toast.billUpdated': 'Bill updated.',
@@ -427,6 +464,17 @@ export const translations = {
     'error.finalHeadChefRequired':
       'The group must retain at least one Head Chef.',
     'error.selfRoleChangeForbidden': 'You cannot change your own role.',
+    'error.rootAdminRequired': 'Only the Root Admin can perform this action.',
+    'error.rootAdminRoleChangeForbidden':
+      'The Root Admin role cannot be changed here.',
+    'error.rootTransferConfirmationMismatch':
+      'The target username confirmation does not match.',
+    'error.rootTransferConflict':
+      'Root ownership changed. Sign in again before retrying.',
+    'error.rootTransferPasswordInvalid': 'Your current password is incorrect.',
+    'error.rootTransferTargetInvalid': 'Choose another existing member.',
+    'error.sessionInvalidated':
+      'Your session is no longer valid. Sign in again.',
 
     // Theme
     'theme.light': 'Light',

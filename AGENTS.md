@@ -99,13 +99,16 @@ http://localhost:4000/api/docs
 
 ## Role System
 
-Users have an optional `chefRole` field:
+Users have an optional backward-compatible `chefRole` field:
 
 ```ts
 null | 'SOUS_CHEF' | 'HEAD_CHEF';
 ```
 
 A `null` value represents the default **CUSTOMER** role.
+
+One user also has `systemRole: 'ROOT_ADMIN'`. `ROOT_ADMIN` is the singleton
+highest-level system role and is independent from `chefRole`.
 
 Permissions cascade upward:
 
@@ -131,8 +134,18 @@ Includes SOUS_CHEF permissions, plus:
 
 - Archive and restore bills
 - Archive and restore restaurants
-- Change member roles
 - View all bills regardless of participation
+
+### ROOT_ADMIN
+
+Includes HEAD_CHEF permissions, plus:
+
+- Change member chef roles
+- Transfer ROOT_ADMIN ownership
+- Manage password-recovery requests and future system controls
+
+HEAD_CHEF users cannot change any member role. Only ROOT_ADMIN can access member
+administration.
 
 Backend permission helpers are located in:
 
@@ -150,6 +163,7 @@ using:
 
 - `canChef`
 - `isHead`
+- `isRootAdmin`
 
 ---
 
