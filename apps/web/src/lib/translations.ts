@@ -181,6 +181,16 @@ export const translations = {
     'admin.noMembers': 'Chưa tải thành viên',
     'admin.noMembersDesc': 'Thành viên sẽ hiển thị sau khi API trả về dữ liệu.',
     'admin.customerOnly': 'Khách hàng',
+    'admin.searchMembers': 'Tìm theo tên, tên đăng nhập hoặc số điện thoại',
+    'admin.noSearchResults': 'Không có thành viên phù hợp với tìm kiếm.',
+    'admin.fullName': 'Họ tên',
+    'admin.username': 'Tên đăng nhập',
+    'admin.phone': 'Số điện thoại',
+    'admin.effectiveRole': 'Vai trò hiệu lực',
+    'admin.actions': 'Thao tác',
+    'admin.role': 'vai trò',
+    'admin.readOnly': 'Chỉ đọc',
+    'admin.mobileMembers': 'Danh sách thành viên',
     'admin.transferTitle': 'Chuyển quyền Quản trị viên gốc',
     'admin.transferDescription':
       'Thao tác này đăng xuất cả hai tài khoản và yêu cầu đăng nhập lại.',
@@ -375,7 +385,7 @@ export const translations = {
 
     // Roles
     'role.customer': 'Customer',
-    'role.souschef': 'Sous chef',
+    'role.souschef': 'Sous Chef',
     'role.headchef': 'Head Chef',
     'role.rootadmin': 'Root Admin',
 
@@ -504,6 +514,16 @@ export const translations = {
     'admin.noMembersDesc':
       'Members appear here after the API returns team users.',
     'admin.customerOnly': 'Customer',
+    'admin.searchMembers': 'Search name, username, or phone',
+    'admin.noSearchResults': 'No members match this search.',
+    'admin.fullName': 'Full name',
+    'admin.username': 'Username',
+    'admin.phone': 'Phone',
+    'admin.effectiveRole': 'Effective role',
+    'admin.actions': 'Actions',
+    'admin.role': 'role',
+    'admin.readOnly': 'Read only',
+    'admin.mobileMembers': 'Member cards',
     'admin.transferTitle': 'Transfer Root Admin ownership',
     'admin.transferDescription':
       'This signs out both accounts and requires each person to sign in again.',

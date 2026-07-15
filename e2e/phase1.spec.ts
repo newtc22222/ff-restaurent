@@ -45,7 +45,12 @@ test.beforeAll(async () => {
       },
     }),
     prisma.user.create({
-      data: { username: 'e2e-customer', name: 'Customer E2E', passwordHash },
+      data: {
+        username: 'e2e-customer',
+        name: 'Customer E2E',
+        phone: '+84901234567',
+        passwordHash,
+      },
     }),
   ]);
   const restaurant = await prisma.restaurantEntry.create({
@@ -206,16 +211,48 @@ test('Root Admin archives, restores, administers roles, and cannot alter root th
   ).toBeVisible();
   await page.getByRole('button', { name: 'Back to Bills' }).click();
   await page.getByRole('link', { name: 'Members' }).click();
-  const headRow = page.getByRole('article').filter({ hasText: 'Head E2E' });
+  for (const column of [
+    'Full name',
+    'Username',
+    'Phone',
+    'Effective role',
+    'Actions',
+  ]) {
+    await expect(
+      page.getByRole('columnheader', { name: column }),
+    ).toBeVisible();
+  }
+  const search = page.getByRole('searchbox', {
+    name: 'Search name, username, or phone',
+  });
+  await search.fill('+84901234567');
+  await expect(
+    page.getByRole('row').filter({ hasText: 'Customer E2E' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('row').filter({ hasText: 'Head E2E' }),
+  ).toHaveCount(0);
+  await search.clear();
+
+  const headRow = page.getByRole('row').filter({ hasText: 'Head E2E' });
+  await expect(headRow).toContainText('Root Admin');
+  await expect(headRow).toContainText('Read only');
   await expect(
     headRow.getByRole('button', { name: 'Head E2E role' }),
   ).toHaveCount(0);
-  const customerRow = page
-    .getByRole('article')
-    .filter({ hasText: 'Customer E2E' });
+  const customerRow = page.getByRole('row').filter({ hasText: 'Customer E2E' });
   await customerRow.getByRole('button', { name: 'Customer E2E role' }).click();
-  await customerRow.getByRole('option', { name: 'Sous chef' }).click();
-  await expect(customerRow).toContainText('Sous chef');
+  await page.getByRole('option', { name: 'Sous Chef' }).click();
+  await expect(customerRow).toContainText('Sous Chef');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByLabel('Member cards')).toBeVisible();
+  await expect(
+    page.getByLabel('Member cards').getByRole('article').filter({
+      hasText: 'Customer E2E',
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole('table')).toBeHidden();
 
   const token = await page.evaluate(() => localStorage.getItem('ff-token'));
   const head = await prisma.user.findUniqueOrThrow({

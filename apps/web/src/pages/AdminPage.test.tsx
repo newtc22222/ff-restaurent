@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../app/providers/i18n';
 import AdminPage from './AdminPage';
@@ -23,21 +29,45 @@ const member = {
   id: 'member-1',
   name: 'Member One',
   username: 'member-one',
-  phone: null,
+  phone: '+84901234567',
   chefRole: 'HEAD_CHEF' as const,
   systemRole: null,
   roles: ['CUSTOMER', 'HEAD_CHEF'],
 };
+const sous = {
+  id: 'sous-1',
+  name: 'Sous Member',
+  username: 'sous-member',
+  phone: '+84909876543',
+  chefRole: 'SOUS_CHEF' as const,
+  systemRole: null,
+  roles: ['CUSTOMER', 'SOUS_CHEF'],
+};
+const customer = {
+  id: 'customer-1',
+  name: 'Customer Member',
+  username: 'customer-member',
+  phone: null,
+  chefRole: null,
+  systemRole: null,
+  roles: ['CUSTOMER'],
+};
+let currentUser: typeof root | typeof member = root;
 
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>();
-  return { ...actual, Navigate: () => null };
+  return {
+    ...actual,
+    Navigate: ({ to }: { to: string }) => (
+      <div data-testid="redirect">{to}</div>
+    ),
+  };
 });
 
 vi.mock('../app/providers/app-context', () => ({
   useAppContext: () => ({
-    user: root,
-    users: [root, member],
+    user: currentUser,
+    users: [root, member, sous, customer],
     refresh,
     passwordResetRequests: [
       {
@@ -60,6 +90,7 @@ beforeEach(() => {
   localStorage.setItem('ff-locale', 'en');
   mutate.mockClear();
   refresh.mockClear();
+  currentUser = root;
 });
 
 afterEach(cleanup);
@@ -72,8 +103,47 @@ describe('AdminPage ROOT_ADMIN governance', () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText(/@root \/ Root Admin/)).toBeTruthy();
-    expect(screen.getByText(/@member-one \/ Head Chef/)).toBeTruthy();
+    const table = screen.getByRole('table');
+    for (const heading of [
+      'Full name',
+      'Username',
+      'Phone',
+      'Effective role',
+      'Actions',
+    ]) {
+      expect(
+        within(table).getByRole('columnheader', { name: heading }),
+      ).toBeTruthy();
+    }
+    expect(within(table).getByText('Root Admin')).toBeTruthy();
+    expect(within(table).getAllByText('Head Chef').length).toBeGreaterThan(0);
+    expect(within(table).getAllByText('Sous Chef').length).toBeGreaterThan(0);
+    expect(within(table).getAllByText('Customer').length).toBeGreaterThan(0);
+
+    const rootRow = within(table).getByText('Root Member').closest('tr');
+    expect(rootRow).toBeTruthy();
+    expect(within(rootRow!).getByText('Read only')).toBeTruthy();
+    expect(within(rootRow!).queryByRole('button')).toBeNull();
+    expect(screen.getByLabelText('Member cards').className).toContain(
+      'md:hidden',
+    );
+
+    const memberRow = within(table).getByText('Member One').closest('tr');
+    fireEvent.click(
+      within(memberRow!).getByRole('button', { name: 'Member One role' }),
+    );
+    fireEvent.click(screen.getByRole('option', { name: 'Sous Chef' }));
+    expect(mutate).toHaveBeenCalledWith(
+      {
+        intent: 'update-role',
+        userId: 'member-1',
+        chefRole: 'SOUS_CHEF',
+      },
+      {
+        fallback: 'Could not update the member role.',
+        success: 'Member role updated.',
+      },
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'New Root Admin' }));
     fireEvent.click(screen.getByRole('option', { name: /Member One/ }));
@@ -106,6 +176,51 @@ describe('AdminPage ROOT_ADMIN governance', () => {
         redirects: true,
       },
     );
+  });
+
+  it('searches the authenticated member snapshot by name, username, and phone', () => {
+    render(
+      <I18nProvider>
+        <AdminPage />
+      </I18nProvider>,
+    );
+    const search = screen.getByRole('searchbox', {
+      name: 'Search name, username, or phone',
+    });
+
+    fireEvent.change(search, { target: { value: 'member one' } });
+    expect(
+      within(screen.getByRole('table')).getByText('Member One'),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByRole('table')).queryByText('Root Member'),
+    ).toBeNull();
+
+    fireEvent.change(search, { target: { value: 'sous-member' } });
+    expect(
+      within(screen.getByRole('table')).getByText('Sous Member'),
+    ).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: '+84901234567' } });
+    expect(
+      within(screen.getByRole('table')).getByText('Member One'),
+    ).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: 'not-a-member' } });
+    expect(screen.getByText('No members match this search.')).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('redirects a Head Chef without rendering administration controls', () => {
+    currentUser = member;
+    render(
+      <I18nProvider>
+        <AdminPage />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByTestId('redirect').textContent).toBe('/bills');
+    expect(screen.queryByRole('table')).toBeNull();
   });
 
   it('issues and rejects pending password reset requests', () => {
