@@ -331,4 +331,27 @@ describe('mutationAction', () => {
       expect.objectContaining({ method: 'POST' }),
     );
   });
+
+  it('replaces the current token after a successful password change', async () => {
+    localStorage.setItem('ff-token', 'old-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({ token: 'fresh-token' })),
+    );
+    const request = new Request('http://localhost/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'change-password',
+        payload: {
+          currentPassword: 'password123',
+          newPassword: 'new-password-123',
+          confirmation: 'new-password-123',
+        },
+      }),
+    });
+
+    await mutationAction({ request, params: {}, context: {} } as never);
+    expect(localStorage.getItem('ff-token')).toBe('fresh-token');
+  });
 });

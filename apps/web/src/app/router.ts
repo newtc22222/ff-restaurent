@@ -220,6 +220,14 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
           method: 'PUT',
           body: JSON.stringify(body.payload),
         });
+      case 'change-password': {
+        const result = await api.request<{ token: string }>('/me/password', {
+          method: 'PATCH',
+          body: JSON.stringify(body.payload),
+        });
+        session.setToken(result.token);
+        return { ok: true };
+      }
       case 'read-notification':
         return await api.request(`/notifications/${body.notificationId}/read`, {
           method: 'PATCH',

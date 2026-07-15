@@ -156,6 +156,9 @@ export const translations = {
     // Validation
     'validation.vietnamMobilePhone':
       'Nhập số di động Việt Nam hợp lệ, ví dụ 0901234567 hoặc +84901234567.',
+    'validation.passwordLength': 'Mật khẩu mới phải có từ 8 đến 128 ký tự.',
+    'validation.passwordReuse': 'Mật khẩu mới phải khác mật khẩu hiện tại.',
+    'validation.passwordConfirmation': 'Xác nhận mật khẩu không khớp.',
 
     // Result toasts
     'toast.partialData':
@@ -193,6 +196,8 @@ export const translations = {
     'toast.restaurantRestoreFailed': 'Không thể khôi phục địa điểm.',
     'toast.profileUpdated': 'Đã cập nhật hồ sơ.',
     'toast.profileUpdateFailed': 'Không thể cập nhật hồ sơ.',
+    'toast.passwordChanged': 'Đã đổi mật khẩu và đăng xuất các phiên khác.',
+    'toast.passwordChangeFailed': 'Không thể đổi mật khẩu.',
 
     // API result errors
     'error.invalidCredentials':
@@ -226,12 +231,23 @@ export const translations = {
     'error.rootTransferTargetInvalid': 'Chọn một thành viên hiện có khác.',
     'error.sessionInvalidated':
       'Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.',
+    'error.currentPasswordInvalid': 'Mật khẩu hiện tại không đúng.',
+    'error.passwordConfirmationMismatch': 'Xác nhận mật khẩu không khớp.',
+    'error.passwordLengthInvalid': 'Mật khẩu mới phải có từ 8 đến 128 ký tự.',
+    'error.passwordReuseForbidden': 'Mật khẩu mới phải khác mật khẩu hiện tại.',
 
     // Profile
     'profile.title': 'Hồ sơ',
     'profile.edit': 'Chỉnh sửa hồ sơ',
     'profile.save': 'Lưu',
     'profile.saved': 'Đã lưu!',
+    'profile.changePassword': 'Đổi mật khẩu',
+    'profile.changePasswordDescription':
+      'Phiên hiện tại được giữ lại; tất cả phiên đăng nhập khác sẽ hết hiệu lực.',
+    'profile.currentPassword': 'Mật khẩu hiện tại',
+    'profile.newPassword': 'Mật khẩu mới',
+    'profile.confirmPassword': 'Xác nhận mật khẩu mới',
+    'profile.changePasswordAction': 'Đổi mật khẩu',
 
     // Theme
     'theme.light': 'Sáng',
@@ -403,10 +419,23 @@ export const translations = {
     'profile.edit': 'Edit profile',
     'profile.save': 'Save',
     'profile.saved': 'Saved!',
+    'profile.changePassword': 'Change password',
+    'profile.changePasswordDescription':
+      'This session stays signed in; every other session will be invalidated.',
+    'profile.currentPassword': 'Current password',
+    'profile.newPassword': 'New password',
+    'profile.confirmPassword': 'Confirm new password',
+    'profile.changePasswordAction': 'Change password',
 
     // Validation
     'validation.vietnamMobilePhone':
       'Enter a valid Vietnamese mobile number, such as 0901234567 or +84901234567.',
+    'validation.passwordLength':
+      'The new password must be between 8 and 128 characters.',
+    'validation.passwordReuse':
+      'The new password must differ from your current password.',
+    'validation.passwordConfirmation':
+      'The password confirmation does not match.',
 
     // Result toasts
     'toast.partialData':
@@ -443,6 +472,9 @@ export const translations = {
     'toast.restaurantRestoreFailed': 'Could not restore the restaurant entry.',
     'toast.profileUpdated': 'Profile updated.',
     'toast.profileUpdateFailed': 'Could not update the profile.',
+    'toast.passwordChanged':
+      'Password changed and other sessions were signed out.',
+    'toast.passwordChangeFailed': 'Could not change the password.',
 
     // API result errors
     'error.invalidCredentials':
@@ -475,6 +507,13 @@ export const translations = {
     'error.rootTransferTargetInvalid': 'Choose another existing member.',
     'error.sessionInvalidated':
       'Your session is no longer valid. Sign in again.',
+    'error.currentPasswordInvalid': 'Your current password is incorrect.',
+    'error.passwordConfirmationMismatch':
+      'The password confirmation does not match.',
+    'error.passwordLengthInvalid':
+      'The new password must be between 8 and 128 characters.',
+    'error.passwordReuseForbidden':
+      'The new password must differ from your current password.',
 
     // Theme
     'theme.light': 'Light',

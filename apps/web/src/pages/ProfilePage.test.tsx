@@ -37,7 +37,7 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe('ProfilePage phone validation', () => {
+describe('ProfilePage account forms', () => {
   it('keeps invalid phones inline and submits an explicit null when cleared', () => {
     render(
       <I18nProvider>
@@ -70,6 +70,50 @@ describe('ProfilePage phone validation', () => {
       expect.objectContaining({
         fallback: 'Could not update the profile.',
         success: 'Profile updated.',
+      }),
+    );
+  });
+
+  it('validates password changes inline and submits a valid change', () => {
+    render(
+      <I18nProvider>
+        <ProfilePage />
+      </I18nProvider>,
+    );
+
+    const current = screen.getByLabelText('Current password');
+    const next = screen.getByLabelText('New password');
+    const confirmation = screen.getByLabelText('Confirm new password');
+    const submit = screen.getByRole('button', { name: 'Change password' });
+
+    fireEvent.change(current, { target: { value: 'password123' } });
+    fireEvent.change(next, { target: { value: 'short' } });
+    expect(screen.getByText(/between 8 and 128/)).toBeTruthy();
+
+    fireEvent.change(next, { target: { value: 'password123' } });
+    expect(screen.getByText(/differ from your current/)).toBeTruthy();
+
+    fireEvent.change(next, { target: { value: 'new-password-123' } });
+    fireEvent.change(confirmation, { target: { value: 'different' } });
+    expect(screen.getByText(/confirmation does not match/)).toBeTruthy();
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(confirmation, {
+      target: { value: 'new-password-123' },
+    });
+    fireEvent.click(submit);
+    expect(mutate).toHaveBeenCalledWith(
+      {
+        intent: 'change-password',
+        payload: {
+          currentPassword: 'password123',
+          newPassword: 'new-password-123',
+          confirmation: 'new-password-123',
+        },
+      },
+      expect.objectContaining({
+        fallback: 'Could not change the password.',
+        success: 'Password changed and other sessions were signed out.',
       }),
     );
   });

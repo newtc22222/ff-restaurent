@@ -268,3 +268,31 @@ test('mobile app shell and bill list fit without page overflow', async ({
     ),
   ).toBe(true);
 });
+
+test('member changes password while older sessions are invalidated', async ({
+  page,
+}) => {
+  await login(page, 'e2e-customer');
+  const oldToken = await page.evaluate(() => localStorage.getItem('ff-token'));
+  await page.goto('/profile');
+
+  await page.getByLabel('Current password').fill('password123');
+  await page.getByLabel('New password').fill('new-password-123');
+  await page.getByLabel('Confirm new password').fill('new-password-123');
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await expect(
+    page.getByText('Password changed and other sessions were signed out.'),
+  ).toBeVisible();
+
+  const oldSession = await page.request.get('http://127.0.0.1:4000/me', {
+    headers: { authorization: `Bearer ${oldToken}` },
+  });
+  expect(oldSession.status()).toBe(401);
+  expect((await oldSession.json()).code).toBe('SESSION_INVALIDATED');
+
+  await page.getByLabel('Current password').fill('new-password-123');
+  await page.getByLabel('New password').fill('password123');
+  await page.getByLabel('Confirm new password').fill('password123');
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await expect(page.getByLabel('Current password')).toHaveValue('');
+});
