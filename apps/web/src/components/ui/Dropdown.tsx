@@ -122,7 +122,15 @@ export default function Dropdown(props: DropdownProps) {
         : 'h-10 w-full px-3 text-sm border-border bg-surface text-ink hover:border-ink/40';
 
   return (
-    <div className={`relative ${fullWidth ? 'w-full' : ''}`}>
+    <div
+      className={`relative ${fullWidth ? 'w-full' : ''}`}
+      onKeyDown={(event) => {
+        if (open && event.key === 'Escape') {
+          event.stopPropagation();
+          close();
+        }
+      }}
+    >
       <button
         type="button"
         className={`flex items-center gap-2 rounded-md border text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${triggerClass} ${fullWidth ? 'w-full' : ''}`}
@@ -171,9 +179,6 @@ export default function Dropdown(props: DropdownProps) {
                   onChange={(event) => {
                     setQuery(event.target.value);
                     onSearchChange?.(event.target.value);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Escape') close();
                   }}
                 />
                 <Search
