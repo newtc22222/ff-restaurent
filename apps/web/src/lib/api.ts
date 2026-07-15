@@ -17,6 +17,11 @@ export type RestaurantEntry = {
   id: string;
   name: string;
   address: string;
+  addressLine?: string | null;
+  provinceCode?: string | null;
+  provinceName?: string | null;
+  wardCode?: string | null;
+  wardName?: string | null;
   cuisineType: string;
   type: string;
   avatarUrl?: string | null;
@@ -25,6 +30,21 @@ export type RestaurantEntry = {
   isFavorite: boolean;
   isFavoritedByMe?: boolean;
   status: EntryStatus;
+};
+
+export type VietnamAddress = Pick<
+  RestaurantEntry,
+  | 'address'
+  | 'addressLine'
+  | 'provinceCode'
+  | 'provinceName'
+  | 'wardCode'
+  | 'wardName'
+>;
+
+export type AddressDirectoryResult = {
+  items: { code: string; name: string }[];
+  stale: boolean;
 };
 
 export type BillParticipant = {

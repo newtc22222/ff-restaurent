@@ -13,6 +13,10 @@ import { useMutation } from '../hooks/useMutation';
 import SectionTitle from '../components/ui/SectionTitle';
 import EmptyState from '../components/ui/EmptyState';
 import Dropdown from '../components/ui/Dropdown';
+import VietnamAddressFields, {
+  emptyVietnamAddress,
+  isVietnamAddressComplete,
+} from '../components/address/VietnamAddressFields';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
@@ -30,7 +34,7 @@ export default function RestaurantsPage() {
   const [filterRec, setFilterRec] = useState(false);
   const [form, setForm] = useState({
     name: '',
-    address: '',
+    ...emptyVietnamAddress(),
     cuisineType: '',
     type: typeOptions[0] ?? 'Restaurant',
     isRecommended: false,
@@ -82,7 +86,7 @@ export default function RestaurantsPage() {
         onSuccess: () =>
           setForm({
             name: '',
-            address: '',
+            ...emptyVietnamAddress(),
             cuisineType: '',
             type: typeOptions[0] ?? 'Restaurant',
             isRecommended: false,
@@ -244,17 +248,10 @@ export default function RestaurantsPage() {
               required
             />
           </label>
-          <label className="block space-y-1">
-            <span className="label">
-              {locale === 'vi' ? 'Địa chỉ' : 'Address'}
-            </span>
-            <input
-              className="field w-full"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              required
-            />
-          </label>
+          <VietnamAddressFields
+            value={form}
+            onChange={(address) => setForm({ ...form, ...address })}
+          />
           <div className="block space-y-1">
             <span className="label">
               {locale === 'vi' ? 'Loại ẩm thực' : 'Cuisine type'}
@@ -304,7 +301,7 @@ export default function RestaurantsPage() {
             className="btn btn-primary w-full"
             disabled={
               !form.name.trim() ||
-              !form.address.trim() ||
+              !isVietnamAddressComplete(form) ||
               !form.cuisineType ||
               !form.type
             }

@@ -1,10 +1,15 @@
-import { ExternalLink, Heart, ThumbsUp } from 'lucide-react';
+import { ExternalLink, Heart, Pencil, ThumbsUp } from 'lucide-react';
+import { useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
-import { isHead } from '../lib/helpers';
+import { canChef, isHead } from '../lib/helpers';
+import type { VietnamAddress } from '../lib/api';
 import { useAppContext } from '../app/providers/app-context';
 import { useI18n } from '../app/providers/i18n';
 import { useMutation } from '../hooks/useMutation';
 import BackButton from '../components/ui/BackButton';
+import VietnamAddressFields, {
+  isVietnamAddressComplete,
+} from '../components/address/VietnamAddressFields';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,
@@ -14,12 +19,21 @@ export default function RestaurantDetailPage() {
   const navigate = useNavigate();
   const { restaurantId } = useParams();
   const { user, restaurants } = useAppContext();
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const { mutate } = useMutation();
 
   const restaurant = restaurants.find(
     (candidate) => candidate.id === restaurantId,
   );
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [address, setAddress] = useState<VietnamAddress>(() => ({
+    address: restaurant?.address ?? '',
+    addressLine: restaurant?.addressLine ?? null,
+    provinceCode: restaurant?.provinceCode ?? null,
+    provinceName: restaurant?.provinceName ?? null,
+    wardCode: restaurant?.wardCode ?? null,
+    wardName: restaurant?.wardName ?? null,
+  }));
   if (!restaurant) return <Navigate to="/restaurants" replace />;
 
   const onBack = () => navigate('/restaurants');
@@ -41,6 +55,19 @@ export default function RestaurantDetailPage() {
     mutate(
       { intent: 'restaurant-status', status },
       { fallback, success, onSuccess: onBack },
+    );
+
+  const saveAddress = () =>
+    mutate(
+      { intent: 'update-restaurant', payload: address },
+      {
+        fallback:
+          locale === 'vi'
+            ? 'Không thể cập nhật địa chỉ.'
+            : 'Could not update the address.',
+        success: locale === 'vi' ? 'Đã cập nhật địa chỉ.' : 'Address updated.',
+        onSuccess: () => setEditingAddress(false),
+      },
     );
 
   return (
@@ -68,6 +95,37 @@ export default function RestaurantDetailPage() {
             {restaurant.status}
           </span>
         </div>
+
+        {canChef(user) && !editingAddress && (
+          <button
+            className="btn btn-soft mb-4 flex items-center gap-2"
+            onClick={() => setEditingAddress(true)}
+          >
+            <Pencil size={13} />
+            {locale === 'vi' ? 'Sửa địa chỉ' : 'Edit address'}
+          </button>
+        )}
+
+        {editingAddress && (
+          <div className="mb-4 space-y-3 rounded-lg border border-border bg-muted/40 p-4">
+            <VietnamAddressFields value={address} onChange={setAddress} />
+            <div className="flex justify-end gap-2">
+              <button
+                className="btn btn-soft"
+                onClick={() => setEditingAddress(false)}
+              >
+                {locale === 'vi' ? 'Hủy' : 'Cancel'}
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={!isVietnamAddressComplete(address)}
+                onClick={() => void saveAddress()}
+              >
+                {locale === 'vi' ? 'Lưu địa chỉ' : 'Save address'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="mb-4 flex flex-wrap gap-2">
           <button

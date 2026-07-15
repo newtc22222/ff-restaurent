@@ -51,9 +51,71 @@ export const passwordResetConsumeSchema = z.object({
   confirmation: z.string(),
 });
 
-export const restaurantSchema = z.object({
+const vietnamAddressShape = {
+  address: z.string().trim().min(1),
+  addressLine: z.string().trim().min(1).nullable().optional(),
+  provinceCode: z.string().trim().min(1).nullable().optional(),
+  provinceName: z.string().trim().min(1).nullable().optional(),
+  wardCode: z.string().trim().min(1).nullable().optional(),
+  wardName: z.string().trim().min(1).nullable().optional(),
+};
+
+const validateStructuredAddress = (
+  value: Partial<z.infer<z.ZodObject<typeof vietnamAddressShape>>>,
+  context: z.RefinementCtx,
+) => {
+  const structured = [
+    value.addressLine,
+    value.provinceCode,
+    value.provinceName,
+    value.wardCode,
+    value.wardName,
+  ];
+  const supplied = structured.filter(
+    (part) => typeof part === 'string' && part.length > 0,
+  ).length;
+  if (supplied !== 0 && supplied !== structured.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['address'],
+      message:
+        'Structured addresses require an address line, province, and ward',
+    });
+  }
+};
+
+type VietnamAddressInput = Partial<
+  Record<keyof typeof vietnamAddressShape, string | null | undefined>
+>;
+
+/** Builds the display snapshot server-side or clears stale structure for manual input. */
+export const normalizeVietnamAddressSnapshot = <T extends VietnamAddressInput>(
+  value: T,
+): T => {
+  const structured = [value.addressLine, value.wardName, value.provinceName];
+  if (structured.every((part) => typeof part === 'string' && part.length > 0)) {
+    return { ...value, address: structured.join(', ') };
+  }
+  if (value.address !== undefined) {
+    return {
+      ...value,
+      addressLine: null,
+      provinceCode: null,
+      provinceName: null,
+      wardCode: null,
+      wardName: null,
+    };
+  }
+  return value;
+};
+
+export const vietnamAddressSchema = z
+  .object(vietnamAddressShape)
+  .superRefine(validateStructuredAddress);
+
+const restaurantObjectSchema = z.object({
+  ...vietnamAddressShape,
   name: z.string().min(1),
-  address: z.string().min(1),
   cuisineType: z.string().min(1),
   type: z.string().min(1),
   avatarUrl: z.string().optional(),
@@ -63,6 +125,13 @@ export const restaurantSchema = z.object({
   isRecommended: z.boolean().optional(),
   isFavorite: z.boolean().optional(),
 });
+
+export const restaurantSchema = restaurantObjectSchema.superRefine(
+  validateStructuredAddress,
+);
+export const restaurantUpdateSchema = restaurantObjectSchema
+  .partial()
+  .superRefine(validateStructuredAddress);
 
 export const participantSchema = z.object({
   memberId: z.string().min(1),
