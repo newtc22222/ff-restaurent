@@ -340,7 +340,9 @@ test('member discovers, manages, shares, and reviews Collection places', async (
     name: 'Food and service feedback',
   });
   await expect(feedback).toBeVisible();
-  await expect(feedback.getByText('Reliable team lunch.')).toBeVisible();
+  await expect(
+    feedback.getByRole('article').getByText('Reliable team lunch.'),
+  ).toBeVisible();
   const favoriteResponse = page.waitForResponse(
     (response) =>
       response.url().endsWith('/favorite') &&
