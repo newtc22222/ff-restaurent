@@ -34,6 +34,12 @@ export const profileUpdateSchema = z.object({
   phone: vietnamMobilePhoneSchema.optional(),
 });
 
+export const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string(),
+  confirmation: z.string(),
+});
+
 export const restaurantSchema = z.object({
   name: z.string().min(1),
   address: z.string().min(1),

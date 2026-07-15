@@ -538,6 +538,142 @@ integrationTest('validation failures use stable client contracts', async () => {
 });
 
 integrationTest(
+  'password change keeps one fresh session and invalidates every older token',
+  async () => {
+    const legacyToken = tokenFor(customerBId);
+    const legacyBeforeChange = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(legacyToken),
+    });
+    assert.equal(legacyBeforeChange.statusCode, 200);
+
+    const firstLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: 'customer-b-int', password: 'password123' },
+    });
+    const secondLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: 'customer-b-int', password: 'password123' },
+    });
+    assert.equal(firstLogin.statusCode, 200);
+    assert.equal(secondLogin.statusCode, 200);
+
+    const cases = [
+      {
+        payload: {
+          currentPassword: 'password123',
+          newPassword: 'short',
+          confirmation: 'short',
+        },
+        status: 400,
+        code: 'PASSWORD_LENGTH_INVALID',
+      },
+      {
+        payload: {
+          currentPassword: 'password123',
+          newPassword: 'new-password-123',
+          confirmation: 'different-password',
+        },
+        status: 400,
+        code: 'PASSWORD_CONFIRMATION_MISMATCH',
+      },
+      {
+        payload: {
+          currentPassword: 'wrong-password',
+          newPassword: 'new-password-123',
+          confirmation: 'new-password-123',
+        },
+        status: 403,
+        code: 'CURRENT_PASSWORD_INVALID',
+      },
+      {
+        payload: {
+          currentPassword: 'password123',
+          newPassword: 'password123',
+          confirmation: 'password123',
+        },
+        status: 409,
+        code: 'PASSWORD_REUSE_FORBIDDEN',
+      },
+    ];
+    for (const item of cases) {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/me/password',
+        headers: auth(firstLogin.json().token),
+        payload: item.payload,
+      });
+      assert.equal(response.statusCode, item.status);
+      assert.equal(response.json().code, item.code);
+    }
+
+    const changed = await app.inject({
+      method: 'PATCH',
+      url: '/me/password',
+      headers: auth(firstLogin.json().token),
+      payload: {
+        currentPassword: 'password123',
+        newPassword: 'new-password-123',
+        confirmation: 'new-password-123',
+      },
+    });
+    assert.equal(changed.statusCode, 200);
+    assert.equal(typeof changed.json().token, 'string');
+    assert.equal(
+      JSON.stringify(changed.json()).includes('passwordHash'),
+      false,
+    );
+
+    for (const oldToken of [legacyToken, secondLogin.json().token]) {
+      const invalidated = await app.inject({
+        method: 'GET',
+        url: '/me',
+        headers: auth(oldToken),
+      });
+      assert.equal(invalidated.statusCode, 401);
+      assert.equal(invalidated.json().code, 'SESSION_INVALIDATED');
+    }
+    const currentSession = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(changed.json().token),
+    });
+    assert.equal(currentSession.statusCode, 200);
+
+    const oldPasswordLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: 'customer-b-int', password: 'password123' },
+    });
+    assert.equal(oldPasswordLogin.statusCode, 401);
+    const newPasswordLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: {
+        identifier: 'customer-b-int',
+        password: 'new-password-123',
+      },
+    });
+    assert.equal(newPasswordLogin.statusCode, 200);
+
+    const restored = await app.inject({
+      method: 'PATCH',
+      url: '/me/password',
+      headers: auth(newPasswordLogin.json().token),
+      payload: {
+        currentPassword: 'new-password-123',
+        newPassword: 'password123',
+        confirmation: 'password123',
+      },
+    });
+    assert.equal(restored.statusCode, 200);
+  },
+);
+
+integrationTest(
   'root transfer is audited, conflict-safe, and invalidates both sessions',
   async () => {
     const wrongPassword = await app.inject({
