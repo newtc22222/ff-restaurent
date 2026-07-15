@@ -754,6 +754,17 @@ integrationTest(
       },
     });
     assert.equal(login.statusCode, 200);
+    const restoredPassword = await app.inject({
+      method: 'PATCH',
+      url: '/me/password',
+      headers: auth(login.json().token),
+      payload: {
+        currentPassword: 'recovered-password-123',
+        newPassword: 'password123',
+        confirmation: 'password123',
+      },
+    });
+    assert.equal(restoredPassword.statusCode, 200);
 
     await app.inject({
       method: 'POST',
