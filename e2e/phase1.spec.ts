@@ -273,7 +273,7 @@ test('member discovers, manages, shares, and reviews Collection places', async (
       where: { ownerId: customer.id, name: 'E2E Team Spots' },
     }),
   ]);
-  await prisma.bill.create({
+  const feedbackBill = await prisma.bill.create({
     data: {
       restaurantId: restaurant.id,
       createdById: restaurant.createdById,
@@ -300,11 +300,24 @@ test('member discovers, manages, shares, and reviews Collection places', async (
   await login(page, 'e2e-customer');
   await page.getByRole('link', { name: 'Restaurants' }).click();
   await expect(page).toHaveURL(/\/restaurants$/);
-  await page
-    .locator('article')
-    .filter({ hasText: 'Existing E2E Restaurant' })
-    .click();
-  await expect(page).toHaveURL(/\/restaurants\/[^/?]+$/);
+  await expect(
+    page.locator('article').filter({ hasText: 'Existing E2E Restaurant' }),
+  ).toBeVisible();
+  const customerToken = await page.evaluate(() =>
+    localStorage.getItem('ff-token'),
+  );
+  const eligibilityResponse = await page.request.get(
+    `http://127.0.0.1:4000/restaurants/${restaurant.id}/feedback`,
+    { headers: { authorization: `Bearer ${customerToken}` } },
+  );
+  expect(eligibilityResponse.status()).toBe(200);
+  const eligibility = await eligibilityResponse.json();
+  expect(eligibility.eligibleBills).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ billId: feedbackBill.id }),
+    ]),
+  );
+  await page.goto(`/restaurants/${restaurant.id}`);
   const feedback = page.getByRole('region', {
     name: 'Food and service feedback',
   });
