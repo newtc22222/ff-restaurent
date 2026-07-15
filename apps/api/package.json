@@ -1,6 +1,6 @@
 {
   "name": "@ff-restaurent/api",
-  "version": "0.1.0",
+  "version": "1.1.0-rc.1",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -26,7 +26,7 @@
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
-    "@ff-restaurent/shared": "0.1.0",
+    "@ff-restaurent/shared": "1.1.0-rc.1",
     "@prisma/client": "^6.11.1",
     "bcryptjs": "^3.0.2",
     "fastify": "^5.4.0",
