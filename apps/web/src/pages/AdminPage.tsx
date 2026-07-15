@@ -1,4 +1,4 @@
-import { KeyRound, Users } from 'lucide-react';
+import { KeyRound, Search, Users } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
 import type { ChefRole } from '../lib/api';
@@ -17,6 +17,7 @@ export default function AdminPage() {
   const {
     user,
     users,
+    loading = false,
     passwordResetRequests = [],
     refresh = async () => undefined,
   } = useAppContext();
@@ -29,6 +30,7 @@ export default function AdminPage() {
     username: string;
     code: string;
   } | null>(null);
+  const [memberSearch, setMemberSearch] = useState('');
 
   if (!isRootAdmin(user)) return <Navigate to="/bills" replace />;
 
@@ -63,6 +65,34 @@ export default function AdminPage() {
   const transferTargets = users.filter(
     (member) => member.id !== user.id && member.systemRole !== 'ROOT_ADMIN',
   );
+  const normalizedSearch = memberSearch.trim().toLocaleLowerCase();
+  const filteredUsers = normalizedSearch
+    ? users.filter((member) =>
+        [member.name, member.username, member.phone ?? ''].some((value) =>
+          value.toLocaleLowerCase().includes(normalizedSearch),
+        ),
+      )
+    : users;
+  const roleOptions = [
+    { value: '', label: t('role.customer') },
+    { value: 'SOUS_CHEF', label: t('role.souschef') },
+    { value: 'HEAD_CHEF', label: t('role.headchef') },
+  ];
+  const roleControl = (member: (typeof users)[number]) =>
+    member.systemRole === 'ROOT_ADMIN' ? (
+      <span className="text-sm font-semibold text-slate-500">
+        {t('admin.readOnly')}
+      </span>
+    ) : (
+      <Dropdown
+        label={t('role.customer')}
+        ariaLabel={`${member.name} ${t('admin.role')}`}
+        value={member.chefRole ?? ''}
+        onChange={(role) => updateRole(member.id, (role || null) as ChefRole)}
+        options={roleOptions}
+        menuAlign="right"
+      />
+    );
 
   const issueReset = (requestId: string, username: string) =>
     mutate(
@@ -94,6 +124,28 @@ export default function AdminPage() {
   return (
     <div className="space-y-4">
       <SectionTitle title={t('admin.title')} subtitle={t('admin.subtitle')} />
+      <section className="panel p-4 sm:p-5" aria-busy={loading}>
+        <div className="relative max-w-lg">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            size={17}
+            aria-hidden="true"
+          />
+          <input
+            className="field w-full pl-10"
+            type="search"
+            aria-label={t('admin.searchMembers')}
+            placeholder={t('admin.searchMembers')}
+            value={memberSearch}
+            onChange={(event) => setMemberSearch(event.target.value)}
+          />
+        </div>
+        {loading && (
+          <p className="mt-2 text-xs text-slate-500" role="status">
+            {t('common.loading')}
+          </p>
+        )}
+      </section>
       {users.length === 0 && (
         <EmptyState
           icon={Users}
@@ -102,37 +154,85 @@ export default function AdminPage() {
           steps={[]}
         />
       )}
-      {users.map((member) => (
-        <article
-          key={member.id}
-          className="panel flex flex-wrap items-center justify-between gap-3 p-4"
-        >
-          <div>
-            <h3 className="font-bold">{member.name}</h3>
-            <p className="text-sm text-slate-500">
-              @{member.username} / {roleLabel(member, t)}
-            </p>
-          </div>
-          {member.id !== user.id && (
-            <div style={{ minWidth: 160 }}>
-              <Dropdown
-                label={t('admin.customerOnly')}
-                ariaLabel={`${member.name} role`}
-                value={member.chefRole ?? ''}
-                onChange={(role) =>
-                  updateRole(member.id, (role || null) as ChefRole)
-                }
-                options={[
-                  { value: '', label: t('admin.customerOnly') },
-                  { value: 'SOUS_CHEF', label: t('role.souschef') },
-                  { value: 'HEAD_CHEF', label: t('role.headchef') },
-                ]}
-                menuAlign="right"
-              />
-            </div>
-          )}
-        </article>
-      ))}
+      {users.length > 0 && filteredUsers.length === 0 && (
+        <div className="panel p-6 text-center text-sm text-slate-500">
+          {t('admin.noSearchResults')}
+        </div>
+      )}
+      {filteredUsers.length > 0 && (
+        <>
+          <section className="panel hidden overflow-visible md:block">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-4 py-3 font-semibold">
+                    {t('admin.fullName')}
+                  </th>
+                  <th className="px-4 py-3 font-semibold">
+                    {t('admin.username')}
+                  </th>
+                  <th className="px-4 py-3 font-semibold">
+                    {t('admin.phone')}
+                  </th>
+                  <th className="px-4 py-3 font-semibold">
+                    {t('admin.effectiveRole')}
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold">
+                    {t('admin.actions')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredUsers.map((member) => (
+                  <tr key={member.id}>
+                    <td className="px-4 py-3 font-semibold text-ink">
+                      {member.name}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                      @{member.username}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                      {member.phone ?? '—'}
+                    </td>
+                    <td className="px-4 py-3">{roleLabel(member, t)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="ml-auto w-44">{roleControl(member)}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
+          <section
+            className="space-y-3 md:hidden"
+            aria-label={t('admin.mobileMembers')}
+          >
+            {filteredUsers.map((member) => (
+              <article key={member.id} className="panel p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-bold text-ink">
+                      {member.name}
+                    </h3>
+                    <p className="truncate text-sm text-slate-500">
+                      @{member.username}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">
+                    {roleLabel(member, t)}
+                  </span>
+                </div>
+                <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                  <dt className="text-slate-500">{t('admin.phone')}</dt>
+                  <dd className="text-right text-ink">{member.phone ?? '—'}</dd>
+                </dl>
+                <div className="mt-4">{roleControl(member)}</div>
+              </article>
+            ))}
+          </section>
+        </>
+      )}
 
       <section className="panel p-4 sm:p-6">
         <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
