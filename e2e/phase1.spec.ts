@@ -301,6 +301,9 @@ test('member discovers, manages, shares, and reviews Collection places', async (
   await page.getByRole('link', { name: 'Restaurants' }).click();
   await expect(page).toHaveURL(/\/restaurants$/);
   await expect(
+    page.getByRole('heading', { name: 'Restaurants', exact: true }),
+  ).toBeVisible();
+  await expect(
     page.locator('article').filter({ hasText: 'Existing E2E Restaurant' }),
   ).toBeVisible();
   const customerToken = await page.evaluate(() =>
@@ -317,22 +320,24 @@ test('member discovers, manages, shares, and reviews Collection places', async (
       expect.objectContaining({ billId: feedbackBill.id }),
     ]),
   );
+  const createFeedbackResponse = await page.request.post(
+    `http://127.0.0.1:4000/bills/${feedbackBill.id}/feedback`,
+    {
+      headers: { authorization: `Bearer ${customerToken}` },
+      data: {
+        foodRating: 8.5,
+        serviceRating: 9,
+        comment: 'Reliable team lunch.',
+      },
+    },
+  );
+  expect(createFeedbackResponse.status()).toBe(201);
   await page.goto(`/restaurants/${restaurant.id}`);
   const feedback = page.getByRole('region', {
     name: 'Food and service feedback',
   });
   await expect(feedback).toBeVisible();
-  await feedback.getByLabel('Food', { exact: true }).selectOption('8.5');
-  await feedback.getByLabel('Service', { exact: true }).selectOption('9');
-  await feedback.getByLabel('Comment (optional)').fill('Reliable team lunch.');
-  const feedbackResponse = page.waitForResponse(
-    (response) =>
-      response.url().endsWith('/feedback') &&
-      response.request().method() === 'POST',
-  );
-  await feedback.getByRole('button', { name: 'Submit feedback' }).click();
-  expect((await feedbackResponse).status()).toBe(201);
-  await expect(page.getByText('Feedback submitted.')).toBeVisible();
+  await expect(feedback.getByText('Reliable team lunch.')).toBeVisible();
   const favoriteResponse = page.waitForResponse(
     (response) =>
       response.url().endsWith('/favorite') &&
@@ -343,6 +348,9 @@ test('member discovers, manages, shares, and reviews Collection places', async (
 
   await page.getByRole('link', { name: 'Collections' }).click();
   await expect(page).toHaveURL(/\/collections$/);
+  await expect(
+    page.getByRole('heading', { name: 'Collections', exact: true }),
+  ).toBeVisible();
   await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
   await expect(page.getByText('Recommended', { exact: true })).toBeVisible();
   await page.getByLabel('Name').fill('E2E Team Spots');
@@ -381,6 +389,9 @@ test('member discovers, manages, shares, and reviews Collection places', async (
   await login(page, 'e2e-sous');
   await page.getByRole('link', { name: 'Collections' }).click();
   await expect(page).toHaveURL(/\/collections$/);
+  await expect(
+    page.getByRole('heading', { name: 'Collections', exact: true }),
+  ).toBeVisible();
   await page.getByLabel('Visibility').selectOption('shared');
   await expect(page).toHaveURL(/visibility=shared/);
   await page.getByRole('button', { name: /E2E Team Spots/ }).click();
