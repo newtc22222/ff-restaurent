@@ -16,6 +16,9 @@ import RestaurantProfileFields, {
 } from '../components/restaurants/RestaurantProfileFields';
 import RestaurantBanner from '../components/restaurants/RestaurantBanner';
 import { platformLabel } from '../components/restaurants/PlatformLinksEditor';
+import RestaurantCatalogFields, {
+  type RestaurantCatalogValue,
+} from '../components/restaurants/RestaurantCatalogFields';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,
@@ -45,6 +48,17 @@ export default function RestaurantDetailPage() {
     bannerImageUrl: restaurant?.bannerImageUrl ?? '',
     platformLinks: restaurant?.platformLinks ?? [],
   }));
+  const [catalogs, setCatalogs] = useState<RestaurantCatalogValue>(() => ({
+    cuisineIds: restaurant?.cuisines?.map((item) => item.cuisine.id) ?? [],
+    primaryCuisineId:
+      restaurant?.cuisines?.find((item) => item.isPrimary)?.cuisine.id ?? '',
+    diningAreaId: restaurant?.diningAreaId ?? null,
+  }));
+  const [primaryCuisineName, setPrimaryCuisineName] = useState(
+    restaurant?.cuisines?.find((item) => item.isPrimary)?.cuisine.name ??
+      restaurant?.cuisineType ??
+      '',
+  );
   if (!restaurant) return <Navigate to="/restaurants" replace />;
 
   const onBack = () => navigate('/restaurants');
@@ -79,6 +93,10 @@ export default function RestaurantDetailPage() {
           platformLinks: profile.platformLinks.map(
             ({ platform, label, url }) => ({ platform, label, url }),
           ),
+          cuisineType: primaryCuisineName,
+          cuisineIds: catalogs.cuisineIds,
+          primaryCuisineId: catalogs.primaryCuisineId,
+          diningAreaId: catalogs.diningAreaId,
         },
       },
       {
@@ -109,7 +127,11 @@ export default function RestaurantDetailPage() {
               {restaurant.name}
             </h2>
             <p className="mt-0.5 text-[13px] text-slate-500">
-              {restaurant.type} / {restaurant.cuisineType}
+              {restaurant.type} /{' '}
+              {restaurant.cuisines
+                ?.filter((item) => item.isPrimary)
+                .map((item) => item.cuisine.name)
+                .join(', ') || restaurant.cuisineType}
             </p>
             <p className="mt-1 text-[14px]">{restaurant.address}</p>
           </div>
@@ -138,6 +160,15 @@ export default function RestaurantDetailPage() {
           <div className="mb-4 space-y-3 rounded-lg border border-border bg-muted/40 p-4">
             <VietnamAddressFields value={address} onChange={setAddress} />
             <RestaurantProfileFields value={profile} onChange={setProfile} />
+            <RestaurantCatalogFields
+              value={catalogs}
+              onChange={setCatalogs}
+              onPrimaryCuisineNameChange={setPrimaryCuisineName}
+              initialCuisines={
+                restaurant.cuisines?.map((item) => item.cuisine) ?? []
+              }
+              initialDiningArea={restaurant.diningArea}
+            />
             <div className="flex justify-end gap-2">
               <button
                 className="btn btn-soft"
@@ -149,7 +180,9 @@ export default function RestaurantDetailPage() {
                 className="btn btn-primary"
                 disabled={
                   !isVietnamAddressComplete(address) ||
-                  !isRestaurantProfileValid(profile)
+                  !isRestaurantProfileValid(profile) ||
+                  catalogs.cuisineIds.length === 0 ||
+                  !catalogs.primaryCuisineId
                 }
                 onClick={() => void saveProfile()}
               >
@@ -190,6 +223,33 @@ export default function RestaurantDetailPage() {
           >
             <Phone aria-hidden="true" size={14} /> {restaurant.phone}
           </a>
+        )}
+
+        {restaurant.cuisines && restaurant.cuisines.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {restaurant.cuisines.map((item) => (
+              <span
+                key={item.cuisine.id}
+                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                  item.isPrimary
+                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200'
+                    : 'bg-muted text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                {item.cuisine.name}
+                {item.isPrimary
+                  ? ` · ${locale === 'vi' ? 'Chính' : 'Primary'}`
+                  : ''}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {restaurant.diningArea && (
+          <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+            <p className="font-semibold">{restaurant.diningArea.name}</p>
+            <p className="text-slate-500">{restaurant.diningArea.address}</p>
+          </div>
         )}
 
         {(restaurant.platformLinks?.length ?? 0) > 0 && (

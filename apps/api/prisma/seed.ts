@@ -63,6 +63,8 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
     await prisma.billParticipant.deleteMany();
     await prisma.bill.deleteMany();
     await prisma.restaurantEntry.deleteMany();
+    await prisma.cuisine.deleteMany();
+    await prisma.diningArea.deleteMany();
     await prisma.user.deleteMany();
   }
 
@@ -97,6 +99,18 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
     }),
   ]);
 
+  const [phoCuisine, japaneseCuisine, bakeryCuisine] = await Promise.all([
+    prisma.cuisine.create({
+      data: { name: 'Phở', nameKey: 'phở', type: 'Món Việt' },
+    }),
+    prisma.cuisine.create({
+      data: { name: 'Nhật Bản', nameKey: 'nhật bản', type: 'Quốc tế' },
+    }),
+    prisma.cuisine.create({
+      data: { name: 'Tiệm bánh', nameKey: 'tiệm bánh', type: 'Bánh' },
+    }),
+  ]);
+
   const [pho, sushi, bakery] = await Promise.all([
     prisma.restaurantEntry.create({
       data: {
@@ -107,6 +121,9 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
         isFavorite: true,
         isRecommended: true,
         createdById: sousChef.id,
+        cuisines: {
+          create: { cuisineId: phoCuisine.id, isPrimary: true },
+        },
       },
     }),
     prisma.restaurantEntry.create({
@@ -117,6 +134,9 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
         type: 'Quán ăn',
         isRecommended: true,
         createdById: headChef.id,
+        cuisines: {
+          create: { cuisineId: japaneseCuisine.id, isPrimary: true },
+        },
       },
     }),
     prisma.restaurantEntry.create({
@@ -126,6 +146,9 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
         cuisineType: 'Tiệm bánh',
         type: 'Tiệm bánh',
         createdById: sousChef.id,
+        cuisines: {
+          create: { cuisineId: bakeryCuisine.id, isPrimary: true },
+        },
       },
     }),
   ]);

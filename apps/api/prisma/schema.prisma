@@ -47,26 +47,26 @@ enum RestaurantPlatform {
 }
 
 model User {
-  id                  String                   @id @default(cuid())
-  username            String                   @unique
-  phone               String?                  @unique
-  name                String
-  passwordHash        String
-  chefRole            ChefRole?
-  systemRole          SystemRole?              @unique
-  sessionVersion      Int                      @default(0)
-  createdAt           DateTime                 @default(now())
-  updatedAt           DateTime                 @updatedAt
-  billsCreated        Bill[]                   @relation("BillCreator")
-  restaurants         RestaurantEntry[]        @relation("RestaurantCreator")
-  participants        BillParticipant[]
-  notifications       Notification[]
-  roleChangesMade     RoleAuditLog[]           @relation("RoleChangedBy")
-  roleChangesReceived RoleAuditLog[]           @relation("RoleChangedUser")
-  billAuditLogs       BillAuditLog[]
-  favorites           UserFavorite[]
-  rootTransfersFrom   RootAdminTransferAudit[] @relation("RootTransferredFrom")
-  rootTransfersTo     RootAdminTransferAudit[] @relation("RootTransferredTo")
+  id                    String                   @id @default(cuid())
+  username              String                   @unique
+  phone                 String?                  @unique
+  name                  String
+  passwordHash          String
+  chefRole              ChefRole?
+  systemRole            SystemRole?              @unique
+  sessionVersion        Int                      @default(0)
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  billsCreated          Bill[]                   @relation("BillCreator")
+  restaurants           RestaurantEntry[]        @relation("RestaurantCreator")
+  participants          BillParticipant[]
+  notifications         Notification[]
+  roleChangesMade       RoleAuditLog[]           @relation("RoleChangedBy")
+  roleChangesReceived   RoleAuditLog[]           @relation("RoleChangedUser")
+  billAuditLogs         BillAuditLog[]
+  favorites             UserFavorite[]
+  rootTransfersFrom     RootAdminTransferAudit[] @relation("RootTransferredFrom")
+  rootTransfersTo       RootAdminTransferAudit[] @relation("RootTransferredTo")
   passwordResetRequests PasswordResetRequest[]
 }
 
@@ -97,30 +97,73 @@ model RootAdminTransferAudit {
 }
 
 model RestaurantEntry {
-  id            String         @id @default(cuid())
+  id             String                   @id @default(cuid())
+  name           String
+  address        String
+  addressLine    String?
+  provinceCode   String?
+  provinceName   String?
+  wardCode       String?
+  wardName       String?
+  phone          String?
+  bannerImageUrl String?
+  diningAreaId   String?
+  diningArea     DiningArea?              @relation(fields: [diningAreaId], references: [id], onDelete: Restrict)
+  cuisineType    String
+  type           String
+  avatarUrl      String?
+  links          Json                     @default("[]")
+  isRecommended  Boolean                  @default(false)
+  isFavorite     Boolean                  @default(false)
+  status         EntryStatus              @default(ACTIVE)
+  createdById    String
+  createdBy      User                     @relation("RestaurantCreator", fields: [createdById], references: [id])
+  bills          Bill[]
+  favorites      UserFavorite[]
+  platformLinks  RestaurantPlatformLink[]
+  cuisines       RestaurantCuisine[]
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@index([diningAreaId])
+}
+
+model Cuisine {
+  id          String              @id @default(cuid())
+  name        String
+  nameKey     String              @unique
+  type        String
+  description String?
+  restaurants RestaurantCuisine[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model RestaurantCuisine {
+  restaurantId String
+  cuisineId    String
+  isPrimary    Boolean         @default(false)
+  restaurant   RestaurantEntry @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  cuisine      Cuisine         @relation(fields: [cuisineId], references: [id], onDelete: Restrict)
+
+  @@id([restaurantId, cuisineId])
+  @@index([cuisineId])
+}
+
+model DiningArea {
+  id            String            @id @default(cuid())
   name          String
+  normalizedKey String            @unique
   address       String
   addressLine   String?
   provinceCode  String?
   provinceName  String?
   wardCode      String?
   wardName      String?
-  phone          String?
-  bannerImageUrl String?
-  cuisineType   String
-  type          String
-  avatarUrl     String?
-  links         Json           @default("[]")
-  isRecommended Boolean        @default(false)
-  isFavorite    Boolean        @default(false)
-  status        EntryStatus    @default(ACTIVE)
-  createdById   String
-  createdBy     User           @relation("RestaurantCreator", fields: [createdById], references: [id])
-  bills         Bill[]
-  favorites     UserFavorite[]
-  platformLinks RestaurantPlatformLink[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  description   String?
+  restaurants   RestaurantEntry[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 }
 
 model RestaurantPlatformLink {

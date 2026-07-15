@@ -48,7 +48,21 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
             status: EntryStatus.ACTIVE,
           },
         },
-        include: { bill: { include: { restaurant: true } } },
+        include: {
+          bill: {
+            include: {
+              restaurant: {
+                include: {
+                  cuisines: {
+                    where: { isPrimary: true },
+                    include: { cuisine: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       const byPaymentStatus: Record<string, number> = {};
@@ -59,6 +73,9 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
       const frequencyByCuisine: Record<string, number> = {};
 
       for (const participant of participants) {
+        const primaryCuisine =
+          participant.bill.restaurant.cuisines[0]?.cuisine.name ??
+          participant.bill.restaurant.cuisineType;
         addAmountToBucket(
           byPaymentStatus,
           participant.paymentStatus,
@@ -66,7 +83,7 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
         );
         addAmountToBucket(
           byCuisineType,
-          participant.bill.restaurant.cuisineType,
+          primaryCuisine,
           participant.finalPrice,
         );
         addAmountToBucket(
@@ -81,9 +98,8 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
         );
         frequencyByRestaurant[participant.bill.restaurant.name] =
           (frequencyByRestaurant[participant.bill.restaurant.name] ?? 0) + 1;
-        frequencyByCuisine[participant.bill.restaurant.cuisineType] =
-          (frequencyByCuisine[participant.bill.restaurant.cuisineType] ?? 0) +
-          1;
+        frequencyByCuisine[primaryCuisine] =
+          (frequencyByCuisine[primaryCuisine] ?? 0) + 1;
       }
 
       const paid = byPaymentStatus[PaymentStatus.PAID] ?? 0;

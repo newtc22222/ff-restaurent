@@ -14,6 +14,7 @@ interface CommonDropdownProps {
   options: DropdownOption[];
   searchable?: boolean;
   searchPlaceholder?: string;
+  onSearchChange?: (query: string) => void;
   emptyMessage?: string;
   allowClear?: boolean;
   clearLabel?: string;
@@ -49,6 +50,7 @@ export default function Dropdown(props: DropdownProps) {
     options,
     searchable = false,
     searchPlaceholder = 'Search...',
+    onSearchChange,
     emptyMessage = 'No results found',
     allowClear = false,
     clearLabel = props.multiple ? 'Clear all' : 'Clear',
@@ -86,6 +88,7 @@ export default function Dropdown(props: DropdownProps) {
   const close = () => {
     setOpen(false);
     setQuery('');
+    onSearchChange?.('');
   };
 
   const selectOption = (option: DropdownOption) => {
@@ -119,7 +122,15 @@ export default function Dropdown(props: DropdownProps) {
         : 'h-10 w-full px-3 text-sm border-border bg-surface text-ink hover:border-ink/40';
 
   return (
-    <div className={`relative ${fullWidth ? 'w-full' : ''}`}>
+    <div
+      className={`relative ${fullWidth ? 'w-full' : ''}`}
+      onKeyDown={(event) => {
+        if (open && event.key === 'Escape') {
+          event.stopPropagation();
+          close();
+        }
+      }}
+    >
       <button
         type="button"
         className={`flex items-center gap-2 rounded-md border text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${triggerClass} ${fullWidth ? 'w-full' : ''}`}
@@ -165,9 +176,9 @@ export default function Dropdown(props: DropdownProps) {
                   aria-label={searchPlaceholder}
                   placeholder={searchPlaceholder}
                   className="h-8 w-full rounded-md border border-border bg-surface py-1 pl-2.5 pr-8 text-[13px] text-ink outline-none placeholder:text-slate-400 focus:border-ink/50"
-                  onChange={(event) => setQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Escape') close();
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    onSearchChange?.(event.target.value);
                   }}
                 />
                 <Search

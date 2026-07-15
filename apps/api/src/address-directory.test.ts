@@ -77,9 +77,14 @@ test('returns a stable unavailable error when timeout occurs without cache', asy
     cacheTtlMs: 50,
     fetcher: async (_input, init) =>
       new Promise<Response>((_resolve, reject) => {
-        init?.signal?.addEventListener('abort', () =>
-          reject(init.signal?.reason),
+        const guard = setTimeout(
+          () => reject(new Error('Abort signal did not fire')),
+          100,
         );
+        init?.signal?.addEventListener('abort', () => {
+          clearTimeout(guard);
+          reject(init.signal?.reason);
+        });
       }),
   });
 
