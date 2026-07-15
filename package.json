@@ -13,6 +13,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "playwright test",
     "smoke": "node scripts/staging-smoke.mjs",
+    "measure:web": "node scripts/measure-web-bundle.mjs",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write ."
   },
