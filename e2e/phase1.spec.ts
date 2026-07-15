@@ -260,20 +260,14 @@ test('member discovers, manages, shares, and reviews Collection places', async (
     .filter({ hasText: 'Existing E2E Restaurant' })
     .click();
   await expect(page).toHaveURL(/\/restaurants\/[^/?]+$/);
-  await page.getByRole('button', { name: 'Favorite', exact: true }).click();
   const feedback = page.getByRole('region', {
     name: 'Food and service feedback',
   });
-  await feedback
-    .locator('label')
-    .filter({ hasText: 'Food' })
-    .getByRole('combobox')
-    .selectOption('8.5');
-  await feedback
-    .locator('label')
-    .filter({ hasText: 'Service' })
-    .getByRole('combobox')
-    .selectOption('9');
+  await expect(feedback).toBeVisible();
+  await page.getByRole('button', { name: 'Favorite', exact: true }).click();
+  const feedbackSelects = feedback.getByRole('combobox');
+  await feedbackSelects.nth(1).selectOption('8.5');
+  await feedbackSelects.nth(2).selectOption('9');
   await feedback.getByLabel('Comment (optional)').fill('Reliable team lunch.');
   await feedback.getByRole('button', { name: 'Submit feedback' }).click();
   await expect(page.getByText('Feedback submitted.')).toBeVisible();
