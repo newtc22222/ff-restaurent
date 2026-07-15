@@ -15,6 +15,7 @@ import {
   RootAdminTransferError,
   transferRootAdmin,
 } from './root-admin-service.js';
+import { runPhase2Backfill } from './phase2-backfill.js';
 
 const integrationTest =
   process.env.RUN_INTEGRATION_TESTS === '1' ? test : test.skip;
@@ -562,6 +563,125 @@ integrationTest(
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002',
     );
+  },
+);
+
+integrationTest(
+  'Phase 2 backfill is observable and idempotent for representative legacy records',
+  async () => {
+    const legacyUser = await prisma.user.create({
+      data: {
+        username: 'legacy-backfill-int',
+        name: 'Legacy Backfill',
+        passwordHash: await bcrypt.hash('password123', 4),
+      },
+    });
+    const [legacyA, legacyB] = await Promise.all([
+      prisma.restaurantEntry.create({
+        data: {
+          name: 'Legacy Thai A',
+          address: '20 Legacy Street',
+          cuisineType: 'Thai  Food',
+          type: 'Restaurant',
+          avatarUrl: 'https://images.example.test/legacy-a.jpg',
+          links: [
+            { label: 'Menu', url: 'https://legacy.example.test/menu' },
+            { label: 'Unsafe', url: 'http://legacy.example.test' },
+          ],
+          isFavorite: true,
+          createdById: sousId,
+        },
+      }),
+      prisma.restaurantEntry.create({
+        data: {
+          name: 'Legacy Thai B',
+          address: '21 Legacy Street',
+          cuisineType: ' thai food ',
+          type: 'Restaurant',
+          createdById: sousId,
+        },
+      }),
+    ]);
+    await prisma.userFavorite.create({
+      data: { userId: legacyUser.id, restaurantId: legacyA.id },
+    });
+
+    const first = await runPhase2Backfill({
+      client: prisma,
+      batchSize: 2,
+    });
+    assert.equal(first.verification.passed, true);
+    assert.equal(first.verification.restaurantsWithoutPrimaryCuisine, 0);
+    assert.equal(first.verification.usersWithoutFavorites, 0);
+    assert.ok(
+      first.exceptions.some(
+        (exception) =>
+          exception.kind === 'CUISINE_NORMALIZED_COLLISION' &&
+          exception.value?.includes(legacyA.id) &&
+          exception.value?.includes(legacyB.id),
+      ),
+    );
+    assert.ok(
+      first.exceptions.some(
+        (exception) =>
+          exception.kind === 'LEGACY_LINK_INVALID' &&
+          exception.restaurantId === legacyA.id,
+      ),
+    );
+    const favorites = await prisma.collection.findFirstOrThrow({
+      where: {
+        ownerId: legacyUser.id,
+        systemType: CollectionSystemType.FAVORITES,
+      },
+    });
+    const recommended = await prisma.collection.findFirstOrThrow({
+      where: { systemType: CollectionSystemType.RECOMMENDED },
+    });
+    assert.ok(
+      await prisma.collectionRestaurant.findUnique({
+        where: {
+          collectionId_restaurantId: {
+            collectionId: favorites.id,
+            restaurantId: legacyA.id,
+          },
+        },
+      }),
+    );
+    assert.ok(
+      await prisma.collectionRestaurant.findUnique({
+        where: {
+          collectionId_restaurantId: {
+            collectionId: recommended.id,
+            restaurantId: legacyA.id,
+          },
+        },
+      }),
+    );
+    const migrated = await prisma.restaurantEntry.findUniqueOrThrow({
+      where: { id: legacyA.id },
+      include: { cuisines: true, platformLinks: true },
+    });
+    assert.equal(migrated.bannerImageUrl, legacyA.avatarUrl);
+    assert.equal(migrated.cuisines.filter((join) => join.isPrimary).length, 1);
+    assert.equal(
+      migrated.platformLinks.some(
+        (link) => link.url === 'https://legacy.example.test/menu',
+      ),
+      true,
+    );
+
+    const second = await runPhase2Backfill({
+      client: prisma,
+      batchSize: 3,
+    });
+    assert.equal(second.verification.passed, true);
+    assert.equal(second.actions.cuisinesCreated, 0);
+    assert.equal(second.actions.primaryCuisineJoinsCreated, 0);
+    assert.equal(second.actions.bannersPromoted, 0);
+    assert.equal(second.actions.platformLinksCreated, 0);
+    assert.equal(second.actions.favoritesCollectionsCreated, 0);
+    assert.equal(second.actions.favoriteMembershipsCreated, 0);
+    assert.equal(second.actions.recommendedMembershipsCreated, 0);
   },
 );
 

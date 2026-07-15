@@ -14,6 +14,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:phones:backfill": "tsx prisma/backfill-user-phones.ts",
+    "prisma:phase2:backfill": "tsx prisma/backfill-phase2.ts",
     "prisma:root:bootstrap": "tsx prisma/bootstrap-root-admin.ts",
     "prisma:root:recover": "tsx prisma/recover-root-admin.ts",
     "prisma:seed": "tsx prisma/seed.ts"
