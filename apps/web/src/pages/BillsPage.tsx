@@ -22,9 +22,9 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
  */
 export default function BillsPage() {
   const navigate = useNavigate();
-  const { user, bills, setError } = useAppContext();
+  const { user, bills } = useAppContext();
   const { t } = useI18n();
-  const { mutate } = useMutation(setError);
+  const { mutate } = useMutation();
   const [filterRestaurant, setFilterRestaurant] = useState('');
   const [filterMembers, setFilterMembers] = useState<string[]>([]);
   const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid'>(
@@ -83,8 +83,13 @@ export default function BillsPage() {
     intent: 'bill-reminders' | 'bill-status',
     billId: string,
     fallback: string,
+    success: string,
     status?: 'archive' | 'restore',
-  ) => mutate({ intent, billId, ...(status ? { status } : {}) }, { fallback });
+  ) =>
+    mutate(
+      { intent, billId, ...(status ? { status } : {}) },
+      { fallback, success },
+    );
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -194,13 +199,19 @@ export default function BillsPage() {
             user={user}
             onView={() => navigate(`/bills/${bill.id}`)}
             onRemind={() =>
-              runAction('bill-reminders', bill.id, 'Could not send reminders')
+              runAction(
+                'bill-reminders',
+                bill.id,
+                t('toast.remindersFailed'),
+                t('toast.remindersProcessed'),
+              )
             }
             onArchive={() =>
               runAction(
                 'bill-status',
                 bill.id,
-                'Could not archive bill',
+                t('toast.billArchiveFailed'),
+                t('toast.billArchived'),
                 'archive',
               )
             }
@@ -208,7 +219,8 @@ export default function BillsPage() {
               runAction(
                 'bill-status',
                 bill.id,
-                'Could not restore bill',
+                t('toast.billRestoreFailed'),
+                t('toast.billRestored'),
                 'restore',
               )
             }

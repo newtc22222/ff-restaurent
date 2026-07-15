@@ -245,4 +245,38 @@ describe('mutationAction', () => {
       expect.objectContaining({ method: 'PATCH' }),
     );
   });
+
+  it('returns handled API failures for mutation toasts', async () => {
+    localStorage.setItem('ff-token', 'token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        jsonResponse(
+          { code: 'PAYMENT_STATUS_CONFLICT', message: 'Status changed' },
+          409,
+        ),
+      ),
+    );
+    const request = new Request('http://localhost/bills/bill-1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'payment',
+        memberId: 'member-1',
+        status: 'PAID',
+        expectedStatus: 'WAITING',
+      }),
+    });
+
+    const result = await mutationAction({
+      request,
+      params: { billId: 'bill-1' },
+      context: {},
+    } as never);
+
+    expect(result).toMatchObject({
+      data: { error: 'Status changed', code: 'PAYMENT_STATUS_CONFLICT' },
+      init: { status: 409 },
+    });
+  });
 });

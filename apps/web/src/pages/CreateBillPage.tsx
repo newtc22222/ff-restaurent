@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { CheckCircle2, ChevronRight, Plus, X } from 'lucide-react';
+import { ChevronRight, Plus, X } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
@@ -36,7 +36,7 @@ interface VoucherDraft {
 export default function CreateBillPage() {
   const navigate = useNavigate();
   const { billId } = useParams();
-  const { user, users, bills, restaurants, setError } = useAppContext();
+  const { user, users, bills, restaurants } = useAppContext();
   const { t } = useI18n();
 
   const members = uniqueUsers(users, user);
@@ -69,9 +69,8 @@ export default function CreateBillPage() {
       originCost: p.originCost,
     })) ?? [],
   );
-  const [submitted, setSubmitted] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  const { mutate } = useMutation(setLocalError);
+  const { mutate } = useMutation();
   const activeRestaurants = restaurants.filter(
     (entry) => entry.status === 'ACTIVE' || entry.id === restaurantId,
   );
@@ -128,7 +127,6 @@ export default function CreateBillPage() {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setLocalError(null);
-    setError(null);
     if (participants.length < 2) {
       setLocalError('A bill requires at least two participants.');
       return;
@@ -167,9 +165,11 @@ export default function CreateBillPage() {
     void mutate(
       { intent: isEditing ? 'update-bill' : 'create-bill', payload },
       {
-        fallback: isEditing ? 'Could not update bill' : 'Could not create bill',
-        clearFirst: false, // errors are already cleared before validation above
-        onSuccess: () => setSubmitted(true),
+        fallback: t(
+          isEditing ? 'toast.billUpdateFailed' : 'toast.billCreateFailed',
+        ),
+        success: t(isEditing ? 'toast.billUpdated' : 'toast.billCreated'),
+        redirects: true,
       },
     );
   };
@@ -614,20 +614,12 @@ export default function CreateBillPage() {
             </div>
 
             <button
-              className={`btn h-11 w-full ${submitted ? 'bg-emerald-500 text-white' : 'btn-primary'}`}
-              disabled={submitted || !isFormReady}
+              className="btn btn-primary h-11 w-full"
+              disabled={!isFormReady}
             >
-              {submitted ? (
-                <>
-                  <CheckCircle2 size={16} /> {t('createBill.created')}
-                </>
-              ) : (
-                <>
-                  {t('createBill.submit')} <ChevronRight size={16} />
-                </>
-              )}
+              {t('createBill.submit')} <ChevronRight size={16} />
             </button>
-            {!isFormReady && !submitted && (
+            {!isFormReady && (
               <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">
                 Select a restaurant, add at least two members, and enter every
                 base amount to create the bill.

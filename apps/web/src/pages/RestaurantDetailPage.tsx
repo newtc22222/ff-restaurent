@@ -13,9 +13,9 @@ import BackButton from '../components/ui/BackButton';
 export default function RestaurantDetailPage() {
   const navigate = useNavigate();
   const { restaurantId } = useParams();
-  const { user, restaurants, setError } = useAppContext();
+  const { user, restaurants } = useAppContext();
   const { t } = useI18n();
-  const { mutate } = useMutation(setError);
+  const { mutate } = useMutation();
 
   const restaurant = restaurants.find(
     (candidate) => candidate.id === restaurantId,
@@ -27,13 +27,20 @@ export default function RestaurantDetailPage() {
   const toggleFavorite = () =>
     mutate(
       { intent: 'restaurant-favorite' },
-      { fallback: 'Could not toggle favorite', clearFirst: false },
+      {
+        fallback: t('toast.favoriteFailed'),
+        success: t('toast.favoriteUpdated'),
+      },
     );
 
-  const runAction = (status: 'archive' | 'restore', fallback: string) =>
+  const runAction = (
+    status: 'archive' | 'restore',
+    fallback: string,
+    success: string,
+  ) =>
     mutate(
       { intent: 'restaurant-status', status },
-      { fallback, onSuccess: onBack }, // Go back after archiving/restoring
+      { fallback, success, onSuccess: onBack },
     );
 
   return (
@@ -110,7 +117,13 @@ export default function RestaurantDetailPage() {
             {restaurant.status === 'ACTIVE' && (
               <button
                 className="btn btn-soft flex-1 hover:border-red-300 hover:text-red-500"
-                onClick={() => runAction('archive', 'Could not archive')}
+                onClick={() =>
+                  runAction(
+                    'archive',
+                    t('toast.restaurantArchiveFailed'),
+                    t('toast.restaurantArchived'),
+                  )
+                }
               >
                 {t('bills.archive')}
               </button>
@@ -118,7 +131,13 @@ export default function RestaurantDetailPage() {
             {restaurant.status === 'ARCHIVED' && (
               <button
                 className="btn btn-soft flex-1 hover:border-emerald-300 hover:text-emerald-500"
-                onClick={() => runAction('restore', 'Could not restore')}
+                onClick={() =>
+                  runAction(
+                    'restore',
+                    t('toast.restaurantRestoreFailed'),
+                    t('toast.restaurantRestored'),
+                  )
+                }
               >
                 {t('bills.restore')}
               </button>

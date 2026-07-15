@@ -5,6 +5,7 @@ import { router } from './app/router';
 import { I18nProvider } from './app/providers/i18n';
 import { ThemeProvider } from './app/providers/theme';
 import { API_URL } from './lib/api';
+import ToastHost from './components/ui/ToastHost';
 import './index.css';
 
 const apiOrigin = new URL(API_URL, window.location.href).origin;
@@ -20,6 +21,7 @@ createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>
       <I18nProvider>
+        <ToastHost />
         <RouterProvider router={router} />
       </I18nProvider>
     </ThemeProvider>

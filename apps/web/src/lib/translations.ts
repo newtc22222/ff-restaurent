@@ -142,6 +142,61 @@ export const translations = {
     'admin.noMembersDesc': 'Thành viên sẽ hiển thị sau khi API trả về dữ liệu.',
     'admin.customerOnly': 'Chỉ Khách hàng',
 
+    // Result toasts
+    'toast.partialData':
+      'Một số dữ liệu chưa thể làm mới. Phiên đăng nhập của bạn vẫn hoạt động.',
+    'toast.notificationReadFailed': 'Không thể đánh dấu thông báo đã đọc.',
+    'toast.signInSuccess': 'Đăng nhập thành công.',
+    'toast.registerSuccess': 'Đăng ký thành công.',
+    'toast.authFailed': 'Không thể hoàn tất xác thực.',
+    'toast.roleUpdated': 'Đã cập nhật vai trò thành viên.',
+    'toast.roleUpdateFailed': 'Không thể cập nhật vai trò thành viên.',
+    'toast.billCreated': 'Đã tạo hóa đơn.',
+    'toast.billCreateFailed': 'Không thể tạo hóa đơn.',
+    'toast.billUpdated': 'Đã cập nhật hóa đơn.',
+    'toast.billUpdateFailed': 'Không thể cập nhật hóa đơn.',
+    'toast.remindersProcessed': 'Đã xử lý nhắc nhở thanh toán.',
+    'toast.remindersFailed': 'Không thể gửi nhắc nhở thanh toán.',
+    'toast.billArchived': 'Đã lưu trữ hóa đơn.',
+    'toast.billArchiveFailed': 'Không thể lưu trữ hóa đơn.',
+    'toast.billRestored': 'Đã khôi phục hóa đơn.',
+    'toast.billRestoreFailed': 'Không thể khôi phục hóa đơn.',
+    'toast.paymentUpdated': 'Đã cập nhật trạng thái thanh toán.',
+    'toast.paymentUpdateFailed': 'Không thể cập nhật trạng thái thanh toán.',
+    'toast.restaurantCreated': 'Đã tạo địa điểm.',
+    'toast.restaurantCreateFailed': 'Không thể lưu địa điểm.',
+    'toast.favoriteUpdated': 'Đã cập nhật danh sách yêu thích.',
+    'toast.favoriteFailed': 'Không thể cập nhật danh sách yêu thích.',
+    'toast.recommendationUpdated': 'Đã cập nhật đề xuất.',
+    'toast.recommendationFailed': 'Không thể cập nhật đề xuất.',
+    'toast.restaurantArchived': 'Đã lưu trữ địa điểm.',
+    'toast.restaurantArchiveFailed': 'Không thể lưu trữ địa điểm.',
+    'toast.restaurantRestored': 'Đã khôi phục địa điểm.',
+    'toast.restaurantRestoreFailed': 'Không thể khôi phục địa điểm.',
+    'toast.profileUpdated': 'Đã cập nhật hồ sơ.',
+    'toast.profileUpdateFailed': 'Không thể cập nhật hồ sơ.',
+
+    // API result errors
+    'error.invalidCredentials':
+      'Tên đăng nhập, số điện thoại hoặc mật khẩu không đúng.',
+    'error.registrationNotAuthorized': 'Mã mời không hợp lệ.',
+    'error.identifierTaken':
+      'Tên đăng nhập hoặc số điện thoại đã được sử dụng.',
+    'error.validation': 'Vui lòng kiểm tra lại thông tin đã nhập.',
+    'error.uniqueConflict': 'Dữ liệu này đã tồn tại.',
+    'error.relationConflict': 'Không thể thay đổi mục đang được sử dụng.',
+    'error.notFound': 'Không tìm thấy mục được yêu cầu.',
+    'error.internal': 'Đã xảy ra lỗi máy chủ. Vui lòng thử lại.',
+    'error.invalidParticipants': 'Danh sách thành viên hóa đơn không hợp lệ.',
+    'error.paidBillAmendmentBlocked':
+      'Không thể thay đổi tài chính sau khi bắt đầu thanh toán.',
+    'error.paymentStatusConflict':
+      'Trạng thái thanh toán đã thay đổi. Vui lòng làm mới và thử lại.',
+    'error.paymentStatusUnchanged': 'Trạng thái thanh toán không thay đổi.',
+    'error.finalHeadChefRequired': 'Nhóm phải giữ lại ít nhất một Bếp trưởng.',
+    'error.selfRoleChangeForbidden':
+      'Bạn không thể thay đổi vai trò của chính mình.',
+
     // Profile
     'profile.title': 'Hồ sơ',
     'profile.edit': 'Chỉnh sửa hồ sơ',
@@ -309,6 +364,61 @@ export const translations = {
     'profile.edit': 'Edit profile',
     'profile.save': 'Save',
     'profile.saved': 'Saved!',
+
+    // Result toasts
+    'toast.partialData':
+      'Some data could not be refreshed. Your session is still active.',
+    'toast.notificationReadFailed': 'Could not mark the notification as read.',
+    'toast.signInSuccess': 'Signed in successfully.',
+    'toast.registerSuccess': 'Registration completed.',
+    'toast.authFailed': 'Could not complete authentication.',
+    'toast.roleUpdated': 'Member role updated.',
+    'toast.roleUpdateFailed': 'Could not update the member role.',
+    'toast.billCreated': 'Bill created.',
+    'toast.billCreateFailed': 'Could not create the bill.',
+    'toast.billUpdated': 'Bill updated.',
+    'toast.billUpdateFailed': 'Could not update the bill.',
+    'toast.remindersProcessed': 'Payment reminders processed.',
+    'toast.remindersFailed': 'Could not send payment reminders.',
+    'toast.billArchived': 'Bill archived.',
+    'toast.billArchiveFailed': 'Could not archive the bill.',
+    'toast.billRestored': 'Bill restored.',
+    'toast.billRestoreFailed': 'Could not restore the bill.',
+    'toast.paymentUpdated': 'Payment status updated.',
+    'toast.paymentUpdateFailed': 'Could not update the payment status.',
+    'toast.restaurantCreated': 'Restaurant entry created.',
+    'toast.restaurantCreateFailed': 'Could not save the restaurant entry.',
+    'toast.favoriteUpdated': 'Favorites updated.',
+    'toast.favoriteFailed': 'Could not update favorites.',
+    'toast.recommendationUpdated': 'Recommendation updated.',
+    'toast.recommendationFailed': 'Could not update the recommendation.',
+    'toast.restaurantArchived': 'Restaurant entry archived.',
+    'toast.restaurantArchiveFailed': 'Could not archive the restaurant entry.',
+    'toast.restaurantRestored': 'Restaurant entry restored.',
+    'toast.restaurantRestoreFailed': 'Could not restore the restaurant entry.',
+    'toast.profileUpdated': 'Profile updated.',
+    'toast.profileUpdateFailed': 'Could not update the profile.',
+
+    // API result errors
+    'error.invalidCredentials':
+      'The username, phone number, or password is incorrect.',
+    'error.registrationNotAuthorized': 'The group invite code is not valid.',
+    'error.identifierTaken': 'That username or phone number is already in use.',
+    'error.validation': 'Check the submitted information and try again.',
+    'error.uniqueConflict': 'That value already exists.',
+    'error.relationConflict':
+      'An item that is currently in use cannot be changed.',
+    'error.notFound': 'The requested item was not found.',
+    'error.internal': 'A server error occurred. Please try again.',
+    'error.invalidParticipants': 'The bill participant list is invalid.',
+    'error.paidBillAmendmentBlocked':
+      'Financial details cannot change after payment has started.',
+    'error.paymentStatusConflict':
+      'The payment status changed. Refresh and try again.',
+    'error.paymentStatusUnchanged': 'The payment status is already selected.',
+    'error.finalHeadChefRequired':
+      'The group must retain at least one Head Chef.',
+    'error.selfRoleChangeForbidden': 'You cannot change your own role.',
 
     // Theme
     'theme.light': 'Light',

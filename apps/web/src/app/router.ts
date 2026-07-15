@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import toast from 'react-hot-toast';
 import {
   createBrowserRouter,
   data,
@@ -113,6 +114,9 @@ export async function loginAction({ request }: ActionFunctionArgs) {
           )
         : await api.login(body.identifier, body.password);
     session.setToken(result.token);
+    if (typeof body.toastSuccess === 'string') {
+      toast.success(body.toastSuccess);
+    }
     return redirect('/bills');
   } catch (error) {
     if (
@@ -133,75 +137,97 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
   if (!session.getToken()) throw redirect('/login');
   const body = await request.json();
   const api = session.api();
-  switch (body.intent) {
-    case 'create-bill': {
-      const bill = await api.request<Bill>('/bills', {
-        method: 'POST',
-        body: JSON.stringify(body.payload),
-      });
-      return redirect(`/bills/${bill.id}`);
-    }
-    case 'update-bill':
-      await api.request(`/bills/${params.billId}`, {
-        method: 'PUT',
-        body: JSON.stringify(body.payload),
-      });
-      return redirect(`/bills/${params.billId}`);
-    case 'bill-status':
-      return api.request(
-        `/bills/${body.billId ?? params.billId}/${body.status}`,
-        { method: 'PATCH' },
-      );
-    case 'bill-reminders':
-      return api.request(`/bills/${body.billId ?? params.billId}/reminders`, {
-        method: 'POST',
-      });
-    case 'payment':
-      return api.request(
-        `/bills/${params.billId}/participants/${body.memberId}/payment`,
-        {
+  try {
+    switch (body.intent) {
+      case 'create-bill': {
+        const bill = await api.request<Bill>('/bills', {
+          method: 'POST',
+          body: JSON.stringify(body.payload),
+        });
+        if (typeof body.toastSuccess === 'string')
+          toast.success(body.toastSuccess);
+        return redirect(`/bills/${bill.id}`);
+      }
+      case 'update-bill':
+        await api.request(`/bills/${params.billId}`, {
+          method: 'PUT',
+          body: JSON.stringify(body.payload),
+        });
+        if (typeof body.toastSuccess === 'string')
+          toast.success(body.toastSuccess);
+        return redirect(`/bills/${params.billId}`);
+      case 'bill-status':
+        return await api.request(
+          `/bills/${body.billId ?? params.billId}/${body.status}`,
+          { method: 'PATCH' },
+        );
+      case 'bill-reminders':
+        return await api.request(
+          `/bills/${body.billId ?? params.billId}/reminders`,
+          { method: 'POST' },
+        );
+      case 'payment':
+        return await api.request(
+          `/bills/${params.billId}/participants/${body.memberId}/payment`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify({
+              status: body.status,
+              expectedStatus: body.expectedStatus,
+            }),
+          },
+        );
+      case 'create-restaurant':
+        return await api.request('/restaurants', {
+          method: 'POST',
+          body: JSON.stringify(body.payload),
+        });
+      case 'restaurant-favorite':
+        return await api.request(
+          `/restaurants/${body.restaurantId ?? params.restaurantId}/favorite`,
+          { method: 'POST' },
+        );
+      case 'restaurant-recommend':
+        return await api.request(
+          `/restaurants/${body.restaurantId}/recommend`,
+          {
+            method: 'PATCH',
+          },
+        );
+      case 'restaurant-status':
+        return await api.request(
+          `/restaurants/${body.restaurantId ?? params.restaurantId}/${body.status}`,
+          { method: 'PATCH' },
+        );
+      case 'update-role':
+        return await api.request(`/users/${body.userId}/chef-role`, {
           method: 'PATCH',
-          body: JSON.stringify({
-            status: body.status,
-            expectedStatus: body.expectedStatus,
-          }),
-        },
+          body: JSON.stringify({ chefRole: body.chefRole }),
+        });
+      case 'update-profile':
+        return await api.request('/me/profile', {
+          method: 'PUT',
+          body: JSON.stringify(body.payload),
+        });
+      case 'read-notification':
+        return await api.request(`/notifications/${body.notificationId}/read`, {
+          method: 'PATCH',
+        });
+      default:
+        throw new Response('Unknown mutation intent', { status: 400 });
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      session.clear();
+      throw redirect('/login');
+    }
+    if (error instanceof ApiError) {
+      return data(
+        { error: error.message, code: error.code },
+        { status: error.status },
       );
-    case 'create-restaurant':
-      return api.request('/restaurants', {
-        method: 'POST',
-        body: JSON.stringify(body.payload),
-      });
-    case 'restaurant-favorite':
-      return api.request(
-        `/restaurants/${body.restaurantId ?? params.restaurantId}/favorite`,
-        { method: 'POST' },
-      );
-    case 'restaurant-recommend':
-      return api.request(`/restaurants/${body.restaurantId}/recommend`, {
-        method: 'PATCH',
-      });
-    case 'restaurant-status':
-      return api.request(
-        `/restaurants/${body.restaurantId ?? params.restaurantId}/${body.status}`,
-        { method: 'PATCH' },
-      );
-    case 'update-role':
-      return api.request(`/users/${body.userId}/chef-role`, {
-        method: 'PATCH',
-        body: JSON.stringify({ chefRole: body.chefRole }),
-      });
-    case 'update-profile':
-      return api.request('/me/profile', {
-        method: 'PUT',
-        body: JSON.stringify(body.payload),
-      });
-    case 'read-notification':
-      return api.request(`/notifications/${body.notificationId}/read`, {
-        method: 'PATCH',
-      });
-    default:
-      throw new Response('Unknown mutation intent', { status: 400 });
+    }
+    throw error;
   }
 }
 

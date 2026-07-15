@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { CheckCircle2, Edit3 } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { roleLabel, initials } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
@@ -20,9 +20,7 @@ export default function ProfilePage() {
     username: user.username,
     phone: user.phone ?? '',
   });
-  const [saved, setSaved] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const { mutate } = useMutation(setLocalError);
+  const { mutate } = useMutation();
 
   const onBack = () => navigate('/bills');
 
@@ -38,14 +36,9 @@ export default function ProfilePage() {
         },
       },
       {
-        fallback: 'Could not update profile',
-        onSuccess: () => {
-          setSaved(true);
-          setTimeout(() => {
-            setSaved(false);
-            setEditing(false);
-          }, 1000);
-        },
+        fallback: t('toast.profileUpdateFailed'),
+        success: t('toast.profileUpdated'),
+        onSuccess: () => setEditing(false),
       },
     );
   };
@@ -79,11 +72,6 @@ export default function ProfilePage() {
           </button>
         ) : (
           <form onSubmit={submit} className="space-y-4">
-            {localError && (
-              <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-                {localError}
-              </div>
-            )}
             <label className="block space-y-1">
               <span className="label">{t('auth.name')}</span>
               <input
@@ -119,16 +107,8 @@ export default function ProfilePage() {
               >
                 {t('auth.cancel')}
               </button>
-              <button
-                className={`btn flex-1 ${saved ? 'bg-emerald-500 text-white' : 'btn-primary'}`}
-              >
-                {saved ? (
-                  <>
-                    <CheckCircle2 size={14} /> {t('profile.saved')}
-                  </>
-                ) : (
-                  t('profile.save')
-                )}
+              <button className="btn btn-primary flex-1">
+                {t('profile.save')}
               </button>
             </div>
           </form>
