@@ -8,6 +8,7 @@ import { loadConfig } from './config.js';
 import { registerErrorHandler } from './http/error-handler.js';
 import { prisma } from './prisma.js';
 import { registerAuthRoutes } from './routes/auth-routes.js';
+import { registerAddressRoutes } from './routes/address-routes.js';
 import { registerBillRoutes } from './routes/bill-routes.js';
 import { registerMemberRoutes } from './routes/member-routes.js';
 import { registerNotificationRoutes } from './routes/notification-routes.js';
@@ -54,6 +55,7 @@ const registerRoutes = (app: FastifyInstance) => {
   });
 
   registerAuthRoutes(app);
+  registerAddressRoutes(app);
   registerPasswordResetRoutes(app);
   registerProfileRoutes(app);
   registerMemberRoutes(app);

@@ -7,7 +7,11 @@ import {
 } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import { isHeadChef } from '../roles.js';
-import { restaurantSchema } from '../schemas.js';
+import {
+  normalizeVietnamAddressSnapshot,
+  restaurantSchema,
+  restaurantUpdateSchema,
+} from '../schemas.js';
 
 type RestaurantListQuery = {
   includeArchived?: string;
@@ -74,11 +78,12 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
     { preHandler: [requireAuthenticatedUser, requireSousChefOrHeadChef] },
     async (request, reply) => {
       const body = restaurantSchema.parse(request.body);
+      const data = normalizeVietnamAddressSnapshot(body);
       return reply.code(201).send(
         await prisma.restaurantEntry.create({
           data: {
-            ...body,
-            links: body.links ?? [],
+            ...data,
+            links: data.links ?? [],
             createdById: request.currentUser.id,
           },
         }),
@@ -91,10 +96,11 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
     { preHandler: [requireAuthenticatedUser, requireSousChefOrHeadChef] },
     async (request) => {
       const { id } = request.params as { id: string };
-      const body = restaurantSchema.partial().parse(request.body);
+      const body = restaurantUpdateSchema.parse(request.body);
+      const data = normalizeVietnamAddressSnapshot(body);
       return prisma.restaurantEntry.update({
         where: { id },
-        data: { ...body, links: body.links ?? undefined },
+        data: { ...data, links: data.links ?? undefined },
       });
     },
   );

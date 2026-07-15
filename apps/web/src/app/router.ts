@@ -272,6 +272,11 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
           method: 'POST',
           body: JSON.stringify(body.payload),
         });
+      case 'update-restaurant':
+        return await api.request(`/restaurants/${params.restaurantId}`, {
+          method: 'PUT',
+          body: JSON.stringify(body.payload),
+        });
       case 'restaurant-favorite':
         return await api.request(
           `/restaurants/${body.restaurantId ?? params.restaurantId}/favorite`,

@@ -90,6 +90,11 @@ model RestaurantEntry {
   id            String         @id @default(cuid())
   name          String
   address       String
+  addressLine   String?
+  provinceCode  String?
+  provinceName  String?
+  wardCode      String?
+  wardName      String?
   cuisineType   String
   type          String
   avatarUrl     String?
