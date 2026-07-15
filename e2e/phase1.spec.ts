@@ -260,6 +260,13 @@ test('member discovers, manages, shares, and reviews Collection places', async (
     }),
   ]);
   await prisma.$transaction([
+    prisma.billParticipant.updateMany({
+      where: {
+        memberId: customer.id,
+        bill: { restaurantId: restaurant.id },
+      },
+      data: { paymentStatus: 'PAID', paidAt: new Date() },
+    }),
     prisma.feedback.deleteMany({
       where: { userId: customer.id, restaurantId: restaurant.id },
     }),
