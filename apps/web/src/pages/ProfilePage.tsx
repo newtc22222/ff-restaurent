@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Edit3 } from 'lucide-react';
+import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 import { useNavigate } from 'react-router';
 import { roleLabel, initials } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
@@ -21,18 +22,24 @@ export default function ProfilePage() {
     phone: user.phone ?? '',
   });
   const { mutate } = useMutation();
+  const parsedPhone = parseVietnamMobilePhone(form.phone);
+  const phoneError =
+    form.phone.trim() && !parsedPhone.success
+      ? t('validation.vietnamMobilePhone')
+      : null;
 
   const onBack = () => navigate('/bills');
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (!parsedPhone.success) return;
     void mutate(
       {
         intent: 'update-profile',
         payload: {
           name: form.name,
           username: form.username,
-          ...(form.phone ? { phone: form.phone } : {}),
+          phone: parsedPhone.phone,
         },
       },
       {
@@ -95,9 +102,16 @@ export default function ProfilePage() {
               <input
                 className="field w-full"
                 type="tel"
+                aria-label={t('auth.phone')}
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                aria-invalid={!!phoneError}
               />
+              {phoneError && (
+                <span className="text-xs text-red-600" role="alert">
+                  {phoneError}
+                </span>
+              )}
             </label>
             <div className="flex gap-3">
               <button
@@ -107,7 +121,10 @@ export default function ProfilePage() {
               >
                 {t('auth.cancel')}
               </button>
-              <button className="btn btn-primary flex-1">
+              <button
+                className="btn btn-primary flex-1"
+                disabled={!!phoneError}
+              >
                 {t('profile.save')}
               </button>
             </div>

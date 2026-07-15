@@ -1,5 +1,19 @@
 import { z } from 'zod';
-import { AdjustmentType } from '@ff-restaurent/shared';
+import { AdjustmentType, parseVietnamMobilePhone } from '@ff-restaurent/shared';
+
+export const vietnamMobilePhoneSchema = z
+  .union([z.string().max(40), z.null()])
+  .transform((value, context) => {
+    const result = parseVietnamMobilePhone(value);
+    if (!result.success) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Phone must be a valid Vietnamese mobile number',
+      });
+      return z.NEVER;
+    }
+    return result.phone;
+  });
 
 export const loginSchema = z.object({
   identifier: z.string().min(1),
@@ -9,7 +23,7 @@ export const loginSchema = z.object({
 export const registerSchema = z.object({
   name: z.string().min(1),
   username: z.string().min(3).max(30),
-  phone: z.string().optional(),
+  phone: vietnamMobilePhoneSchema.optional(),
   password: z.string().min(8),
   inviteCode: z.string().min(1),
 });
@@ -17,7 +31,7 @@ export const registerSchema = z.object({
 export const profileUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   username: z.string().min(3).max(30).optional(),
-  phone: z.string().optional(),
+  phone: vietnamMobilePhoneSchema.optional(),
 });
 
 export const restaurantSchema = z.object({

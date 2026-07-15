@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useFetcher } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../app/providers/i18n';
 import { ThemeProvider } from '../app/providers/theme';
 import LoginPage from './LoginPage';
@@ -31,6 +31,8 @@ beforeEach(() => {
     })),
   );
 });
+
+afterEach(cleanup);
 
 describe('LoginPage', () => {
   it('shows handled fetcher action errors once as localized toasts', async () => {
@@ -62,5 +64,34 @@ describe('LoginPage', () => {
       target: { value: 'another-user' },
     });
     expect(toastError).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps invalid Vietnamese mobile numbers inline and blocks registration', () => {
+    vi.mocked(useFetcher).mockReturnValue({
+      state: 'idle',
+      data: undefined,
+      submit: vi.fn(),
+    } as never);
+
+    render(
+      <ThemeProvider>
+        <I18nProvider>
+          <LoginPage />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Register' }));
+    fireEvent.change(screen.getByLabelText('Phone number'), {
+      target: { value: '+12025550123' },
+    });
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'valid Vietnamese mobile number',
+    );
+    expect(
+      (screen.getByRole('button', { name: 'Register' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
 });
