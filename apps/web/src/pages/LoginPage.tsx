@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import toast from 'react-hot-toast';
+import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 import { useFetcher } from 'react-router';
 import type { LoginActionData } from '../app/router';
 import { seededUsers } from '../lib/helpers';
@@ -28,6 +29,11 @@ export default function LoginPage() {
   const [regInviteCode, setRegInviteCode] = useState('');
   const lastError = useRef<LoginActionData | null>(null);
   const busy = fetcher.state !== 'idle';
+  const parsedRegistrationPhone = parseVietnamMobilePhone(regPhone);
+  const registrationPhoneError =
+    regPhone.trim() && !parsedRegistrationPhone.success
+      ? t('validation.vietnamMobilePhone')
+      : null;
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.error) {
@@ -193,9 +199,16 @@ export default function LoginPage() {
               <input
                 className="field w-full"
                 type="tel"
+                aria-label={t('auth.phone')}
                 value={regPhone}
                 onChange={(e) => setRegPhone(e.target.value)}
+                aria-invalid={!!registrationPhoneError}
               />
+              {registrationPhoneError && (
+                <span className="text-xs text-red-600" role="alert">
+                  {registrationPhoneError}
+                </span>
+              )}
             </label>
             <label className="mb-5 block space-y-2">
               <span className="label">{t('auth.password')}</span>
@@ -219,7 +232,10 @@ export default function LoginPage() {
                 autoComplete="off"
               />
             </label>
-            <button className="btn btn-primary mb-5 w-full" disabled={busy}>
+            <button
+              className="btn btn-primary mb-5 w-full"
+              disabled={busy || !!registrationPhoneError}
+            >
               {busy ? t('auth.registering') : t('auth.register')}
             </button>
             <div className="text-center text-[13px] text-slate-500">

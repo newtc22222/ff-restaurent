@@ -142,6 +142,10 @@ export const translations = {
     'admin.noMembersDesc': 'Thành viên sẽ hiển thị sau khi API trả về dữ liệu.',
     'admin.customerOnly': 'Chỉ Khách hàng',
 
+    // Validation
+    'validation.vietnamMobilePhone':
+      'Nhập số di động Việt Nam hợp lệ, ví dụ 0901234567 hoặc +84901234567.',
+
     // Result toasts
     'toast.partialData':
       'Một số dữ liệu chưa thể làm mới. Phiên đăng nhập của bạn vẫn hoạt động.',
@@ -364,6 +368,10 @@ export const translations = {
     'profile.edit': 'Edit profile',
     'profile.save': 'Save',
     'profile.saved': 'Saved!',
+
+    // Validation
+    'validation.vietnamMobilePhone':
+      'Enter a valid Vietnamese mobile number, such as 0901234567 or +84901234567.',
 
     // Result toasts
     'toast.partialData':

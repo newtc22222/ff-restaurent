@@ -13,6 +13,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:phones:backfill": "tsx prisma/backfill-user-phones.ts",
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {

@@ -70,7 +70,7 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
       data: {
         name: 'Casey Customer',
         username: 'customer',
-        phone: '0901000001',
+        phone: '+84901000001',
         passwordHash,
       },
     }),
@@ -78,7 +78,7 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
       data: {
         name: 'Sam Sous Chef',
         username: 'sous',
-        phone: '0901000002',
+        phone: '+84901000002',
         passwordHash,
         chefRole: ChefRole.SOUS_CHEF,
       },
@@ -87,7 +87,7 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
       data: {
         name: 'Hana Head Chef',
         username: 'head',
-        phone: '0901000003',
+        phone: '+84901000003',
         passwordHash,
         chefRole: ChefRole.HEAD_CHEF,
       },

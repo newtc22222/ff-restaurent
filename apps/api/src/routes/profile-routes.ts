@@ -20,15 +20,21 @@ export const registerProfileRoutes = (app: FastifyInstance) => {
     { preHandler: requireAuthenticatedUser },
     async (request, reply) => {
       const body = profileUpdateSchema.parse(request.body);
-      if (body.username) {
+      if (body.username || body.phone) {
         const existing = await prisma.user.findFirst({
           where: {
-            username: body.username,
+            OR: [
+              ...(body.username ? [{ username: body.username }] : []),
+              ...(body.phone ? [{ phone: body.phone }] : []),
+            ],
             NOT: { id: request.currentUser.id },
           },
         });
         if (existing) {
-          return reply.code(409).send({ message: 'Username already taken' });
+          return reply.code(409).send({
+            code: 'IDENTIFIER_TAKEN',
+            message: 'Username or phone already taken',
+          });
         }
       }
       const updated = await prisma.user.update({

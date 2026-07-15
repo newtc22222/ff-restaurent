@@ -129,6 +129,85 @@ integrationTest(
 );
 
 integrationTest(
+  'Vietnamese phone normalization, login precedence, duplicates, and clearing work',
+  async () => {
+    const register = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: {
+        name: 'Phone Member',
+        username: 'phone-member-int',
+        phone: '0901 234 567',
+        password: 'phone-password',
+        inviteCode: process.env.REGISTRATION_INVITE_CODE,
+      },
+    });
+    assert.equal(register.statusCode, 201);
+    assert.equal(register.json().user.phone, '+84901234567');
+
+    const phoneLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: '0901234567', password: 'phone-password' },
+    });
+    assert.equal(phoneLogin.statusCode, 200);
+    assert.equal(phoneLogin.json().user.username, 'phone-member-int');
+
+    await prisma.user.create({
+      data: {
+        name: 'Phone-looking Username',
+        username: '0901234567',
+        passwordHash: await bcrypt.hash('username-password', 4),
+      },
+    });
+    const usernameLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: '0901234567', password: 'username-password' },
+    });
+    assert.equal(usernameLogin.statusCode, 200);
+    assert.equal(usernameLogin.json().user.username, '0901234567');
+
+    const duplicate = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: {
+        name: 'Duplicate Phone',
+        username: 'duplicate-phone-int',
+        phone: '+84901234567',
+        password: 'password123',
+        inviteCode: process.env.REGISTRATION_INVITE_CODE,
+      },
+    });
+    assert.equal(duplicate.statusCode, 409);
+    assert.equal(duplicate.json().code, 'IDENTIFIER_TAKEN');
+
+    const invalid = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: {
+        name: 'Invalid Phone',
+        username: 'invalid-phone-int',
+        phone: '+12025550123',
+        password: 'password123',
+        inviteCode: process.env.REGISTRATION_INVITE_CODE,
+      },
+    });
+    assert.equal(invalid.statusCode, 400);
+    assert.equal(invalid.json().code, 'VALIDATION_ERROR');
+
+    const clear = await app.inject({
+      method: 'PUT',
+      url: '/me/profile',
+      headers: auth(register.json().token),
+      payload: { phone: '' },
+    });
+    assert.equal(clear.statusCode, 200);
+    assert.equal(clear.json().phone, null);
+  },
+);
+
+integrationTest(
   'role boundaries and final Head Chef safeguards hold',
   async () => {
     const denied = await app.inject({
