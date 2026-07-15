@@ -1,22 +1,32 @@
 import { useCallback, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useFetcher } from 'react-router';
+import { useI18n } from '../app/providers/i18n';
+import { resultErrorMessage } from '../lib/result-messages';
 
 interface MutateOptions {
   /** Error message used when the thrown value is not an Error. */
   fallback: string;
-  /** Clear the error state before submitting (default true). */
-  clearFirst?: boolean;
+  /** Localized success message. Omit for intentionally silent mutations. */
+  success?: string;
+  /** The route action redirects and owns the success toast. */
+  redirects?: boolean;
   /** Route to submit to; defaults to the current route's action. */
   action?: string;
   /** Runs after a successful submit. */
-  onSuccess?: () => void;
+  onSuccess?: (data: unknown) => void;
+  /** Runs after an API action returns a structured error. */
+  onError?: (code: unknown, data: unknown) => void;
 }
 
 type MutationResult = {
   error?: unknown;
+  code?: unknown;
 };
 
-const hasMutationError = (data: unknown): data is { error: string } =>
+const hasMutationError = (
+  data: unknown,
+): data is { error: string; code?: unknown } =>
   typeof data === 'object' &&
   data !== null &&
   'error' in data &&
@@ -24,54 +34,75 @@ const hasMutationError = (data: unknown): data is { error: string } =>
 
 /**
  * Wraps a fetcher submit to the router's mutationAction with the shared
- * clear-error / submit / set-error-on-failure flow used across pages.
- * `setError` may be the app context error setter or a page-local one.
+ * submit / localized-toast result flow used across pages.
  */
-export function useMutation(setError: (error: string | null) => void) {
+export function useMutation() {
+  const { t } = useI18n();
   const fetcher = useFetcher();
   const pendingResult = useRef<{
     fallback: string;
-    onSuccess?: () => void;
+    success?: string;
+    onSuccess?: (data: unknown) => void;
+    onError?: (code: unknown, data: unknown) => void;
   } | null>(null);
 
   useEffect(() => {
     if (fetcher.state !== 'idle' || !pendingResult.current) return;
 
-    const { fallback, onSuccess } = pendingResult.current;
+    const { fallback, success, onSuccess, onError } = pendingResult.current;
     pendingResult.current = null;
 
     if (hasMutationError(fetcher.data)) {
-      setError(fetcher.data.error);
+      toast.error(resultErrorMessage(fetcher.data.code, fallback, t));
+      onError?.(fetcher.data.code, fetcher.data);
       return;
     }
 
     if (fetcher.data instanceof Error) {
-      setError(fetcher.data.message || fallback);
+      toast.error(fallback);
       return;
     }
 
-    onSuccess?.();
-  }, [fetcher.data, fetcher.state, setError]);
+    if (success) toast.success(success);
+    onSuccess?.(fetcher.data);
+  }, [fetcher.data, fetcher.state, t]);
 
   const mutate = useCallback(
     async (
       body: Record<string, unknown>,
-      { fallback, clearFirst = true, action, onSuccess }: MutateOptions,
+      {
+        fallback,
+        success,
+        redirects = false,
+        action,
+        onSuccess,
+        onError,
+      }: MutateOptions,
     ) => {
-      if (clearFirst) setError(null);
-      pendingResult.current = { fallback, onSuccess };
+      pendingResult.current = {
+        fallback,
+        success: redirects ? undefined : success,
+        onSuccess,
+        onError,
+      };
       try {
-        await fetcher.submit(body as never, {
-          method: 'post',
-          encType: 'application/json',
-          ...(action ? { action } : {}),
-        });
-      } catch (err) {
+        await fetcher.submit(
+          {
+            ...body,
+            ...(redirects && success ? { toastSuccess: success } : {}),
+          } as never,
+          {
+            method: 'post',
+            encType: 'application/json',
+            ...(action ? { action } : {}),
+          },
+        );
+      } catch {
         pendingResult.current = null;
-        setError(err instanceof Error ? err.message : fallback);
+        toast.error(fallback);
       }
     },
-    [fetcher, setError],
+    [fetcher],
   );
 
   return { fetcher, mutate };

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ChefRole, PrismaClient } from '@prisma/client';
+import { ChefRole, PrismaClient, SystemRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -17,12 +17,16 @@ const login = async (page: Page, username: string) => {
 
 test.beforeAll(async () => {
   await prisma.notification.deleteMany();
+  await prisma.rootAdminTransferAudit.deleteMany();
   await prisma.billAuditLog.deleteMany();
   await prisma.roleAuditLog.deleteMany();
   await prisma.billParticipant.deleteMany();
   await prisma.bill.deleteMany();
+  await prisma.collection.deleteMany();
   await prisma.userFavorite.deleteMany();
   await prisma.restaurantEntry.deleteMany();
+  await prisma.cuisine.deleteMany();
+  await prisma.diningArea.deleteMany();
   await prisma.user.deleteMany();
   const passwordHash = await bcrypt.hash('password123', 4);
   const [head, sous, customer] = await Promise.all([
@@ -32,6 +36,7 @@ test.beforeAll(async () => {
         name: 'Head E2E',
         passwordHash,
         chefRole: ChefRole.HEAD_CHEF,
+        systemRole: SystemRole.ROOT_ADMIN,
       },
     }),
     prisma.user.create({
@@ -43,9 +48,17 @@ test.beforeAll(async () => {
       },
     }),
     prisma.user.create({
-      data: { username: 'e2e-customer', name: 'Customer E2E', passwordHash },
+      data: {
+        username: 'e2e-customer',
+        name: 'Customer E2E',
+        phone: '+84901234567',
+        passwordHash,
+      },
     }),
   ]);
+  const cuisine = await prisma.cuisine.create({
+    data: { name: 'Vietnamese', nameKey: 'vietnamese', type: 'Regional' },
+  });
   const restaurant = await prisma.restaurantEntry.create({
     data: {
       name: 'Existing E2E Restaurant',
@@ -53,6 +66,7 @@ test.beforeAll(async () => {
       cuisineType: 'Vietnamese',
       type: 'Restaurant',
       createdById: sous.id,
+      cuisines: { create: { cuisineId: cuisine.id, isPrimary: true } },
     },
   });
   const bill = await prisma.bill.create({
@@ -134,12 +148,22 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   await login(page, 'e2e-sous');
   await page.getByRole('link', { name: 'Restaurants' }).click();
   await page.getByLabel('Name').fill('Created E2E Restaurant');
+  await page.getByRole('button', { name: 'Enter address manually' }).click();
   await page.getByLabel('Address').fill('2 Browser Street');
-  await page.getByRole('button', { name: 'Cuisine type' }).click();
+  await page.getByLabel('Phone (optional)').fill('0901234567');
+  await page
+    .getByLabel('Banner image URL')
+    .fill('https://images.example.test/e2e-banner.jpg');
+  await page.getByRole('button', { name: 'Add link' }).click();
+  await page
+    .getByRole('textbox', { name: 'Link URL 1' })
+    .fill('https://example.test/e2e-menu');
+  await page.getByRole('button', { name: 'Cuisines' }).click();
   await page
     .getByRole('searchbox', { name: 'Search cuisines...' })
-    .fill('Chay');
-  await page.getByRole('option', { name: 'Chay' }).click();
+    .fill('Vietnamese');
+  await page.getByRole('option', { name: /Vietnamese/ }).click();
+  await page.keyboard.press('Escape');
   const restaurantResponsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith('/restaurants') &&
@@ -150,6 +174,16 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   expect(restaurantResponse.status(), await restaurantResponse.text()).toBe(
     201,
   );
+  const restaurantProfile = await restaurantResponse.json();
+  expect(restaurantProfile.phone).toBe('+84901234567');
+  expect(restaurantProfile.platformLinks).toHaveLength(1);
+  expect(restaurantProfile.links).toBeUndefined();
+  expect(restaurantProfile.cuisines).toEqual([
+    expect.objectContaining({
+      isPrimary: true,
+      cuisine: expect.objectContaining({ name: 'Vietnamese' }),
+    }),
+  ]);
   await expect(page.getByText('Created E2E Restaurant')).toBeVisible();
 
   await page.getByRole('link', { name: 'Bills' }).click();
@@ -185,7 +219,200 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   expect(denied.status()).toBe(403);
 });
 
-test('Head Chef archives, restores, administers roles, and cannot self-demote', async ({
+test('server-backed directory filters survive direct links and reloads', async ({
+  page,
+}) => {
+  await login(page, 'e2e-head');
+  await page.getByRole('link', { name: 'Restaurants' }).click();
+  await page
+    .getByRole('searchbox', { name: 'Search restaurants without accents...' })
+    .fill('existing e2e');
+  await page.getByLabel('Sort restaurants').selectOption('name-desc');
+  await expect(page).toHaveURL(/search=existing(?:\+|%20)e2e/);
+  await expect(page).toHaveURL(/sort=name-desc/);
+  await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
+
+  await page.reload();
+  await expect(
+    page.getByRole('searchbox', {
+      name: 'Search restaurants without accents...',
+    }),
+  ).toHaveValue('existing e2e');
+  await expect(page.getByLabel('Sort restaurants')).toHaveValue('name-desc');
+
+  await page.getByRole('link', { name: 'Bills' }).click();
+  await page.getByLabel('Sort bills').selectOption('total-desc');
+  await page.getByLabel('From').fill('2026-01-01');
+  await expect(page).toHaveURL(/sort=total-desc/);
+  await expect(page).toHaveURL(/from=2026-01-01/);
+  await page.reload();
+  await expect(page.getByLabel('Sort bills')).toHaveValue('total-desc');
+  await expect(page.getByLabel('From')).toHaveValue('2026-01-01');
+});
+
+test('member discovers, manages, shares, and reviews Collection places', async ({
+  page,
+}) => {
+  const [customer, restaurant] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { username: 'e2e-customer' } }),
+    prisma.restaurantEntry.findFirstOrThrow({
+      where: { name: 'Existing E2E Restaurant' },
+    }),
+  ]);
+  await prisma.$transaction([
+    prisma.bill.deleteMany({
+      where: { paymentUrl: 'https://example.com/pay/e2e-feedback' },
+    }),
+    prisma.feedback.deleteMany({
+      where: { userId: customer.id, restaurantId: restaurant.id },
+    }),
+    prisma.userFavorite.deleteMany({
+      where: { userId: customer.id, restaurantId: restaurant.id },
+    }),
+    prisma.collection.deleteMany({
+      where: { ownerId: customer.id, name: 'E2E Team Spots' },
+    }),
+  ]);
+  const feedbackBill = await prisma.bill.create({
+    data: {
+      restaurantId: restaurant.id,
+      createdById: restaurant.createdById,
+      baseCost: 1000,
+      vat: 0,
+      shippingFee: 0,
+      totalCost: 1000,
+      paymentUrl: 'https://example.com/pay/e2e-feedback',
+      participants: {
+        create: {
+          memberId: customer.id,
+          originCost: 1000,
+          allocatedVat: 0,
+          allocatedShipping: 0,
+          discountApplied: 0,
+          finalPrice: 1000,
+          paymentStatus: 'PAID',
+          paidAt: new Date(),
+        },
+      },
+    },
+  });
+
+  await login(page, 'e2e-customer');
+  await page.getByRole('link', { name: 'Restaurants' }).click();
+  await expect(page).toHaveURL(/\/restaurants$/);
+  await expect(
+    page.getByRole('heading', {
+      name: 'Restaurants & eateries',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.locator('article').filter({ hasText: 'Existing E2E Restaurant' }),
+  ).toBeVisible();
+  const customerToken = await page.evaluate(() =>
+    localStorage.getItem('ff-token'),
+  );
+  const eligibilityResponse = await page.request.get(
+    `http://127.0.0.1:4000/restaurants/${restaurant.id}/feedback`,
+    { headers: { authorization: `Bearer ${customerToken}` } },
+  );
+  expect(eligibilityResponse.status()).toBe(200);
+  const eligibility = await eligibilityResponse.json();
+  expect(eligibility.eligibleBills).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ billId: feedbackBill.id }),
+    ]),
+  );
+  const createFeedbackResponse = await page.request.post(
+    `http://127.0.0.1:4000/bills/${feedbackBill.id}/feedback`,
+    {
+      headers: { authorization: `Bearer ${customerToken}` },
+      data: {
+        foodRating: 8.5,
+        serviceRating: 9,
+        comment: 'Reliable team lunch.',
+      },
+    },
+  );
+  expect(createFeedbackResponse.status()).toBe(201);
+  await page.goto(`/restaurants/${restaurant.id}`);
+  const feedback = page.getByRole('region', {
+    name: 'Food and service feedback',
+  });
+  await expect(feedback).toBeVisible();
+  await expect(
+    feedback.getByRole('article').getByText('Reliable team lunch.'),
+  ).toBeVisible();
+  const favoriteResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/favorite') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Favorite', exact: true }).click();
+  expect((await favoriteResponse).status()).toBe(200);
+
+  await page.getByRole('link', { name: 'Collections' }).click();
+  await expect(page).toHaveURL(/\/collections$/);
+  await expect(
+    page.getByRole('heading', { name: 'Collections', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
+  await expect(page.getByText('Recommended', { exact: true })).toBeVisible();
+  await page.getByLabel('Name').fill('E2E Team Spots');
+  await page.getByLabel('Description').fill('Shared browser journey');
+  const createResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/collections') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Create Collection' }).click();
+  expect((await createResponse).status()).toBe(201);
+  await page.getByRole('button', { name: /E2E Team Spots/ }).click();
+
+  await page.getByRole('button', { name: 'Add a place' }).click();
+  await page.getByRole('option', { name: /Existing E2E Restaurant/ }).click();
+  const addRestaurantResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/restaurants/') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Add' }).click();
+  expect((await addRestaurantResponse).status()).toBe(201);
+  await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
+  await page.getByRole('button', { name: 'Choose a member' }).click();
+  await page.getByRole('option', { name: /Sous E2E/ }).click();
+  const shareResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/shares') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Share' }).click();
+  expect((await shareResponse).status()).toBe(201);
+  await expect(page.getByText('Sous E2E')).toBeVisible();
+
+  await page.evaluate(() => localStorage.removeItem('ff-token'));
+  await login(page, 'e2e-sous');
+  await page.getByRole('link', { name: 'Collections' }).click();
+  await expect(page).toHaveURL(/\/collections$/);
+  await expect(
+    page.getByRole('heading', { name: 'Collections', exact: true }),
+  ).toBeVisible();
+  await page.getByLabel('Visibility').selectOption('shared');
+  await expect(page).toHaveURL(/visibility=shared/);
+  await page.getByRole('button', { name: /E2E Team Spots/ }).click();
+  await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test('Root Admin archives, restores, administers roles, and cannot alter root through chef roles', async ({
   page,
 }) => {
   await login(page, 'e2e-head');
@@ -204,16 +431,48 @@ test('Head Chef archives, restores, administers roles, and cannot self-demote', 
   ).toBeVisible();
   await page.getByRole('button', { name: 'Back to Bills' }).click();
   await page.getByRole('link', { name: 'Members' }).click();
-  const headRow = page.getByRole('article').filter({ hasText: 'Head E2E' });
+  for (const column of [
+    'Full name',
+    'Username',
+    'Phone',
+    'Effective role',
+    'Actions',
+  ]) {
+    await expect(
+      page.getByRole('columnheader', { name: column }),
+    ).toBeVisible();
+  }
+  const search = page.getByRole('searchbox', {
+    name: 'Search name, username, or phone',
+  });
+  await search.fill('+84901234567');
+  await expect(
+    page.getByRole('row').filter({ hasText: 'Customer E2E' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('row').filter({ hasText: 'Head E2E' }),
+  ).toHaveCount(0);
+  await search.clear();
+
+  const headRow = page.getByRole('row').filter({ hasText: 'Head E2E' });
+  await expect(headRow).toContainText('Root Admin');
+  await expect(headRow).toContainText('Read only');
   await expect(
     headRow.getByRole('button', { name: 'Head E2E role' }),
   ).toHaveCount(0);
-  const customerRow = page
-    .getByRole('article')
-    .filter({ hasText: 'Customer E2E' });
+  const customerRow = page.getByRole('row').filter({ hasText: 'Customer E2E' });
   await customerRow.getByRole('button', { name: 'Customer E2E role' }).click();
-  await customerRow.getByRole('option', { name: 'Sous chef' }).click();
-  await expect(customerRow).toContainText('Sous chef');
+  await page.getByRole('option', { name: 'Sous Chef' }).click();
+  await expect(customerRow).toContainText('Sous Chef');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByLabel('Member cards')).toBeVisible();
+  await expect(
+    page.getByLabel('Member cards').getByRole('article').filter({
+      hasText: 'Customer E2E',
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole('table')).toBeHidden();
 
   const token = await page.evaluate(() => localStorage.getItem('ff-token'));
   const head = await prisma.user.findUniqueOrThrow({
@@ -265,4 +524,34 @@ test('mobile app shell and bill list fit without page overflow', async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test('member changes password while older sessions are invalidated', async ({
+  page,
+}) => {
+  await login(page, 'e2e-customer');
+  const oldToken = await page.evaluate(() => localStorage.getItem('ff-token'));
+  await page.goto('/profile');
+
+  await page.getByLabel('Current password').fill('password123');
+  await page
+    .getByLabel('New password', { exact: true })
+    .fill('new-password-123');
+  await page.getByLabel('Confirm new password').fill('new-password-123');
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await expect(
+    page.getByText('Password changed and other sessions were signed out.'),
+  ).toBeVisible();
+
+  const oldSession = await page.request.get('http://127.0.0.1:4000/me', {
+    headers: { authorization: `Bearer ${oldToken}` },
+  });
+  expect(oldSession.status()).toBe(401);
+  expect((await oldSession.json()).code).toBe('SESSION_INVALIDATED');
+
+  await page.getByLabel('Current password').fill('new-password-123');
+  await page.getByLabel('New password', { exact: true }).fill('password123');
+  await page.getByLabel('Confirm new password').fill('password123');
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await expect(page.getByLabel('Current password')).toHaveValue('');
 });

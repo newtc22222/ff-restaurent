@@ -1,6 +1,6 @@
 {
   "name": "@ff-restaurent/web",
-  "version": "0.1.0",
+  "version": "1.1.0-rc.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -11,12 +11,13 @@
     "lint": "eslint src --ext ts,tsx"
   },
   "dependencies": {
-    "@ff-restaurent/shared": "0.1.0",
+    "@ff-restaurent/shared": "1.1.0-rc.1",
     "@vitejs/plugin-react": "^4.6.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-currency-input-field": "^4.0.5",
     "react-dom": "^19.1.0",
+    "react-hot-toast": "^2.6.0",
     "react-router": "^7.18.1",
     "react-scrollbars-custom": "^4.1.1",
     "recharts": "^3.9.2"

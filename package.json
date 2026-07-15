@@ -2,7 +2,7 @@
   "name": "ff-restaurent",
   "private": true,
   "type": "module",
-  "version": "0.1.0",
+  "version": "1.1.0-rc.1",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -13,6 +13,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "playwright test",
     "smoke": "node scripts/staging-smoke.mjs",
+    "measure:web": "node scripts/measure-web-bundle.mjs",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write ."
   },

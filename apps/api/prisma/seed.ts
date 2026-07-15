@@ -1,6 +1,11 @@
 import bcrypt from 'bcryptjs';
 import { pathToFileURL } from 'node:url';
-import { ChefRole, PrismaClient } from '@prisma/client';
+import {
+  ChefRole,
+  CollectionSystemType,
+  PrismaClient,
+  SystemRole,
+} from '@prisma/client';
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
 
 const prisma = new PrismaClient();
@@ -54,13 +59,18 @@ const createBill = async (input: {
 
 export async function seed({ reset = true }: { reset?: boolean } = {}) {
   if (reset) {
+    await prisma.passwordResetRequest.deleteMany();
+    await prisma.collection.deleteMany();
     await prisma.userFavorite.deleteMany();
     await prisma.notification.deleteMany();
     await prisma.billAuditLog.deleteMany();
+    await prisma.rootAdminTransferAudit.deleteMany();
     await prisma.roleAuditLog.deleteMany();
     await prisma.billParticipant.deleteMany();
     await prisma.bill.deleteMany();
     await prisma.restaurantEntry.deleteMany();
+    await prisma.cuisine.deleteMany();
+    await prisma.diningArea.deleteMany();
     await prisma.user.deleteMany();
   }
 
@@ -70,7 +80,7 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
       data: {
         name: 'Casey Customer',
         username: 'customer',
-        phone: '0901000001',
+        phone: '+84901000001',
         passwordHash,
       },
     }),
@@ -78,7 +88,7 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
       data: {
         name: 'Sam Sous Chef',
         username: 'sous',
-        phone: '0901000002',
+        phone: '+84901000002',
         passwordHash,
         chefRole: ChefRole.SOUS_CHEF,
       },
@@ -87,10 +97,23 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
       data: {
         name: 'Hana Head Chef',
         username: 'head',
-        phone: '0901000003',
+        phone: '+84901000003',
         passwordHash,
         chefRole: ChefRole.HEAD_CHEF,
+        systemRole: SystemRole.ROOT_ADMIN,
       },
+    }),
+  ]);
+
+  const [phoCuisine, japaneseCuisine, bakeryCuisine] = await Promise.all([
+    prisma.cuisine.create({
+      data: { name: 'Phở', nameKey: 'phở', type: 'Món Việt' },
+    }),
+    prisma.cuisine.create({
+      data: { name: 'Nhật Bản', nameKey: 'nhật bản', type: 'Quốc tế' },
+    }),
+    prisma.cuisine.create({
+      data: { name: 'Tiệm bánh', nameKey: 'tiệm bánh', type: 'Bánh' },
     }),
   ]);
 
@@ -104,6 +127,9 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
         isFavorite: true,
         isRecommended: true,
         createdById: sousChef.id,
+        cuisines: {
+          create: { cuisineId: phoCuisine.id, isPrimary: true },
+        },
       },
     }),
     prisma.restaurantEntry.create({
@@ -114,6 +140,9 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
         type: 'Quán ăn',
         isRecommended: true,
         createdById: headChef.id,
+        cuisines: {
+          create: { cuisineId: japaneseCuisine.id, isPrimary: true },
+        },
       },
     }),
     prisma.restaurantEntry.create({
@@ -123,7 +152,48 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
         cuisineType: 'Tiệm bánh',
         type: 'Tiệm bánh',
         createdById: sousChef.id,
+        cuisines: {
+          create: { cuisineId: bakeryCuisine.id, isPrimary: true },
+        },
       },
+    }),
+  ]);
+
+  const [customerFavorites, recommended] = await Promise.all([
+    prisma.collection.create({
+      data: {
+        name: 'Favorites',
+        systemType: CollectionSystemType.FAVORITES,
+        ownerId: customer.id,
+      },
+    }),
+    prisma.collection.create({
+      data: {
+        name: 'Recommended',
+        isPublic: true,
+        systemType: CollectionSystemType.RECOMMENDED,
+      },
+    }),
+    ...[sousChef, headChef].map((user) =>
+      prisma.collection.create({
+        data: {
+          name: 'Favorites',
+          systemType: CollectionSystemType.FAVORITES,
+          ownerId: user.id,
+        },
+      }),
+    ),
+  ]);
+  await Promise.all([
+    prisma.userFavorite.create({
+      data: { userId: customer.id, restaurantId: pho.id },
+    }),
+    prisma.collectionRestaurant.createMany({
+      data: [
+        { collectionId: customerFavorites.id, restaurantId: pho.id },
+        { collectionId: recommended.id, restaurantId: pho.id },
+        { collectionId: recommended.id, restaurantId: sushi.id },
+      ],
     }),
   ]);
 

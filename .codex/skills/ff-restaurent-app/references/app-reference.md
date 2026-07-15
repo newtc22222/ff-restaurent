@@ -10,25 +10,26 @@
 
 Core Prisma models:
 
-- `User`: email, name, password hash, optional `chefRole`.
+- `User`: username, optional phone, password hash, optional `chefRole`, optional singleton `systemRole`, and `sessionVersion`.
 - `RestaurantEntry`: name, address, cuisine type, custom type label, favorite/recommended flags, active/archive status.
 - `Bill`: restaurant, base/vat/shipping cents, discounts/vouchers JSON, total cost cents, active/archive status, creator.
 - `BillParticipant`: composite key `(billId, memberId)`, origin/vat/shipping/discount/final cents, `PAID` or `WAITING`.
 - `Notification`: user-scoped reminder messages.
-- `RoleAuditLog` and `BillAuditLog`: administrative history.
+- `RoleAuditLog`, `RootAdminTransferAudit`, and `BillAuditLog`: administrative history.
 
 ## Roles and Permissions
 
-- `chefRole` is nullable. Sanitized users expose `roles: ['CUSTOMER', chefRole?]`.
+- `chefRole` is nullable and remains backward compatible. One user has `systemRole: ROOT_ADMIN`.
 - `SOUS_CHEF` and `HEAD_CHEF` can create restaurants and bills.
-- Bill management is allowed for the bill creator or any `HEAD_CHEF`.
-- `HEAD_CHEF` can list all users, change chef roles, view archived/all bills, and archive/restore restaurants.
+- Bill management is allowed for the bill creator, `HEAD_CHEF`, or `ROOT_ADMIN`.
+- `HEAD_CHEF` can view archived/all bills and archive/restore restaurants but cannot change roles.
+- `ROOT_ADMIN` inherits Head Chef access and exclusively lists administration users, changes chef roles, and transfers root ownership.
 - Customers can only see bills they participate in and can mark their own payment paid unless a manager performs it.
 
 ## API Routes
 
 - `POST /auth/login`, `POST /auth/register`, `GET /me`
-- `GET /members`; `GET /users` and `PATCH /users/:id/chef-role` require `HEAD_CHEF`
+- `GET /members`; `GET /users`, `PATCH /users/:id/chef-role`, and `POST /admin/root-transfer` require `ROOT_ADMIN`
 - `GET /restaurants`, `POST /restaurants`, `PUT /restaurants/:id`, `PATCH /restaurants/:id/archive`, `PATCH /restaurants/:id/restore`
 - `GET /bills`, `GET /bills/:id`, `POST /bills`, `PUT /bills/:id`, `PATCH /bills/:id/archive`
 - `PATCH /bills/:id/participants/:memberId/pay`

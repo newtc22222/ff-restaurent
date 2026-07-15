@@ -1,11 +1,13 @@
 import {
   BarChart2,
+  FolderHeart,
   LayoutDashboard,
   Store,
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import {
   isRouteErrorResponse,
   NavLink,
@@ -21,7 +23,7 @@ import {
   useAppContext,
 } from './providers/app-context';
 import { useI18n } from './providers/i18n';
-import { isHead } from '../lib/helpers';
+import { isRootAdmin } from '../lib/helpers';
 import { useMutation } from '../hooks/useMutation';
 import AppHeader from '../components/layout/AppHeader';
 import Sidebar from '../components/layout/Sidebar';
@@ -30,9 +32,9 @@ import ScrollArea from '../components/ui/ScrollArea';
 function AppShellContent() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { user, notifications, warning, error, loading, setError } =
-    useAppContext();
-  const { mutate } = useMutation(setError);
+  const { user, notifications, warning, loading } = useAppContext();
+  const { mutate } = useMutation();
+  const warned = useRef(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     typeof window === 'undefined'
       ? false
@@ -46,25 +48,43 @@ function AppShellContent() {
     return () => query.removeEventListener('change', syncSidebar);
   }, []);
 
+  useEffect(() => {
+    if (warning && !warned.current) {
+      warned.current = true;
+      toast.error(t('toast.partialData'), { id: 'app-loader-warning' });
+    }
+    if (!warning) warned.current = false;
+  }, [t, warning]);
+
   const openNotification = async (notification: Notification) => {
     if (!notification.readAt) {
       await mutate(
         { intent: 'read-notification', notificationId: notification.id },
         {
           action: '/bills',
-          clearFirst: false,
-          fallback: 'Could not read notification',
+          fallback: t('toast.notificationReadFailed'),
         },
       );
     }
     if (notification.billId) navigate(`/bills/${notification.billId}`);
   };
 
+  const markAllNotificationsRead = () =>
+    mutate(
+      { intent: 'read-all-notifications' },
+      {
+        action: '/bills',
+        fallback: t('toast.notificationsReadFailed'),
+        success: t('toast.notificationsRead'),
+      },
+    );
+
   const nav: readonly (readonly [string, LucideIcon, string])[] = [
     ['/bills', LayoutDashboard, t('nav.bills')],
     ['/restaurants', Store, t('nav.restaurants')],
+    ['/collections', FolderHeart, t('nav.collections')],
     ['/stats', BarChart2, t('nav.stats')],
-    ...(isHead(user)
+    ...(isRootAdmin(user)
       ? ([['/admin', Users, t('nav.members')]] as [
           string,
           LucideIcon,
@@ -79,6 +99,7 @@ function AppShellContent() {
         onProfile={() => navigate('/profile')}
         notifications={notifications}
         onOpenNotification={openNotification}
+        onMarkAllNotificationsRead={markAllNotificationsRead}
         sidebarCollapsed={sidebarCollapsed}
         onToggleSidebar={() => setSidebarCollapsed((current) => !current)}
       />
@@ -97,11 +118,6 @@ function AppShellContent() {
           <ScrollArea className="h-full">
             <div className="px-3 pb-3 sm:px-4 md:px-6 md:pb-6">
               <div className="mx-auto w-full max-w-[1500px]">
-                {(warning || error) && (
-                  <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
-                    {error ?? warning}
-                  </div>
-                )}
                 {loading && (
                   <div className="mb-4 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-slate-500">
                     {t('common.loading')}

@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { createHash } from 'node:crypto';
 import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { calculateBillSplit } from '@ff-restaurent/shared';
 import {
@@ -8,12 +9,18 @@ import {
 } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import { isHeadChef, isSousChefOrAbove, publicUserSelect } from '../roles.js';
-import { billSchema, paymentStatusSchema } from '../schemas.js';
+import {
+  billListQuerySchema,
+  billSchema,
+  paymentStatusSchema,
+} from '../schemas.js';
+import { publicRestaurantSelect } from '../restaurant-contract.js';
+import { pageResult } from '../pagination.js';
 
 const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
 
 export const billResponseInclude = {
-  restaurant: true,
+  restaurant: { select: publicRestaurantSelect },
   createdBy: { select: publicUserSelect },
   participants: {
     include: { member: { select: publicUserSelect } },
@@ -26,6 +33,144 @@ export const paymentResponseInclude = {
   bill: true,
 };
 
+export const billActivityActorSelect = {
+  id: true,
+  username: true,
+  name: true,
+} satisfies Prisma.UserSelect;
+
+type BillActivityActor = Prisma.UserGetPayload<{
+  select: typeof billActivityActorSelect;
+}>;
+
+type BillActivityDetails = {
+  changes?: string[];
+  memberId?: string;
+  memberName?: string;
+  fromStatus?: string;
+  toStatus?: string;
+  sent?: number;
+  skipped?: number;
+};
+
+type BillActivitySource = {
+  id: string;
+  createdAt: Date;
+  createdBy: BillActivityActor;
+  participants: Array<{ memberId: string; member: BillActivityActor }>;
+  auditLogs: Array<{
+    id: string;
+    action: string;
+    before: Prisma.JsonValue | null;
+    after: Prisma.JsonValue | null;
+    createdAt: Date;
+    user: BillActivityActor;
+  }>;
+};
+
+const isJsonObject = (
+  value: Prisma.JsonValue | null,
+): value is Prisma.JsonObject =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const valueChanged = (before: unknown, after: unknown) =>
+  JSON.stringify(before) !== JSON.stringify(after);
+
+const updatedFields = (
+  before: Prisma.JsonValue | null,
+  after: Prisma.JsonValue | null,
+) => {
+  if (!isJsonObject(before) || !isJsonObject(after)) return [];
+  const changes = new Set<string>();
+  if (valueChanged(before.restaurantId, after.restaurantId))
+    changes.add('restaurant');
+  if (
+    ['baseCost', 'vat', 'shippingFee', 'totalCost'].some((field) =>
+      valueChanged(before[field], after[field]),
+    )
+  )
+    changes.add('costs');
+  if (
+    valueChanged(before.discounts, after.discounts) ||
+    valueChanged(before.vouchers, after.vouchers)
+  )
+    changes.add('adjustments');
+  if (valueChanged(before.paymentUrl, after.paymentUrl))
+    changes.add('paymentLink');
+  if (valueChanged(before.participants, after.participants))
+    changes.add('participants');
+  return [...changes];
+};
+
+const activityDetails = (
+  log: BillActivitySource['auditLogs'][number],
+  participantNames: Map<string, string>,
+): BillActivityDetails | undefined => {
+  if (log.action === 'UPDATED') {
+    return { changes: updatedFields(log.before, log.after) };
+  }
+  if (log.action === 'PAYMENT_STATUS_CHANGED' && isJsonObject(log.after)) {
+    const before = isJsonObject(log.before) ? log.before : {};
+    const memberId =
+      typeof log.after.memberId === 'string' ? log.after.memberId : undefined;
+    return {
+      memberId,
+      memberName: memberId ? participantNames.get(memberId) : undefined,
+      fromStatus:
+        typeof before.paymentStatus === 'string'
+          ? before.paymentStatus
+          : undefined,
+      toStatus:
+        typeof log.after.paymentStatus === 'string'
+          ? log.after.paymentStatus
+          : undefined,
+    };
+  }
+  if (log.action === 'REMINDERS_SENT' && isJsonObject(log.after)) {
+    return {
+      sent: typeof log.after.sent === 'number' ? log.after.sent : 0,
+      skipped: typeof log.after.skipped === 'number' ? log.after.skipped : 0,
+    };
+  }
+  return undefined;
+};
+
+const visibleActivityActions = new Set([
+  'UPDATED',
+  'PAYMENT_STATUS_CHANGED',
+  'REMINDERS_SENT',
+  'ARCHIVED',
+  'RESTORED',
+]);
+
+export const buildBillActivityTimeline = (bill: BillActivitySource) => {
+  const participantNames = new Map(
+    bill.participants.map((participant) => [
+      participant.memberId,
+      participant.member.name,
+    ]),
+  );
+  const events = bill.auditLogs
+    .filter((log) => visibleActivityActions.has(log.action))
+    .map((log) => ({
+      id: log.id,
+      action: log.action,
+      actor: log.user,
+      details: activityDetails(log, participantNames),
+      createdAt: log.createdAt,
+    }));
+  events.push({
+    id: `created-${bill.id}`,
+    action: 'CREATED',
+    actor: bill.createdBy,
+    details: undefined,
+    createdAt: bill.createdAt,
+  });
+  return events.sort(
+    (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+  );
+};
+
 const canManageBill = (
   bill: { createdById: string },
   request: FastifyRequest,
@@ -33,10 +178,52 @@ const canManageBill = (
   isHeadChef(request.currentUser) ||
   bill.createdById === request.currentUser.id;
 
+const canViewBill = (
+  bill: { createdById: string; participants: Array<{ memberId: string }> },
+  request: FastifyRequest,
+) =>
+  isHeadChef(request.currentUser) ||
+  bill.createdById === request.currentUser.id ||
+  bill.participants.some(
+    (participant) => participant.memberId === request.currentUser.id,
+  );
+
+type FingerprintBill = {
+  restaurantId: string;
+  baseCost: number;
+  vat: number;
+  shippingFee: number;
+  paymentUrl?: string | null;
+  discounts?: unknown[];
+  vouchers?: unknown[];
+  participants: Array<{ memberId: string; originCost?: number }>;
+};
+
+export const createBillFingerprint = (bill: FingerprintBill) => {
+  const canonical = {
+    restaurantId: bill.restaurantId,
+    baseCost: bill.baseCost,
+    vat: bill.vat,
+    shippingFee: bill.shippingFee,
+    paymentUrl: bill.paymentUrl ?? null,
+    discounts: [...(bill.discounts ?? [])].sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    ),
+    vouchers: [...(bill.vouchers ?? [])].sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    ),
+    participants: bill.participants
+      .map(({ memberId, originCost }) => ({ memberId, originCost }))
+      .sort((left, right) => left.memberId.localeCompare(right.memberId)),
+  };
+  return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
+};
+
 const computeBillCreateData = (body: unknown, createdById: string) => {
   const parsed = billSchema.parse(body);
   const split = calculateBillSplit(parsed);
   return {
+    allowDuplicate: parsed.allowDuplicate,
     bill: {
       restaurantId: parsed.restaurantId,
       baseCost: parsed.baseCost,
@@ -47,6 +234,7 @@ const computeBillCreateData = (body: unknown, createdById: string) => {
       vouchers: (parsed.vouchers ?? []) as Prisma.InputJsonValue,
       totalCost: split.totalCost,
       createdById,
+      duplicateFingerprint: createBillFingerprint(parsed),
     },
     participants: split.participants,
   };
@@ -117,15 +305,22 @@ export const registerBillRoutes = (app: FastifyInstance) => {
     '/bills',
     { preHandler: requireAuthenticatedUser },
     async (request) => {
-      const query = request.query as { includeArchived?: string };
-      const includeArchived =
-        query.includeArchived === 'true' && isHeadChef(request.currentUser);
-      const statusFilter = includeArchived ? undefined : EntryStatus.ACTIVE;
-      const where = isHeadChef(request.currentUser)
-        ? { status: statusFilter }
+      const query = billListQuerySchema.parse(request.query);
+      const requestedStatus =
+        query.archive === 'archived'
+          ? EntryStatus.ARCHIVED
+          : query.archive === 'all'
+            ? undefined
+            : EntryStatus.ACTIVE;
+      const status = isHeadChef(request.currentUser)
+        ? requestedStatus
+        : EntryStatus.ACTIVE;
+      const authorization: Prisma.BillWhereInput = isHeadChef(
+        request.currentUser,
+      )
+        ? {}
         : isSousChefOrAbove(request.currentUser)
           ? {
-              status: statusFilter,
               OR: [
                 { createdById: request.currentUser.id },
                 {
@@ -134,14 +329,76 @@ export const registerBillRoutes = (app: FastifyInstance) => {
               ],
             }
           : {
-              status: statusFilter,
-              participants: { some: { memberId: request.currentUser.id } },
+              participants: {
+                some: {
+                  memberId: request.currentUser.id,
+                  ...(query.paymentStatus
+                    ? { paymentStatus: query.paymentStatus }
+                    : {}),
+                },
+              },
             };
-      return prisma.bill.findMany({
-        where,
+      const participantFilter =
+        isSousChefOrAbove(request.currentUser) &&
+        (query.participantId || query.paymentStatus)
+          ? {
+              participants: {
+                some: {
+                  ...(query.participantId
+                    ? { memberId: query.participantId }
+                    : {}),
+                  ...(query.paymentStatus
+                    ? { paymentStatus: query.paymentStatus }
+                    : {}),
+                },
+              },
+            }
+          : {};
+      const participantIds = (query.participantIds ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .slice(0, 100);
+      const to = query.to
+        ? new Date(
+            query.to.getUTCHours() === 0 &&
+              query.to.getUTCMinutes() === 0 &&
+              query.to.getUTCSeconds() === 0
+              ? query.to.getTime() + 86_400_000 - 1
+              : query.to.getTime(),
+          )
+        : undefined;
+      const orderBy: Prisma.BillOrderByWithRelationInput[] =
+        query.sort === 'created-asc'
+          ? [{ createdAt: 'asc' }, { id: 'asc' }]
+          : query.sort === 'total-desc'
+            ? [{ totalCost: 'desc' }, { id: 'desc' }]
+            : query.sort === 'total-asc'
+              ? [{ totalCost: 'asc' }, { id: 'asc' }]
+              : [{ createdAt: 'desc' }, { id: 'desc' }];
+      const rows = await prisma.bill.findMany({
+        where: {
+          AND: [
+            authorization,
+            participantFilter,
+            ...participantIds.map((memberId) => ({
+              participants: { some: { memberId } },
+            })),
+            {
+              status,
+              restaurantId: query.restaurantId,
+              createdById: query.ownerId,
+              createdAt:
+                query.from || to ? { gte: query.from, lte: to } : undefined,
+            },
+          ],
+        },
         include: billResponseInclude,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
+        ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+        take: query.limit + 1,
       });
+      return pageResult(rows, query.limit);
     },
   );
 
@@ -155,18 +412,52 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         include: billResponseInclude,
       });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
-      const allowed =
-        isHeadChef(request.currentUser) ||
-        bill.createdById === request.currentUser.id ||
-        bill.participants.some(
-          (participant) => participant.memberId === request.currentUser.id,
-        );
-      if (!allowed) {
+      if (!canViewBill(bill, request)) {
         return reply
           .code(403)
           .send({ message: 'Not allowed to view this bill' });
       }
       return bill;
+    },
+  );
+
+  app.get(
+    '/bills/:id/activity',
+    { preHandler: requireAuthenticatedUser },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const bill = await prisma.bill.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          createdAt: true,
+          createdById: true,
+          createdBy: { select: billActivityActorSelect },
+          participants: {
+            select: {
+              memberId: true,
+              member: { select: billActivityActorSelect },
+            },
+          },
+          auditLogs: {
+            select: {
+              id: true,
+              action: true,
+              before: true,
+              after: true,
+              createdAt: true,
+              user: { select: billActivityActorSelect },
+            },
+          },
+        },
+      });
+      if (!bill) return reply.code(404).send({ message: 'Bill not found' });
+      if (!canViewBill(bill, request)) {
+        return reply
+          .code(403)
+          .send({ message: 'Not allowed to view this bill' });
+      }
+      return buildBillActivityTimeline(bill);
     },
   );
 
@@ -182,15 +473,80 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         (participant) => participant.memberId,
       );
       if (!(await validateParticipantIds(participantIds, reply))) return;
-      const bill = await prisma.bill.create({
-        data: {
-          ...computed.bill,
-          participants: {
-            create: participantCreateData(computed.participants),
+      const created = await prisma.$transaction(async (tx) => {
+        if (!computed.allowDuplicate) {
+          const lockKey = `${request.currentUser.id}:${computed.bill.duplicateFingerprint}`;
+          await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))::text AS lock`;
+          let duplicate = await tx.bill.findFirst({
+            where: {
+              createdById: request.currentUser.id,
+              duplicateFingerprint: computed.bill.duplicateFingerprint,
+              status: EntryStatus.ACTIVE,
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true },
+          });
+          if (!duplicate) {
+            const legacyCandidates = await tx.bill.findMany({
+              where: {
+                createdById: request.currentUser.id,
+                duplicateFingerprint: null,
+                status: EntryStatus.ACTIVE,
+                restaurantId: computed.bill.restaurantId,
+                baseCost: computed.bill.baseCost,
+                vat: computed.bill.vat,
+                shippingFee: computed.bill.shippingFee,
+                paymentUrl: computed.bill.paymentUrl,
+              },
+              include: {
+                participants: {
+                  select: { memberId: true, originCost: true },
+                },
+              },
+            });
+            const matchingLegacy = legacyCandidates.find(
+              (candidate) =>
+                createBillFingerprint({
+                  ...candidate,
+                  discounts: Array.isArray(candidate.discounts)
+                    ? candidate.discounts
+                    : [],
+                  vouchers: Array.isArray(candidate.vouchers)
+                    ? candidate.vouchers
+                    : [],
+                }) === computed.bill.duplicateFingerprint,
+            );
+            if (matchingLegacy) {
+              await tx.bill.update({
+                where: { id: matchingLegacy.id },
+                data: {
+                  duplicateFingerprint: computed.bill.duplicateFingerprint,
+                },
+              });
+              duplicate = { id: matchingLegacy.id };
+            }
+          }
+          if (duplicate) return { duplicate } as const;
+        }
+        const bill = await tx.bill.create({
+          data: {
+            ...computed.bill,
+            participants: {
+              create: participantCreateData(computed.participants),
+            },
           },
-        },
-        include: billResponseInclude,
+          include: billResponseInclude,
+        });
+        return { bill } as const;
       });
+      if (created.duplicate) {
+        return reply.code(409).send({
+          code: 'BILL_DUPLICATE_DETECTED',
+          message: 'An identical active bill already exists',
+          existingBillId: created.duplicate.id,
+        });
+      }
+      const { bill } = created;
       request.log.info({ event: 'bill_created', billId: bill.id });
       return reply.code(201).send(bill);
     },
@@ -287,10 +643,22 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           message: 'Only the owner or HEAD_CHEF can archive this bill',
         });
       }
-      return prisma.bill.update({
-        where: { id },
-        data: { status: EntryStatus.ARCHIVED },
-        include: billResponseInclude,
+      return prisma.$transaction(async (tx) => {
+        const updated = await tx.bill.update({
+          where: { id },
+          data: { status: EntryStatus.ARCHIVED },
+          include: billResponseInclude,
+        });
+        await tx.billAuditLog.create({
+          data: {
+            billId: id,
+            userId: request.currentUser.id,
+            action: 'ARCHIVED',
+            before: { status: bill.status },
+            after: { status: EntryStatus.ARCHIVED },
+          },
+        });
+        return updated;
       });
     },
   );
@@ -302,10 +670,22 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const bill = await prisma.bill.findUnique({ where: { id } });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
-      return prisma.bill.update({
-        where: { id },
-        data: { status: EntryStatus.ACTIVE },
-        include: billResponseInclude,
+      return prisma.$transaction(async (tx) => {
+        const updated = await tx.bill.update({
+          where: { id },
+          data: { status: EntryStatus.ACTIVE },
+          include: billResponseInclude,
+        });
+        await tx.billAuditLog.create({
+          data: {
+            billId: id,
+            userId: request.currentUser.id,
+            action: 'RESTORED',
+            before: { status: bill.status },
+            after: { status: EntryStatus.ACTIVE },
+          },
+        });
+        return updated;
       });
     },
   );
@@ -422,21 +802,48 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         select: { userId: true },
       });
       const recentlyReminded = new Set(recent.map((item) => item.userId));
-      const eligible = waiting.filter(
-        (participant) => !recentlyReminded.has(participant.memberId),
+      const optedOut = new Set(
+        (
+          await prisma.user.findMany({
+            where: {
+              id: { in: waiting.map((participant) => participant.memberId) },
+              paymentRemindersEnabled: false,
+            },
+            select: { id: true },
+          })
+        ).map((user) => user.id),
       );
-      await prisma.notification.createMany({
-        data: eligible.map((participant) => ({
-          userId: participant.memberId,
-          billId: bill.id,
-          message: `Payment reminder for ${bill.restaurant.name}: ${participant.finalPrice} VND waiting.`,
-        })),
-      });
-      return {
+      const eligible = waiting.filter(
+        (participant) =>
+          !recentlyReminded.has(participant.memberId) &&
+          !optedOut.has(participant.memberId),
+      );
+      const result = {
         sent: eligible.length,
         skipped: waiting.length - eligible.length,
+        preferenceSkipped: waiting.filter((participant) =>
+          optedOut.has(participant.memberId),
+        ).length,
         cooldownSeconds: REMINDER_COOLDOWN_MS / 1000,
       };
+      await prisma.$transaction(async (tx) => {
+        await tx.notification.createMany({
+          data: eligible.map((participant) => ({
+            userId: participant.memberId,
+            billId: bill.id,
+            message: `Payment reminder for ${bill.restaurant.name}: ${participant.finalPrice} VND waiting.`,
+          })),
+        });
+        await tx.billAuditLog.create({
+          data: {
+            billId: id,
+            userId: request.currentUser.id,
+            action: 'REMINDERS_SENT',
+            after: result,
+          },
+        });
+      });
+      return result;
     },
   );
 };

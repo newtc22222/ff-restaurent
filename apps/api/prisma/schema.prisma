@@ -12,6 +12,20 @@ enum ChefRole {
   HEAD_CHEF
 }
 
+enum SystemRole {
+  ROOT_ADMIN
+}
+
+enum PasswordResetStatus {
+  PENDING
+  CODE_ISSUED
+  USED
+  REJECTED
+  SUPERSEDED
+  LOCKED
+  EXPIRED
+}
+
 enum EntryStatus {
   ACTIVE
   ARCHIVED
@@ -22,63 +36,196 @@ enum PaymentStatus {
   WAITING
 }
 
+enum RestaurantPlatform {
+  GRAB
+  SHOPEE_FOOD
+  BE_FOOD
+  GOJEK
+  WEBSITE
+  FACEBOOK
+  OTHER
+}
+
+enum CollectionSystemType {
+  FAVORITES
+  RECOMMENDED
+}
+
 model User {
-  id           String            @id @default(cuid())
-  username     String            @unique
-  phone        String?           @unique
-  name         String
-  passwordHash String
-  chefRole     ChefRole?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  billsCreated Bill[]            @relation("BillCreator")
-  restaurants  RestaurantEntry[] @relation("RestaurantCreator")
-  participants BillParticipant[]
-  notifications Notification[]
-  roleChangesMade RoleAuditLog[] @relation("RoleChangedBy")
-  roleChangesReceived RoleAuditLog[] @relation("RoleChangedUser")
-  billAuditLogs BillAuditLog[]
-  favorites    UserFavorite[]
+  id                          String                   @id @default(cuid())
+  username                    String                   @unique
+  phone                       String?                  @unique
+  name                        String
+  searchText                  String                   @default("")
+  passwordHash                String
+  chefRole                    ChefRole?
+  systemRole                  SystemRole?              @unique
+  sessionVersion              Int                      @default(0)
+  paymentRemindersEnabled     Boolean                  @default(true)
+  createdAt                   DateTime                 @default(now())
+  updatedAt                   DateTime                 @updatedAt
+  billsCreated                Bill[]                   @relation("BillCreator")
+  restaurants                 RestaurantEntry[]        @relation("RestaurantCreator")
+  participants                BillParticipant[]
+  notifications               Notification[]
+  roleChangesMade             RoleAuditLog[]           @relation("RoleChangedBy")
+  roleChangesReceived         RoleAuditLog[]           @relation("RoleChangedUser")
+  billAuditLogs               BillAuditLog[]
+  favorites                   UserFavorite[]
+  rootTransfersFrom           RootAdminTransferAudit[] @relation("RootTransferredFrom")
+  rootTransfersTo             RootAdminTransferAudit[] @relation("RootTransferredTo")
+  passwordResetRequests       PasswordResetRequest[]
+  ownedCollections            Collection[]             @relation("CollectionOwner")
+  collectionShares            CollectionShare[]
+  feedback                    Feedback[]
+  ownedParticipantGroups      ParticipantGroup[]       @relation("ParticipantGroupOwner")
+  participantGroupMemberships ParticipantGroupMember[]
+}
+
+model PasswordResetRequest {
+  id             String              @id @default(cuid())
+  userId         String
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeKey      String?             @unique
+  status         PasswordResetStatus @default(PENDING)
+  codeHash       String?
+  expiresAt      DateTime?
+  failedAttempts Int                 @default(0)
+  resolvedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model RootAdminTransferAudit {
+  id         String   @id @default(cuid())
+  fromUserId String
+  fromUser   User     @relation("RootTransferredFrom", fields: [fromUserId], references: [id])
+  toUserId   String
+  toUser     User     @relation("RootTransferredTo", fields: [toUserId], references: [id])
+  createdAt  DateTime @default(now())
 }
 
 model RestaurantEntry {
-  id            String      @id @default(cuid())
+  id             String                   @id @default(cuid())
+  name           String
+  searchText     String                   @default("")
+  address        String
+  addressLine    String?
+  provinceCode   String?
+  provinceName   String?
+  wardCode       String?
+  wardName       String?
+  phone          String?
+  bannerImageUrl String?
+  diningAreaId   String?
+  diningArea     DiningArea?              @relation(fields: [diningAreaId], references: [id], onDelete: Restrict)
+  cuisineType    String
+  type           String
+  avatarUrl      String?
+  links          Json                     @default("[]")
+  isRecommended  Boolean                  @default(false)
+  isFavorite     Boolean                  @default(false)
+  status         EntryStatus              @default(ACTIVE)
+  createdById    String
+  createdBy      User                     @relation("RestaurantCreator", fields: [createdById], references: [id])
+  bills          Bill[]
+  favorites      UserFavorite[]
+  platformLinks  RestaurantPlatformLink[]
+  cuisines       RestaurantCuisine[]
+  collections    CollectionRestaurant[]
+  feedback       Feedback[]
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@index([diningAreaId])
+  @@index([status, createdAt, id])
+  @@index([createdById, createdAt, id])
+  @@index([isRecommended, status, createdAt, id])
+}
+
+model Cuisine {
+  id          String              @id @default(cuid())
+  name        String
+  nameKey     String              @unique
+  searchText  String              @default("")
+  type        String
+  description String?
+  restaurants RestaurantCuisine[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model RestaurantCuisine {
+  restaurantId String
+  cuisineId    String
+  isPrimary    Boolean         @default(false)
+  restaurant   RestaurantEntry @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  cuisine      Cuisine         @relation(fields: [cuisineId], references: [id], onDelete: Restrict)
+
+  @@id([restaurantId, cuisineId])
+  @@index([cuisineId])
+}
+
+model DiningArea {
+  id            String            @id @default(cuid())
   name          String
+  normalizedKey String            @unique
+  searchText    String            @default("")
   address       String
-  cuisineType   String
-  type          String
-  avatarUrl     String?
-  links         Json        @default("[]")
-  isRecommended Boolean     @default(false)
-  isFavorite    Boolean     @default(false)
-  status        EntryStatus @default(ACTIVE)
-  createdById   String
-  createdBy     User        @relation("RestaurantCreator", fields: [createdById], references: [id])
-  bills         Bill[]
-  favorites     UserFavorite[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  addressLine   String?
+  provinceCode  String?
+  provinceName  String?
+  wardCode      String?
+  wardName      String?
+  description   String?
+  restaurants   RestaurantEntry[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model RestaurantPlatformLink {
+  id           String             @id @default(cuid())
+  restaurantId String
+  restaurant   RestaurantEntry    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  platform     RestaurantPlatform
+  label        String?
+  url          String
+  sortOrder    Int
+
+  @@unique([restaurantId, url])
+  @@unique([restaurantId, sortOrder])
+  @@index([restaurantId, platform])
 }
 
 model Bill {
-  id              String            @id @default(cuid())
-  restaurantId    String
-  restaurant      RestaurantEntry   @relation(fields: [restaurantId], references: [id])
-  baseCost        Int
-  vat             Int
-  shippingFee     Int
-  discounts       Json              @default("[]")
-  vouchers        Json              @default("[]")
-  totalCost       Int
-  qrCodePath      String?
-  paymentUrl      String?
-  status          EntryStatus       @default(ACTIVE)
-  createdById     String
-  createdBy       User              @relation("BillCreator", fields: [createdById], references: [id])
-  participants    BillParticipant[]
-  auditLogs       BillAuditLog[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id                   String            @id @default(cuid())
+  restaurantId         String
+  restaurant           RestaurantEntry   @relation(fields: [restaurantId], references: [id])
+  baseCost             Int
+  vat                  Int
+  shippingFee          Int
+  discounts            Json              @default("[]")
+  vouchers             Json              @default("[]")
+  totalCost            Int
+  qrCodePath           String?
+  paymentUrl           String?
+  status               EntryStatus       @default(ACTIVE)
+  createdById          String
+  createdBy            User              @relation("BillCreator", fields: [createdById], references: [id])
+  participants         BillParticipant[]
+  auditLogs            BillAuditLog[]
+  feedback             Feedback[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  duplicateFingerprint String?
+
+  @@index([createdById, duplicateFingerprint, status])
+  @@index([status, createdAt, id])
+  @@index([restaurantId, createdAt, id])
+  @@index([createdById, createdAt, id])
 }
 
 model BillParticipant {
@@ -95,16 +242,65 @@ model BillParticipant {
   member            User          @relation(fields: [memberId], references: [id])
 
   @@id([billId, memberId])
+  @@index([memberId, paymentStatus, billId])
+  @@index([paymentStatus, billId])
+}
+
+model Feedback {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billId        String
+  bill          Bill            @relation(fields: [billId], references: [id], onDelete: Cascade)
+  restaurantId  String
+  restaurant    RestaurantEntry @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  foodRating    Decimal         @db.Decimal(3, 1)
+  serviceRating Decimal         @db.Decimal(3, 1)
+  comment       String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([billId, userId])
+  @@index([restaurantId, createdAt, id])
+  @@index([userId, createdAt])
+}
+
+model ParticipantGroup {
+  id        String                   @id @default(cuid())
+  name      String
+  ownerId   String
+  owner     User                     @relation("ParticipantGroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   ParticipantGroupMember[]
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+
+  @@unique([ownerId, name])
+  @@index([ownerId, updatedAt])
+}
+
+model ParticipantGroupMember {
+  groupId   String
+  userId    String
+  group     ParticipantGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@id([groupId, userId])
+  @@index([userId])
 }
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   billId    String?
   message   String
   readAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt, id])
+  @@index([userId, readAt])
+  @@index([billId, userId, createdAt])
 }
 
 model RoleAuditLog {
@@ -128,6 +324,8 @@ model BillAuditLog {
   before    Json?
   after     Json?
   createdAt DateTime @default(now())
+
+  @@index([billId, createdAt, id])
 }
 
 model UserFavorite {
@@ -138,4 +336,44 @@ model UserFavorite {
   createdAt    DateTime        @default(now())
 
   @@id([userId, restaurantId])
+}
+
+model Collection {
+  id          String                 @id @default(cuid())
+  name        String
+  searchText  String                 @default("")
+  description String?
+  isPublic    Boolean                @default(false)
+  systemType  CollectionSystemType?
+  ownerId     String?
+  owner       User?                  @relation("CollectionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  shares      CollectionShare[]
+  restaurants CollectionRestaurant[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([ownerId, createdAt])
+  @@index([isPublic, createdAt])
+}
+
+model CollectionShare {
+  collectionId String
+  userId       String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@id([collectionId, userId])
+  @@index([userId, createdAt])
+}
+
+model CollectionRestaurant {
+  collectionId String
+  restaurantId String
+  collection   Collection      @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  restaurant   RestaurantEntry @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now())
+
+  @@id([collectionId, restaurantId])
+  @@index([restaurantId, createdAt])
 }

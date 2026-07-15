@@ -1,14 +1,25 @@
 import type { FastifyInstance } from 'fastify';
-import { EntryStatus } from '@prisma/client';
+import { EntryStatus, PaymentStatus } from '@prisma/client';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
+import { statsQuerySchema } from '../schemas.js';
 
-const startDateForRange = (range: string | undefined) => {
-  const date = new Date();
-  if (range === 'weekly') date.setDate(date.getDate() - 7);
-  else if (range === 'yearly') date.setFullYear(date.getFullYear() - 1);
-  else date.setMonth(date.getMonth() - 1);
-  return date;
+type StatsQuery = ReturnType<typeof statsQuerySchema.parse>;
+
+export const resolveStatsDateRange = (query: StatsQuery, now = new Date()) => {
+  if (query.range === 'custom') {
+    const start = new Date(`${query.from}T00:00:00.000Z`);
+    const end = new Date(`${query.to}T00:00:00.000Z`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    return { start, end };
+  }
+
+  const start = new Date(now);
+  if (query.range === 'weekly') start.setUTCDate(start.getUTCDate() - 7);
+  else if (query.range === 'yearly')
+    start.setUTCFullYear(start.getUTCFullYear() - 1);
+  else start.setUTCMonth(start.getUTCMonth() - 1);
+  return { start, end: now };
 };
 
 const addAmountToBucket = (
@@ -27,16 +38,31 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
     '/stats/me',
     { preHandler: requireAuthenticatedUser },
     async (request) => {
-      const query = request.query as { range?: string };
+      const query = statsQuerySchema.parse(request.query);
+      const { start, end } = resolveStatsDateRange(query);
       const participants = await prisma.billParticipant.findMany({
         where: {
           memberId: request.currentUser.id,
           bill: {
-            createdAt: { gte: startDateForRange(query.range) },
+            createdAt: { gte: start, lt: end },
             status: EntryStatus.ACTIVE,
           },
         },
-        include: { bill: { include: { restaurant: true } } },
+        include: {
+          bill: {
+            include: {
+              restaurant: {
+                include: {
+                  cuisines: {
+                    where: { isPrimary: true },
+                    include: { cuisine: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       const byPaymentStatus: Record<string, number> = {};
@@ -47,6 +73,9 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
       const frequencyByCuisine: Record<string, number> = {};
 
       for (const participant of participants) {
+        const primaryCuisine =
+          participant.bill.restaurant.cuisines[0]?.cuisine.name ??
+          participant.bill.restaurant.cuisineType;
         addAmountToBucket(
           byPaymentStatus,
           participant.paymentStatus,
@@ -54,7 +83,7 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
         );
         addAmountToBucket(
           byCuisineType,
-          participant.bill.restaurant.cuisineType,
+          primaryCuisine,
           participant.finalPrice,
         );
         addAmountToBucket(
@@ -69,16 +98,17 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
         );
         frequencyByRestaurant[participant.bill.restaurant.name] =
           (frequencyByRestaurant[participant.bill.restaurant.name] ?? 0) + 1;
-        frequencyByCuisine[participant.bill.restaurant.cuisineType] =
-          (frequencyByCuisine[participant.bill.restaurant.cuisineType] ?? 0) +
-          1;
+        frequencyByCuisine[primaryCuisine] =
+          (frequencyByCuisine[primaryCuisine] ?? 0) + 1;
       }
 
+      const paid = byPaymentStatus[PaymentStatus.PAID] ?? 0;
+      const waiting = byPaymentStatus[PaymentStatus.WAITING] ?? 0;
+      const totalObligation = paid + waiting;
+
       return {
-        total: participants.reduce(
-          (sum, participant) => sum + participant.finalPrice,
-          0,
-        ),
+        totals: { paid, waiting, totalObligation },
+        total: totalObligation,
         byPaymentStatus,
         byCuisineType,
         byEntry,

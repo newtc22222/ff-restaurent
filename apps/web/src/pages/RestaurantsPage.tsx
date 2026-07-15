@@ -1,11 +1,12 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Heart, Store, ThumbsUp } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
+import type { RestaurantDirectoryData } from '../lib/api';
 import {
-  CUISINE_OPTIONS,
   TYPE_OPTIONS_VI,
   TYPE_OPTIONS_EN,
   canChef,
+  isHead,
 } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
 import { useI18n } from '../app/providers/i18n';
@@ -13,6 +14,17 @@ import { useMutation } from '../hooks/useMutation';
 import SectionTitle from '../components/ui/SectionTitle';
 import EmptyState from '../components/ui/EmptyState';
 import Dropdown from '../components/ui/Dropdown';
+import VietnamAddressFields, {
+  emptyVietnamAddress,
+  isVietnamAddressComplete,
+} from '../components/address/VietnamAddressFields';
+import RestaurantProfileFields, {
+  emptyRestaurantProfile,
+  isRestaurantProfileValid,
+} from '../components/restaurants/RestaurantProfileFields';
+import RestaurantCatalogFields, {
+  emptyRestaurantCatalogs,
+} from '../components/restaurants/RestaurantCatalogFields';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
@@ -20,50 +32,135 @@ import Dropdown from '../components/ui/Dropdown';
  */
 export default function RestaurantsPage() {
   const navigate = useNavigate();
-  const { user, restaurants, setError } = useAppContext();
+  const { user, restaurants: snapshotRestaurants } = useAppContext();
+  const page = useLoaderData() as RestaurantDirectoryData;
+  const restaurants = page.items;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  }, [searchParams]);
   const { locale, t } = useI18n();
-  const { mutate } = useMutation(setError);
+  const { mutate } = useMutation();
   const typeOptions = locale === 'vi' ? TYPE_OPTIONS_VI : TYPE_OPTIONS_EN;
-  const [sortByName, setSortByName] = useState(false);
-  const [filterCuisine, setFilterCuisine] = useState('');
-  const [filterFav, setFilterFav] = useState(false);
-  const [filterRec, setFilterRec] = useState(false);
+  const search = searchParams.get('search') ?? '';
+  const sort = searchParams.get('sort') ?? 'name-asc';
+  const filterCuisine =
+    searchParams.get('primaryCuisineId') ?? searchParams.get('cuisineId') ?? '';
+  const cuisineMatch = searchParams.has('primaryCuisineId') ? 'primary' : 'all';
+  const filterDiningArea = searchParams.get('diningAreaId') ?? '';
+  const filterCollection = searchParams.get('collectionId') ?? '';
+  const filterPlatform = searchParams.get('platform') ?? '';
+  const filterFav = searchParams.get('favorite') === 'true';
+  const filterRec = searchParams.get('recommended') === 'true';
+  const filterArchive = searchParams.get('archive') ?? 'active';
   const [form, setForm] = useState({
     name: '',
-    address: '',
+    ...emptyVietnamAddress(),
+    ...emptyRestaurantProfile(),
+    ...emptyRestaurantCatalogs(),
     cuisineType: '',
     type: typeOptions[0] ?? 'Restaurant',
     isRecommended: false,
   });
 
-  const filtered = restaurants
-    .filter((e) => {
-      if (filterCuisine && e.cuisineType !== filterCuisine) return false;
-      if (filterFav && !e.isFavoritedByMe) return false;
-      if (filterRec && !e.isRecommended) return false;
-      return true;
-    })
-    .sort((a, b) =>
-      sortByName
-        ? a.name.localeCompare(b.name)
-        : (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0) ||
-          a.name.localeCompare(b.name),
-    );
+  const setQuery = (key: string, value?: string) => {
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.delete('cursor');
+    if (value) next.set(key, value);
+    else next.delete(key);
+    searchParamsRef.current = next;
+    setSearchParams(next);
+  };
+
+  const goToNextPage = (cursor: string) => {
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.set('cursor', cursor);
+    searchParamsRef.current = next;
+    setSearchParams(next);
+  };
 
   const cuisineOptions = Array.from(
-    new Set(restaurants.map((e) => e.cuisineType).filter(Boolean)),
-  ).sort();
+    new Map(
+      snapshotRestaurants.flatMap((entry) =>
+        (entry.cuisines ?? []).map(({ cuisine }) => [
+          cuisine.id,
+          { value: cuisine.id, label: cuisine.name },
+        ]),
+      ),
+    ).values(),
+  ).sort((left, right) => left.label.localeCompare(right.label));
+
+  const activeFilterCount =
+    (search ? 1 : 0) +
+    (filterCuisine ? 1 : 0) +
+    (filterDiningArea ? 1 : 0) +
+    (filterCollection ? 1 : 0) +
+    (filterPlatform ? 1 : 0) +
+    (filterFav ? 1 : 0) +
+    (filterRec ? 1 : 0) +
+    (filterArchive !== 'active' ? 1 : 0) +
+    (sort !== 'name-asc' ? 1 : 0);
+
+  const diningAreaOptions = Array.from(
+    new Map(
+      snapshotRestaurants
+        .filter((entry) => entry.diningArea)
+        .map((entry) => [
+          entry.diningArea!.id,
+          {
+            value: entry.diningArea!.id,
+            label: entry.diningArea!.name,
+          },
+        ]),
+    ).values(),
+  ).sort((left, right) => left.label.localeCompare(right.label));
+  const platformOptions = Array.from(
+    new Set(
+      snapshotRestaurants.flatMap((entry) =>
+        (entry.platformLinks ?? []).map((link) => link.platform),
+      ),
+    ),
+  ).map((platform) => ({
+    value: platform,
+    label: platform.replaceAll('_', ' '),
+  }));
+  const collectionOptions = page.collections.map((collection) => ({
+    value: collection.id,
+    label: collection.name,
+  }));
+
+  const changeCuisineMatch = (match: string) => {
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.delete('cursor');
+    next.delete('cuisineId');
+    next.delete('primaryCuisineId');
+    if (filterCuisine) {
+      next.set(
+        match === 'primary' ? 'primaryCuisineId' : 'cuisineId',
+        filterCuisine,
+      );
+    }
+    searchParamsRef.current = next;
+    setSearchParams(next);
+  };
 
   const toggleFavorite = (id: string) =>
     mutate(
       { intent: 'restaurant-favorite', restaurantId: id },
-      { fallback: 'Could not toggle favorite', clearFirst: false },
+      {
+        fallback: t('toast.favoriteFailed'),
+        success: t('toast.favoriteUpdated'),
+      },
     );
 
   const toggleRecommend = (id: string) =>
     mutate(
       { intent: 'restaurant-recommend', restaurantId: id },
-      { fallback: 'Could not toggle recommend', clearFirst: false },
+      {
+        fallback: t('toast.recommendationFailed'),
+        success: t('toast.recommendationUpdated'),
+      },
     );
 
   const submit = (event: FormEvent) => {
@@ -71,11 +168,14 @@ export default function RestaurantsPage() {
     void mutate(
       { intent: 'create-restaurant', payload: form },
       {
-        fallback: 'Could not save restaurant',
+        fallback: t('toast.restaurantCreateFailed'),
+        success: t('toast.restaurantCreated'),
         onSuccess: () =>
           setForm({
             name: '',
-            address: '',
+            ...emptyVietnamAddress(),
+            ...emptyRestaurantProfile(),
+            ...emptyRestaurantCatalogs(),
             cuisineType: '',
             type: typeOptions[0] ?? 'Restaurant',
             isRecommended: false,
@@ -92,24 +192,84 @@ export default function RestaurantsPage() {
           subtitle={t('restaurants.subtitle')}
         />
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            className={`btn h-8 px-3 text-[12px] ${sortByName ? 'btn-primary' : 'btn-soft'}`}
-            onClick={() => setSortByName(!sortByName)}
+          <input
+            className="field h-8 min-w-52 py-0 text-[12px]"
+            type="search"
+            value={search}
+            onChange={(event) => setQuery('search', event.target.value)}
+            placeholder={t('restaurants.search')}
+            aria-label={t('restaurants.search')}
+          />
+          <select
+            className="field h-8 min-w-36 py-0 text-[12px]"
+            aria-label={t('restaurants.sort')}
+            value={sort}
+            onChange={(event) => setQuery('sort', event.target.value)}
           >
-            {t('restaurants.sortByName')}
-          </button>
+            <option value="name-asc">{t('restaurants.nameAsc')}</option>
+            <option value="name-desc">{t('restaurants.nameDesc')}</option>
+            <option value="created-desc">{t('restaurants.newest')}</option>
+            <option value="created-asc">{t('restaurants.oldest')}</option>
+          </select>
           <Dropdown
             variant="filter"
             label={t('restaurants.filterCuisine')}
             value={filterCuisine}
-            onChange={setFilterCuisine}
-            options={cuisineOptions.map((cuisine) => ({
-              value: cuisine,
-              label: cuisine,
-            }))}
+            onChange={(value) => {
+              if (cuisineMatch === 'primary') {
+                setQuery('primaryCuisineId', value);
+                if (value) setQuery('cuisineId');
+              } else {
+                setQuery('cuisineId', value);
+                if (value) setQuery('primaryCuisineId');
+              }
+            }}
+            options={cuisineOptions}
             searchable
             searchPlaceholder={t('restaurants.searchCuisine')}
             emptyMessage={t('bills.noFilterResults')}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+          />
+          <select
+            className="field h-9 py-0 text-[12px]"
+            aria-label={t('restaurants.cuisineMatch')}
+            value={cuisineMatch}
+            onChange={(event) => changeCuisineMatch(event.target.value)}
+          >
+            <option value="all">{t('restaurants.anyCuisine')}</option>
+            <option value="primary">{t('restaurants.primaryCuisine')}</option>
+          </select>
+          <Dropdown
+            variant="filter"
+            label={t('restaurants.filterDiningArea')}
+            value={filterDiningArea}
+            onChange={(value) => setQuery('diningAreaId', value)}
+            options={diningAreaOptions}
+            searchable
+            searchPlaceholder={t('restaurants.searchDiningArea')}
+            emptyMessage={t('bills.noFilterResults')}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+          />
+          <Dropdown
+            variant="filter"
+            label={t('restaurants.filterCollection')}
+            value={filterCollection}
+            onChange={(value) => setQuery('collectionId', value)}
+            options={collectionOptions}
+            searchable
+            searchPlaceholder={t('restaurants.searchCollection')}
+            emptyMessage={t('bills.noFilterResults')}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+          />
+          <Dropdown
+            variant="filter"
+            label={t('restaurants.filterPlatform')}
+            value={filterPlatform}
+            onChange={(value) => setQuery('platform', value)}
+            options={platformOptions}
             allowClear
             clearLabel={t('bills.clearAll')}
           />
@@ -119,7 +279,7 @@ export default function RestaurantsPage() {
                 ? 'border-red-300 bg-red-50 text-red-600 dark:border-red-700 dark:bg-red-950 dark:text-red-400'
                 : 'border-border bg-surface text-slate-500 hover:text-ink'
             }`}
-            onClick={() => setFilterFav(!filterFav)}
+            onClick={() => setQuery('favorite', filterFav ? undefined : 'true')}
           >
             <Heart size={12} fill={filterFav ? 'currentColor' : 'none'} />{' '}
             {t('restaurants.filterFavorite')}
@@ -130,12 +290,35 @@ export default function RestaurantsPage() {
                 ? 'border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
                 : 'border-border bg-surface text-slate-500 hover:text-ink'
             }`}
-            onClick={() => setFilterRec(!filterRec)}
+            onClick={() =>
+              setQuery('recommended', filterRec ? undefined : 'true')
+            }
           >
             <ThumbsUp size={12} /> {t('restaurants.filterRecommended')}
           </button>
+          {isHead(user) && (
+            <select
+              className="field h-8 min-w-32 py-0 text-[12px]"
+              aria-label={t('restaurants.archiveFilter')}
+              value={filterArchive}
+              onChange={(event) => setQuery('archive', event.target.value)}
+            >
+              <option value="active">{t('bills.activeOnly')}</option>
+              <option value="archived">{t('bills.archivedOnly')}</option>
+              <option value="all">{t('bills.allStatuses')}</option>
+            </select>
+          )}
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              className="text-[12px] text-slate-400 hover:text-red-400"
+              onClick={() => setSearchParams({})}
+            >
+              {t('bills.clearAll')}
+            </button>
+          )}
         </div>
-        {restaurants.length === 0 && (
+        {restaurants.length === 0 && activeFilterCount === 0 && (
           <EmptyState
             icon={Store}
             title={t('restaurants.noEntries')}
@@ -147,8 +330,16 @@ export default function RestaurantsPage() {
             ]}
           />
         )}
+        {restaurants.length === 0 && activeFilterCount > 0 && (
+          <EmptyState
+            icon={Store}
+            title={t('restaurants.noMatch')}
+            description={t('restaurants.clearFiltersHint')}
+            steps={[]}
+          />
+        )}
         <div className="grid gap-3 md:grid-cols-2">
-          {filtered.map((entry) => (
+          {restaurants.map((entry) => (
             <article
               key={entry.id}
               className="panel cursor-pointer p-4 transition-shadow hover:shadow-md"
@@ -221,6 +412,15 @@ export default function RestaurantsPage() {
             </article>
           ))}
         </div>
+        {page.pageInfo.hasNextPage && page.pageInfo.endCursor && (
+          <button
+            type="button"
+            className="btn btn-soft w-full justify-center"
+            onClick={() => goToNextPage(page.pageInfo.endCursor!)}
+          >
+            {t('common.nextPage')}
+          </button>
+        )}
       </div>
       {canChef(user) && (
         <form className="panel h-fit space-y-4 p-4" onSubmit={submit}>
@@ -237,36 +437,21 @@ export default function RestaurantsPage() {
               required
             />
           </label>
-          <label className="block space-y-1">
-            <span className="label">
-              {locale === 'vi' ? 'Địa chỉ' : 'Address'}
-            </span>
-            <input
-              className="field w-full"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              required
-            />
-          </label>
-          <div className="block space-y-1">
-            <span className="label">
-              {locale === 'vi' ? 'Loại ẩm thực' : 'Cuisine type'}
-            </span>
-            <Dropdown
-              fullWidth
-              label={locale === 'vi' ? 'Chọn...' : 'Choose...'}
-              ariaLabel={locale === 'vi' ? 'Loại ẩm thực' : 'Cuisine type'}
-              value={form.cuisineType}
-              onChange={(cuisineType) => setForm({ ...form, cuisineType })}
-              options={CUISINE_OPTIONS.map((cuisine) => ({
-                value: cuisine,
-                label: cuisine,
-              }))}
-              searchable
-              searchPlaceholder={t('restaurants.searchCuisine')}
-              emptyMessage={t('bills.noFilterResults')}
-            />
-          </div>
+          <VietnamAddressFields
+            value={form}
+            onChange={(address) => setForm({ ...form, ...address })}
+          />
+          <RestaurantProfileFields
+            value={form}
+            onChange={(profile) => setForm({ ...form, ...profile })}
+          />
+          <RestaurantCatalogFields
+            value={form}
+            onChange={(catalogs) => setForm({ ...form, ...catalogs })}
+            onPrimaryCuisineNameChange={(cuisineType) =>
+              setForm((current) => ({ ...current, cuisineType }))
+            }
+          />
           <div className="block space-y-1">
             <span className="label">
               {locale === 'vi' ? 'Loại hình' : 'Type'}
@@ -297,7 +482,10 @@ export default function RestaurantsPage() {
             className="btn btn-primary w-full"
             disabled={
               !form.name.trim() ||
-              !form.address.trim() ||
+              !isVietnamAddressComplete(form) ||
+              !isRestaurantProfileValid(form) ||
+              form.cuisineIds.length === 0 ||
+              !form.primaryCuisineId ||
               !form.cuisineType ||
               !form.type
             }

@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
-import { CheckCircle2, Edit3 } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
+import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 import { useNavigate } from 'react-router';
 import { roleLabel, initials } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
@@ -20,32 +21,71 @@ export default function ProfilePage() {
     username: user.username,
     phone: user.phone ?? '',
   });
-  const [saved, setSaved] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const { mutate } = useMutation(setLocalError);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmation: '',
+  });
+  const { mutate } = useMutation();
+  const parsedPhone = parseVietnamMobilePhone(form.phone);
+  const phoneError =
+    form.phone.trim() && !parsedPhone.success
+      ? t('validation.vietnamMobilePhone')
+      : null;
+  const passwordLengthError =
+    passwordForm.newPassword &&
+    (passwordForm.newPassword.length < 8 ||
+      passwordForm.newPassword.length > 128)
+      ? t('validation.passwordLength')
+      : null;
+  const passwordReuseError =
+    passwordForm.currentPassword &&
+    passwordForm.newPassword === passwordForm.currentPassword
+      ? t('validation.passwordReuse')
+      : null;
+  const passwordConfirmationError =
+    passwordForm.confirmation &&
+    passwordForm.confirmation !== passwordForm.newPassword
+      ? t('validation.passwordConfirmation')
+      : null;
 
   const onBack = () => navigate('/bills');
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (!parsedPhone.success) return;
     void mutate(
       {
         intent: 'update-profile',
         payload: {
           name: form.name,
           username: form.username,
-          ...(form.phone ? { phone: form.phone } : {}),
+          phone: parsedPhone.phone,
         },
       },
       {
-        fallback: 'Could not update profile',
-        onSuccess: () => {
-          setSaved(true);
-          setTimeout(() => {
-            setSaved(false);
-            setEditing(false);
-          }, 1000);
-        },
+        fallback: t('toast.profileUpdateFailed'),
+        success: t('toast.profileUpdated'),
+        onSuccess: () => setEditing(false),
+      },
+    );
+  };
+
+  const changePassword = (event: FormEvent) => {
+    event.preventDefault();
+    if (passwordLengthError || passwordReuseError || passwordConfirmationError)
+      return;
+    void mutate(
+      { intent: 'change-password', payload: passwordForm },
+      {
+        fallback: t('toast.passwordChangeFailed'),
+        success: t('toast.passwordChanged'),
+        onSuccess: () =>
+          setPasswordForm({
+            currentPassword: '',
+            newPassword: '',
+            confirmation: '',
+          }),
       },
     );
   };
@@ -79,11 +119,6 @@ export default function ProfilePage() {
           </button>
         ) : (
           <form onSubmit={submit} className="space-y-4">
-            {localError && (
-              <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-                {localError}
-              </div>
-            )}
             <label className="block space-y-1">
               <span className="label">{t('auth.name')}</span>
               <input
@@ -107,9 +142,16 @@ export default function ProfilePage() {
               <input
                 className="field w-full"
                 type="tel"
+                aria-label={t('auth.phone')}
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                aria-invalid={!!phoneError}
               />
+              {phoneError && (
+                <span className="text-xs text-red-600" role="alert">
+                  {phoneError}
+                </span>
+              )}
             </label>
             <div className="flex gap-3">
               <button
@@ -120,19 +162,132 @@ export default function ProfilePage() {
                 {t('auth.cancel')}
               </button>
               <button
-                className={`btn flex-1 ${saved ? 'bg-emerald-500 text-white' : 'btn-primary'}`}
+                className="btn btn-primary flex-1"
+                disabled={!!phoneError}
               >
-                {saved ? (
-                  <>
-                    <CheckCircle2 size={14} /> {t('profile.saved')}
-                  </>
-                ) : (
-                  t('profile.save')
-                )}
+                {t('profile.save')}
               </button>
             </div>
           </form>
         )}
+      </div>
+
+      <div className="panel mt-4 p-6">
+        <h2 className="text-lg font-bold text-ink">
+          {t('profile.notificationPreferences')}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {t('profile.notificationPreferencesDescription')}
+        </p>
+        <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-4">
+          <span className="text-sm font-semibold text-ink">
+            {t('profile.paymentReminders')}
+          </span>
+          <input
+            type="checkbox"
+            aria-label={t('profile.paymentReminders')}
+            checked={user.paymentRemindersEnabled !== false}
+            onChange={(event) =>
+              void mutate(
+                {
+                  intent: 'notification-preferences',
+                  payload: { paymentRemindersEnabled: event.target.checked },
+                },
+                {
+                  fallback: t('toast.notificationPreferencesFailed'),
+                  success: t('toast.notificationPreferencesUpdated'),
+                },
+              )
+            }
+          />
+        </label>
+      </div>
+
+      <div className="panel mt-4 p-6">
+        <h2 className="text-lg font-bold text-ink">
+          {t('profile.changePassword')}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {t('profile.changePasswordDescription')}
+        </p>
+        <form className="mt-5 space-y-4" onSubmit={changePassword}>
+          <label className="block space-y-1">
+            <span className="label">{t('profile.currentPassword')}</span>
+            <input
+              className="field w-full"
+              type="password"
+              aria-label={t('profile.currentPassword')}
+              autoComplete="current-password"
+              value={passwordForm.currentPassword}
+              onChange={(event) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  currentPassword: event.target.value,
+                })
+              }
+              required
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="label">{t('profile.newPassword')}</span>
+            <input
+              className="field w-full"
+              type="password"
+              aria-label={t('profile.newPassword')}
+              autoComplete="new-password"
+              value={passwordForm.newPassword}
+              onChange={(event) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  newPassword: event.target.value,
+                })
+              }
+              aria-invalid={!!passwordLengthError || !!passwordReuseError}
+              required
+            />
+            {(passwordLengthError || passwordReuseError) && (
+              <span className="text-xs text-red-600" role="alert">
+                {passwordLengthError || passwordReuseError}
+              </span>
+            )}
+          </label>
+          <label className="block space-y-1">
+            <span className="label">{t('profile.confirmPassword')}</span>
+            <input
+              className="field w-full"
+              type="password"
+              aria-label={t('profile.confirmPassword')}
+              autoComplete="new-password"
+              value={passwordForm.confirmation}
+              onChange={(event) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  confirmation: event.target.value,
+                })
+              }
+              aria-invalid={!!passwordConfirmationError}
+              required
+            />
+            {passwordConfirmationError && (
+              <span className="text-xs text-red-600" role="alert">
+                {passwordConfirmationError}
+              </span>
+            )}
+          </label>
+          <button
+            className="btn btn-primary w-full"
+            disabled={
+              !passwordForm.currentPassword ||
+              !passwordForm.newPassword ||
+              !passwordForm.confirmation ||
+              !!passwordLengthError ||
+              !!passwordReuseError ||
+              !!passwordConfirmationError
+            }
+          >
+            {t('profile.changePasswordAction')}
+          </button>
+        </form>
       </div>
     </div>
   );

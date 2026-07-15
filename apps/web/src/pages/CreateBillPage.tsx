@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { CheckCircle2, ChevronRight, Plus, X } from 'lucide-react';
+import { ChevronRight, Plus, X } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
@@ -12,6 +12,7 @@ import BackButton from '../components/ui/BackButton';
 import AmountInput from '../components/ui/AmountInput';
 import SummaryLine from '../components/ui/SummaryLine';
 import Dropdown from '../components/ui/Dropdown';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 interface ParticipantDraft {
   memberId: string;
@@ -36,7 +37,8 @@ interface VoucherDraft {
 export default function CreateBillPage() {
   const navigate = useNavigate();
   const { billId } = useParams();
-  const { user, users, bills, restaurants, setError } = useAppContext();
+  const { user, users, bills, restaurants, participantGroups } =
+    useAppContext();
   const { t } = useI18n();
 
   const members = uniqueUsers(users, user);
@@ -69,9 +71,11 @@ export default function CreateBillPage() {
       originCost: p.originCost,
     })) ?? [],
   );
-  const [submitted, setSubmitted] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  const { mutate } = useMutation(setLocalError);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [groupName, setGroupName] = useState('');
+  const [duplicateDetected, setDuplicateDetected] = useState(false);
+  const { mutate } = useMutation();
   const activeRestaurants = restaurants.filter(
     (entry) => entry.status === 'ACTIVE' || entry.id === restaurantId,
   );
@@ -125,10 +129,40 @@ export default function CreateBillPage() {
     );
   };
 
+  const submitBill = (allowDuplicate: boolean) => {
+    const payload = {
+      restaurantId,
+      baseCost: totalBase,
+      vat,
+      shippingFee,
+      discounts,
+      vouchers,
+      ...(paymentUrl ? { paymentUrl } : {}),
+      participants: participants.map((p) => ({
+        memberId: p.memberId,
+        originCost: p.originCost,
+      })),
+      allowDuplicate,
+    };
+
+    void mutate(
+      { intent: isEditing ? 'update-bill' : 'create-bill', payload },
+      {
+        fallback: t(
+          isEditing ? 'toast.billUpdateFailed' : 'toast.billCreateFailed',
+        ),
+        success: t(isEditing ? 'toast.billUpdated' : 'toast.billCreated'),
+        redirects: true,
+        onError: (code) => {
+          if (code === 'BILL_DUPLICATE_DETECTED') setDuplicateDetected(true);
+        },
+      },
+    );
+  };
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setLocalError(null);
-    setError(null);
     if (participants.length < 2) {
       setLocalError('A bill requires at least two participants.');
       return;
@@ -150,26 +184,47 @@ export default function CreateBillPage() {
       return;
     }
 
-    const payload = {
-      restaurantId,
-      baseCost: totalBase,
-      vat,
-      shippingFee,
-      discounts,
-      vouchers,
-      ...(paymentUrl ? { paymentUrl } : {}),
-      participants: participants.map((p) => ({
-        memberId: p.memberId,
-        originCost: p.originCost,
-      })),
-    };
+    submitBill(false);
+  };
 
+  const applyGroup = () => {
+    const group = participantGroups.find(({ id }) => id === selectedGroupId);
+    if (!group) return;
+    setParticipants((current) =>
+      group.members.map(({ userId }) =>
+        current.find(({ memberId }) => memberId === userId)
+          ? { ...current.find(({ memberId }) => memberId === userId)! }
+          : { memberId: userId, originCost: 0 },
+      ),
+    );
+  };
+
+  const saveGroup = () => {
+    if (!groupName.trim() || participants.length < 2) return;
     void mutate(
-      { intent: isEditing ? 'update-bill' : 'create-bill', payload },
       {
-        fallback: isEditing ? 'Could not update bill' : 'Could not create bill',
-        clearFirst: false, // errors are already cleared before validation above
-        onSuccess: () => setSubmitted(true),
+        intent: 'create-participant-group',
+        payload: {
+          name: groupName.trim(),
+          memberIds: participants.map(({ memberId }) => memberId),
+        },
+      },
+      {
+        fallback: t('toast.participantGroupSaveFailed'),
+        success: t('toast.participantGroupSaved'),
+        onSuccess: () => setGroupName(''),
+      },
+    );
+  };
+
+  const deleteGroup = () => {
+    if (!selectedGroupId) return;
+    void mutate(
+      { intent: 'delete-participant-group', groupId: selectedGroupId },
+      {
+        fallback: t('toast.participantGroupDeleteFailed'),
+        success: t('toast.participantGroupDeleted'),
+        onSuccess: () => setSelectedGroupId(''),
       },
     );
   };
@@ -432,6 +487,58 @@ export default function CreateBillPage() {
             </label>
 
             <div className="mb-6">
+              <div className="mb-5 rounded-lg border border-border bg-muted/30 p-3">
+                <span className="label">{t('groups.title')}</span>
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                  <select
+                    className="field w-full"
+                    aria-label={t('groups.choose')}
+                    value={selectedGroupId}
+                    onChange={(event) => setSelectedGroupId(event.target.value)}
+                  >
+                    <option value="">{t('groups.choose')}</option>
+                    {participantGroups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name} ({group.members.length})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-soft"
+                    disabled={!selectedGroupId}
+                    onClick={applyGroup}
+                  >
+                    {t('groups.apply')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-soft text-red-600"
+                    disabled={!selectedGroupId}
+                    onClick={deleteGroup}
+                  >
+                    {t('common.remove')}
+                  </button>
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    className="field min-w-0 flex-1"
+                    value={groupName}
+                    maxLength={80}
+                    aria-label={t('groups.name')}
+                    placeholder={t('groups.name')}
+                    onChange={(event) => setGroupName(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-soft"
+                    disabled={!groupName.trim() || participants.length < 2}
+                    onClick={saveGroup}
+                  >
+                    {t('groups.save')}
+                  </button>
+                </div>
+              </div>
               <div className="mb-2 flex items-center justify-between gap-3">
                 <span className="label">{t('createBill.participants')}</span>
                 <span className="text-[12px] text-slate-500">
@@ -614,20 +721,12 @@ export default function CreateBillPage() {
             </div>
 
             <button
-              className={`btn h-11 w-full ${submitted ? 'bg-emerald-500 text-white' : 'btn-primary'}`}
-              disabled={submitted || !isFormReady}
+              className="btn btn-primary h-11 w-full"
+              disabled={!isFormReady}
             >
-              {submitted ? (
-                <>
-                  <CheckCircle2 size={16} /> {t('createBill.created')}
-                </>
-              ) : (
-                <>
-                  {t('createBill.submit')} <ChevronRight size={16} />
-                </>
-              )}
+              {t('createBill.submit')} <ChevronRight size={16} />
             </button>
-            {!isFormReady && !submitted && (
+            {!isFormReady && (
               <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">
                 Select a restaurant, add at least two members, and enter every
                 base amount to create the bill.
@@ -636,6 +735,18 @@ export default function CreateBillPage() {
           </div>
         </section>
       </form>
+      {duplicateDetected && (
+        <ConfirmDialog
+          title={t('duplicate.title')}
+          message={t('duplicate.message')}
+          onCancel={() => setDuplicateDetected(false)}
+          onConfirm={() => {
+            setDuplicateDetected(false);
+            submitBill(true);
+          }}
+          t={t}
+        />
+      )}
     </div>
   );
 }

@@ -9,10 +9,17 @@ vi.mock('react-router', async (importOriginal) => {
 import { matchRoutes } from 'react-router';
 import {
   appLoader,
+  billActivityLoader,
+  billsLoader,
+  collectionDetailLoader,
+  collectionsLoader,
   loginAction,
   loginLoader,
   mutationAction,
+  roleGuard,
   routes,
+  restaurantsLoader,
+  statsLoader,
 } from './router';
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -21,12 +28,20 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
   });
 
+const pageResponse = (items: unknown[] = [], endCursor: string | null = null) =>
+  jsonResponse({
+    items,
+    pageInfo: { endCursor, hasNextPage: endCursor !== null },
+  });
+
 const user = {
   id: 'head-1',
   username: 'head',
   name: 'Head Chef',
   chefRole: 'HEAD_CHEF' as const,
-  roles: ['CUSTOMER', 'HEAD_CHEF'],
+  systemRole: 'ROOT_ADMIN' as const,
+  roles: ['CUSTOMER', 'HEAD_CHEF', 'ROOT_ADMIN'],
+  paymentRemindersEnabled: true,
 };
 
 afterEach(() => {
@@ -64,11 +79,13 @@ describe('appLoader', () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.endsWith('/me')) return jsonResponse(user);
-        if (url.includes('/bills')) return jsonResponse([]);
-        if (url.includes('/restaurants')) return jsonResponse([]);
-        if (url.includes('/stats/me')) return jsonResponse({ total: 0 });
-        if (url.endsWith('/users')) return jsonResponse([user]);
+        if (url.includes('/bills')) return pageResponse();
+        if (url.includes('/restaurants')) return pageResponse();
+        if (url.includes('/users?')) return pageResponse([user]);
+        if (url.endsWith('/admin/password-reset-requests'))
+          return jsonResponse([]);
         if (url.endsWith('/notifications')) return jsonResponse([]);
+        if (url.endsWith('/participant-groups')) return jsonResponse([]);
         return jsonResponse({}, 404);
       }),
     );
@@ -88,7 +105,12 @@ describe('appLoader', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/me')) return userResponse;
-      if (url.includes('/stats/me')) return jsonResponse({ total: 0 });
+      if (
+        url.includes('/bills?') ||
+        url.includes('/restaurants?') ||
+        url.includes('/users?')
+      )
+        return pageResponse();
       return jsonResponse([]);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -117,6 +139,8 @@ describe('appLoader', () => {
         const url = String(input);
         if (url.endsWith('/me')) return jsonResponse(user);
         if (url.includes('/bills')) return jsonResponse({}, 500);
+        if (url.includes('/restaurants?') || url.includes('/users?'))
+          return pageResponse();
         return jsonResponse([]);
       }),
     );
@@ -124,6 +148,183 @@ describe('appLoader', () => {
     const data = await appLoader();
     expect(data.bills).toEqual([]);
     expect(data.warning).toMatch(/Some data/);
+  });
+});
+
+describe('paginated list loaders', () => {
+  it('forwards durable bill filters and ignores unknown query state', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const response = {
+      items: [],
+      pageInfo: { endCursor: null, hasNextPage: false },
+    };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
+      jsonResponse(response),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      billsLoader({
+        request: new Request(
+          'http://localhost/bills?participantIds=a%2Cb&paymentStatus=WAITING&from=2026-07-01&unknown=drop',
+        ),
+        params: {},
+        context: {},
+      } as never),
+    ).resolves.toEqual(response);
+    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    expect(requestedUrl).toContain('participantIds=a%2Cb');
+    expect(requestedUrl).toContain('paymentStatus=WAITING');
+    expect(requestedUrl).toContain('from=2026-07-01');
+    expect(requestedUrl).not.toContain('unknown');
+  });
+
+  it('loads Collection directory visibility and owner detail data', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const collection = {
+      id: 'collection-1',
+      name: 'Team lunches',
+      isPublic: false,
+      systemType: null,
+      ownerId: user.id,
+      owner: user,
+      _count: { restaurants: 0, shares: 0 },
+      createdAt: '2026-07-15T00:00:00.000Z',
+      updatedAt: '2026-07-15T00:00:00.000Z',
+    };
+    const emptyPage = {
+      items: [],
+      pageInfo: { endCursor: null, hasNextPage: false },
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/collections/collection-1'))
+        return jsonResponse(collection);
+      return jsonResponse(emptyPage);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      collectionsLoader({
+        request: new Request(
+          'http://localhost/collections?visibility=shared&search=team&unknown=drop',
+        ),
+        params: {},
+        context: {},
+      } as never),
+    ).resolves.toEqual(emptyPage);
+    await expect(
+      collectionDetailLoader({
+        request: new Request(
+          'http://localhost/collections/collection-1?search=bep&cursor=restaurant-1',
+        ),
+        params: { collectionId: 'collection-1' },
+        context: {},
+      } as never),
+    ).resolves.toEqual({
+      collection,
+      restaurants: emptyPage,
+      shares: emptyPage,
+    });
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).includes('/collections?visibility=shared&search=team'),
+      ),
+    ).toBe(true);
+    expect(
+      fetchMock.mock.calls.some(([input]) => {
+        const url = new URL(String(input));
+        return (
+          url.pathname.endsWith('/collections/collection-1/restaurants') &&
+          url.searchParams.get('search') === 'bep' &&
+          url.searchParams.get('cursor') === 'restaurant-1'
+        );
+      }),
+    ).toBe(true);
+  });
+
+  it('forwards normalized restaurant discovery filters and cursor state', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const response = {
+      items: [],
+      pageInfo: { endCursor: null, hasNextPage: false },
+    };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
+      jsonResponse(response),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      restaurantsLoader({
+        request: new Request(
+          'http://localhost/restaurants?search=bep+viet&cuisineId=cuisine-1&favorite=true&cursor=restaurant-1',
+        ),
+        params: {},
+        context: {},
+      } as never),
+    ).resolves.toEqual({ ...response, collections: [] });
+    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    expect(requestedUrl).toContain('search=bep+viet');
+    expect(requestedUrl).toContain('cuisineId=cuisine-1');
+    expect(requestedUrl).toContain('favorite=true');
+    expect(requestedUrl).toContain('cursor=restaurant-1');
+  });
+});
+
+describe('roleGuard', () => {
+  it('redirects a Head Chef away from ROOT_ADMIN-only routes', async () => {
+    localStorage.setItem('ff-token', 'token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        jsonResponse({
+          ...user,
+          systemRole: null,
+          roles: ['CUSTOMER', 'HEAD_CHEF'],
+        }),
+      ),
+    );
+
+    await expect(
+      roleGuard(
+        (candidate) => candidate.systemRole === 'ROOT_ADMIN',
+        {} as never,
+      ),
+    ).rejects.toMatchObject({ status: 302 });
+  });
+});
+
+describe('statsLoader', () => {
+  it('loads the selected custom date range', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const stats = {
+      totals: { paid: 100, waiting: 200, totalObligation: 300 },
+      total: 300,
+      byPaymentStatus: { PAID: 100, WAITING: 200 },
+      byCuisineType: {},
+      byEntry: {},
+      byPeriod: {},
+      frequencyByRestaurant: {},
+      frequencyByCuisine: {},
+    };
+    const fetchMock = vi.fn(async () => jsonResponse(stats));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      statsLoader({
+        request: new Request(
+          'http://localhost/stats?range=custom&from=2026-07-01&to=2026-07-15',
+        ),
+        params: {},
+        context: {},
+      } as never),
+    ).resolves.toEqual(stats);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /\/stats\/me\?range=custom&from=2026-07-01&to=2026-07-15$/,
+      ),
+      expect.any(Object),
+    );
   });
 });
 
@@ -142,7 +343,57 @@ describe('loginLoader', () => {
   });
 });
 
+describe('billActivityLoader', () => {
+  it('loads the scoped bill timeline', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const activity = [
+      {
+        id: 'created-bill-1',
+        action: 'CREATED',
+        actor: { id: 'head-1', username: 'head', name: 'Head Chef' },
+        createdAt: '2026-07-15T01:00:00.000Z',
+      },
+    ];
+    const fetchMock = vi.fn(async () => jsonResponse(activity));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      billActivityLoader({
+        request: new Request('http://localhost/bills/bill-1'),
+        params: { billId: 'bill-1' },
+        context: {},
+      } as never),
+    ).resolves.toEqual(activity);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/bills\/bill-1\/activity$/),
+      expect.any(Object),
+    );
+  });
+});
+
 describe('loginAction', () => {
+  it('submits an opaque password reset request without creating a session', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }, 202));
+    vi.stubGlobal('fetch', fetchMock);
+    const request = new Request('http://localhost/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'forgot-request',
+        identifier: 'member-one',
+      }),
+    });
+
+    await expect(
+      loginAction({ request, params: {}, context: {} } as never),
+    ).resolves.toEqual({ success: true, intent: 'forgot-request' });
+    expect(localStorage.getItem('ff-token')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/auth\/password-reset-requests$/),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
   it('returns invalid credentials as handled action data', async () => {
     vi.stubGlobal(
       'fetch',
@@ -225,6 +476,34 @@ describe('loginAction', () => {
 });
 
 describe('mutationAction', () => {
+  it('submits the enriched restaurant profile contract for editing', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const payload = {
+      phone: '0901234567',
+      bannerImageUrl: 'https://image.test/banner.jpg',
+      platformLinks: [
+        { platform: 'WEBSITE', url: 'https://example.test/menu' },
+      ],
+    };
+    const request = new Request('http://localhost/restaurants/restaurant-1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intent: 'update-restaurant', payload }),
+    });
+
+    await mutationAction({
+      request,
+      params: { restaurantId: 'restaurant-1' },
+      context: {},
+    } as never);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/restaurants\/restaurant-1$/),
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify(payload) }),
+    );
+  });
+
   it('dispatches a bill status intent to the API', async () => {
     localStorage.setItem('ff-token', 'token');
     const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
@@ -244,5 +523,89 @@ describe('mutationAction', () => {
       expect.stringMatching(/\/bills\/bill-1\/archive$/),
       expect.objectContaining({ method: 'PATCH' }),
     );
+  });
+
+  it('returns handled API failures for mutation toasts', async () => {
+    localStorage.setItem('ff-token', 'token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        jsonResponse(
+          { code: 'PAYMENT_STATUS_CONFLICT', message: 'Status changed' },
+          409,
+        ),
+      ),
+    );
+    const request = new Request('http://localhost/bills/bill-1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'payment',
+        memberId: 'member-1',
+        status: 'PAID',
+        expectedStatus: 'WAITING',
+      }),
+    });
+
+    const result = await mutationAction({
+      request,
+      params: { billId: 'bill-1' },
+      context: {},
+    } as never);
+
+    expect(result).toMatchObject({
+      data: { error: 'Status changed', code: 'PAYMENT_STATUS_CONFLICT' },
+      init: { status: 409 },
+    });
+  });
+
+  it('clears the current session after a successful root transfer', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const request = new Request('http://localhost/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'root-transfer',
+        payload: {
+          currentPassword: 'password123',
+          targetUsername: 'member-one',
+          confirmationUsername: 'member-one',
+        },
+      }),
+    });
+
+    await expect(
+      mutationAction({ request, params: {}, context: {} } as never),
+    ).resolves.toMatchObject({ status: 302 });
+    expect(localStorage.getItem('ff-token')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/admin\/root-transfer$/),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('replaces the current token after a successful password change', async () => {
+    localStorage.setItem('ff-token', 'old-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({ token: 'fresh-token' })),
+    );
+    const request = new Request('http://localhost/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'change-password',
+        payload: {
+          currentPassword: 'password123',
+          newPassword: 'new-password-123',
+          confirmation: 'new-password-123',
+        },
+      }),
+    });
+
+    await mutationAction({ request, params: {}, context: {} } as never);
+    expect(localStorage.getItem('ff-token')).toBe('fresh-token');
   });
 });

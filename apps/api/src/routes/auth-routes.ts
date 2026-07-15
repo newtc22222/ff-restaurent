@@ -1,9 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
+import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 import { loadConfig } from '../config.js';
 import { prisma } from '../prisma.js';
 import { sanitizeUser } from '../roles.js';
 import { loginSchema, registerSchema } from '../schemas.js';
+import { ensureDefaultCollections } from '../collection-service.js';
 
 /**
  * Authentication routes issue JWTs and return sanitized user profiles.
@@ -16,22 +18,27 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
     { config: { rateLimit: authRateLimit } },
     async (request, reply) => {
       const body = loginSchema.parse(request.body);
-      const user = await prisma.user.findFirst({
-        where: {
-          OR: [{ username: body.identifier }, { phone: body.identifier }],
-        },
+      let user = await prisma.user.findUnique({
+        where: { username: body.identifier },
       });
-      if (!user || !(await bcrypt.compare(body.password, user.passwordHash))) {
-        return reply
-          .code(401)
-          .send({
-            code: 'INVALID_CREDENTIALS',
-            message: 'Invalid credentials',
+      if (!user) {
+        const parsedPhone = parseVietnamMobilePhone(body.identifier);
+        if (parsedPhone.success && parsedPhone.phone) {
+          user = await prisma.user.findUnique({
+            where: { phone: parsedPhone.phone },
           });
+        }
       }
+      if (!user || !(await bcrypt.compare(body.password, user.passwordHash))) {
+        return reply.code(401).send({
+          code: 'INVALID_CREDENTIALS',
+          message: 'Invalid credentials',
+        });
+      }
+      await ensureDefaultCollections(user.id);
       request.log.info({ event: 'login_succeeded', userId: user.id });
       return {
-        token: app.jwt.sign({ sub: user.id }),
+        token: app.jwt.sign({ sub: user.id, ver: user.sessionVersion }),
         user: sanitizeUser(user),
       };
     },
@@ -70,8 +77,9 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
           passwordHash: await bcrypt.hash(body.password, 12),
         },
       });
+      await ensureDefaultCollections(user.id);
       return reply.code(201).send({
-        token: app.jwt.sign({ sub: user.id }),
+        token: app.jwt.sign({ sub: user.id, ver: user.sessionVersion }),
         user: sanitizeUser(user),
       });
     },

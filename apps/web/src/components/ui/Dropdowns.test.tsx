@@ -85,9 +85,21 @@ describe('searchable dropdowns', () => {
     const search = screen.getByRole('searchbox', { name: 'Search members' });
     expect(search.className).toContain('bg-surface');
     fireEvent.change(search, { target: { value: 'casey' } });
-    fireEvent.click(screen.getByRole('option', { name: 'Casey Nguyen' }));
+    const casey = screen.getByRole('option', { name: 'Casey Nguyen' });
+    fireEvent.click(casey);
 
-    fireEvent.change(search, { target: { value: 'hana' } });
+    fireEvent.keyDown(casey, { key: 'Escape' });
+    expect(
+      screen.queryByRole('searchbox', { name: 'Search members' }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Casey' }));
+
+    fireEvent.change(
+      screen.getByRole('searchbox', { name: 'Search members' }),
+      {
+        target: { value: 'hana' },
+      },
+    );
     fireEvent.click(screen.getByRole('option', { name: 'Hana Tran' }));
     expect(screen.getByRole('button', { name: '2 members' })).toBeTruthy();
 

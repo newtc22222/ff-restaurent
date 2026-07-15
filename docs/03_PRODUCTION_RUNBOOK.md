@@ -13,6 +13,8 @@ Production requires:
 - `JWT_EXPIRES_IN` (default `8h`)
 - `CORS_ORIGINS` as a comma-separated allowlist
 - `REGISTRATION_INVITE_CODE` with at least 12 characters
+- `ROOT_ADMIN_USERNAME` identifying the existing account to promote when the
+  database does not yet have a ROOT_ADMIN
 
 The API deliberately fails production startup when these security controls are
 missing. Demo seeding is disabled when `NODE_ENV=production`.

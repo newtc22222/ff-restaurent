@@ -41,6 +41,7 @@ jobs:
         run: npm run prisma:generate --workspace @ff-restaurent/api
       - run: npm run typecheck
       - run: npm run prisma:migrate:deploy -w @ff-restaurent/api
+      - run: npm run prisma:indexes:verify -w @ff-restaurent/api
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium

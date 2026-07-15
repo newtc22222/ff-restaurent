@@ -1,6 +1,6 @@
 {
   "name": "@ff-restaurent/shared",
-  "version": "0.1.0",
+  "version": "1.1.0-rc.1",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,5 +18,8 @@
   },
   "devDependencies": {
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "libphonenumber-js": "^1.13.8"
   }
 }

@@ -1,24 +1,40 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { ChefRole, PaymentStatus } from '@prisma/client';
+import {
+  ChefRole,
+  CollectionSystemType,
+  PaymentStatus,
+  Prisma,
+  RestaurantPlatform,
+  SystemRole,
+} from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
 import { prisma } from './prisma.js';
+import {
+  RootAdminTransferError,
+  transferRootAdmin,
+} from './root-admin-service.js';
+import { runPhase2Backfill } from './phase2-backfill.js';
 
 const integrationTest =
   process.env.RUN_INTEGRATION_TESTS === '1' ? test : test.skip;
 
 let app: FastifyInstance;
 let headId: string;
+let rootId: string;
 let sousId: string;
 let customerAId: string;
 let customerBId: string;
 let restaurantId: string;
 let billId: string;
 
-const tokenFor = (id: string, expiresIn = '8h') =>
-  app.jwt.sign({ sub: id }, { expiresIn });
+const tokenFor = (id: string, expiresIn = '8h', version?: number) =>
+  app.jwt.sign(
+    { sub: id, ...(version === undefined ? {} : { ver: version }) },
+    { expiresIn },
+  );
 const auth = (token: string) => ({ authorization: `Bearer ${token}` });
 
 before(async () => {
@@ -27,16 +43,29 @@ before(async () => {
     'integration-secret-that-is-at-least-32-characters';
   process.env.REGISTRATION_INVITE_CODE ??= 'integration-invite';
   app = await buildApp();
+  await prisma.passwordResetRequest.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.billAuditLog.deleteMany();
+  await prisma.rootAdminTransferAudit.deleteMany();
   await prisma.roleAuditLog.deleteMany();
   await prisma.billParticipant.deleteMany();
   await prisma.bill.deleteMany();
+  await prisma.collection.deleteMany();
   await prisma.userFavorite.deleteMany();
   await prisma.restaurantEntry.deleteMany();
+  await prisma.cuisine.deleteMany();
+  await prisma.diningArea.deleteMany();
   await prisma.user.deleteMany();
   const passwordHash = await bcrypt.hash('password123', 4);
-  const [head, sous, customerA, customerB] = await Promise.all([
+  const [root, head, sous, customerA, customerB] = await Promise.all([
+    prisma.user.create({
+      data: {
+        username: 'root-int',
+        name: 'Root Admin',
+        passwordHash,
+        systemRole: SystemRole.ROOT_ADMIN,
+      },
+    }),
     prisma.user.create({
       data: {
         username: 'head-int',
@@ -60,6 +89,7 @@ before(async () => {
       data: { username: 'customer-b-int', name: 'Customer B', passwordHash },
     }),
   ]);
+  rootId = root.id;
   headId = head.id;
   sousId = sous.id;
   customerAId = customerA.id;
@@ -129,27 +159,903 @@ integrationTest(
 );
 
 integrationTest(
-  'role boundaries and final Head Chef safeguards hold',
+  'Vietnamese phone normalization, login precedence, duplicates, and clearing work',
+  async () => {
+    const register = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: {
+        name: 'Phone Member',
+        username: 'phone-member-int',
+        phone: '0901 234 567',
+        password: 'phone-password',
+        inviteCode: process.env.REGISTRATION_INVITE_CODE,
+      },
+    });
+    assert.equal(register.statusCode, 201);
+    assert.equal(register.json().user.phone, '+84901234567');
+
+    const phoneLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: '0901234567', password: 'phone-password' },
+    });
+    assert.equal(phoneLogin.statusCode, 200);
+    assert.equal(phoneLogin.json().user.username, 'phone-member-int');
+
+    await prisma.user.create({
+      data: {
+        name: 'Phone-looking Username',
+        username: '0901234567',
+        passwordHash: await bcrypt.hash('username-password', 4),
+      },
+    });
+    const usernameLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: '0901234567', password: 'username-password' },
+    });
+    assert.equal(usernameLogin.statusCode, 200);
+    assert.equal(usernameLogin.json().user.username, '0901234567');
+
+    const duplicate = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: {
+        name: 'Duplicate Phone',
+        username: 'duplicate-phone-int',
+        phone: '+84901234567',
+        password: 'password123',
+        inviteCode: process.env.REGISTRATION_INVITE_CODE,
+      },
+    });
+    assert.equal(duplicate.statusCode, 409);
+    assert.equal(duplicate.json().code, 'IDENTIFIER_TAKEN');
+
+    const invalid = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: {
+        name: 'Invalid Phone',
+        username: 'invalid-phone-int',
+        phone: '+12025550123',
+        password: 'password123',
+        inviteCode: process.env.REGISTRATION_INVITE_CODE,
+      },
+    });
+    assert.equal(invalid.statusCode, 400);
+    assert.equal(invalid.json().code, 'VALIDATION_ERROR');
+
+    const clear = await app.inject({
+      method: 'PUT',
+      url: '/me/profile',
+      headers: auth(register.json().token),
+      payload: { phone: '' },
+    });
+    assert.equal(clear.statusCode, 200);
+    assert.equal(clear.json().phone, null);
+  },
+);
+
+integrationTest('ROOT_ADMIN exclusively governs chef roles', async () => {
+  const denied = await app.inject({
+    method: 'GET',
+    url: '/users',
+    headers: auth(tokenFor(customerAId)),
+  });
+  assert.equal(denied.statusCode, 403);
+
+  const headList = await app.inject({
+    method: 'GET',
+    url: '/users',
+    headers: auth(tokenFor(headId)),
+  });
+  assert.equal(headList.statusCode, 403);
+  assert.equal(headList.json().code, 'ROOT_ADMIN_REQUIRED');
+
+  for (const targetId of [customerAId, sousId, headId, rootId]) {
+    const headChange = await app.inject({
+      method: 'PATCH',
+      url: `/users/${targetId}/chef-role`,
+      headers: auth(tokenFor(headId)),
+      payload: { chefRole: ChefRole.SOUS_CHEF },
+    });
+    assert.equal(headChange.statusCode, 403);
+    assert.equal(headChange.json().code, 'ROOT_ADMIN_REQUIRED');
+  }
+
+  const rootList = await app.inject({
+    method: 'GET',
+    url: '/users',
+    headers: auth(tokenFor(rootId)),
+  });
+  assert.equal(rootList.statusCode, 200);
+  assert.equal(JSON.stringify(rootList.json()).includes('passwordHash'), false);
+  assert.equal(
+    JSON.stringify(rootList.json()).includes('sessionVersion'),
+    false,
+  );
+
+  const rootTarget = await app.inject({
+    method: 'PATCH',
+    url: `/users/${rootId}/chef-role`,
+    headers: auth(tokenFor(rootId)),
+    payload: { chefRole: ChefRole.HEAD_CHEF },
+  });
+  assert.equal(rootTarget.statusCode, 403);
+  assert.equal(rootTarget.json().code, 'ROOT_ADMIN_ROLE_CHANGE_FORBIDDEN');
+
+  const promoted = await app.inject({
+    method: 'PATCH',
+    url: `/users/${customerAId}/chef-role`,
+    headers: auth(tokenFor(rootId)),
+    payload: { chefRole: ChefRole.SOUS_CHEF },
+  });
+  assert.equal(promoted.statusCode, 200);
+  assert.equal(promoted.json().chefRole, ChefRole.SOUS_CHEF);
+  const restored = await app.inject({
+    method: 'PATCH',
+    url: `/users/${customerAId}/chef-role`,
+    headers: auth(tokenFor(rootId)),
+    payload: { chefRole: null },
+  });
+  assert.equal(restored.statusCode, 200);
+});
+
+integrationTest('the database permits exactly one ROOT_ADMIN', async () => {
+  await assert.rejects(
+    prisma.user.create({
+      data: {
+        username: 'second-root-int',
+        name: 'Second Root',
+        passwordHash: await bcrypt.hash('password123', 4),
+        systemRole: SystemRole.ROOT_ADMIN,
+      },
+    }),
+    (error: unknown) =>
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'P2002',
+  );
+  assert.equal(
+    await prisma.user.count({
+      where: { systemRole: SystemRole.ROOT_ADMIN },
+    }),
+    1,
+  );
+});
+
+integrationTest(
+  'server search and composable filters paginate deterministically within authorization scope',
+  async () => {
+    const cuisine = await prisma.cuisine.create({
+      data: {
+        name: 'Ẩm thực Việt FF23',
+        nameKey: 'am-thuc-viet-ff23',
+        type: 'Vietnamese',
+      },
+    });
+    const diningArea = await prisma.diningArea.create({
+      data: {
+        name: 'Quận Một FF23',
+        normalizedKey: 'quan-mot-ff23|1 duong thu nghiem',
+        address: '1 Đường Thử Nghiệm',
+      },
+    });
+    const restaurantIds: string[] = [];
+    for (const suffix of ['A', 'B']) {
+      const restaurant = await prisma.restaurantEntry.create({
+        data: {
+          name: `Bếp Việt Đậm Đà ${suffix}`,
+          address: '1 Đường Trần Hưng Đạo',
+          cuisineType: cuisine.name,
+          type: 'Restaurant',
+          diningAreaId: diningArea.id,
+          createdById: sousId,
+          isRecommended: true,
+          cuisines: {
+            create: { cuisineId: cuisine.id, isPrimary: true },
+          },
+          platformLinks: {
+            create: {
+              platform: RestaurantPlatform.WEBSITE,
+              url: `https://ff23-${suffix.toLowerCase()}.example.test`,
+              sortOrder: 0,
+            },
+          },
+          favorites: { create: { userId: customerAId } },
+        },
+      });
+      restaurantIds.push(restaurant.id);
+    }
+    const collection = await prisma.collection.create({
+      data: {
+        name: 'Bộ sưu tập FF23',
+        isPublic: false,
+        ownerId: customerAId,
+        restaurants: {
+          create: restaurantIds.map((restaurantId) => ({ restaurantId })),
+        },
+      },
+    });
+
+    const members = await app.inject({
+      method: 'GET',
+      url: '/members?search=customer&sort=name-asc&limit=1',
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(members.statusCode, 200);
+    assert.equal(members.json().items.length, 1);
+    assert.equal(members.json().pageInfo.hasNextPage, true);
+    assert.equal(
+      JSON.stringify(members.json()).includes('passwordHash'),
+      false,
+    );
+
+    const firstRestaurants = await app.inject({
+      method: 'GET',
+      url: `/restaurants?search=bep+viet+dam+da&cuisineId=${cuisine.id}&diningAreaId=${diningArea.id}&collectionId=${collection.id}&platform=WEBSITE&favorite=true&recommended=true&sort=name-asc&limit=1`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(firstRestaurants.statusCode, 200);
+    assert.equal(firstRestaurants.json().items.length, 1);
+    assert.equal(firstRestaurants.json().pageInfo.hasNextPage, true);
+    const restaurantCursor = firstRestaurants.json().pageInfo.endCursor;
+    assert.ok(restaurantCursor);
+    const secondRestaurants = await app.inject({
+      method: 'GET',
+      url: `/restaurants?search=bep+viet+dam+da&cuisineId=${cuisine.id}&diningAreaId=${diningArea.id}&collectionId=${collection.id}&platform=WEBSITE&favorite=true&recommended=true&sort=name-asc&limit=1&cursor=${restaurantCursor}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(secondRestaurants.statusCode, 200);
+    assert.equal(secondRestaurants.json().items.length, 1);
+    assert.notEqual(
+      secondRestaurants.json().items[0].id,
+      firstRestaurants.json().items[0].id,
+    );
+    const hiddenCollectionFilter = await app.inject({
+      method: 'GET',
+      url: `/restaurants?collectionId=${collection.id}`,
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(hiddenCollectionFilter.statusCode, 200);
+    assert.deepEqual(hiddenCollectionFilter.json().items, []);
+
+    const paginatedBillIds: string[] = [];
+    for (const [index, totalCost] of [10_000, 20_000].entries()) {
+      const createdBill = await prisma.bill.create({
+        data: {
+          restaurantId: restaurantIds[index]!,
+          baseCost: totalCost,
+          vat: 0,
+          shippingFee: 0,
+          totalCost,
+          createdById: sousId,
+          participants: {
+            create: [
+              {
+                memberId: customerAId,
+                originCost: totalCost / 2,
+                allocatedVat: 0,
+                allocatedShipping: 0,
+                discountApplied: 0,
+                finalPrice: totalCost / 2,
+                paymentStatus: PaymentStatus.WAITING,
+              },
+              {
+                memberId: customerBId,
+                originCost: totalCost / 2,
+                allocatedVat: 0,
+                allocatedShipping: 0,
+                discountApplied: 0,
+                finalPrice: totalCost / 2,
+                paymentStatus: PaymentStatus.PAID,
+              },
+            ],
+          },
+        },
+      });
+      paginatedBillIds.push(createdBill.id);
+    }
+
+    const firstBills = await app.inject({
+      method: 'GET',
+      url: `/bills?participantIds=${customerAId},${customerBId}&participantId=${customerAId}&paymentStatus=WAITING&ownerId=${sousId}&from=2026-01-01&to=2030-12-31&sort=total-asc&limit=1`,
+      headers: auth(tokenFor(headId)),
+    });
+    assert.equal(firstBills.statusCode, 200);
+    assert.equal(firstBills.json().items.length, 1);
+    assert.equal(firstBills.json().items[0].totalCost, 10_000);
+    assert.equal(firstBills.json().pageInfo.hasNextPage, true);
+    const secondBills = await app.inject({
+      method: 'GET',
+      url: `/bills?participantIds=${customerAId},${customerBId}&participantId=${customerAId}&paymentStatus=WAITING&ownerId=${sousId}&from=2026-01-01&to=2030-12-31&sort=total-asc&limit=1&cursor=${firstBills.json().pageInfo.endCursor}`,
+      headers: auth(tokenFor(headId)),
+    });
+    assert.equal(secondBills.statusCode, 200);
+    assert.equal(secondBills.json().items[0].totalCost, 20_000);
+
+    const customerPaymentScope = await app.inject({
+      method: 'GET',
+      url: '/bills?paymentStatus=WAITING',
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(customerPaymentScope.statusCode, 200);
+    assert.equal(
+      customerPaymentScope
+        .json()
+        .items.some((bill: { id: string }) =>
+          paginatedBillIds.includes(bill.id),
+        ),
+      false,
+    );
+  },
+);
+
+integrationTest(
+  'Collections enforce visibility, ownership, system invariants, pagination, and shortcut compatibility',
+  async () => {
+    const defaults = await app.inject({
+      method: 'GET',
+      url: '/collections',
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(defaults.statusCode, 200);
+    const favorites = defaults
+      .json()
+      .items.find(
+        (collection: { systemType: CollectionSystemType | null }) =>
+          collection.systemType === CollectionSystemType.FAVORITES,
+      );
+    const recommended = defaults
+      .json()
+      .items.find(
+        (collection: { systemType: CollectionSystemType | null }) =>
+          collection.systemType === CollectionSystemType.RECOMMENDED,
+      );
+    assert.ok(favorites);
+    assert.ok(recommended);
+    assert.equal(favorites.isPublic, false);
+    assert.equal(recommended.isPublic, true);
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/collections',
+      headers: auth(tokenFor(customerAId)),
+      payload: {
+        name: 'Team lunches',
+        description: 'Places to try together',
+        isPublic: false,
+      },
+    });
+    assert.equal(created.statusCode, 201);
+    const collectionId = created.json().id as string;
+
+    const hidden = await app.inject({
+      method: 'GET',
+      url: `/collections/${collectionId}`,
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(hidden.statusCode, 404);
+
+    const shared = await app.inject({
+      method: 'POST',
+      url: `/collections/${collectionId}/shares`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { userId: customerBId },
+    });
+    assert.equal(shared.statusCode, 201);
+    assert.equal(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/collections/${collectionId}`,
+          headers: auth(tokenFor(customerBId)),
+        })
+      ).statusCode,
+      200,
+    );
+
+    const sharedMutation = await app.inject({
+      method: 'POST',
+      url: `/collections/${collectionId}/restaurants/${restaurantId}`,
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(sharedMutation.statusCode, 403);
+
+    const addRestaurant = await app.inject({
+      method: 'POST',
+      url: `/collections/${collectionId}/restaurants/${restaurantId}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(addRestaurant.statusCode, 201);
+    const restaurants = await app.inject({
+      method: 'GET',
+      url: `/collections/${collectionId}/restaurants?limit=1&search=Integration`,
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(restaurants.statusCode, 200);
+    assert.equal(restaurants.json().items[0].id, restaurantId);
+    assert.deepEqual(Object.keys(restaurants.json().pageInfo).sort(), [
+      'endCursor',
+      'hasNextPage',
+    ]);
+
+    const removeShare = await app.inject({
+      method: 'DELETE',
+      url: `/collections/${collectionId}/shares/${customerBId}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(removeShare.statusCode, 204);
+    assert.equal(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/collections/${collectionId}`,
+          headers: auth(tokenFor(customerBId)),
+        })
+      ).statusCode,
+      404,
+    );
+
+    const madePublic = await app.inject({
+      method: 'PUT',
+      url: `/collections/${collectionId}`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { isPublic: true },
+    });
+    assert.equal(madePublic.statusCode, 200);
+    const secondPublic = await app.inject({
+      method: 'POST',
+      url: '/collections',
+      headers: auth(tokenFor(customerAId)),
+      payload: { name: 'Team dinners', isPublic: true },
+    });
+    assert.equal(secondPublic.statusCode, 201);
+    const publicSearch = await app.inject({
+      method: 'GET',
+      url: '/collections?search=team&limit=1',
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(publicSearch.statusCode, 200);
+    assert.equal(publicSearch.json().items.length, 1);
+    assert.equal(publicSearch.json().pageInfo.hasNextPage, true);
+    assert.ok(publicSearch.json().pageInfo.endCursor);
+    const nextPage = await app.inject({
+      method: 'GET',
+      url: `/collections?search=team&limit=1&cursor=${publicSearch.json().pageInfo.endCursor}`,
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(nextPage.statusCode, 200);
+    assert.equal(nextPage.json().items.length, 1);
+    assert.notEqual(
+      nextPage.json().items[0].id,
+      publicSearch.json().items[0].id,
+    );
+
+    const immutable = await app.inject({
+      method: 'PUT',
+      url: `/collections/${favorites.id}`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { name: 'Renamed' },
+    });
+    assert.equal(immutable.statusCode, 409);
+    assert.equal(immutable.json().code, 'SYSTEM_COLLECTION_IMMUTABLE');
+
+    const deniedRecommendation = await app.inject({
+      method: 'POST',
+      url: `/collections/${recommended.id}/restaurants/${restaurantId}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(deniedRecommendation.statusCode, 403);
+    const chefRecommendation = await app.inject({
+      method: 'POST',
+      url: `/collections/${recommended.id}/restaurants/${restaurantId}`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(chefRecommendation.statusCode, 201);
+    assert.equal(
+      (
+        await prisma.restaurantEntry.findUniqueOrThrow({
+          where: { id: restaurantId },
+        })
+      ).isRecommended,
+      true,
+    );
+    const recommendationShortcutOff = await app.inject({
+      method: 'PATCH',
+      url: `/restaurants/${restaurantId}/recommend`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(recommendationShortcutOff.statusCode, 200);
+    assert.equal(recommendationShortcutOff.json().isRecommended, false);
+    assert.equal(
+      await prisma.collectionRestaurant.count({
+        where: { collectionId: recommended.id, restaurantId },
+      }),
+      0,
+    );
+    const recommendationShortcutOn = await app.inject({
+      method: 'PATCH',
+      url: `/restaurants/${restaurantId}/recommend`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(recommendationShortcutOn.statusCode, 200);
+    assert.equal(recommendationShortcutOn.json().isRecommended, true);
+
+    const favoriteShortcut = await app.inject({
+      method: 'POST',
+      url: `/restaurants/${restaurantId}/favorite`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(favoriteShortcut.statusCode, 200);
+    assert.equal(favoriteShortcut.json().favorited, true);
+    assert.ok(
+      await prisma.collectionRestaurant.findUnique({
+        where: {
+          collectionId_restaurantId: {
+            collectionId: favorites.id,
+            restaurantId,
+          },
+        },
+      }),
+    );
+    assert.ok(
+      await prisma.userFavorite.findUnique({
+        where: { userId_restaurantId: { userId: customerAId, restaurantId } },
+      }),
+    );
+
+    await assert.rejects(
+      prisma.collection.create({
+        data: {
+          name: 'Duplicate Favorites',
+          ownerId: customerAId,
+          systemType: CollectionSystemType.FAVORITES,
+        },
+      }),
+      (error: unknown) =>
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002',
+    );
+    await assert.rejects(
+      prisma.collection.create({
+        data: {
+          name: 'Duplicate Recommended',
+          isPublic: true,
+          systemType: CollectionSystemType.RECOMMENDED,
+        },
+      }),
+      (error: unknown) =>
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002',
+    );
+  },
+);
+
+integrationTest(
+  'Phase 2 backfill is observable and idempotent for representative legacy records',
+  async () => {
+    const legacyUser = await prisma.user.create({
+      data: {
+        username: 'legacy-backfill-int',
+        name: 'Legacy Backfill',
+        passwordHash: await bcrypt.hash('password123', 4),
+      },
+    });
+    const [legacyA, legacyB] = await Promise.all([
+      prisma.restaurantEntry.create({
+        data: {
+          name: 'Legacy Thai A',
+          address: '20 Legacy Street',
+          cuisineType: 'Thai  Food',
+          type: 'Restaurant',
+          avatarUrl: 'https://images.example.test/legacy-a.jpg',
+          links: [
+            { label: 'Menu', url: 'https://legacy.example.test/menu' },
+            { label: 'Unsafe', url: 'http://legacy.example.test' },
+          ],
+          isFavorite: true,
+          createdById: sousId,
+        },
+      }),
+      prisma.restaurantEntry.create({
+        data: {
+          name: 'Legacy Thai B',
+          address: '21 Legacy Street',
+          cuisineType: ' thai food ',
+          type: 'Restaurant',
+          createdById: sousId,
+        },
+      }),
+    ]);
+    await prisma.userFavorite.create({
+      data: { userId: legacyUser.id, restaurantId: legacyA.id },
+    });
+
+    const first = await runPhase2Backfill({
+      client: prisma,
+      batchSize: 2,
+    });
+    assert.equal(first.verification.passed, true);
+    assert.equal(first.verification.restaurantsWithoutPrimaryCuisine, 0);
+    assert.equal(first.verification.usersWithoutFavorites, 0);
+    assert.ok(
+      first.exceptions.some(
+        (exception) =>
+          exception.kind === 'CUISINE_NORMALIZED_COLLISION' &&
+          exception.value?.includes(legacyA.id) &&
+          exception.value?.includes(legacyB.id),
+      ),
+    );
+    assert.ok(
+      first.exceptions.some(
+        (exception) =>
+          exception.kind === 'LEGACY_LINK_INVALID' &&
+          exception.restaurantId === legacyA.id,
+      ),
+    );
+    const favorites = await prisma.collection.findFirstOrThrow({
+      where: {
+        ownerId: legacyUser.id,
+        systemType: CollectionSystemType.FAVORITES,
+      },
+    });
+    const recommended = await prisma.collection.findFirstOrThrow({
+      where: { systemType: CollectionSystemType.RECOMMENDED },
+    });
+    assert.ok(
+      await prisma.collectionRestaurant.findUnique({
+        where: {
+          collectionId_restaurantId: {
+            collectionId: favorites.id,
+            restaurantId: legacyA.id,
+          },
+        },
+      }),
+    );
+    assert.ok(
+      await prisma.collectionRestaurant.findUnique({
+        where: {
+          collectionId_restaurantId: {
+            collectionId: recommended.id,
+            restaurantId: legacyA.id,
+          },
+        },
+      }),
+    );
+    const migrated = await prisma.restaurantEntry.findUniqueOrThrow({
+      where: { id: legacyA.id },
+      include: { cuisines: true, platformLinks: true },
+    });
+    assert.equal(migrated.bannerImageUrl, legacyA.avatarUrl);
+    assert.equal(migrated.cuisines.filter((join) => join.isPrimary).length, 1);
+    assert.equal(
+      migrated.platformLinks.some(
+        (link) => link.url === 'https://legacy.example.test/menu',
+      ),
+      true,
+    );
+
+    const second = await runPhase2Backfill({
+      client: prisma,
+      batchSize: 3,
+    });
+    assert.equal(second.verification.passed, true);
+    assert.equal(second.actions.cuisinesCreated, 0);
+    assert.equal(second.actions.primaryCuisineJoinsCreated, 0);
+    assert.equal(second.actions.bannersPromoted, 0);
+    assert.equal(second.actions.platformLinksCreated, 0);
+    assert.equal(second.actions.favoritesCollectionsCreated, 0);
+    assert.equal(second.actions.favoriteMembershipsCreated, 0);
+    assert.equal(second.actions.recommendedMembershipsCreated, 0);
+  },
+);
+
+integrationTest(
+  'Cuisine and Dining Area catalogs enforce normalized relationships and permissions',
   async () => {
     const denied = await app.inject({
-      method: 'GET',
-      url: '/users',
+      method: 'POST',
+      url: '/cuisines',
       headers: auth(tokenFor(customerAId)),
+      payload: { name: 'Denied', type: 'Regional' },
     });
     assert.equal(denied.statusCode, 403);
 
-    const selfChange = await app.inject({
-      method: 'PATCH',
-      url: `/users/${headId}/chef-role`,
-      headers: auth(tokenFor(headId)),
-      payload: { chefRole: null },
+    const vietnamese = await app.inject({
+      method: 'POST',
+      url: '/cuisines',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        name: '  Vietnamese   Food ',
+        type: ' Regional ',
+        description: 'Traditional dishes',
+      },
     });
-    assert.equal(selfChange.statusCode, 403);
-    assert.equal(selfChange.json().code, 'SELF_ROLE_CHANGE_FORBIDDEN');
-    assert.equal(
-      await prisma.user.count({ where: { chefRole: ChefRole.HEAD_CHEF } }),
-      1,
-    );
+    assert.equal(vietnamese.statusCode, 201);
+    assert.equal(vietnamese.json().name, 'Vietnamese Food');
+
+    const duplicateCuisine = await app.inject({
+      method: 'POST',
+      url: '/cuisines',
+      headers: auth(tokenFor(sousId)),
+      payload: { name: 'vietnamese food', type: 'Other' },
+    });
+    assert.equal(duplicateCuisine.statusCode, 409);
+
+    const vegan = await app.inject({
+      method: 'POST',
+      url: '/cuisines',
+      headers: auth(tokenFor(sousId)),
+      payload: { name: 'Vegan', type: 'Dietary' },
+    });
+    assert.equal(vegan.statusCode, 201);
+
+    const diningArea = await app.inject({
+      method: 'POST',
+      url: '/dining-areas',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        name: ' Downtown ',
+        address: '12 Main Street',
+        description: 'Central lunch area',
+      },
+    });
+    assert.equal(diningArea.statusCode, 201);
+
+    const duplicateArea = await app.inject({
+      method: 'POST',
+      url: '/dining-areas',
+      headers: auth(tokenFor(sousId)),
+      payload: { name: 'downtown', address: ' 12  main street ' },
+    });
+    assert.equal(duplicateArea.statusCode, 409);
+
+    const invalidRestaurant = await app.inject({
+      method: 'POST',
+      url: '/restaurants',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        name: 'Invalid catalog restaurant',
+        address: '13 Main Street',
+        cuisineType: 'Snapshot',
+        type: 'Restaurant',
+        cuisineIds: [vietnamese.json().id],
+        primaryCuisineId: vegan.json().id,
+      },
+    });
+    assert.equal(invalidRestaurant.statusCode, 400);
+
+    const restaurant = await app.inject({
+      method: 'POST',
+      url: '/restaurants',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        name: 'Catalog Integration Restaurant',
+        address: '13 Main Street',
+        cuisineType: 'Compatibility snapshot',
+        type: 'Restaurant',
+        cuisineIds: [vietnamese.json().id, vegan.json().id],
+        primaryCuisineId: vegan.json().id,
+        diningAreaId: diningArea.json().id,
+      },
+    });
+    assert.equal(restaurant.statusCode, 201);
+    assert.equal(restaurant.json().cuisineType, 'Vegan');
+    assert.equal(restaurant.json().cuisines.length, 2);
+    assert.equal(restaurant.json().cuisines[0].isPrimary, true);
+    assert.equal(restaurant.json().cuisines[0].cuisine.name, 'Vegan');
+    assert.equal(restaurant.json().diningArea.name, 'Downtown');
+
+    const cuisineSearch = await app.inject({
+      method: 'GET',
+      url: '/cuisines?search=vegan&limit=1',
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(cuisineSearch.statusCode, 200);
+    assert.equal(cuisineSearch.json().items[0].name, 'Vegan');
+    assert.equal('nameKey' in cuisineSearch.json().items[0], false);
+
+    const protectedCuisine = await app.inject({
+      method: 'DELETE',
+      url: `/cuisines/${vegan.json().id}`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(protectedCuisine.statusCode, 409);
+    assert.equal(protectedCuisine.json().code, 'CUISINE_IN_USE');
+
+    const protectedArea = await app.inject({
+      method: 'DELETE',
+      url: `/dining-areas/${diningArea.json().id}`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(protectedArea.statusCode, 409);
+    assert.equal(protectedArea.json().code, 'DINING_AREA_IN_USE');
+
+    await prisma.bill.create({
+      data: {
+        restaurantId: restaurant.json().id,
+        createdById: sousId,
+        baseCost: 1000,
+        vat: 0,
+        shippingFee: 0,
+        totalCost: 1000,
+        participants: {
+          create: {
+            memberId: customerAId,
+            originCost: 1000,
+            allocatedVat: 0,
+            allocatedShipping: 0,
+            discountApplied: 0,
+            finalPrice: 1000,
+          },
+        },
+      },
+    });
+    const stats = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=yearly',
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(stats.statusCode, 200);
+    assert.equal(stats.json().byCuisineType.Vegan >= 1000, true);
+  },
+);
+
+integrationTest(
+  'restaurant profiles normalize phone and platform links without legacy JSON',
+  async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/restaurants',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        name: 'Enriched Integration Restaurant',
+        address: '2 Test Street',
+        cuisineType: 'Vietnamese',
+        type: 'Restaurant',
+        phone: '0901234567',
+        bannerImageUrl: 'https://images.example.test/banner.jpg',
+        platformLinks: [
+          { platform: 'WEBSITE', url: 'https://example.test/menu' },
+          {
+            platform: 'OTHER',
+            label: 'Reserve',
+            url: 'https://booking.example.test/table',
+          },
+        ],
+      },
+    });
+    assert.equal(created.statusCode, 201);
+    const profile = created.json();
+    assert.equal(profile.phone, '+84901234567');
+    assert.equal(profile.platformLinks.length, 2);
+    assert.equal('links' in profile, false);
+
+    const updated = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${profile.id}`,
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        phone: null,
+        bannerImageUrl: null,
+        platformLinks: [profile.platformLinks[1]],
+      },
+    });
+    assert.equal(updated.statusCode, 200);
+    assert.equal(updated.json().phone, null);
+    assert.equal(updated.json().platformLinks.length, 1);
+    assert.equal(updated.json().platformLinks[0].sortOrder, 0);
+
+    const unsafe = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${profile.id}`,
+      headers: auth(tokenFor(sousId)),
+      payload: { bannerImageUrl: 'http://images.example.test/banner.jpg' },
+    });
+    assert.equal(unsafe.statusCode, 400);
   },
 );
 
@@ -361,6 +1267,32 @@ integrationTest(
     assert.equal(secondReminder.statusCode, 200);
     assert.equal(secondReminder.json().sent, 0);
     assert.ok(secondReminder.json().skipped >= 1);
+
+    const activity = await app.inject({
+      method: 'GET',
+      url: `/bills/${billId}/activity`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(activity.statusCode, 200);
+    const actions = new Set(
+      activity.json().map((event: { action: string }) => event.action),
+    );
+    for (const action of [
+      'CREATED',
+      'UPDATED',
+      'PAYMENT_STATUS_CHANGED',
+      'ARCHIVED',
+      'RESTORED',
+      'REMINDERS_SENT',
+    ]) {
+      assert.ok(actions.has(action));
+    }
+    assert.equal(JSON.stringify(activity.json()).includes('before'), false);
+    assert.equal(JSON.stringify(activity.json()).includes('after'), false);
+    assert.equal(
+      JSON.stringify(activity.json()).includes('passwordHash'),
+      false,
+    );
   },
 );
 
@@ -375,3 +1307,797 @@ integrationTest('validation failures use stable client contracts', async () => {
   assert.equal(response.json().code, 'VALIDATION_ERROR');
   assert.ok(Array.isArray(response.json().issues));
 });
+
+integrationTest(
+  'password change keeps one fresh session and invalidates every older token',
+  async () => {
+    const legacyToken = tokenFor(customerBId);
+    const legacyBeforeChange = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(legacyToken),
+    });
+    assert.equal(legacyBeforeChange.statusCode, 200);
+
+    const firstLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: 'customer-b-int', password: 'password123' },
+    });
+    const secondLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: 'customer-b-int', password: 'password123' },
+    });
+    assert.equal(firstLogin.statusCode, 200);
+    assert.equal(secondLogin.statusCode, 200);
+
+    const cases = [
+      {
+        payload: {
+          currentPassword: 'password123',
+          newPassword: 'short',
+          confirmation: 'short',
+        },
+        status: 400,
+        code: 'PASSWORD_LENGTH_INVALID',
+      },
+      {
+        payload: {
+          currentPassword: 'password123',
+          newPassword: 'new-password-123',
+          confirmation: 'different-password',
+        },
+        status: 400,
+        code: 'PASSWORD_CONFIRMATION_MISMATCH',
+      },
+      {
+        payload: {
+          currentPassword: 'wrong-password',
+          newPassword: 'new-password-123',
+          confirmation: 'new-password-123',
+        },
+        status: 403,
+        code: 'CURRENT_PASSWORD_INVALID',
+      },
+      {
+        payload: {
+          currentPassword: 'password123',
+          newPassword: 'password123',
+          confirmation: 'password123',
+        },
+        status: 409,
+        code: 'PASSWORD_REUSE_FORBIDDEN',
+      },
+    ];
+    for (const item of cases) {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/me/password',
+        headers: auth(firstLogin.json().token),
+        payload: item.payload,
+      });
+      assert.equal(response.statusCode, item.status);
+      assert.equal(response.json().code, item.code);
+    }
+
+    const changed = await app.inject({
+      method: 'PATCH',
+      url: '/me/password',
+      headers: auth(firstLogin.json().token),
+      payload: {
+        currentPassword: 'password123',
+        newPassword: 'new-password-123',
+        confirmation: 'new-password-123',
+      },
+    });
+    assert.equal(changed.statusCode, 200);
+    assert.equal(typeof changed.json().token, 'string');
+    assert.equal(
+      JSON.stringify(changed.json()).includes('passwordHash'),
+      false,
+    );
+
+    for (const oldToken of [legacyToken, secondLogin.json().token]) {
+      const invalidated = await app.inject({
+        method: 'GET',
+        url: '/me',
+        headers: auth(oldToken),
+      });
+      assert.equal(invalidated.statusCode, 401);
+      assert.equal(invalidated.json().code, 'SESSION_INVALIDATED');
+    }
+    const currentSession = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(changed.json().token),
+    });
+    assert.equal(currentSession.statusCode, 200);
+
+    const oldPasswordLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: 'customer-b-int', password: 'password123' },
+    });
+    assert.equal(oldPasswordLogin.statusCode, 401);
+    const newPasswordLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: {
+        identifier: 'customer-b-int',
+        password: 'new-password-123',
+      },
+    });
+    assert.equal(newPasswordLogin.statusCode, 200);
+
+    const restored = await app.inject({
+      method: 'PATCH',
+      url: '/me/password',
+      headers: auth(newPasswordLogin.json().token),
+      payload: {
+        currentPassword: 'new-password-123',
+        newPassword: 'password123',
+        confirmation: 'password123',
+      },
+    });
+    assert.equal(restored.statusCode, 200);
+  },
+);
+
+integrationTest(
+  'password recovery is opaque, root-assisted, hashed, single-use, and invalidates sessions',
+  async () => {
+    const missing = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: 'missing-account-int' },
+    });
+    const requested = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: 'customer-a-int' },
+    });
+    assert.equal(missing.statusCode, 202);
+    assert.deepEqual(missing.json(), requested.json());
+
+    const list = await app.inject({
+      method: 'GET',
+      url: '/admin/password-reset-requests',
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(list.statusCode, 200);
+    const listed = list
+      .json()
+      .find((item: { user: { id: string } }) => item.user.id === customerAId);
+    assert.ok(listed);
+    assert.equal('codeHash' in listed, false);
+
+    const issued = await app.inject({
+      method: 'POST',
+      url: `/admin/password-reset-requests/${listed.id}/issue`,
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(issued.statusCode, 200);
+    assert.match(issued.json().code, /^[2-9A-HJ-NP-Z]{8}$/);
+    const stored = await prisma.passwordResetRequest.findUniqueOrThrow({
+      where: { id: listed.id },
+    });
+    assert.notEqual(stored.codeHash, issued.json().code);
+    assert.ok(await bcrypt.compare(issued.json().code, stored.codeHash!));
+
+    const oldSession = tokenFor(customerAId);
+    const consumed = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset',
+      payload: {
+        identifier: 'customer-a-int',
+        code: issued.json().code,
+        newPassword: 'recovered-password-123',
+        confirmation: 'recovered-password-123',
+      },
+    });
+    assert.equal(consumed.statusCode, 200);
+    const replay = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset',
+      payload: {
+        identifier: 'customer-a-int',
+        code: issued.json().code,
+        newPassword: 'another-password-123',
+        confirmation: 'another-password-123',
+      },
+    });
+    assert.equal(replay.statusCode, 400);
+    assert.equal(replay.json().code, 'PASSWORD_RESET_INVALID');
+    const invalidated = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(oldSession),
+    });
+    assert.equal(invalidated.statusCode, 401);
+    const login = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: {
+        identifier: 'customer-a-int',
+        password: 'recovered-password-123',
+      },
+    });
+    assert.equal(login.statusCode, 200);
+    const restoredPassword = await app.inject({
+      method: 'PATCH',
+      url: '/me/password',
+      headers: auth(login.json().token),
+      payload: {
+        currentPassword: 'recovered-password-123',
+        newPassword: 'password123',
+        confirmation: 'password123',
+      },
+    });
+    assert.equal(restoredPassword.statusCode, 200);
+
+    await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: 'root-int' },
+    });
+    const rootRequest = await prisma.passwordResetRequest.findFirstOrThrow({
+      where: { userId: rootId, activeKey: rootId },
+    });
+    const ownApproval = await app.inject({
+      method: 'POST',
+      url: `/admin/password-reset-requests/${rootRequest.id}/issue`,
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(ownApproval.statusCode, 403);
+    assert.equal(ownApproval.json().code, 'ROOT_RESET_REQUIRES_OPERATOR');
+
+    await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: 'customer-b-int' },
+    });
+    let limitedRequest = await prisma.passwordResetRequest.findFirstOrThrow({
+      where: { userId: customerBId, activeKey: customerBId },
+    });
+    const limitedIssue = await app.inject({
+      method: 'POST',
+      url: `/admin/password-reset-requests/${limitedRequest.id}/issue`,
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(limitedIssue.statusCode, 200);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const failure = await app.inject({
+        method: 'POST',
+        url: '/auth/password-reset',
+        payload: {
+          identifier: 'customer-b-int',
+          code: 'AAAAAAAA',
+          newPassword: 'unused-password-123',
+          confirmation: 'unused-password-123',
+        },
+      });
+      assert.equal(failure.statusCode, 400);
+    }
+    limitedRequest = await prisma.passwordResetRequest.findUniqueOrThrow({
+      where: { id: limitedRequest.id },
+    });
+    assert.equal(limitedRequest.status, 'LOCKED');
+    const lockedCode = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset',
+      payload: {
+        identifier: 'customer-b-int',
+        code: limitedIssue.json().code,
+        newPassword: 'unused-password-123',
+        confirmation: 'unused-password-123',
+      },
+    });
+    assert.equal(lockedCode.statusCode, 400);
+
+    await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: 'customer-b-int' },
+    });
+    const expiringRequest = await prisma.passwordResetRequest.findFirstOrThrow({
+      where: { userId: customerBId, activeKey: customerBId },
+    });
+    const expiringIssue = await app.inject({
+      method: 'POST',
+      url: `/admin/password-reset-requests/${expiringRequest.id}/issue`,
+      headers: auth(tokenFor(rootId)),
+    });
+    await prisma.passwordResetRequest.update({
+      where: { id: expiringRequest.id },
+      data: { expiresAt: new Date(Date.now() - 1_000) },
+    });
+    const expired = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset',
+      payload: {
+        identifier: 'customer-b-int',
+        code: expiringIssue.json().code,
+        newPassword: 'unused-password-123',
+        confirmation: 'unused-password-123',
+      },
+    });
+    assert.equal(expired.statusCode, 400);
+    assert.equal(
+      (
+        await prisma.passwordResetRequest.findUniqueOrThrow({
+          where: { id: expiringRequest.id },
+        })
+      ).status,
+      'EXPIRED',
+    );
+  },
+);
+
+integrationTest(
+  'root transfer is audited, conflict-safe, and invalidates both sessions',
+  async () => {
+    const wrongPassword = await app.inject({
+      method: 'POST',
+      url: '/admin/root-transfer',
+      headers: auth(tokenFor(rootId)),
+      payload: {
+        currentPassword: 'wrong-password',
+        targetUsername: 'customer-a-int',
+        confirmationUsername: 'customer-a-int',
+      },
+    });
+    assert.equal(wrongPassword.statusCode, 403);
+    assert.equal(wrongPassword.json().code, 'ROOT_TRANSFER_PASSWORD_INVALID');
+
+    const results = await Promise.allSettled([
+      transferRootAdmin({
+        currentUserId: rootId,
+        currentPassword: 'password123',
+        targetUsername: 'customer-a-int',
+        confirmationUsername: 'customer-a-int',
+      }),
+      transferRootAdmin({
+        currentUserId: rootId,
+        currentPassword: 'password123',
+        targetUsername: 'customer-b-int',
+        confirmationUsername: 'customer-b-int',
+      }),
+    ]);
+    assert.equal(
+      results.filter((result) => result.status === 'fulfilled').length,
+      1,
+    );
+    const rejected = results.find((result) => result.status === 'rejected');
+    assert.ok(rejected && rejected.status === 'rejected');
+    assert.ok(rejected.reason instanceof RootAdminTransferError);
+    assert.equal(rejected.reason.code, 'ROOT_TRANSFER_CONFLICT');
+
+    const newRoot = await prisma.user.findFirstOrThrow({
+      where: { systemRole: SystemRole.ROOT_ADMIN },
+    });
+    assert.ok([customerAId, customerBId].includes(newRoot.id));
+    assert.equal(await prisma.rootAdminTransferAudit.count(), 1);
+
+    const oldRootSession = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(oldRootSession.statusCode, 401);
+    assert.equal(oldRootSession.json().code, 'SESSION_INVALIDATED');
+    const newRootOldSession = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(tokenFor(newRoot.id)),
+    });
+    assert.equal(newRootOldSession.statusCode, 401);
+
+    const freshNewRootToken = tokenFor(
+      newRoot.id,
+      '8h',
+      newRoot.sessionVersion,
+    );
+    const transferBack = await app.inject({
+      method: 'POST',
+      url: '/admin/root-transfer',
+      headers: auth(freshNewRootToken),
+      payload: {
+        currentPassword: 'password123',
+        targetUsername: 'root-int',
+        confirmationUsername: 'root-int',
+      },
+    });
+    assert.equal(transferBack.statusCode, 200);
+    assert.equal(await prisma.rootAdminTransferAudit.count(), 2);
+    assert.equal(
+      (await prisma.user.findUniqueOrThrow({ where: { id: rootId } }))
+        .systemRole,
+      SystemRole.ROOT_ADMIN,
+    );
+  },
+);
+
+integrationTest(
+  'paid participants own precise, paginated restaurant feedback',
+  async () => {
+    const freshTokenFor = async (id: string) => {
+      const user = await prisma.user.findUniqueOrThrow({ where: { id } });
+      return tokenFor(id, '8h', user.sessionVersion);
+    };
+    const [customerAToken, customerBToken, sousToken, headToken] =
+      await Promise.all([
+        freshTokenFor(customerAId),
+        freshTokenFor(customerBId),
+        freshTokenFor(sousId),
+        freshTokenFor(headId),
+      ]);
+    const feedbackBill = await prisma.bill.create({
+      data: {
+        restaurantId,
+        createdById: sousId,
+        baseCost: 9000,
+        vat: 0,
+        shippingFee: 0,
+        totalCost: 9000,
+        participants: {
+          create: [
+            {
+              memberId: customerAId,
+              originCost: 3000,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 3000,
+              paymentStatus: PaymentStatus.PAID,
+              paidAt: new Date(),
+            },
+            {
+              memberId: sousId,
+              originCost: 3000,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 3000,
+              paymentStatus: PaymentStatus.PAID,
+              paidAt: new Date(),
+            },
+            {
+              memberId: customerBId,
+              originCost: 3000,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 3000,
+            },
+          ],
+        },
+      },
+    });
+
+    for (const rating of [0.5, 10.5, 4.25]) {
+      const invalid = await app.inject({
+        method: 'POST',
+        url: `/bills/${feedbackBill.id}/feedback`,
+        headers: auth(customerAToken),
+        payload: { foodRating: rating, serviceRating: 8 },
+      });
+      assert.equal(invalid.statusCode, 400);
+      assert.equal(invalid.json().code, 'VALIDATION_ERROR');
+    }
+
+    const unpaid = await app.inject({
+      method: 'POST',
+      url: `/bills/${feedbackBill.id}/feedback`,
+      headers: auth(customerBToken),
+      payload: { foodRating: 8, serviceRating: 8 },
+    });
+    assert.equal(unpaid.statusCode, 403);
+    assert.equal(unpaid.json().code, 'FEEDBACK_PAYMENT_REQUIRED');
+    const nonParticipant = await app.inject({
+      method: 'POST',
+      url: `/bills/${feedbackBill.id}/feedback`,
+      headers: auth(headToken),
+      payload: { foodRating: 8, serviceRating: 8 },
+    });
+    assert.equal(nonParticipant.statusCode, 403);
+
+    const duplicateRace = await Promise.all([
+      app.inject({
+        method: 'POST',
+        url: `/bills/${feedbackBill.id}/feedback`,
+        headers: auth(customerAToken),
+        payload: { foodRating: 8.5, serviceRating: 7, comment: 'Tasty' },
+      }),
+      app.inject({
+        method: 'POST',
+        url: `/bills/${feedbackBill.id}/feedback`,
+        headers: auth(customerAToken),
+        payload: { foodRating: 9, serviceRating: 8 },
+      }),
+    ]);
+    assert.deepEqual(
+      duplicateRace.map(({ statusCode }) => statusCode).sort(),
+      [201, 409],
+    );
+    assert.equal(
+      duplicateRace.find(({ statusCode }) => statusCode === 409)?.json().code,
+      'FEEDBACK_ALREADY_EXISTS',
+    );
+    const customerFeedback = duplicateRace
+      .find(({ statusCode }) => statusCode === 201)!
+      .json();
+
+    await prisma.bill.update({
+      where: { id: feedbackBill.id },
+      data: { status: 'ARCHIVED' },
+    });
+    const chefFeedback = await app.inject({
+      method: 'POST',
+      url: `/bills/${feedbackBill.id}/feedback`,
+      headers: auth(sousToken),
+      payload: { foodRating: 9.5, serviceRating: 8.5 },
+    });
+    assert.equal(chefFeedback.statusCode, 201);
+
+    const foreignEdit = await app.inject({
+      method: 'PUT',
+      url: `/feedback/${customerFeedback.id}`,
+      headers: auth(sousToken),
+      payload: { foodRating: 1, serviceRating: 1 },
+    });
+    assert.equal(foreignEdit.statusCode, 404);
+    assert.equal(foreignEdit.json().code, 'FEEDBACK_NOT_FOUND');
+
+    const updated = await app.inject({
+      method: 'PUT',
+      url: `/feedback/${customerFeedback.id}`,
+      headers: auth(customerAToken),
+      payload: { foodRating: 6.5, serviceRating: 7.5, comment: 'Updated' },
+    });
+    assert.equal(updated.statusCode, 200);
+    assert.equal(updated.json().foodRating, 6.5);
+
+    const firstPage = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}/feedback?limit=1`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(firstPage.statusCode, 200);
+    assert.equal(firstPage.json().items.length, 1);
+    assert.equal(firstPage.json().pageInfo.hasNextPage, true);
+    assert.equal(firstPage.json().aggregates.feedbackCount, 2);
+    assert.equal(firstPage.json().aggregates.foodRating, 8);
+    assert.equal(firstPage.json().aggregates.serviceRating, 8);
+    assert.equal(
+      JSON.stringify(firstPage.json()).includes('passwordHash'),
+      false,
+    );
+
+    const secondPage = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}/feedback?limit=1&cursor=${firstPage.json().pageInfo.endCursor}`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(secondPage.statusCode, 200);
+    assert.equal(secondPage.json().items.length, 1);
+    assert.notEqual(
+      secondPage.json().items[0].id,
+      firstPage.json().items[0].id,
+    );
+
+    await prisma.restaurantEntry.update({
+      where: { id: restaurantId },
+      data: { status: 'ARCHIVED' },
+    });
+    const inaccessible = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}/feedback`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(inaccessible.statusCode, 404);
+    const headAccess = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}/feedback`,
+      headers: auth(headToken),
+    });
+    assert.equal(headAccess.statusCode, 200);
+    await prisma.restaurantEntry.update({
+      where: { id: restaurantId },
+      data: { status: 'ACTIVE' },
+    });
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: `/feedback/${customerFeedback.id}`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(deleted.statusCode, 204);
+    const afterDelete = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}/feedback`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(afterDelete.json().aggregates.feedbackCount, 1);
+    assert.equal(afterDelete.json().aggregates.foodRating, 9.5);
+  },
+);
+
+integrationTest(
+  'notification controls, private repeat groups, and duplicate override are enforced',
+  async () => {
+    const freshTokenFor = async (id: string) => {
+      const user = await prisma.user.findUniqueOrThrow({ where: { id } });
+      return tokenFor(id, '8h', user.sessionVersion);
+    };
+    const [customerAToken, customerBToken, sousToken] = await Promise.all([
+      freshTokenFor(customerAId),
+      freshTokenFor(customerBId),
+      freshTokenFor(sousId),
+    ]);
+
+    const group = await app.inject({
+      method: 'POST',
+      url: '/participant-groups',
+      headers: auth(customerAToken),
+      payload: {
+        name: 'Lunch crew',
+        memberIds: [customerAId, customerBId],
+      },
+    });
+    assert.equal(group.statusCode, 201);
+    assert.equal(group.json().members.length, 2);
+    assert.equal(JSON.stringify(group.json()).includes('passwordHash'), false);
+    const ownerGroups = await app.inject({
+      method: 'GET',
+      url: '/participant-groups',
+      headers: auth(customerAToken),
+    });
+    assert.equal(ownerGroups.json().length, 1);
+    const privateGroups = await app.inject({
+      method: 'GET',
+      url: '/participant-groups',
+      headers: auth(customerBToken),
+    });
+    assert.deepEqual(privateGroups.json(), []);
+    const foreignDelete = await app.inject({
+      method: 'DELETE',
+      url: `/participant-groups/${group.json().id}`,
+      headers: auth(customerBToken),
+    });
+    assert.equal(foreignDelete.statusCode, 404);
+
+    await prisma.notification.createMany({
+      data: [
+        { userId: customerAId, message: 'Bulk one' },
+        { userId: customerAId, message: 'Bulk two' },
+        { userId: customerBId, message: 'Private unread' },
+      ],
+    });
+    const bulkRead = await app.inject({
+      method: 'PATCH',
+      url: '/notifications/read-all',
+      headers: auth(customerAToken),
+    });
+    assert.equal(bulkRead.statusCode, 200);
+    assert.ok(bulkRead.json().updated >= 2);
+    assert.equal(
+      await prisma.notification.count({
+        where: { userId: customerAId, readAt: null },
+      }),
+      0,
+    );
+    assert.ok(
+      (await prisma.notification.count({
+        where: { userId: customerBId, readAt: null },
+      })) >= 1,
+    );
+
+    await app.inject({
+      method: 'PATCH',
+      url: '/me/notification-preferences',
+      headers: auth(customerAToken),
+      payload: { paymentRemindersEnabled: true },
+    });
+    const optedOut = await app.inject({
+      method: 'PATCH',
+      url: '/me/notification-preferences',
+      headers: auth(customerBToken),
+      payload: { paymentRemindersEnabled: false },
+    });
+    assert.equal(optedOut.statusCode, 200);
+    assert.equal(optedOut.json().paymentRemindersEnabled, false);
+
+    const reminderBill = await prisma.bill.create({
+      data: {
+        restaurantId,
+        createdById: sousId,
+        baseCost: 10300,
+        vat: 0,
+        shippingFee: 0,
+        totalCost: 10300,
+        participants: {
+          create: [
+            {
+              memberId: customerAId,
+              originCost: 5100,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 5100,
+            },
+            {
+              memberId: customerBId,
+              originCost: 5200,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 5200,
+            },
+          ],
+        },
+      },
+    });
+    const reminders = await app.inject({
+      method: 'POST',
+      url: `/bills/${reminderBill.id}/reminders`,
+      headers: auth(sousToken),
+    });
+    assert.equal(reminders.statusCode, 200);
+    assert.equal(reminders.json().sent, 1);
+    assert.equal(reminders.json().preferenceSkipped, 1);
+    assert.equal(
+      await prisma.notification.count({
+        where: { userId: customerBId, billId: reminderBill.id },
+      }),
+      0,
+    );
+
+    const duplicatePayload = {
+      restaurantId,
+      baseCost: 12345,
+      vat: 1000,
+      shippingFee: 2000,
+      participants: [
+        { memberId: customerAId, originCost: 6000 },
+        { memberId: customerBId, originCost: 6345 },
+      ],
+    };
+    const duplicateRace = await Promise.all([
+      app.inject({
+        method: 'POST',
+        url: '/bills',
+        headers: auth(sousToken),
+        payload: duplicatePayload,
+      }),
+      app.inject({
+        method: 'POST',
+        url: '/bills',
+        headers: auth(sousToken),
+        payload: {
+          ...duplicatePayload,
+          participants: [...duplicatePayload.participants].reverse(),
+        },
+      }),
+    ]);
+    assert.deepEqual(
+      duplicateRace.map(({ statusCode }) => statusCode).sort(),
+      [201, 409],
+    );
+    assert.equal(
+      duplicateRace.find(({ statusCode }) => statusCode === 409)?.json().code,
+      'BILL_DUPLICATE_DETECTED',
+    );
+    assert.ok(
+      duplicateRace.find(({ statusCode }) => statusCode === 409)?.json()
+        .existingBillId,
+    );
+    const override = await app.inject({
+      method: 'POST',
+      url: '/bills',
+      headers: auth(sousToken),
+      payload: { ...duplicatePayload, allowDuplicate: true },
+    });
+    assert.equal(override.statusCode, 201);
+  },
+);

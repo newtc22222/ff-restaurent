@@ -73,7 +73,7 @@ export const PIE_COLORS: string[] = [
 export const seededUsers = [
   ['customer', 'role.customer'],
   ['sous', 'role.souschef'],
-  ['head', 'role.headchef'],
+  ['head', 'role.rootadmin'],
 ] as const;
 
 /**
@@ -81,10 +81,14 @@ export const seededUsers = [
  * @param user The user object.
  * @param t The translation function.
  */
-export const roleLabel = (user?: User | null, t?: (key: string) => string): string => {
+export const roleLabel = (
+  user?: User | null,
+  t?: (key: string) => string,
+): string => {
   if (!user) return t?.('role.customer') ?? 'Customer';
-  if (user.chefRole === 'HEAD_CHEF')
-    return t?.('role.headchef') ?? 'Executive chef';
+  if (user.systemRole === 'ROOT_ADMIN')
+    return t?.('role.rootadmin') ?? 'Root Admin';
+  if (user.chefRole === 'HEAD_CHEF') return t?.('role.headchef') ?? 'Head Chef';
   if (user.chefRole === 'SOUS_CHEF') return t?.('role.souschef') ?? 'Sous chef';
   return t?.('role.customer') ?? 'Customer';
 };
@@ -93,13 +97,19 @@ export const roleLabel = (user?: User | null, t?: (key: string) => string): stri
  * Check if the user is a SOUS_CHEF or HEAD_CHEF.
  */
 export const canChef = (user: User | null): boolean =>
-  user?.chefRole === 'SOUS_CHEF' || user?.chefRole === 'HEAD_CHEF';
+  user?.systemRole === 'ROOT_ADMIN' ||
+  user?.chefRole === 'SOUS_CHEF' ||
+  user?.chefRole === 'HEAD_CHEF';
 
 /**
  * Check if the user is a HEAD_CHEF.
  */
 export const isHead = (user: User | null): boolean =>
-  user?.chefRole === 'HEAD_CHEF';
+  user?.systemRole === 'ROOT_ADMIN' || user?.chefRole === 'HEAD_CHEF';
+
+/** Check if the user holds the singleton system-administration role. */
+export const isRootAdmin = (user: User | null): boolean =>
+  user?.systemRole === 'ROOT_ADMIN';
 
 /**
  * Check if the user has permission to edit or manage a bill.

@@ -50,6 +50,7 @@ JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN=8h
 CORS_ORIGINS=http://localhost:5173
 REGISTRATION_INVITE_CODE=replace-with-a-private-group-invite
+ROOT_ADMIN_USERNAME=replace-with-an-existing-username
 API_PORT=4000
 VITE_API_URL=http://localhost:4000
 ```
@@ -90,6 +91,7 @@ The highest-risk bill math lives in `packages/shared/src/bill-splitting.ts` and 
 - **Favorites**: Per-user favorites junction table allowing users to save their go-to eateries.
 - **CUSTOMER**: View participant bills, mark their own share paid, view personal stats, and filter bills by payment status.
 - **SOUS_CHEF**: Create bills, edit bills, send payment reminders, create/edit restaurant entries, and recommend eateries.
-- **HEAD_CHEF**: View all bills (including archived), archive/restore bills and restaurants, and manage member roles.
+- **HEAD_CHEF**: View all bills (including archived) and archive/restore bills and restaurants.
+- **ROOT_ADMIN**: Inherits Head Chef permissions and exclusively manages member roles and system administration.
 
 All money values are stored and calculated as integer amounts (using VND as the default currency).

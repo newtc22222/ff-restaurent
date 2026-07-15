@@ -8,9 +8,15 @@ import { loadConfig } from './config.js';
 import { registerErrorHandler } from './http/error-handler.js';
 import { prisma } from './prisma.js';
 import { registerAuthRoutes } from './routes/auth-routes.js';
+import { registerAddressRoutes } from './routes/address-routes.js';
 import { registerBillRoutes } from './routes/bill-routes.js';
+import { registerCatalogRoutes } from './routes/catalog-routes.js';
+import { registerCollectionRoutes } from './routes/collection-routes.js';
+import { registerFeedbackRoutes } from './routes/feedback-routes.js';
 import { registerMemberRoutes } from './routes/member-routes.js';
 import { registerNotificationRoutes } from './routes/notification-routes.js';
+import { registerPasswordResetRoutes } from './routes/password-reset-routes.js';
+import { registerParticipantGroupRoutes } from './routes/participant-group-routes.js';
 import { registerProfileRoutes } from './routes/profile-routes.js';
 import { registerRestaurantRoutes } from './routes/restaurant-routes.js';
 import { registerStatsRoutes } from './routes/stats-routes.js';
@@ -53,6 +59,12 @@ const registerRoutes = (app: FastifyInstance) => {
   });
 
   registerAuthRoutes(app);
+  registerAddressRoutes(app);
+  registerCatalogRoutes(app);
+  registerCollectionRoutes(app);
+  registerFeedbackRoutes(app);
+  registerPasswordResetRoutes(app);
+  registerParticipantGroupRoutes(app);
   registerProfileRoutes(app);
   registerMemberRoutes(app);
   registerRestaurantRoutes(app);
