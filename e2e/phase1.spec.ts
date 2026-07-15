@@ -260,12 +260,8 @@ test('member discovers, manages, shares, and reviews Collection places', async (
     }),
   ]);
   await prisma.$transaction([
-    prisma.billParticipant.updateMany({
-      where: {
-        memberId: customer.id,
-        bill: { restaurantId: restaurant.id },
-      },
-      data: { paymentStatus: 'PAID', paidAt: new Date() },
+    prisma.bill.deleteMany({
+      where: { paymentUrl: 'https://example.com/pay/e2e-feedback' },
     }),
     prisma.feedback.deleteMany({
       where: { userId: customer.id, restaurantId: restaurant.id },
@@ -277,6 +273,29 @@ test('member discovers, manages, shares, and reviews Collection places', async (
       where: { ownerId: customer.id, name: 'E2E Team Spots' },
     }),
   ]);
+  await prisma.bill.create({
+    data: {
+      restaurantId: restaurant.id,
+      createdById: restaurant.createdById,
+      baseCost: 1000,
+      vat: 0,
+      shippingFee: 0,
+      totalCost: 1000,
+      paymentUrl: 'https://example.com/pay/e2e-feedback',
+      participants: {
+        create: {
+          memberId: customer.id,
+          originCost: 1000,
+          allocatedVat: 0,
+          allocatedShipping: 0,
+          discountApplied: 0,
+          finalPrice: 1000,
+          paymentStatus: 'PAID',
+          paidAt: new Date(),
+        },
+      },
+    },
+  });
 
   await login(page, 'e2e-customer');
   await page.getByRole('link', { name: 'Restaurants' }).click();
