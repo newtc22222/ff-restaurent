@@ -9,6 +9,7 @@ import { useNavigate, useRevalidator } from 'react-router';
 import type {
   Bill,
   Notification,
+  PasswordResetRequest,
   RestaurantEntry,
   Stats,
   User,
@@ -22,6 +23,7 @@ export interface AppLoaderData {
   users: User[];
   stats: Stats | null;
   notifications: Notification[];
+  passwordResetRequests: PasswordResetRequest[];
   warning: string | null;
 }
 

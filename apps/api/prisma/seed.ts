@@ -54,6 +54,7 @@ const createBill = async (input: {
 
 export async function seed({ reset = true }: { reset?: boolean } = {}) {
   if (reset) {
+    await prisma.passwordResetRequest.deleteMany();
     await prisma.userFavorite.deleteMany();
     await prisma.notification.deleteMany();
     await prisma.billAuditLog.deleteMany();

@@ -5,7 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../app/providers/i18n';
 import AdminPage from './AdminPage';
 
-const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }));
+const { mutate, refresh } = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  refresh: vi.fn(),
+}));
 
 const root = {
   id: 'root-1',
@@ -32,7 +35,20 @@ vi.mock('react-router', async (importOriginal) => {
 });
 
 vi.mock('../app/providers/app-context', () => ({
-  useAppContext: () => ({ user: root, users: [root, member] }),
+  useAppContext: () => ({
+    user: root,
+    users: [root, member],
+    refresh,
+    passwordResetRequests: [
+      {
+        id: 'reset-1',
+        status: 'PENDING',
+        failedAttempts: 0,
+        createdAt: '2026-07-15T00:00:00.000Z',
+        user: member,
+      },
+    ],
+  }),
 }));
 
 vi.mock('../hooks/useMutation', () => ({
@@ -43,6 +59,7 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('ff-locale', 'en');
   mutate.mockClear();
+  refresh.mockClear();
 });
 
 afterEach(cleanup);
@@ -88,6 +105,32 @@ describe('AdminPage ROOT_ADMIN governance', () => {
         success: 'Root Admin ownership transferred. Sign in again.',
         redirects: true,
       },
+    );
+  });
+
+  it('issues and rejects pending password reset requests', () => {
+    render(
+      <I18nProvider>
+        <AdminPage />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Issue code' }));
+    expect(mutate).toHaveBeenCalledWith(
+      { intent: 'issue-password-reset', requestId: 'reset-1' },
+      expect.objectContaining({
+        fallback: 'Could not issue the reset code.',
+        success: 'Single-use reset code issued.',
+      }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    expect(mutate).toHaveBeenCalledWith(
+      { intent: 'reject-password-reset', requestId: 'reset-1' },
+      expect.objectContaining({
+        fallback: 'Could not reject the reset request.',
+        success: 'Password reset request rejected.',
+      }),
     );
   });
 });

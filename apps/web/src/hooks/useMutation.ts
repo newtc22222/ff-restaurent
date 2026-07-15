@@ -14,7 +14,7 @@ interface MutateOptions {
   /** Route to submit to; defaults to the current route's action. */
   action?: string;
   /** Runs after a successful submit. */
-  onSuccess?: () => void;
+  onSuccess?: (data: unknown) => void;
 }
 
 type MutationResult = {
@@ -40,7 +40,7 @@ export function useMutation() {
   const pendingResult = useRef<{
     fallback: string;
     success?: string;
-    onSuccess?: () => void;
+    onSuccess?: (data: unknown) => void;
   } | null>(null);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export function useMutation() {
     }
 
     if (success) toast.success(success);
-    onSuccess?.();
+    onSuccess?.(fetcher.data);
   }, [fetcher.data, fetcher.state, t]);
 
   const mutate = useCallback(

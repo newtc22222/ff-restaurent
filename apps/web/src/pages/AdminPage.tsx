@@ -1,4 +1,4 @@
-import { Users } from 'lucide-react';
+import { KeyRound, Users } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
 import type { ChefRole } from '../lib/api';
@@ -14,12 +14,21 @@ import Dropdown from '../components/ui/Dropdown';
  * AdminPage is the ROOT_ADMIN-only role governance and ownership-transfer UI.
  */
 export default function AdminPage() {
-  const { user, users } = useAppContext();
+  const {
+    user,
+    users,
+    passwordResetRequests = [],
+    refresh = async () => undefined,
+  } = useAppContext();
   const { t } = useI18n();
   const { mutate } = useMutation();
   const [targetUsername, setTargetUsername] = useState('');
   const [confirmationUsername, setConfirmationUsername] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
+  const [issuedCode, setIssuedCode] = useState<{
+    username: string;
+    code: string;
+  } | null>(null);
 
   if (!isRootAdmin(user)) return <Navigate to="/bills" replace />;
 
@@ -54,6 +63,33 @@ export default function AdminPage() {
   const transferTargets = users.filter(
     (member) => member.id !== user.id && member.systemRole !== 'ROOT_ADMIN',
   );
+
+  const issueReset = (requestId: string, username: string) =>
+    mutate(
+      { intent: 'issue-password-reset', requestId },
+      {
+        fallback: t('toast.passwordResetIssueFailed'),
+        success: t('toast.passwordResetIssued'),
+        onSuccess: (data) => {
+          const code =
+            typeof data === 'object' && data !== null && 'code' in data
+              ? String((data as { code: unknown }).code)
+              : '';
+          if (code) setIssuedCode({ username, code });
+          void refresh();
+        },
+      },
+    );
+
+  const rejectReset = (requestId: string) =>
+    mutate(
+      { intent: 'reject-password-reset', requestId },
+      {
+        fallback: t('toast.passwordResetRejectFailed'),
+        success: t('toast.passwordResetRejected'),
+        onSuccess: () => void refresh(),
+      },
+    );
 
   return (
     <div className="space-y-4">
@@ -97,6 +133,88 @@ export default function AdminPage() {
           )}
         </article>
       ))}
+
+      <section className="panel p-4 sm:p-6">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
+          <KeyRound size={20} /> {t('admin.passwordResetsTitle')}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {t('admin.passwordResetsDescription')}
+        </p>
+        {issuedCode && (
+          <div
+            className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+            role="status"
+          >
+            <p className="text-sm font-semibold">{t('admin.resetCodeOnce')}</p>
+            <p className="mt-2 font-mono text-2xl font-bold tracking-[0.2em]">
+              {issuedCode.code}
+            </p>
+            <p className="mt-1 text-sm">@{issuedCode.username}</p>
+            <button
+              type="button"
+              className="btn btn-soft mt-3"
+              onClick={() => setIssuedCode(null)}
+            >
+              {t('common.confirm')}
+            </button>
+          </div>
+        )}
+        <div className="mt-4 space-y-3">
+          {passwordResetRequests.length === 0 && (
+            <p className="text-sm text-slate-500">
+              {t('admin.noPasswordResets')}
+            </p>
+          )}
+          {passwordResetRequests.map((reset) => {
+            const rootRequest = reset.user.systemRole === 'ROOT_ADMIN';
+            return (
+              <article
+                key={reset.id}
+                className="rounded-lg border border-border p-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">
+                      {reset.user.name}{' '}
+                      <span className="font-normal text-slate-500">
+                        @{reset.user.username}
+                      </span>
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {reset.status === 'CODE_ISSUED'
+                        ? t('admin.resetCodeIssued')
+                        : t('admin.resetPending')}
+                    </p>
+                    {rootRequest && (
+                      <p className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                        {t('admin.rootResetOperatorOnly')}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={rootRequest}
+                      onClick={() => issueReset(reset.id, reset.user.username)}
+                    >
+                      {t('admin.issueResetCode')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-soft"
+                      onClick={() => rejectReset(reset.id)}
+                    >
+                      {t('admin.rejectReset')}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="panel p-4 sm:p-6">
         <h2 className="text-lg font-bold text-ink">

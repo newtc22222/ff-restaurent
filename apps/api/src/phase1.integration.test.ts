@@ -35,6 +35,7 @@ before(async () => {
     'integration-secret-that-is-at-least-32-characters';
   process.env.REGISTRATION_INVITE_CODE ??= 'integration-invite';
   app = await buildApp();
+  await prisma.passwordResetRequest.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.billAuditLog.deleteMany();
   await prisma.rootAdminTransferAudit.deleteMany();
@@ -670,6 +671,196 @@ integrationTest(
       },
     });
     assert.equal(restored.statusCode, 200);
+  },
+);
+
+integrationTest(
+  'password recovery is opaque, root-assisted, hashed, single-use, and invalidates sessions',
+  async () => {
+    const missing = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: 'missing-account-int' },
+    });
+    const requested = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: 'customer-a-int' },
+    });
+    assert.equal(missing.statusCode, 202);
+    assert.deepEqual(missing.json(), requested.json());
+
+    const list = await app.inject({
+      method: 'GET',
+      url: '/admin/password-reset-requests',
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(list.statusCode, 200);
+    const listed = list
+      .json()
+      .find((item: { user: { id: string } }) => item.user.id === customerAId);
+    assert.ok(listed);
+    assert.equal('codeHash' in listed, false);
+
+    const issued = await app.inject({
+      method: 'POST',
+      url: `/admin/password-reset-requests/${listed.id}/issue`,
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(issued.statusCode, 200);
+    assert.match(issued.json().code, /^[2-9A-HJ-NP-Z]{8}$/);
+    const stored = await prisma.passwordResetRequest.findUniqueOrThrow({
+      where: { id: listed.id },
+    });
+    assert.notEqual(stored.codeHash, issued.json().code);
+    assert.ok(await bcrypt.compare(issued.json().code, stored.codeHash!));
+
+    const oldSession = tokenFor(customerAId);
+    const consumed = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset',
+      payload: {
+        identifier: 'customer-a-int',
+        code: issued.json().code,
+        newPassword: 'recovered-password-123',
+        confirmation: 'recovered-password-123',
+      },
+    });
+    assert.equal(consumed.statusCode, 200);
+    const replay = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset',
+      payload: {
+        identifier: 'customer-a-int',
+        code: issued.json().code,
+        newPassword: 'another-password-123',
+        confirmation: 'another-password-123',
+      },
+    });
+    assert.equal(replay.statusCode, 400);
+    assert.equal(replay.json().code, 'PASSWORD_RESET_INVALID');
+    const invalidated = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(oldSession),
+    });
+    assert.equal(invalidated.statusCode, 401);
+    const login = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: {
+        identifier: 'customer-a-int',
+        password: 'recovered-password-123',
+      },
+    });
+    assert.equal(login.statusCode, 200);
+    const restoredPassword = await app.inject({
+      method: 'PATCH',
+      url: '/me/password',
+      headers: auth(login.json().token),
+      payload: {
+        currentPassword: 'recovered-password-123',
+        newPassword: 'password123',
+        confirmation: 'password123',
+      },
+    });
+    assert.equal(restoredPassword.statusCode, 200);
+
+    await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: 'root-int' },
+    });
+    const rootRequest = await prisma.passwordResetRequest.findFirstOrThrow({
+      where: { userId: rootId, activeKey: rootId },
+    });
+    const ownApproval = await app.inject({
+      method: 'POST',
+      url: `/admin/password-reset-requests/${rootRequest.id}/issue`,
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(ownApproval.statusCode, 403);
+    assert.equal(ownApproval.json().code, 'ROOT_RESET_REQUIRES_OPERATOR');
+
+    await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: 'customer-b-int' },
+    });
+    let limitedRequest = await prisma.passwordResetRequest.findFirstOrThrow({
+      where: { userId: customerBId, activeKey: customerBId },
+    });
+    const limitedIssue = await app.inject({
+      method: 'POST',
+      url: `/admin/password-reset-requests/${limitedRequest.id}/issue`,
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(limitedIssue.statusCode, 200);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const failure = await app.inject({
+        method: 'POST',
+        url: '/auth/password-reset',
+        payload: {
+          identifier: 'customer-b-int',
+          code: 'AAAAAAAA',
+          newPassword: 'unused-password-123',
+          confirmation: 'unused-password-123',
+        },
+      });
+      assert.equal(failure.statusCode, 400);
+    }
+    limitedRequest = await prisma.passwordResetRequest.findUniqueOrThrow({
+      where: { id: limitedRequest.id },
+    });
+    assert.equal(limitedRequest.status, 'LOCKED');
+    const lockedCode = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset',
+      payload: {
+        identifier: 'customer-b-int',
+        code: limitedIssue.json().code,
+        newPassword: 'unused-password-123',
+        confirmation: 'unused-password-123',
+      },
+    });
+    assert.equal(lockedCode.statusCode, 400);
+
+    await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: 'customer-b-int' },
+    });
+    const expiringRequest = await prisma.passwordResetRequest.findFirstOrThrow({
+      where: { userId: customerBId, activeKey: customerBId },
+    });
+    const expiringIssue = await app.inject({
+      method: 'POST',
+      url: `/admin/password-reset-requests/${expiringRequest.id}/issue`,
+      headers: auth(tokenFor(rootId)),
+    });
+    await prisma.passwordResetRequest.update({
+      where: { id: expiringRequest.id },
+      data: { expiresAt: new Date(Date.now() - 1_000) },
+    });
+    const expired = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset',
+      payload: {
+        identifier: 'customer-b-int',
+        code: expiringIssue.json().code,
+        newPassword: 'unused-password-123',
+        confirmation: 'unused-password-123',
+      },
+    });
+    assert.equal(expired.statusCode, 400);
+    assert.equal(
+      (
+        await prisma.passwordResetRequest.findUniqueOrThrow({
+          where: { id: expiringRequest.id },
+        })
+      ).status,
+      'EXPIRED',
+    );
   },
 );
 

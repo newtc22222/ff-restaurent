@@ -40,6 +40,14 @@ export const translations = {
     'auth.cancel': 'Hủy',
     'auth.haveAccount': 'Đã có tài khoản?',
     'auth.noAccount': 'Chưa có tài khoản?',
+    'auth.forgotPassword': 'Quên mật khẩu?',
+    'auth.resetPassword': 'Đặt lại mật khẩu',
+    'auth.resetHelp':
+      'Yêu cầu hỗ trợ hoặc nhập mã do Quản trị viên gốc cung cấp.',
+    'auth.requestReset': 'Gửi yêu cầu đặt lại',
+    'auth.haveResetCode': 'Tôi đã có mã đặt lại',
+    'auth.backToSignIn': 'Quay lại đăng nhập',
+    'auth.resetCode': 'Mã đặt lại 8 ký tự',
 
     // Roles
     'role.customer': 'Khách hàng',
@@ -152,6 +160,18 @@ export const translations = {
     'admin.currentPassword': 'Mật khẩu hiện tại của bạn',
     'admin.transferAction': 'Chuyển quyền và đăng xuất',
     'admin.noTransferTargets': 'Không có thành viên phù hợp.',
+    'admin.passwordResetsTitle': 'Yêu cầu đặt lại mật khẩu',
+    'admin.passwordResetsDescription':
+      'Xác minh người yêu cầu ngoài ứng dụng trước khi cấp mã dùng một lần.',
+    'admin.noPasswordResets': 'Không có yêu cầu đang chờ.',
+    'admin.resetCodeOnce':
+      'Mã này chỉ hiển thị một lần. Hãy gửi qua kênh an toàn.',
+    'admin.resetCodeIssued': 'Đã cấp mã; hết hạn sau 15 phút',
+    'admin.resetPending': 'Đang chờ duyệt',
+    'admin.rootResetOperatorOnly':
+      'Tài khoản Root Admin phải dùng lệnh khôi phục của vận hành.',
+    'admin.issueResetCode': 'Cấp mã',
+    'admin.rejectReset': 'Từ chối',
 
     // Validation
     'validation.vietnamMobilePhone':
@@ -198,6 +218,13 @@ export const translations = {
     'toast.profileUpdateFailed': 'Không thể cập nhật hồ sơ.',
     'toast.passwordChanged': 'Đã đổi mật khẩu và đăng xuất các phiên khác.',
     'toast.passwordChangeFailed': 'Không thể đổi mật khẩu.',
+    'toast.passwordResetRequested':
+      'Nếu tài khoản tồn tại, yêu cầu sẽ được Quản trị viên gốc xem xét.',
+    'toast.passwordResetComplete': 'Đã đặt lại mật khẩu. Vui lòng đăng nhập.',
+    'toast.passwordResetIssued': 'Đã cấp mã đặt lại dùng một lần.',
+    'toast.passwordResetIssueFailed': 'Không thể cấp mã đặt lại.',
+    'toast.passwordResetRejected': 'Đã từ chối yêu cầu đặt lại.',
+    'toast.passwordResetRejectFailed': 'Không thể từ chối yêu cầu đặt lại.',
 
     // API result errors
     'error.invalidCredentials':
@@ -235,6 +262,11 @@ export const translations = {
     'error.passwordConfirmationMismatch': 'Xác nhận mật khẩu không khớp.',
     'error.passwordLengthInvalid': 'Mật khẩu mới phải có từ 8 đến 128 ký tự.',
     'error.passwordReuseForbidden': 'Mật khẩu mới phải khác mật khẩu hiện tại.',
+    'error.passwordResetInvalid': 'Mã đặt lại không hợp lệ hoặc đã hết hạn.',
+    'error.passwordResetConflict':
+      'Yêu cầu vừa thay đổi. Hãy làm mới và thử lại.',
+    'error.rootResetRequiresOperator':
+      'Khôi phục Root Admin phải dùng lệnh dành cho vận hành.',
 
     // Profile
     'profile.title': 'Hồ sơ',
@@ -302,6 +334,14 @@ export const translations = {
     'auth.cancel': 'Cancel',
     'auth.haveAccount': 'Already have an account?',
     'auth.noAccount': "Don't have an account?",
+    'auth.forgotPassword': 'Forgot password?',
+    'auth.resetPassword': 'Reset password',
+    'auth.resetHelp':
+      'Request help or enter the code provided by the Root Admin.',
+    'auth.requestReset': 'Request password reset',
+    'auth.haveResetCode': 'I have a reset code',
+    'auth.backToSignIn': 'Back to sign in',
+    'auth.resetCode': '8-character reset code',
 
     // Roles
     'role.customer': 'Customer',
@@ -413,6 +453,18 @@ export const translations = {
     'admin.currentPassword': 'Your current password',
     'admin.transferAction': 'Transfer ownership and sign out',
     'admin.noTransferTargets': 'No eligible members.',
+    'admin.passwordResetsTitle': 'Password reset requests',
+    'admin.passwordResetsDescription':
+      'Verify the requester out of band before issuing a single-use code.',
+    'admin.noPasswordResets': 'No pending requests.',
+    'admin.resetCodeOnce':
+      'This code is shown once. Deliver it through a safe channel.',
+    'admin.resetCodeIssued': 'Code issued; expires after 15 minutes',
+    'admin.resetPending': 'Waiting for review',
+    'admin.rootResetOperatorOnly':
+      'Root Admin accounts require the operator recovery command.',
+    'admin.issueResetCode': 'Issue code',
+    'admin.rejectReset': 'Reject',
 
     // Profile
     'profile.title': 'Profile',
@@ -475,6 +527,14 @@ export const translations = {
     'toast.passwordChanged':
       'Password changed and other sessions were signed out.',
     'toast.passwordChangeFailed': 'Could not change the password.',
+    'toast.passwordResetRequested':
+      'If the account exists, the Root Admin will review the request.',
+    'toast.passwordResetComplete':
+      'Password reset. Sign in with the new password.',
+    'toast.passwordResetIssued': 'Single-use reset code issued.',
+    'toast.passwordResetIssueFailed': 'Could not issue the reset code.',
+    'toast.passwordResetRejected': 'Password reset request rejected.',
+    'toast.passwordResetRejectFailed': 'Could not reject the reset request.',
 
     // API result errors
     'error.invalidCredentials':
@@ -514,6 +574,11 @@ export const translations = {
       'The new password must be between 8 and 128 characters.',
     'error.passwordReuseForbidden':
       'The new password must differ from your current password.',
+    'error.passwordResetInvalid': 'The reset code is invalid or expired.',
+    'error.passwordResetConflict':
+      'The request changed. Refresh and try again.',
+    'error.rootResetRequiresOperator':
+      'Root Admin recovery requires the operator command.',
 
     // Theme
     'theme.light': 'Light',

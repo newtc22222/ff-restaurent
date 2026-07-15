@@ -40,6 +40,17 @@ export const passwordChangeSchema = z.object({
   confirmation: z.string(),
 });
 
+export const passwordResetRequestSchema = z.object({
+  identifier: z.string().trim().min(1).max(100),
+});
+
+export const passwordResetConsumeSchema = z.object({
+  identifier: z.string().trim().min(1).max(100),
+  code: z.string().trim().length(8),
+  newPassword: z.string(),
+  confirmation: z.string(),
+});
+
 export const restaurantSchema = z.object({
   name: z.string().min(1),
   address: z.string().min(1),
