@@ -255,8 +255,12 @@ test('member discovers, manages, shares, and reviews Collection places', async (
 }) => {
   await login(page, 'e2e-customer');
   await page.getByRole('link', { name: 'Restaurants' }).click();
-  await page.getByText('Existing E2E Restaurant').click();
-  await page.getByRole('button', { name: 'Favorite' }).click();
+  await page
+    .locator('article')
+    .filter({ hasText: 'Existing E2E Restaurant' })
+    .click();
+  await expect(page).toHaveURL(/\/restaurants\/[^/?]+$/);
+  await page.getByRole('button', { name: 'Favorite', exact: true }).click();
   await page.getByLabel('Food').selectOption('8.5');
   await page.getByLabel('Service').selectOption('9');
   await page.getByLabel('Comment (optional)').fill('Reliable team lunch.');
