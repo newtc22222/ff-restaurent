@@ -17,6 +17,12 @@ if (apiOrigin !== window.location.origin) {
   document.head.append(preconnect);
 }
 
+if (import.meta.env.PROD) {
+  void import('./lib/pwa').then(({ registerServiceWorker }) =>
+    registerServiceWorker(),
+  );
+}
+
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>

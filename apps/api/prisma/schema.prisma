@@ -297,6 +297,10 @@ model Notification {
   message   String
   readAt    DateTime?
   createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt, id])
+  @@index([userId, readAt])
+  @@index([billId, userId, createdAt])
 }
 
 model RoleAuditLog {
@@ -320,6 +324,8 @@ model BillAuditLog {
   before    Json?
   after     Json?
   createdAt DateTime @default(now())
+
+  @@index([billId, createdAt, id])
 }
 
 model UserFavorite {
