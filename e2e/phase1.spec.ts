@@ -141,6 +141,7 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   await login(page, 'e2e-sous');
   await page.getByRole('link', { name: 'Restaurants' }).click();
   await page.getByLabel('Name').fill('Created E2E Restaurant');
+  await page.getByRole('button', { name: 'Enter address manually' }).click();
   await page.getByLabel('Address').fill('2 Browser Street');
   await page.getByRole('button', { name: 'Cuisine type' }).click();
   await page
