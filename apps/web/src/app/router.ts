@@ -35,7 +35,6 @@ export async function appLoader(): Promise<AppLoaderData> {
     const sharedResultsPromise = Promise.allSettled([
       api.request<Bill[]>('/bills?includeArchived=true'),
       api.request<RestaurantEntry[]>('/restaurants?includeArchived=true'),
-      api.request<Stats>('/stats/me?range=monthly'),
       api.request<Notification[]>('/notifications'),
     ]);
     const user = await userPromise;
@@ -77,9 +76,8 @@ export async function appLoader(): Promise<AppLoaderData> {
     const results = [
       sharedResults[0],
       sharedResults[1],
-      sharedResults[2],
       usersResult,
-      sharedResults[3],
+      sharedResults[2],
     ] as const;
     const value = <T>(result: PromiseSettledResult<T>, fallback: T) =>
       result.status === 'fulfilled' ? result.value : fallback;
@@ -87,9 +85,8 @@ export async function appLoader(): Promise<AppLoaderData> {
       user,
       bills: value(results[0], []),
       restaurants: value(results[1], []),
-      stats: value(results[2], null),
-      users: value(results[3], []),
-      notifications: value(results[4], []),
+      users: value(results[2], []),
+      notifications: value(results[3], []),
       passwordResetRequests: value(passwordResetRequestsResult, []),
       warning: [...results, passwordResetRequestsResult].some(
         (result) => result.status === 'rejected',
@@ -97,6 +94,32 @@ export async function appLoader(): Promise<AppLoaderData> {
         ? 'Some data could not be refreshed. Your session is still active.'
         : null,
     };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      session.clear();
+      throw redirect('/login');
+    }
+    throw error;
+  }
+}
+
+const statsRanges = new Set(['weekly', 'monthly', 'yearly', 'custom']);
+
+export async function statsLoader({ request }: LoaderFunctionArgs) {
+  if (!session.getToken()) throw redirect('/login');
+  const url = new URL(request.url);
+  const requestedRange = url.searchParams.get('range') ?? 'monthly';
+  const range = statsRanges.has(requestedRange) ? requestedRange : 'monthly';
+  const query = new URLSearchParams({ range });
+  if (range === 'custom') {
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    if (from) query.set('from', from);
+    if (to) query.set('to', to);
+  }
+
+  try {
+    return await session.api().request<Stats>(`/stats/me?${query}`);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       session.clear();
@@ -366,7 +389,11 @@ export const routes = [
             action: mutationAction,
             lazy: page(() => import('../pages/RestaurantsPage')),
           },
-          { path: 'stats', lazy: page(() => import('../pages/StatsPage')) },
+          {
+            path: 'stats',
+            loader: statsLoader,
+            lazy: page(() => import('../pages/StatsPage')),
+          },
           {
             path: 'admin',
             loader: (args) => roleGuard(isRootAdmin, args),

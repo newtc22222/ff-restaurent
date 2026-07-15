@@ -14,6 +14,7 @@ import {
   mutationAction,
   roleGuard,
   routes,
+  statsLoader,
 } from './router';
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -68,7 +69,6 @@ describe('appLoader', () => {
         if (url.endsWith('/me')) return jsonResponse(user);
         if (url.includes('/bills')) return jsonResponse([]);
         if (url.includes('/restaurants')) return jsonResponse([]);
-        if (url.includes('/stats/me')) return jsonResponse({ total: 0 });
         if (url.endsWith('/users')) return jsonResponse([user]);
         if (url.endsWith('/admin/password-reset-requests'))
           return jsonResponse([]);
@@ -92,7 +92,6 @@ describe('appLoader', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/me')) return userResponse;
-      if (url.includes('/stats/me')) return jsonResponse({ total: 0 });
       return jsonResponse([]);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -151,6 +150,40 @@ describe('roleGuard', () => {
         {} as never,
       ),
     ).rejects.toMatchObject({ status: 302 });
+  });
+});
+
+describe('statsLoader', () => {
+  it('loads the selected custom date range', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const stats = {
+      totals: { paid: 100, waiting: 200, totalObligation: 300 },
+      total: 300,
+      byPaymentStatus: { PAID: 100, WAITING: 200 },
+      byCuisineType: {},
+      byEntry: {},
+      byPeriod: {},
+      frequencyByRestaurant: {},
+      frequencyByCuisine: {},
+    };
+    const fetchMock = vi.fn(async () => jsonResponse(stats));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      statsLoader({
+        request: new Request(
+          'http://localhost/stats?range=custom&from=2026-07-01&to=2026-07-15',
+        ),
+        params: {},
+        context: {},
+      } as never),
+    ).resolves.toEqual(stats);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /\/stats\/me\?range=custom&from=2026-07-01&to=2026-07-15$/,
+      ),
+      expect.any(Object),
+    );
   });
 });
 
