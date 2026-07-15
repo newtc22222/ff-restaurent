@@ -58,6 +58,30 @@ export type Bill = {
   participants: BillParticipant[];
 };
 
+export type BillActivityAction =
+  | 'CREATED'
+  | 'UPDATED'
+  | 'PAYMENT_STATUS_CHANGED'
+  | 'REMINDERS_SENT'
+  | 'ARCHIVED'
+  | 'RESTORED';
+
+export type BillActivityEvent = {
+  id: string;
+  action: BillActivityAction;
+  actor: Pick<User, 'id' | 'username' | 'name'>;
+  details?: {
+    changes?: string[];
+    memberId?: string;
+    memberName?: string;
+    fromStatus?: PaymentStatus;
+    toStatus?: PaymentStatus;
+    sent?: number;
+    skipped?: number;
+  };
+  createdAt: string;
+};
+
 export type Stats = {
   totals: {
     paid: number;

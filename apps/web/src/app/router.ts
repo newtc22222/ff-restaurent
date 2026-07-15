@@ -18,6 +18,7 @@ import type { AppLoaderData } from './providers/app-context';
 import {
   ApiError,
   type Bill,
+  type BillActivityEvent,
   type Notification,
   type PasswordResetRequest,
   type RestaurantEntry,
@@ -136,6 +137,23 @@ export async function loginLoader() {
     .request('/health')
     .catch(() => undefined);
   return null;
+}
+
+export async function billActivityLoader({ params }: LoaderFunctionArgs) {
+  if (!session.getToken()) throw redirect('/login');
+  if (!params.billId)
+    throw new Response('Bill id is required', { status: 400 });
+  try {
+    return await session
+      .api()
+      .request<BillActivityEvent[]>(`/bills/${params.billId}/activity`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      session.clear();
+      throw redirect('/login');
+    }
+    throw error;
+  }
 }
 
 export type LoginActionData = {
@@ -414,6 +432,7 @@ export const routes = [
           },
           {
             path: 'bills/:billId',
+            loader: billActivityLoader,
             action: mutationAction,
             lazy: page(() => import('../pages/BillDetailPage')),
           },

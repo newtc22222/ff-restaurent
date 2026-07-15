@@ -26,12 +26,160 @@ export const paymentResponseInclude = {
   bill: true,
 };
 
+export const billActivityActorSelect = {
+  id: true,
+  username: true,
+  name: true,
+} satisfies Prisma.UserSelect;
+
+type BillActivityActor = Prisma.UserGetPayload<{
+  select: typeof billActivityActorSelect;
+}>;
+
+type BillActivityDetails = {
+  changes?: string[];
+  memberId?: string;
+  memberName?: string;
+  fromStatus?: string;
+  toStatus?: string;
+  sent?: number;
+  skipped?: number;
+};
+
+type BillActivitySource = {
+  id: string;
+  createdAt: Date;
+  createdBy: BillActivityActor;
+  participants: Array<{ memberId: string; member: BillActivityActor }>;
+  auditLogs: Array<{
+    id: string;
+    action: string;
+    before: Prisma.JsonValue | null;
+    after: Prisma.JsonValue | null;
+    createdAt: Date;
+    user: BillActivityActor;
+  }>;
+};
+
+const isJsonObject = (
+  value: Prisma.JsonValue | null,
+): value is Prisma.JsonObject =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const valueChanged = (before: unknown, after: unknown) =>
+  JSON.stringify(before) !== JSON.stringify(after);
+
+const updatedFields = (
+  before: Prisma.JsonValue | null,
+  after: Prisma.JsonValue | null,
+) => {
+  if (!isJsonObject(before) || !isJsonObject(after)) return [];
+  const changes = new Set<string>();
+  if (valueChanged(before.restaurantId, after.restaurantId))
+    changes.add('restaurant');
+  if (
+    ['baseCost', 'vat', 'shippingFee', 'totalCost'].some((field) =>
+      valueChanged(before[field], after[field]),
+    )
+  )
+    changes.add('costs');
+  if (
+    valueChanged(before.discounts, after.discounts) ||
+    valueChanged(before.vouchers, after.vouchers)
+  )
+    changes.add('adjustments');
+  if (valueChanged(before.paymentUrl, after.paymentUrl))
+    changes.add('paymentLink');
+  if (valueChanged(before.participants, after.participants))
+    changes.add('participants');
+  return [...changes];
+};
+
+const activityDetails = (
+  log: BillActivitySource['auditLogs'][number],
+  participantNames: Map<string, string>,
+): BillActivityDetails | undefined => {
+  if (log.action === 'UPDATED') {
+    return { changes: updatedFields(log.before, log.after) };
+  }
+  if (log.action === 'PAYMENT_STATUS_CHANGED' && isJsonObject(log.after)) {
+    const before = isJsonObject(log.before) ? log.before : {};
+    const memberId =
+      typeof log.after.memberId === 'string' ? log.after.memberId : undefined;
+    return {
+      memberId,
+      memberName: memberId ? participantNames.get(memberId) : undefined,
+      fromStatus:
+        typeof before.paymentStatus === 'string'
+          ? before.paymentStatus
+          : undefined,
+      toStatus:
+        typeof log.after.paymentStatus === 'string'
+          ? log.after.paymentStatus
+          : undefined,
+    };
+  }
+  if (log.action === 'REMINDERS_SENT' && isJsonObject(log.after)) {
+    return {
+      sent: typeof log.after.sent === 'number' ? log.after.sent : 0,
+      skipped: typeof log.after.skipped === 'number' ? log.after.skipped : 0,
+    };
+  }
+  return undefined;
+};
+
+const visibleActivityActions = new Set([
+  'UPDATED',
+  'PAYMENT_STATUS_CHANGED',
+  'REMINDERS_SENT',
+  'ARCHIVED',
+  'RESTORED',
+]);
+
+export const buildBillActivityTimeline = (bill: BillActivitySource) => {
+  const participantNames = new Map(
+    bill.participants.map((participant) => [
+      participant.memberId,
+      participant.member.name,
+    ]),
+  );
+  const events = bill.auditLogs
+    .filter((log) => visibleActivityActions.has(log.action))
+    .map((log) => ({
+      id: log.id,
+      action: log.action,
+      actor: log.user,
+      details: activityDetails(log, participantNames),
+      createdAt: log.createdAt,
+    }));
+  events.push({
+    id: `created-${bill.id}`,
+    action: 'CREATED',
+    actor: bill.createdBy,
+    details: undefined,
+    createdAt: bill.createdAt,
+  });
+  return events.sort(
+    (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+  );
+};
+
 const canManageBill = (
   bill: { createdById: string },
   request: FastifyRequest,
 ) =>
   isHeadChef(request.currentUser) ||
   bill.createdById === request.currentUser.id;
+
+const canViewBill = (
+  bill: { createdById: string; participants: Array<{ memberId: string }> },
+  request: FastifyRequest,
+) =>
+  isHeadChef(request.currentUser) ||
+  bill.createdById === request.currentUser.id ||
+  bill.participants.some(
+    (participant) => participant.memberId === request.currentUser.id,
+  );
 
 const computeBillCreateData = (body: unknown, createdById: string) => {
   const parsed = billSchema.parse(body);
@@ -155,18 +303,52 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         include: billResponseInclude,
       });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
-      const allowed =
-        isHeadChef(request.currentUser) ||
-        bill.createdById === request.currentUser.id ||
-        bill.participants.some(
-          (participant) => participant.memberId === request.currentUser.id,
-        );
-      if (!allowed) {
+      if (!canViewBill(bill, request)) {
         return reply
           .code(403)
           .send({ message: 'Not allowed to view this bill' });
       }
       return bill;
+    },
+  );
+
+  app.get(
+    '/bills/:id/activity',
+    { preHandler: requireAuthenticatedUser },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const bill = await prisma.bill.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          createdAt: true,
+          createdById: true,
+          createdBy: { select: billActivityActorSelect },
+          participants: {
+            select: {
+              memberId: true,
+              member: { select: billActivityActorSelect },
+            },
+          },
+          auditLogs: {
+            select: {
+              id: true,
+              action: true,
+              before: true,
+              after: true,
+              createdAt: true,
+              user: { select: billActivityActorSelect },
+            },
+          },
+        },
+      });
+      if (!bill) return reply.code(404).send({ message: 'Bill not found' });
+      if (!canViewBill(bill, request)) {
+        return reply
+          .code(403)
+          .send({ message: 'Not allowed to view this bill' });
+      }
+      return buildBillActivityTimeline(bill);
     },
   );
 
@@ -287,10 +469,22 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           message: 'Only the owner or HEAD_CHEF can archive this bill',
         });
       }
-      return prisma.bill.update({
-        where: { id },
-        data: { status: EntryStatus.ARCHIVED },
-        include: billResponseInclude,
+      return prisma.$transaction(async (tx) => {
+        const updated = await tx.bill.update({
+          where: { id },
+          data: { status: EntryStatus.ARCHIVED },
+          include: billResponseInclude,
+        });
+        await tx.billAuditLog.create({
+          data: {
+            billId: id,
+            userId: request.currentUser.id,
+            action: 'ARCHIVED',
+            before: { status: bill.status },
+            after: { status: EntryStatus.ARCHIVED },
+          },
+        });
+        return updated;
       });
     },
   );
@@ -302,10 +496,22 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const bill = await prisma.bill.findUnique({ where: { id } });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
-      return prisma.bill.update({
-        where: { id },
-        data: { status: EntryStatus.ACTIVE },
-        include: billResponseInclude,
+      return prisma.$transaction(async (tx) => {
+        const updated = await tx.bill.update({
+          where: { id },
+          data: { status: EntryStatus.ACTIVE },
+          include: billResponseInclude,
+        });
+        await tx.billAuditLog.create({
+          data: {
+            billId: id,
+            userId: request.currentUser.id,
+            action: 'RESTORED',
+            before: { status: bill.status },
+            after: { status: EntryStatus.ACTIVE },
+          },
+        });
+        return updated;
       });
     },
   );
@@ -425,18 +631,29 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const eligible = waiting.filter(
         (participant) => !recentlyReminded.has(participant.memberId),
       );
-      await prisma.notification.createMany({
-        data: eligible.map((participant) => ({
-          userId: participant.memberId,
-          billId: bill.id,
-          message: `Payment reminder for ${bill.restaurant.name}: ${participant.finalPrice} VND waiting.`,
-        })),
-      });
-      return {
+      const result = {
         sent: eligible.length,
         skipped: waiting.length - eligible.length,
         cooldownSeconds: REMINDER_COOLDOWN_MS / 1000,
       };
+      await prisma.$transaction(async (tx) => {
+        await tx.notification.createMany({
+          data: eligible.map((participant) => ({
+            userId: participant.memberId,
+            billId: bill.id,
+            message: `Payment reminder for ${bill.restaurant.name}: ${participant.finalPrice} VND waiting.`,
+          })),
+        });
+        await tx.billAuditLog.create({
+          data: {
+            billId: id,
+            userId: request.currentUser.id,
+            action: 'REMINDERS_SENT',
+            after: result,
+          },
+        });
+      });
+      return result;
     },
   );
 };

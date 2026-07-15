@@ -1,8 +1,24 @@
 import { useState } from 'react';
-import { CheckCircle2, Clock, Edit3, ExternalLink } from 'lucide-react';
-import { Navigate, useNavigate, useParams } from 'react-router';
+import {
+  Archive as ArchiveIcon,
+  BellRing,
+  CheckCircle2,
+  CirclePlus,
+  Clock,
+  Edit3,
+  ExternalLink,
+  History,
+  PencilLine,
+  RotateCcw,
+  WalletCards,
+} from 'lucide-react';
+import { Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { money } from '../lib/api';
+import {
+  money,
+  type BillActivityAction,
+  type BillActivityEvent,
+} from '../lib/api';
 import {
   PIE_COLORS,
   canChef,
@@ -16,14 +32,47 @@ import { useMutation } from '../hooks/useMutation';
 import BackButton from '../components/ui/BackButton';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 
+const activityIcon = (action: BillActivityAction) => {
+  switch (action) {
+    case 'CREATED':
+      return CirclePlus;
+    case 'UPDATED':
+      return PencilLine;
+    case 'PAYMENT_STATUS_CHANGED':
+      return WalletCards;
+    case 'REMINDERS_SENT':
+      return BellRing;
+    case 'ARCHIVED':
+      return ArchiveIcon;
+    case 'RESTORED':
+      return RotateCcw;
+  }
+};
+
+const activityTone = (action: BillActivityAction) => {
+  switch (action) {
+    case 'PAYMENT_STATUS_CHANGED':
+      return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300';
+    case 'REMINDERS_SENT':
+      return 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300';
+    case 'ARCHIVED':
+      return 'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-300';
+    case 'RESTORED':
+      return 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300';
+    default:
+      return 'bg-muted text-slate-600 dark:text-slate-300';
+  }
+};
+
 /**
  * BillDetailPage displays a breakdown of a single bill including participant costs and payment buttons.
  */
 export default function BillDetailPage() {
   const navigate = useNavigate();
   const { billId } = useParams();
+  const activity = useLoaderData<BillActivityEvent[]>();
   const { user, bills } = useAppContext();
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const { mutate } = useMutation();
   const [confirmAction, setConfirmAction] = useState<
     'archive' | 'restore' | null
@@ -51,6 +100,45 @@ export default function BillDetailPage() {
     name: p.member.name.split(' ')[0],
     value: p.finalPrice,
   }));
+  const dateTime = new Intl.DateTimeFormat(
+    locale === 'vi' ? 'vi-VN' : 'en-US',
+    { dateStyle: 'medium', timeStyle: 'short' },
+  );
+  const activityTitle = (action: BillActivityAction) => {
+    const keys: Record<BillActivityAction, string> = {
+      CREATED: 'activity.created',
+      UPDATED: 'activity.updated',
+      PAYMENT_STATUS_CHANGED: 'activity.paymentChanged',
+      REMINDERS_SENT: 'activity.remindersSent',
+      ARCHIVED: 'activity.archived',
+      RESTORED: 'activity.restored',
+    };
+    return t(keys[action]);
+  };
+  const paymentLabel = (status?: string) =>
+    status === 'PAID'
+      ? t('bills.paid')
+      : status === 'WAITING'
+        ? t('bills.waiting')
+        : undefined;
+  const activitySummary = (event: BillActivityEvent) => {
+    if (event.action === 'UPDATED' && event.details?.changes?.length) {
+      const changes = event.details.changes.map((change) =>
+        t(`activity.change.${change}`),
+      );
+      return `${t('activity.changed')}: ${changes.join(', ')}`;
+    }
+    if (event.action === 'PAYMENT_STATUS_CHANGED') {
+      const member = event.details?.memberName ?? t('activity.participant');
+      const from = paymentLabel(event.details?.fromStatus);
+      const to = paymentLabel(event.details?.toStatus);
+      return from && to ? `${member}: ${from} → ${to}` : member;
+    }
+    if (event.action === 'REMINDERS_SENT') {
+      return `${event.details?.sent ?? 0} ${t('activity.sent')} · ${event.details?.skipped ?? 0} ${t('activity.skipped')}`;
+    }
+    return null;
+  };
 
   return (
     <>
@@ -266,6 +354,65 @@ export default function BillDetailPage() {
               </div>
             </div>
           ))}
+        </section>
+
+        <section className="panel mb-4 overflow-hidden">
+          <div className="flex items-start gap-3 border-b border-border px-5 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-ink">
+              <History size={17} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-ink">
+                {t('activity.title')}
+              </h3>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {t('activity.subtitle')}
+              </p>
+            </div>
+          </div>
+          {activity.length === 0 ? (
+            <p className="px-5 py-6 text-center text-sm text-slate-500">
+              {t('activity.noEvents')}
+            </p>
+          ) : (
+            <ol className="divide-y divide-border">
+              {activity.map((event) => {
+                const ActivityIcon = activityIcon(event.action);
+                const summary = activitySummary(event);
+                return (
+                  <li key={event.id} className="flex gap-3 px-5 py-4">
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${activityTone(event.action)}`}
+                    >
+                      <ActivityIcon size={15} aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                        <p className="text-sm font-semibold text-ink">
+                          {activityTitle(event.action)}
+                        </p>
+                        <time
+                          className="shrink-0 text-xs text-slate-500"
+                          dateTime={event.createdAt}
+                        >
+                          {dateTime.format(new Date(event.createdAt))}
+                        </time>
+                      </div>
+                      {summary && (
+                        <p className="mt-1 text-xs text-slate-500">{summary}</p>
+                      )}
+                      <p className="mt-1 text-xs text-slate-500">
+                        {event.actor.name}{' '}
+                        <span className="text-slate-400">
+                          @{event.actor.username}
+                        </span>
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
         </section>
 
         {canManage && canChef(user) && (

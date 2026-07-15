@@ -523,6 +523,32 @@ integrationTest(
     assert.equal(secondReminder.statusCode, 200);
     assert.equal(secondReminder.json().sent, 0);
     assert.ok(secondReminder.json().skipped >= 1);
+
+    const activity = await app.inject({
+      method: 'GET',
+      url: `/bills/${billId}/activity`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(activity.statusCode, 200);
+    const actions = new Set(
+      activity.json().map((event: { action: string }) => event.action),
+    );
+    for (const action of [
+      'CREATED',
+      'UPDATED',
+      'PAYMENT_STATUS_CHANGED',
+      'ARCHIVED',
+      'RESTORED',
+      'REMINDERS_SENT',
+    ]) {
+      assert.ok(actions.has(action));
+    }
+    assert.equal(JSON.stringify(activity.json()).includes('before'), false);
+    assert.equal(JSON.stringify(activity.json()).includes('after'), false);
+    assert.equal(
+      JSON.stringify(activity.json()).includes('passwordHash'),
+      false,
+    );
   },
 );
 

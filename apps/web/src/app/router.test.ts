@@ -9,6 +9,7 @@ vi.mock('react-router', async (importOriginal) => {
 import { matchRoutes } from 'react-router';
 import {
   appLoader,
+  billActivityLoader,
   loginAction,
   loginLoader,
   mutationAction,
@@ -199,6 +200,34 @@ describe('loginLoader', () => {
         expect.any(Object),
       );
     });
+  });
+});
+
+describe('billActivityLoader', () => {
+  it('loads the scoped bill timeline', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const activity = [
+      {
+        id: 'created-bill-1',
+        action: 'CREATED',
+        actor: { id: 'head-1', username: 'head', name: 'Head Chef' },
+        createdAt: '2026-07-15T01:00:00.000Z',
+      },
+    ];
+    const fetchMock = vi.fn(async () => jsonResponse(activity));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      billActivityLoader({
+        request: new Request('http://localhost/bills/bill-1'),
+        params: { billId: 'bill-1' },
+        context: {},
+      } as never),
+    ).resolves.toEqual(activity);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/bills\/bill-1\/activity$/),
+      expect.any(Object),
+    );
   });
 });
 

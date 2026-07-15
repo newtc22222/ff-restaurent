@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { billResponseInclude, paymentResponseInclude } from './bill-routes.js';
+import {
+  billActivityActorSelect,
+  billResponseInclude,
+  paymentResponseInclude,
+} from './bill-routes.js';
 import { publicUserSelect } from '../roles.js';
 
 const expectedPublicUserFields = [
@@ -34,4 +38,14 @@ test('bill list, detail, create, edit, archive, and restore responses select onl
 test('payment update responses select only public participant users', () => {
   assert.strictEqual(paymentResponseInclude.member.select, publicUserSelect);
   assertPublicUserContract(paymentResponseInclude.member.select);
+});
+
+test('bill activity exposes only the actor identity needed by the timeline', () => {
+  assert.deepEqual(Object.keys(billActivityActorSelect).sort(), [
+    'id',
+    'name',
+    'username',
+  ]);
+  assert.equal('passwordHash' in billActivityActorSelect, false);
+  assert.equal('phone' in billActivityActorSelect, false);
 });
