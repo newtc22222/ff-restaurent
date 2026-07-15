@@ -250,6 +250,168 @@ test('server-backed directory filters survive direct links and reloads', async (
   await expect(page.getByLabel('From')).toHaveValue('2026-01-01');
 });
 
+test('member discovers, manages, shares, and reviews Collection places', async ({
+  page,
+}) => {
+  const [customer, restaurant] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { username: 'e2e-customer' } }),
+    prisma.restaurantEntry.findFirstOrThrow({
+      where: { name: 'Existing E2E Restaurant' },
+    }),
+  ]);
+  await prisma.$transaction([
+    prisma.bill.deleteMany({
+      where: { paymentUrl: 'https://example.com/pay/e2e-feedback' },
+    }),
+    prisma.feedback.deleteMany({
+      where: { userId: customer.id, restaurantId: restaurant.id },
+    }),
+    prisma.userFavorite.deleteMany({
+      where: { userId: customer.id, restaurantId: restaurant.id },
+    }),
+    prisma.collection.deleteMany({
+      where: { ownerId: customer.id, name: 'E2E Team Spots' },
+    }),
+  ]);
+  const feedbackBill = await prisma.bill.create({
+    data: {
+      restaurantId: restaurant.id,
+      createdById: restaurant.createdById,
+      baseCost: 1000,
+      vat: 0,
+      shippingFee: 0,
+      totalCost: 1000,
+      paymentUrl: 'https://example.com/pay/e2e-feedback',
+      participants: {
+        create: {
+          memberId: customer.id,
+          originCost: 1000,
+          allocatedVat: 0,
+          allocatedShipping: 0,
+          discountApplied: 0,
+          finalPrice: 1000,
+          paymentStatus: 'PAID',
+          paidAt: new Date(),
+        },
+      },
+    },
+  });
+
+  await login(page, 'e2e-customer');
+  await page.getByRole('link', { name: 'Restaurants' }).click();
+  await expect(page).toHaveURL(/\/restaurants$/);
+  await expect(
+    page.getByRole('heading', {
+      name: 'Restaurants & eateries',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.locator('article').filter({ hasText: 'Existing E2E Restaurant' }),
+  ).toBeVisible();
+  const customerToken = await page.evaluate(() =>
+    localStorage.getItem('ff-token'),
+  );
+  const eligibilityResponse = await page.request.get(
+    `http://127.0.0.1:4000/restaurants/${restaurant.id}/feedback`,
+    { headers: { authorization: `Bearer ${customerToken}` } },
+  );
+  expect(eligibilityResponse.status()).toBe(200);
+  const eligibility = await eligibilityResponse.json();
+  expect(eligibility.eligibleBills).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ billId: feedbackBill.id }),
+    ]),
+  );
+  const createFeedbackResponse = await page.request.post(
+    `http://127.0.0.1:4000/bills/${feedbackBill.id}/feedback`,
+    {
+      headers: { authorization: `Bearer ${customerToken}` },
+      data: {
+        foodRating: 8.5,
+        serviceRating: 9,
+        comment: 'Reliable team lunch.',
+      },
+    },
+  );
+  expect(createFeedbackResponse.status()).toBe(201);
+  await page.goto(`/restaurants/${restaurant.id}`);
+  const feedback = page.getByRole('region', {
+    name: 'Food and service feedback',
+  });
+  await expect(feedback).toBeVisible();
+  await expect(
+    feedback.getByRole('article').getByText('Reliable team lunch.'),
+  ).toBeVisible();
+  const favoriteResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/favorite') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Favorite', exact: true }).click();
+  expect((await favoriteResponse).status()).toBe(200);
+
+  await page.getByRole('link', { name: 'Collections' }).click();
+  await expect(page).toHaveURL(/\/collections$/);
+  await expect(
+    page.getByRole('heading', { name: 'Collections', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
+  await expect(page.getByText('Recommended', { exact: true })).toBeVisible();
+  await page.getByLabel('Name').fill('E2E Team Spots');
+  await page.getByLabel('Description').fill('Shared browser journey');
+  const createResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/collections') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Create Collection' }).click();
+  expect((await createResponse).status()).toBe(201);
+  await page.getByRole('button', { name: /E2E Team Spots/ }).click();
+
+  await page.getByRole('button', { name: 'Add a place' }).click();
+  await page.getByRole('option', { name: /Existing E2E Restaurant/ }).click();
+  const addRestaurantResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/restaurants/') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Add' }).click();
+  expect((await addRestaurantResponse).status()).toBe(201);
+  await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
+  await page.getByRole('button', { name: 'Choose a member' }).click();
+  await page.getByRole('option', { name: /Sous E2E/ }).click();
+  const shareResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/shares') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Share' }).click();
+  expect((await shareResponse).status()).toBe(201);
+  await expect(page.getByText('Sous E2E')).toBeVisible();
+
+  await page.evaluate(() => localStorage.removeItem('ff-token'));
+  await login(page, 'e2e-sous');
+  await page.getByRole('link', { name: 'Collections' }).click();
+  await expect(page).toHaveURL(/\/collections$/);
+  await expect(
+    page.getByRole('heading', { name: 'Collections', exact: true }),
+  ).toBeVisible();
+  await page.getByLabel('Visibility').selectOption('shared');
+  await expect(page).toHaveURL(/visibility=shared/);
+  await page.getByRole('button', { name: /E2E Team Spots/ }).click();
+  await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
 test('Root Admin archives, restores, administers roles, and cannot alter root through chef roles', async ({
   page,
 }) => {

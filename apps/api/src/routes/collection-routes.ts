@@ -1,10 +1,10 @@
-import { CollectionSystemType, Prisma } from '@prisma/client';
+import { CollectionSystemType, EntryStatus, Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { ensureDefaultCollections } from '../collection-service.js';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import { publicRestaurantSelect } from '../restaurant-contract.js';
-import { isSousChefOrAbove } from '../roles.js';
+import { isHeadChef, isSousChefOrAbove } from '../roles.js';
 import {
   catalogQuerySchema,
   collectionSchema,
@@ -213,18 +213,27 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       await getVisibleCollection(id, request.currentUser.id);
       const query = catalogQuerySchema.parse(request.query);
+      const orderBy: Prisma.CollectionRestaurantOrderByWithRelationInput[] =
+        query.sort === 'name-desc'
+          ? [{ restaurant: { name: 'desc' } }, { restaurantId: 'desc' }]
+          : query.sort === 'name-asc'
+            ? [{ restaurant: { name: 'asc' } }, { restaurantId: 'asc' }]
+            : query.sort === 'created-asc'
+              ? [{ createdAt: 'asc' }, { restaurantId: 'asc' }]
+              : [{ createdAt: 'desc' }, { restaurantId: 'desc' }];
       const items = await prisma.collectionRestaurant.findMany({
         where: {
           collectionId: id,
-          ...(query.search
-            ? {
-                restaurant: {
-                  name: { contains: query.search, mode: 'insensitive' },
-                },
-              }
-            : {}),
+          restaurant: {
+            status: isHeadChef(request.currentUser)
+              ? undefined
+              : EntryStatus.ACTIVE,
+            searchText: query.search
+              ? { contains: normalizeSearchQuery(query.search) }
+              : undefined,
+          },
         },
-        orderBy: [{ createdAt: 'desc' }, { restaurantId: 'asc' }],
+        orderBy,
         ...(query.cursor
           ? {
               cursor: {
@@ -350,18 +359,13 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
       const items = await prisma.collectionShare.findMany({
         where: {
           collectionId: id,
-          ...(query.search
+          user: query.search
             ? {
-                user: {
-                  OR: [
-                    { name: { contains: query.search, mode: 'insensitive' } },
-                    {
-                      username: { contains: query.search, mode: 'insensitive' },
-                    },
-                  ],
+                searchText: {
+                  contains: normalizeSearchQuery(query.search),
                 },
               }
-            : {}),
+            : undefined,
         },
         orderBy: [{ createdAt: 'desc' }, { userId: 'asc' }],
         ...(query.cursor

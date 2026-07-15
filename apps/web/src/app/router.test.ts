@@ -11,6 +11,8 @@ import {
   appLoader,
   billActivityLoader,
   billsLoader,
+  collectionDetailLoader,
+  collectionsLoader,
   loginAction,
   loginLoader,
   mutationAction,
@@ -177,6 +179,70 @@ describe('paginated list loaders', () => {
     expect(requestedUrl).not.toContain('unknown');
   });
 
+  it('loads Collection directory visibility and owner detail data', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const collection = {
+      id: 'collection-1',
+      name: 'Team lunches',
+      isPublic: false,
+      systemType: null,
+      ownerId: user.id,
+      owner: user,
+      _count: { restaurants: 0, shares: 0 },
+      createdAt: '2026-07-15T00:00:00.000Z',
+      updatedAt: '2026-07-15T00:00:00.000Z',
+    };
+    const emptyPage = {
+      items: [],
+      pageInfo: { endCursor: null, hasNextPage: false },
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/collections/collection-1'))
+        return jsonResponse(collection);
+      return jsonResponse(emptyPage);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      collectionsLoader({
+        request: new Request(
+          'http://localhost/collections?visibility=shared&search=team&unknown=drop',
+        ),
+        params: {},
+        context: {},
+      } as never),
+    ).resolves.toEqual(emptyPage);
+    await expect(
+      collectionDetailLoader({
+        request: new Request(
+          'http://localhost/collections/collection-1?search=bep&cursor=restaurant-1',
+        ),
+        params: { collectionId: 'collection-1' },
+        context: {},
+      } as never),
+    ).resolves.toEqual({
+      collection,
+      restaurants: emptyPage,
+      shares: emptyPage,
+    });
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).includes('/collections?visibility=shared&search=team'),
+      ),
+    ).toBe(true);
+    expect(
+      fetchMock.mock.calls.some(([input]) => {
+        const url = new URL(String(input));
+        return (
+          url.pathname.endsWith('/collections/collection-1/restaurants') &&
+          url.searchParams.get('search') === 'bep' &&
+          url.searchParams.get('cursor') === 'restaurant-1'
+        );
+      }),
+    ).toBe(true);
+  });
+
   it('forwards normalized restaurant discovery filters and cursor state', async () => {
     localStorage.setItem('ff-token', 'token');
     const response = {
@@ -196,7 +262,7 @@ describe('paginated list loaders', () => {
         params: {},
         context: {},
       } as never),
-    ).resolves.toEqual(response);
+    ).resolves.toEqual({ ...response, collections: [] });
     const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
     expect(requestedUrl).toContain('search=bep+viet');
     expect(requestedUrl).toContain('cuisineId=cuisine-1');

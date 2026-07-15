@@ -43,6 +43,37 @@ export type CatalogPage<T> = {
   pageInfo: { endCursor: string | null; hasNextPage: boolean };
 };
 
+export type CollectionSystemType = 'FAVORITES' | 'RECOMMENDED' | null;
+
+export type Collection = {
+  id: string;
+  name: string;
+  description?: string | null;
+  isPublic: boolean;
+  systemType: CollectionSystemType;
+  ownerId?: string | null;
+  owner?: Pick<User, 'id' | 'username' | 'name'> | null;
+  _count: { restaurants: number; shares: number };
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CollectionRestaurant = RestaurantEntry & { addedAt: string };
+
+export type CollectionShare = Pick<User, 'id' | 'username' | 'name'> & {
+  sharedAt: string;
+};
+
+export type CollectionDetailData = {
+  collection: Collection;
+  restaurants: CatalogPage<CollectionRestaurant>;
+  shares: CatalogPage<CollectionShare> | null;
+};
+
+export type RestaurantDirectoryData = CatalogPage<RestaurantEntry> & {
+  collections: Collection[];
+};
+
 export type User = {
   id: string;
   username: string;
