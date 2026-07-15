@@ -17,6 +17,8 @@ import {
   diningAreaUpdateSchema,
   normalizeVietnamAddressSnapshot,
 } from '../schemas.js';
+import { normalizeSearchQuery } from '../search-normalization.js';
+import { pageResult } from '../pagination.js';
 
 const conflict = (code: string, message: string) =>
   Object.assign(new Error(message), { statusCode: 409, code });
@@ -46,29 +48,29 @@ export const registerCatalogRoutes = (app: FastifyInstance) => {
     { preHandler: requireAuthenticatedUser },
     async (request) => {
       const query = catalogQuerySchema.parse(request.query);
+      const orderBy: Prisma.CuisineOrderByWithRelationInput[] =
+        query.sort === 'name-desc'
+          ? [{ nameKey: 'desc' }, { id: 'desc' }]
+          : query.sort === 'created-desc'
+            ? [{ createdAt: 'desc' }, { id: 'desc' }]
+            : query.sort === 'created-asc'
+              ? [{ createdAt: 'asc' }, { id: 'asc' }]
+              : [{ nameKey: 'asc' }, { id: 'asc' }];
       const items = await prisma.cuisine.findMany({
-        where: query.search
-          ? {
-              OR: [
-                { name: { contains: query.search, mode: 'insensitive' } },
-                { type: { contains: query.search, mode: 'insensitive' } },
-              ],
-            }
-          : undefined,
-        orderBy: [{ nameKey: 'asc' }, { id: 'asc' }],
+        where: {
+          searchText: query.search
+            ? { contains: normalizeSearchQuery(query.search) }
+            : undefined,
+          type: query.type
+            ? { equals: query.type, mode: 'insensitive' }
+            : undefined,
+        },
+        orderBy,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
         take: query.limit + 1,
         select: cuisineSelect,
       });
-      const hasNextPage = items.length > query.limit;
-      const page = items.slice(0, query.limit);
-      return {
-        items: page,
-        pageInfo: {
-          endCursor: hasNextPage ? (page.at(-1)?.id ?? null) : null,
-          hasNextPage,
-        },
-      };
+      return pageResult(items, query.limit);
     },
   );
 
@@ -140,29 +142,27 @@ export const registerCatalogRoutes = (app: FastifyInstance) => {
     { preHandler: requireAuthenticatedUser },
     async (request) => {
       const query = catalogQuerySchema.parse(request.query);
+      const orderBy: Prisma.DiningAreaOrderByWithRelationInput[] =
+        query.sort === 'name-desc'
+          ? [{ normalizedKey: 'desc' }, { id: 'desc' }]
+          : query.sort === 'created-desc'
+            ? [{ createdAt: 'desc' }, { id: 'desc' }]
+            : query.sort === 'created-asc'
+              ? [{ createdAt: 'asc' }, { id: 'asc' }]
+              : [{ normalizedKey: 'asc' }, { id: 'asc' }];
       const items = await prisma.diningArea.findMany({
-        where: query.search
-          ? {
-              OR: [
-                { name: { contains: query.search, mode: 'insensitive' } },
-                { address: { contains: query.search, mode: 'insensitive' } },
-              ],
-            }
-          : undefined,
-        orderBy: [{ normalizedKey: 'asc' }, { id: 'asc' }],
+        where: {
+          searchText: query.search
+            ? { contains: normalizeSearchQuery(query.search) }
+            : undefined,
+          provinceCode: query.provinceCode,
+        },
+        orderBy,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
         take: query.limit + 1,
         select: diningAreaSelect,
       });
-      const hasNextPage = items.length > query.limit;
-      const page = items.slice(0, query.limit);
-      return {
-        items: page,
-        pageInfo: {
-          endCursor: hasNextPage ? (page.at(-1)?.id ?? null) : null,
-          hasNextPage,
-        },
-      };
+      return pageResult(items, query.limit);
     },
   );
 

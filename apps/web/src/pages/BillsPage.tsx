@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   ChevronRight,
   CheckCircle2,
@@ -6,8 +5,9 @@ import {
   LayoutDashboard,
   Plus,
 } from 'lucide-react';
-import { useNavigate } from 'react-router';
-import type { Bill, BillParticipant, User } from '../lib/api';
+import { useEffect, useRef, useState } from 'react';
+import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
+import type { Bill, BillParticipant, CatalogPage, User } from '../lib/api';
 import { money } from '../lib/api';
 import { canChef, isHead, canManageBill } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
@@ -22,18 +22,45 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
  */
 export default function BillsPage() {
   const navigate = useNavigate();
-  const { user, bills } = useAppContext();
+  const { user, bills: snapshotBills } = useAppContext();
+  const page = useLoaderData() as CatalogPage<Bill>;
+  const bills = page.items;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  }, [searchParams]);
   const { t } = useI18n();
   const { mutate } = useMutation();
-  const [filterRestaurant, setFilterRestaurant] = useState('');
-  const [filterMembers, setFilterMembers] = useState<string[]>([]);
-  const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid'>(
-    'all',
-  );
+  const filterRestaurant = searchParams.get('restaurantId') ?? '';
+  const filterMembers = (searchParams.get('participantIds') ?? '')
+    .split(',')
+    .filter(Boolean);
+  const filterPayment = searchParams.get('paymentStatus') ?? 'all';
+  const filterArchive = searchParams.get('archive') ?? 'active';
+  const filterFrom = searchParams.get('from') ?? '';
+  const filterTo = searchParams.get('to') ?? '';
+  const sort = searchParams.get('sort') ?? 'created-desc';
+
+  const setQuery = (key: string, value?: string) => {
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.delete('cursor');
+    if (value) next.set(key, value);
+    else next.delete(key);
+    searchParamsRef.current = next;
+    setSearchParams(next);
+  };
+
+  const goToNextPage = (cursor: string) => {
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.set('cursor', cursor);
+    searchParamsRef.current = next;
+    setSearchParams(next);
+  };
 
   const restaurantOptions = Array.from(
     new Map(
-      bills.map((bill) => [
+      snapshotBills.map((bill) => [
         bill.restaurant.id,
         { value: bill.restaurant.id, label: bill.restaurant.name },
       ]),
@@ -42,7 +69,7 @@ export default function BillsPage() {
 
   const memberOptions = Array.from(
     new Map(
-      bills.flatMap((bill) =>
+      snapshotBills.flatMap((bill) =>
         bill.participants.map((participant) => [
           participant.memberId,
           { value: participant.memberId, label: participant.member.name },
@@ -51,33 +78,14 @@ export default function BillsPage() {
     ).values(),
   );
 
-  const filtered = bills.filter((bill) => {
-    if (filterRestaurant && bill.restaurant.id !== filterRestaurant)
-      return false;
-    if (
-      filterMembers.length > 0 &&
-      !filterMembers.every((memberId) =>
-        bill.participants.some(
-          (participant) => participant.memberId === memberId,
-        ),
-      )
-    ) {
-      return false;
-    }
-    if (filterPayment !== 'all') {
-      const myPart = bill.participants.find((p) => p.memberId === user.id);
-      if (filterPayment === 'paid' && myPart?.paymentStatus !== 'PAID')
-        return false;
-      if (filterPayment === 'unpaid' && myPart?.paymentStatus !== 'WAITING')
-        return false;
-    }
-    return true;
-  });
-
   const activeFilterCount =
     (filterRestaurant ? 1 : 0) +
     (filterMembers.length > 0 ? 1 : 0) +
-    (filterPayment !== 'all' ? 1 : 0);
+    (filterPayment !== 'all' ? 1 : 0) +
+    (filterArchive !== 'active' ? 1 : 0) +
+    (filterFrom ? 1 : 0) +
+    (filterTo ? 1 : 0) +
+    (sort !== 'created-desc' ? 1 : 0);
 
   const runAction = (
     intent: 'bill-reminders' | 'bill-status',
@@ -111,7 +119,7 @@ export default function BillsPage() {
           label={t('bills.filterRestaurant')}
           value={filterRestaurant}
           options={restaurantOptions}
-          onChange={setFilterRestaurant}
+          onChange={(value) => setQuery('restaurantId', value)}
           variant="filter"
           allowClear
           clearLabel={t('bills.clearAll')}
@@ -125,7 +133,7 @@ export default function BillsPage() {
             label={t('bills.filterMember')}
             values={filterMembers}
             options={memberOptions}
-            onChange={setFilterMembers}
+            onChange={(values) => setQuery('participantIds', values.join(','))}
             variant="filter"
             allowClear
             clearLabel={t('bills.clearAll')}
@@ -141,7 +149,7 @@ export default function BillsPage() {
         )}
         {!canChef(user) && (
           <div className="flex gap-1 rounded-lg border border-border p-0.5">
-            {(['all', 'paid', 'unpaid'] as const).map((val) => (
+            {(['all', 'PAID', 'WAITING'] as const).map((val) => (
               <button
                 key={val}
                 className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-all ${
@@ -149,24 +157,65 @@ export default function BillsPage() {
                     ? 'bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
                     : 'text-slate-500 hover:text-ink'
                 }`}
-                onClick={() => setFilterPayment(val)}
+                onClick={() =>
+                  setQuery('paymentStatus', val === 'all' ? undefined : val)
+                }
               >
                 {val === 'all'
                   ? t('bills.title')
-                  : val === 'paid'
+                  : val === 'PAID'
                     ? t('bills.filterPaid')
                     : t('bills.filterUnpaid')}
               </button>
             ))}
           </div>
         )}
+        <select
+          className="field h-8 min-w-36 py-0 text-[12px]"
+          aria-label={t('bills.sort')}
+          value={sort}
+          onChange={(event) => setQuery('sort', event.target.value)}
+        >
+          <option value="created-desc">{t('bills.newest')}</option>
+          <option value="created-asc">{t('bills.oldest')}</option>
+          <option value="total-desc">{t('bills.highestTotal')}</option>
+          <option value="total-asc">{t('bills.lowestTotal')}</option>
+        </select>
+        {isHead(user) && (
+          <select
+            className="field h-8 min-w-32 py-0 text-[12px]"
+            aria-label={t('bills.archiveFilter')}
+            value={filterArchive}
+            onChange={(event) => setQuery('archive', event.target.value)}
+          >
+            <option value="active">{t('bills.activeOnly')}</option>
+            <option value="archived">{t('bills.archivedOnly')}</option>
+            <option value="all">{t('bills.allStatuses')}</option>
+          </select>
+        )}
+        <label className="flex items-center gap-1 text-[11px] text-slate-500">
+          {t('bills.from')}
+          <input
+            className="field h-8 w-32 py-0 text-[12px]"
+            type="date"
+            value={filterFrom}
+            onChange={(event) => setQuery('from', event.target.value)}
+          />
+        </label>
+        <label className="flex items-center gap-1 text-[11px] text-slate-500">
+          {t('bills.to')}
+          <input
+            className="field h-8 w-32 py-0 text-[12px]"
+            type="date"
+            value={filterTo}
+            onChange={(event) => setQuery('to', event.target.value)}
+          />
+        </label>
         {activeFilterCount > 0 && (
           <button
             className="ml-1 text-[12px] text-slate-400 transition-colors hover:text-red-400"
             onClick={() => {
-              setFilterRestaurant('');
-              setFilterMembers([]);
-              setFilterPayment('all');
+              setSearchParams({});
             }}
           >
             {t('bills.clearAll')}
@@ -175,7 +224,7 @@ export default function BillsPage() {
       </div>
 
       <div className="flex flex-col gap-4">
-        {bills.length === 0 && (
+        {bills.length === 0 && activeFilterCount === 0 && (
           <EmptyState
             icon={LayoutDashboard}
             title={t('bills.noBills')}
@@ -187,12 +236,15 @@ export default function BillsPage() {
             ]}
           />
         )}
-        {bills.length > 0 && filtered.length === 0 && (
-          <div className="rounded-xl border border-border bg-surface py-12 text-center text-[14px] text-slate-400">
-            {t('bills.noMatch')}
-          </div>
+        {bills.length === 0 && activeFilterCount > 0 && (
+          <EmptyState
+            icon={LayoutDashboard}
+            title={t('bills.noMatch')}
+            description={t('bills.clearFiltersHint')}
+            steps={[]}
+          />
         )}
-        {filtered.map((bill) => (
+        {bills.map((bill) => (
           <BillCard
             key={bill.id}
             bill={bill}
@@ -227,6 +279,15 @@ export default function BillsPage() {
             t={t}
           />
         ))}
+        {page.pageInfo.hasNextPage && page.pageInfo.endCursor && (
+          <button
+            type="button"
+            className="btn btn-soft w-full justify-center"
+            onClick={() => goToNextPage(page.pageInfo.endCursor!)}
+          >
+            {t('common.nextPage')}
+          </button>
+        )}
       </div>
     </div>
   );

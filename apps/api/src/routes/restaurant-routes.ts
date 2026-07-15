@@ -14,6 +14,7 @@ import {
 } from '../catalog-normalization.js';
 import {
   normalizeVietnamAddressSnapshot,
+  restaurantListQuerySchema,
   restaurantSchema,
   restaurantUpdateSchema,
 } from '../schemas.js';
@@ -22,15 +23,8 @@ import {
   toggleFavoriteShortcut,
   toggleRecommendedShortcut,
 } from '../collection-service.js';
-
-type RestaurantListQuery = {
-  includeArchived?: string;
-  search?: string;
-  sortBy?: string;
-  filterCuisine?: string;
-  filterFavorite?: string;
-  filterRecommended?: string;
-};
+import { normalizeSearchQuery } from '../search-normalization.js';
+import { pageResult } from '../pagination.js';
 
 type RestaurantCuisineInput = {
   cuisineType?: string;
@@ -95,34 +89,74 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
     '/restaurants',
     { preHandler: requireAuthenticatedUser },
     async (request) => {
-      const query = request.query as RestaurantListQuery;
-      const includeArchived =
-        query.includeArchived === 'true' && isHeadChef(request.currentUser);
+      const query = restaurantListQuerySchema.parse(request.query);
+      const requestedStatus =
+        query.archive === 'archived'
+          ? EntryStatus.ARCHIVED
+          : query.archive === 'all'
+            ? undefined
+            : EntryStatus.ACTIVE;
+      const status = isHeadChef(request.currentUser)
+        ? requestedStatus
+        : EntryStatus.ACTIVE;
       const where: Prisma.RestaurantEntryWhereInput = {
-        status: includeArchived ? undefined : EntryStatus.ACTIVE,
-        name: query.search
-          ? { contains: query.search, mode: 'insensitive' }
+        status,
+        searchText: query.search
+          ? { contains: normalizeSearchQuery(query.search) }
           : undefined,
-        cuisineType: query.filterCuisine
-          ? { contains: query.filterCuisine, mode: 'insensitive' }
+        diningAreaId: query.diningAreaId,
+        isRecommended:
+          query.recommended === undefined
+            ? undefined
+            : query.recommended === 'true',
+        cuisines: query.primaryCuisineId
+          ? {
+              some: {
+                cuisineId: query.primaryCuisineId,
+                isPrimary: true,
+              },
+            }
+          : query.cuisineId
+            ? { some: { cuisineId: query.cuisineId } }
+            : undefined,
+        platformLinks: query.platform
+          ? { some: { platform: query.platform } }
           : undefined,
-        isRecommended: query.filterRecommended === 'true' ? true : undefined,
+        collections: query.collectionId
+          ? {
+              some: {
+                collectionId: query.collectionId,
+                collection: {
+                  OR: [
+                    { ownerId: request.currentUser.id },
+                    { isPublic: true },
+                    { shares: { some: { userId: request.currentUser.id } } },
+                  ],
+                },
+              },
+            }
+          : undefined,
       };
-      if (query.filterFavorite === 'true') {
-        where.favorites = { some: { userId: request.currentUser.id } };
+      if (query.favorite !== undefined) {
+        where.favorites =
+          query.favorite === 'true'
+            ? { some: { userId: request.currentUser.id } }
+            : { none: { userId: request.currentUser.id } };
       }
       const orderBy: Prisma.RestaurantEntryOrderByWithRelationInput[] =
-        query.sortBy === 'name'
-          ? [{ name: 'asc' }]
-          : [
-              { isFavorite: 'desc' },
-              { isRecommended: 'desc' },
-              { name: 'asc' },
-            ];
+        query.sort === 'name-desc'
+          ? [{ name: 'desc' }, { id: 'desc' }]
+          : query.sort === 'created-desc'
+            ? [{ createdAt: 'desc' }, { id: 'desc' }]
+            : query.sort === 'created-asc'
+              ? [{ createdAt: 'asc' }, { id: 'asc' }]
+              : [{ name: 'asc' }, { id: 'asc' }];
 
       const restaurants = await prisma.restaurantEntry.findMany({
         where,
         orderBy,
+        ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+        take: query.limit + 1,
         select: {
           ...publicRestaurantSelect,
           favorites: {
@@ -131,9 +165,10 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
           },
         },
       });
+      const visibleRows = restaurants.slice(0, query.limit);
       const feedbackAggregates = await prisma.feedback.groupBy({
         by: ['restaurantId'],
-        where: { restaurantId: { in: restaurants.map(({ id }) => id) } },
+        where: { restaurantId: { in: visibleRows.map(({ id }) => id) } },
         _avg: { foodRating: true, serviceRating: true },
         _count: { _all: true },
       });
@@ -147,16 +182,19 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
           },
         ]),
       );
-      return restaurants.map((restaurant) => ({
-        ...restaurant,
-        isFavoritedByMe: restaurant.favorites.length > 0,
-        favorites: undefined,
-        feedbackAggregates: aggregateByRestaurant.get(restaurant.id) ?? {
-          foodRating: null,
-          serviceRating: null,
-          feedbackCount: 0,
-        },
-      }));
+      return pageResult(
+        restaurants.map((restaurant) => ({
+          ...restaurant,
+          isFavoritedByMe: restaurant.favorites.length > 0,
+          favorites: undefined,
+          feedbackAggregates: aggregateByRestaurant.get(restaurant.id) ?? {
+            foodRating: null,
+            serviceRating: null,
+            feedbackCount: 0,
+          },
+        })),
+        query.limit,
+      );
     },
   );
 

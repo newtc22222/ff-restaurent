@@ -9,8 +9,13 @@ import {
 } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import { isHeadChef, isSousChefOrAbove, publicUserSelect } from '../roles.js';
-import { billSchema, paymentStatusSchema } from '../schemas.js';
+import {
+  billListQuerySchema,
+  billSchema,
+  paymentStatusSchema,
+} from '../schemas.js';
 import { publicRestaurantSelect } from '../restaurant-contract.js';
+import { pageResult } from '../pagination.js';
 
 const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
 
@@ -300,15 +305,22 @@ export const registerBillRoutes = (app: FastifyInstance) => {
     '/bills',
     { preHandler: requireAuthenticatedUser },
     async (request) => {
-      const query = request.query as { includeArchived?: string };
-      const includeArchived =
-        query.includeArchived === 'true' && isHeadChef(request.currentUser);
-      const statusFilter = includeArchived ? undefined : EntryStatus.ACTIVE;
-      const where = isHeadChef(request.currentUser)
-        ? { status: statusFilter }
+      const query = billListQuerySchema.parse(request.query);
+      const requestedStatus =
+        query.archive === 'archived'
+          ? EntryStatus.ARCHIVED
+          : query.archive === 'all'
+            ? undefined
+            : EntryStatus.ACTIVE;
+      const status = isHeadChef(request.currentUser)
+        ? requestedStatus
+        : EntryStatus.ACTIVE;
+      const authorization: Prisma.BillWhereInput = isHeadChef(
+        request.currentUser,
+      )
+        ? {}
         : isSousChefOrAbove(request.currentUser)
           ? {
-              status: statusFilter,
               OR: [
                 { createdById: request.currentUser.id },
                 {
@@ -317,14 +329,76 @@ export const registerBillRoutes = (app: FastifyInstance) => {
               ],
             }
           : {
-              status: statusFilter,
-              participants: { some: { memberId: request.currentUser.id } },
+              participants: {
+                some: {
+                  memberId: request.currentUser.id,
+                  ...(query.paymentStatus
+                    ? { paymentStatus: query.paymentStatus }
+                    : {}),
+                },
+              },
             };
-      return prisma.bill.findMany({
-        where,
+      const participantFilter =
+        isSousChefOrAbove(request.currentUser) &&
+        (query.participantId || query.paymentStatus)
+          ? {
+              participants: {
+                some: {
+                  ...(query.participantId
+                    ? { memberId: query.participantId }
+                    : {}),
+                  ...(query.paymentStatus
+                    ? { paymentStatus: query.paymentStatus }
+                    : {}),
+                },
+              },
+            }
+          : {};
+      const participantIds = (query.participantIds ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .slice(0, 100);
+      const to = query.to
+        ? new Date(
+            query.to.getUTCHours() === 0 &&
+              query.to.getUTCMinutes() === 0 &&
+              query.to.getUTCSeconds() === 0
+              ? query.to.getTime() + 86_400_000 - 1
+              : query.to.getTime(),
+          )
+        : undefined;
+      const orderBy: Prisma.BillOrderByWithRelationInput[] =
+        query.sort === 'created-asc'
+          ? [{ createdAt: 'asc' }, { id: 'asc' }]
+          : query.sort === 'total-desc'
+            ? [{ totalCost: 'desc' }, { id: 'desc' }]
+            : query.sort === 'total-asc'
+              ? [{ totalCost: 'asc' }, { id: 'asc' }]
+              : [{ createdAt: 'desc' }, { id: 'desc' }];
+      const rows = await prisma.bill.findMany({
+        where: {
+          AND: [
+            authorization,
+            participantFilter,
+            ...participantIds.map((memberId) => ({
+              participants: { some: { memberId } },
+            })),
+            {
+              status,
+              restaurantId: query.restaurantId,
+              createdById: query.ownerId,
+              createdAt:
+                query.from || to ? { gte: query.from, lte: to } : undefined,
+            },
+          ],
+        },
         include: billResponseInclude,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
+        ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+        take: query.limit + 1,
       });
+      return pageResult(rows, query.limit);
     },
   );
 

@@ -8,23 +8,43 @@ import { prisma } from '../prisma.js';
 import { transferRootAdmin } from '../root-admin-service.js';
 import { sanitizeUser } from '../roles.js';
 import { chefRoleSchema, rootAdminTransferSchema } from '../schemas.js';
+import { memberQuerySchema } from '../schemas.js';
+import { normalizeSearchQuery } from '../search-normalization.js';
+import { pageResult } from '../pagination.js';
+
+const listMembers = async (queryValue: unknown) => {
+  const query = memberQuerySchema.parse(queryValue);
+  const orderBy =
+    query.sort === 'name-desc'
+      ? [{ name: 'desc' as const }, { id: 'desc' as const }]
+      : query.sort === 'created-desc'
+        ? [{ createdAt: 'desc' as const }, { id: 'desc' as const }]
+        : [{ name: 'asc' as const }, { id: 'asc' as const }];
+  const users = await prisma.user.findMany({
+    where: query.search
+      ? { searchText: { contains: normalizeSearchQuery(query.search) } }
+      : undefined,
+    orderBy,
+    ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+    take: query.limit + 1,
+  });
+  return pageResult(users.map(sanitizeUser), query.limit);
+};
 
 /**
  * Member routes keep regular member lookup separate from ROOT_ADMIN governance.
  */
 export const registerMemberRoutes = (app: FastifyInstance) => {
-  app.get('/members', { preHandler: requireAuthenticatedUser }, async () => {
-    const users = await prisma.user.findMany({ orderBy: { name: 'asc' } });
-    return users.map(sanitizeUser);
-  });
+  app.get(
+    '/members',
+    { preHandler: requireAuthenticatedUser },
+    async (request) => listMembers(request.query),
+  );
 
   app.get(
     '/users',
     { preHandler: [requireAuthenticatedUser, requireRootAdmin] },
-    async () => {
-      const users = await prisma.user.findMany({ orderBy: { name: 'asc' } });
-      return users.map(sanitizeUser);
-    },
+    async (request) => listMembers(request.query),
   );
 
   app.patch(

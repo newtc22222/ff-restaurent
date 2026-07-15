@@ -19,6 +19,7 @@ import {
   ApiError,
   type Bill,
   type BillActivityEvent,
+  type CatalogPage,
   type Notification,
   type ParticipantGroup,
   type PasswordResetRequest,
@@ -30,14 +31,31 @@ import {
 import { session } from '../lib/session';
 import { canChef, isRootAdmin } from '../lib/helpers';
 
+const fetchAllPages = async <T>(path: string): Promise<T[]> => {
+  const items: T[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 1000; page += 1) {
+    const separator = path.includes('?') ? '&' : '?';
+    const response: CatalogPage<T> = await session
+      .api()
+      .request<CatalogPage<T>>(
+        `${path}${cursor ? `${separator}cursor=${encodeURIComponent(cursor)}` : ''}`,
+      );
+    items.push(...response.items);
+    if (!response.pageInfo.hasNextPage || !response.pageInfo.endCursor) break;
+    cursor = response.pageInfo.endCursor;
+  }
+  return items;
+};
+
 export async function appLoader(): Promise<AppLoaderData> {
   if (!session.getToken()) throw redirect('/login');
   const api = session.api();
   try {
     const userPromise = api.request<User>('/me');
     const sharedResultsPromise = Promise.allSettled([
-      api.request<Bill[]>('/bills?includeArchived=true'),
-      api.request<RestaurantEntry[]>('/restaurants?includeArchived=true'),
+      fetchAllPages<Bill>('/bills?archive=all&limit=100'),
+      fetchAllPages<RestaurantEntry>('/restaurants?archive=all&limit=100'),
       api.request<Notification[]>('/notifications'),
       api.request<ParticipantGroup[]>('/participant-groups'),
     ]);
@@ -45,20 +63,18 @@ export async function appLoader(): Promise<AppLoaderData> {
     const [sharedResults, usersResult, passwordResetRequestsResult] =
       await Promise.all([
         sharedResultsPromise,
-        api
-          .request<User[]>(
-            user.systemRole === 'ROOT_ADMIN' ? '/users' : '/members',
-          )
-          .then(
-            (value): PromiseSettledResult<User[]> => ({
-              status: 'fulfilled',
-              value,
-            }),
-            (reason): PromiseSettledResult<User[]> => ({
-              status: 'rejected',
-              reason,
-            }),
-          ),
+        fetchAllPages<User>(
+          `${user.systemRole === 'ROOT_ADMIN' ? '/users' : '/members'}?limit=100`,
+        ).then(
+          (value): PromiseSettledResult<User[]> => ({
+            status: 'fulfilled',
+            value,
+          }),
+          (reason): PromiseSettledResult<User[]> => ({
+            status: 'rejected',
+            reason,
+          }),
+        ),
         user.systemRole === 'ROOT_ADMIN'
           ? api
               .request<PasswordResetRequest[]>('/admin/password-reset-requests')
@@ -133,6 +149,60 @@ export async function statsLoader({ request }: LoaderFunctionArgs) {
     }
     throw error;
   }
+}
+
+const forwardListQuery = (request: Request, allowed: Set<string>) => {
+  const source = new URL(request.url).searchParams;
+  const query = new URLSearchParams();
+  for (const [key, value] of source) {
+    if (allowed.has(key) && value) query.append(key, value);
+  }
+  return query;
+};
+
+export async function billsLoader({ request }: LoaderFunctionArgs) {
+  if (!session.getToken()) throw redirect('/login');
+  const query = forwardListQuery(
+    request,
+    new Set([
+      'cursor',
+      'limit',
+      'sort',
+      'restaurantId',
+      'participantId',
+      'participantIds',
+      'paymentStatus',
+      'archive',
+      'ownerId',
+      'from',
+      'to',
+    ]),
+  );
+  return session.api().request<CatalogPage<Bill>>(`/bills?${query}`);
+}
+
+export async function restaurantsLoader({ request }: LoaderFunctionArgs) {
+  if (!session.getToken()) throw redirect('/login');
+  const query = forwardListQuery(
+    request,
+    new Set([
+      'cursor',
+      'limit',
+      'sort',
+      'search',
+      'cuisineId',
+      'primaryCuisineId',
+      'diningAreaId',
+      'collectionId',
+      'platform',
+      'archive',
+      'favorite',
+      'recommended',
+    ]),
+  );
+  return session
+    .api()
+    .request<CatalogPage<RestaurantEntry>>(`/restaurants?${query}`);
 }
 
 export async function loginLoader() {
@@ -472,11 +542,13 @@ export const routes = [
         children: [
           {
             path: 'bills',
+            loader: billsLoader,
             action: mutationAction,
             lazy: page(() => import('../pages/BillsPage')),
           },
           {
             path: 'restaurants',
+            loader: restaurantsLoader,
             action: mutationAction,
             lazy: page(() => import('../pages/RestaurantsPage')),
           },
