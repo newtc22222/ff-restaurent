@@ -1,12 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Heart, Store, ThumbsUp } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import {
-  CUISINE_OPTIONS,
-  TYPE_OPTIONS_VI,
-  TYPE_OPTIONS_EN,
-  canChef,
-} from '../lib/helpers';
+import { TYPE_OPTIONS_VI, TYPE_OPTIONS_EN, canChef } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
 import { useI18n } from '../app/providers/i18n';
 import { useMutation } from '../hooks/useMutation';
@@ -21,6 +16,9 @@ import RestaurantProfileFields, {
   emptyRestaurantProfile,
   isRestaurantProfileValid,
 } from '../components/restaurants/RestaurantProfileFields';
+import RestaurantCatalogFields, {
+  emptyRestaurantCatalogs,
+} from '../components/restaurants/RestaurantCatalogFields';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
@@ -40,6 +38,7 @@ export default function RestaurantsPage() {
     name: '',
     ...emptyVietnamAddress(),
     ...emptyRestaurantProfile(),
+    ...emptyRestaurantCatalogs(),
     cuisineType: '',
     type: typeOptions[0] ?? 'Restaurant',
     isRecommended: false,
@@ -93,6 +92,7 @@ export default function RestaurantsPage() {
             name: '',
             ...emptyVietnamAddress(),
             ...emptyRestaurantProfile(),
+            ...emptyRestaurantCatalogs(),
             cuisineType: '',
             type: typeOptions[0] ?? 'Restaurant',
             isRecommended: false,
@@ -262,25 +262,13 @@ export default function RestaurantsPage() {
             value={form}
             onChange={(profile) => setForm({ ...form, ...profile })}
           />
-          <div className="block space-y-1">
-            <span className="label">
-              {locale === 'vi' ? 'Loại ẩm thực' : 'Cuisine type'}
-            </span>
-            <Dropdown
-              fullWidth
-              label={locale === 'vi' ? 'Chọn...' : 'Choose...'}
-              ariaLabel={locale === 'vi' ? 'Loại ẩm thực' : 'Cuisine type'}
-              value={form.cuisineType}
-              onChange={(cuisineType) => setForm({ ...form, cuisineType })}
-              options={CUISINE_OPTIONS.map((cuisine) => ({
-                value: cuisine,
-                label: cuisine,
-              }))}
-              searchable
-              searchPlaceholder={t('restaurants.searchCuisine')}
-              emptyMessage={t('bills.noFilterResults')}
-            />
-          </div>
+          <RestaurantCatalogFields
+            value={form}
+            onChange={(catalogs) => setForm({ ...form, ...catalogs })}
+            onPrimaryCuisineNameChange={(cuisineType) =>
+              setForm((current) => ({ ...current, cuisineType }))
+            }
+          />
           <div className="block space-y-1">
             <span className="label">
               {locale === 'vi' ? 'Loại hình' : 'Type'}
@@ -313,6 +301,8 @@ export default function RestaurantsPage() {
               !form.name.trim() ||
               !isVietnamAddressComplete(form) ||
               !isRestaurantProfileValid(form) ||
+              form.cuisineIds.length === 0 ||
+              !form.primaryCuisineId ||
               !form.cuisineType ||
               !form.type
             }

@@ -230,6 +230,9 @@ const restaurantObjectSchema = z.object({
   ...vietnamAddressShape,
   name: z.string().min(1),
   cuisineType: z.string().min(1),
+  cuisineIds: z.array(z.string().min(1)).min(1).max(20).optional(),
+  primaryCuisineId: z.string().min(1).optional(),
+  diningAreaId: z.string().min(1).nullable().optional(),
   type: z.string().min(1),
   avatarUrl: z.string().optional(),
   phone: vietnamMobilePhoneSchema.optional(),
@@ -248,15 +251,77 @@ const restaurantObjectSchema = z.object({
   isFavorite: z.boolean().optional(),
 });
 
+type RestaurantCatalogInput = {
+  cuisineIds?: string[];
+  primaryCuisineId?: string;
+};
+
+const validateRestaurantCatalogs = (
+  value: RestaurantCatalogInput,
+  context: z.RefinementCtx,
+) => {
+  if (!value.cuisineIds && !value.primaryCuisineId) return;
+  if (!value.cuisineIds || !value.primaryCuisineId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['cuisineIds'],
+      message:
+        'Cuisine selection and primary cuisine must be supplied together',
+    });
+    return;
+  }
+  if (new Set(value.cuisineIds).size !== value.cuisineIds.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['cuisineIds'],
+      message: 'Cuisine selections must be unique',
+    });
+  }
+  if (!value.cuisineIds.includes(value.primaryCuisineId)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['primaryCuisineId'],
+      message: 'Primary cuisine must be one of the selected cuisines',
+    });
+  }
+};
+
 export const restaurantSchema = restaurantObjectSchema
   .superRefine(validateStructuredAddress)
   .superRefine(validatePlatformLinks)
+  .superRefine(validateRestaurantCatalogs)
   .transform(migrateLegacyPlatformLinks);
 export const restaurantUpdateSchema = restaurantObjectSchema
   .partial()
   .superRefine(validateStructuredAddress)
   .superRefine(validatePlatformLinks)
+  .superRefine(validateRestaurantCatalogs)
   .transform(migrateLegacyPlatformLinks);
+
+export const cuisineSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  type: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(500).nullable().optional(),
+});
+
+const diningAreaObjectSchema = z.object({
+  ...vietnamAddressShape,
+  name: z.string().trim().min(1).max(100),
+  description: z.string().trim().max(500).nullable().optional(),
+});
+
+export const diningAreaSchema = diningAreaObjectSchema.superRefine(
+  validateStructuredAddress,
+);
+export const diningAreaUpdateSchema = diningAreaObjectSchema
+  .partial()
+  .superRefine(validateStructuredAddress);
+
+export const catalogQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
 
 export const participantSchema = z.object({
   memberId: z.string().min(1),

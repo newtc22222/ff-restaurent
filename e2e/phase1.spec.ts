@@ -24,6 +24,8 @@ test.beforeAll(async () => {
   await prisma.bill.deleteMany();
   await prisma.userFavorite.deleteMany();
   await prisma.restaurantEntry.deleteMany();
+  await prisma.cuisine.deleteMany();
+  await prisma.diningArea.deleteMany();
   await prisma.user.deleteMany();
   const passwordHash = await bcrypt.hash('password123', 4);
   const [head, sous, customer] = await Promise.all([
@@ -53,6 +55,9 @@ test.beforeAll(async () => {
       },
     }),
   ]);
+  const cuisine = await prisma.cuisine.create({
+    data: { name: 'Vietnamese', nameKey: 'vietnamese', type: 'Regional' },
+  });
   const restaurant = await prisma.restaurantEntry.create({
     data: {
       name: 'Existing E2E Restaurant',
@@ -60,6 +65,7 @@ test.beforeAll(async () => {
       cuisineType: 'Vietnamese',
       type: 'Restaurant',
       createdById: sous.id,
+      cuisines: { create: { cuisineId: cuisine.id, isPrimary: true } },
     },
   });
   const bill = await prisma.bill.create({
@@ -151,11 +157,12 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   await page
     .getByRole('textbox', { name: 'Link URL 1' })
     .fill('https://example.test/e2e-menu');
-  await page.getByRole('button', { name: 'Cuisine type' }).click();
+  await page.getByRole('button', { name: 'Cuisines' }).click();
   await page
     .getByRole('searchbox', { name: 'Search cuisines...' })
-    .fill('Chay');
-  await page.getByRole('option', { name: 'Chay' }).click();
+    .fill('Vietnamese');
+  await page.getByRole('option', { name: /Vietnamese/ }).click();
+  await page.getByRole('button', { name: 'Cuisines' }).click();
   const restaurantResponsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith('/restaurants') &&
@@ -170,6 +177,12 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   expect(restaurantProfile.phone).toBe('+84901234567');
   expect(restaurantProfile.platformLinks).toHaveLength(1);
   expect(restaurantProfile.links).toBeUndefined();
+  expect(restaurantProfile.cuisines).toEqual([
+    expect.objectContaining({
+      isPrimary: true,
+      cuisine: expect.objectContaining({ name: 'Vietnamese' }),
+    }),
+  ]);
   await expect(page.getByText('Created E2E Restaurant')).toBeVisible();
 
   await page.getByRole('link', { name: 'Bills' }).click();

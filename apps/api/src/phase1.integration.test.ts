@@ -44,6 +44,8 @@ before(async () => {
   await prisma.bill.deleteMany();
   await prisma.userFavorite.deleteMany();
   await prisma.restaurantEntry.deleteMany();
+  await prisma.cuisine.deleteMany();
+  await prisma.diningArea.deleteMany();
   await prisma.user.deleteMany();
   const passwordHash = await bcrypt.hash('password123', 4);
   const [root, head, sous, customerA, customerB] = await Promise.all([
@@ -314,6 +316,157 @@ integrationTest('the database permits exactly one ROOT_ADMIN', async () => {
     1,
   );
 });
+
+integrationTest(
+  'Cuisine and Dining Area catalogs enforce normalized relationships and permissions',
+  async () => {
+    const denied = await app.inject({
+      method: 'POST',
+      url: '/cuisines',
+      headers: auth(tokenFor(customerAId)),
+      payload: { name: 'Denied', type: 'Regional' },
+    });
+    assert.equal(denied.statusCode, 403);
+
+    const vietnamese = await app.inject({
+      method: 'POST',
+      url: '/cuisines',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        name: '  Vietnamese   Food ',
+        type: ' Regional ',
+        description: 'Traditional dishes',
+      },
+    });
+    assert.equal(vietnamese.statusCode, 201);
+    assert.equal(vietnamese.json().name, 'Vietnamese Food');
+
+    const duplicateCuisine = await app.inject({
+      method: 'POST',
+      url: '/cuisines',
+      headers: auth(tokenFor(sousId)),
+      payload: { name: 'vietnamese food', type: 'Other' },
+    });
+    assert.equal(duplicateCuisine.statusCode, 409);
+
+    const vegan = await app.inject({
+      method: 'POST',
+      url: '/cuisines',
+      headers: auth(tokenFor(sousId)),
+      payload: { name: 'Vegan', type: 'Dietary' },
+    });
+    assert.equal(vegan.statusCode, 201);
+
+    const diningArea = await app.inject({
+      method: 'POST',
+      url: '/dining-areas',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        name: ' Downtown ',
+        address: '12 Main Street',
+        description: 'Central lunch area',
+      },
+    });
+    assert.equal(diningArea.statusCode, 201);
+
+    const duplicateArea = await app.inject({
+      method: 'POST',
+      url: '/dining-areas',
+      headers: auth(tokenFor(sousId)),
+      payload: { name: 'downtown', address: ' 12  main street ' },
+    });
+    assert.equal(duplicateArea.statusCode, 409);
+
+    const invalidRestaurant = await app.inject({
+      method: 'POST',
+      url: '/restaurants',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        name: 'Invalid catalog restaurant',
+        address: '13 Main Street',
+        cuisineType: 'Snapshot',
+        type: 'Restaurant',
+        cuisineIds: [vietnamese.json().id],
+        primaryCuisineId: vegan.json().id,
+      },
+    });
+    assert.equal(invalidRestaurant.statusCode, 400);
+
+    const restaurant = await app.inject({
+      method: 'POST',
+      url: '/restaurants',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        name: 'Catalog Integration Restaurant',
+        address: '13 Main Street',
+        cuisineType: 'Compatibility snapshot',
+        type: 'Restaurant',
+        cuisineIds: [vietnamese.json().id, vegan.json().id],
+        primaryCuisineId: vegan.json().id,
+        diningAreaId: diningArea.json().id,
+      },
+    });
+    assert.equal(restaurant.statusCode, 201);
+    assert.equal(restaurant.json().cuisineType, 'Vegan');
+    assert.equal(restaurant.json().cuisines.length, 2);
+    assert.equal(restaurant.json().cuisines[0].isPrimary, true);
+    assert.equal(restaurant.json().cuisines[0].cuisine.name, 'Vegan');
+    assert.equal(restaurant.json().diningArea.name, 'Downtown');
+
+    const cuisineSearch = await app.inject({
+      method: 'GET',
+      url: '/cuisines?search=vegan&limit=1',
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(cuisineSearch.statusCode, 200);
+    assert.equal(cuisineSearch.json().items[0].name, 'Vegan');
+    assert.equal('nameKey' in cuisineSearch.json().items[0], false);
+
+    const protectedCuisine = await app.inject({
+      method: 'DELETE',
+      url: `/cuisines/${vegan.json().id}`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(protectedCuisine.statusCode, 409);
+    assert.equal(protectedCuisine.json().code, 'CUISINE_IN_USE');
+
+    const protectedArea = await app.inject({
+      method: 'DELETE',
+      url: `/dining-areas/${diningArea.json().id}`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(protectedArea.statusCode, 409);
+    assert.equal(protectedArea.json().code, 'DINING_AREA_IN_USE');
+
+    await prisma.bill.create({
+      data: {
+        restaurantId: restaurant.json().id,
+        createdById: sousId,
+        baseCost: 1000,
+        vat: 0,
+        shippingFee: 0,
+        totalCost: 1000,
+        participants: {
+          create: {
+            memberId: customerAId,
+            originCost: 1000,
+            allocatedVat: 0,
+            allocatedShipping: 0,
+            discountApplied: 0,
+            finalPrice: 1000,
+          },
+        },
+      },
+    });
+    const stats = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=yearly',
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(stats.statusCode, 200);
+    assert.equal(stats.json().byCuisineType.Vegan >= 1000, true);
+  },
+);
 
 integrationTest(
   'restaurant profiles normalize phone and platform links without legacy JSON',

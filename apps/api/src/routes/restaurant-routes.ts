@@ -9,6 +9,10 @@ import { prisma } from '../prisma.js';
 import { isHeadChef } from '../roles.js';
 import { publicRestaurantSelect } from '../restaurant-contract.js';
 import {
+  normalizeCatalogKey,
+  normalizeDisplayText,
+} from '../catalog-normalization.js';
+import {
   normalizeVietnamAddressSnapshot,
   restaurantSchema,
   restaurantUpdateSchema,
@@ -21,6 +25,61 @@ type RestaurantListQuery = {
   filterCuisine?: string;
   filterFavorite?: string;
   filterRecommended?: string;
+};
+
+type RestaurantCuisineInput = {
+  cuisineType?: string;
+  cuisineIds?: string[];
+  primaryCuisineId?: string;
+};
+
+const invalidCuisineSelection = () =>
+  Object.assign(new Error('Selected cuisines are invalid'), {
+    statusCode: 400,
+    code: 'CUISINE_SELECTION_INVALID',
+  });
+
+const resolveCuisineSelection = async (
+  tx: Prisma.TransactionClient,
+  input: RestaurantCuisineInput,
+) => {
+  if (input.cuisineIds && input.primaryCuisineId) {
+    const cuisines = await tx.cuisine.findMany({
+      where: { id: { in: input.cuisineIds } },
+      select: { id: true, name: true },
+    });
+    if (cuisines.length !== input.cuisineIds.length) {
+      throw invalidCuisineSelection();
+    }
+    const primary = cuisines.find(
+      (cuisine) => cuisine.id === input.primaryCuisineId,
+    );
+    if (!primary) throw invalidCuisineSelection();
+    return {
+      primaryName: primary.name,
+      joins: input.cuisineIds.map((cuisineId) => ({
+        cuisineId,
+        isPrimary: cuisineId === input.primaryCuisineId,
+      })),
+    };
+  }
+
+  if (!input.cuisineType) return undefined;
+  const name = normalizeDisplayText(input.cuisineType);
+  const cuisine = await tx.cuisine.upsert({
+    where: { nameKey: normalizeCatalogKey(name) },
+    update: {},
+    create: {
+      name,
+      nameKey: normalizeCatalogKey(name),
+      type: 'Legacy',
+    },
+    select: { id: true, name: true },
+  });
+  return {
+    primaryName: cuisine.name,
+    joins: [{ cuisineId: cuisine.id, isPrimary: true }],
+  };
 };
 
 /**
@@ -81,11 +140,19 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
     async (request, reply) => {
       const body = restaurantSchema.parse(request.body);
       const data = normalizeVietnamAddressSnapshot(body);
-      const { platformLinks, ...restaurantData } = data;
-      return reply.code(201).send(
-        await prisma.restaurantEntry.create({
+      const { platformLinks, cuisineIds, primaryCuisineId, ...restaurantData } =
+        data;
+      const created = await prisma.$transaction(async (tx) => {
+        const cuisineSelection = await resolveCuisineSelection(tx, {
+          cuisineType: restaurantData.cuisineType,
+          cuisineIds,
+          primaryCuisineId,
+        });
+        if (!cuisineSelection) throw invalidCuisineSelection();
+        return tx.restaurantEntry.create({
           data: {
             ...restaurantData,
+            cuisineType: cuisineSelection.primaryName,
             createdById: request.currentUser.id,
             platformLinks: {
               create: (platformLinks ?? []).map((link, sortOrder) => ({
@@ -93,10 +160,12 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
                 sortOrder,
               })),
             },
+            cuisines: { create: cuisineSelection.joins },
           },
           select: publicRestaurantSelect,
-        }),
-      );
+        });
+      });
+      return reply.code(201).send(created);
     },
   );
 
@@ -107,24 +176,41 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const body = restaurantUpdateSchema.parse(request.body);
       const data = normalizeVietnamAddressSnapshot(body);
-      const { platformLinks, ...restaurantData } = data;
-      return prisma.restaurantEntry.update({
-        where: { id },
-        data: {
-          ...restaurantData,
-          ...(platformLinks
-            ? {
-                platformLinks: {
-                  deleteMany: {},
-                  create: platformLinks.map((link, sortOrder) => ({
-                    ...link,
-                    sortOrder,
-                  })),
-                },
-              }
-            : {}),
-        },
-        select: publicRestaurantSelect,
+      const { platformLinks, cuisineIds, primaryCuisineId, ...restaurantData } =
+        data;
+      return prisma.$transaction(async (tx) => {
+        const cuisineSelection = await resolveCuisineSelection(tx, {
+          cuisineType: restaurantData.cuisineType,
+          cuisineIds,
+          primaryCuisineId,
+        });
+        return tx.restaurantEntry.update({
+          where: { id },
+          data: {
+            ...restaurantData,
+            ...(cuisineSelection
+              ? {
+                  cuisineType: cuisineSelection.primaryName,
+                  cuisines: {
+                    deleteMany: {},
+                    create: cuisineSelection.joins,
+                  },
+                }
+              : {}),
+            ...(platformLinks
+              ? {
+                  platformLinks: {
+                    deleteMany: {},
+                    create: platformLinks.map((link, sortOrder) => ({
+                      ...link,
+                      sortOrder,
+                    })),
+                  },
+                }
+              : {}),
+          },
+          select: publicRestaurantSelect,
+        });
       });
     },
   );

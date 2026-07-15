@@ -14,6 +14,7 @@ interface CommonDropdownProps {
   options: DropdownOption[];
   searchable?: boolean;
   searchPlaceholder?: string;
+  onSearchChange?: (query: string) => void;
   emptyMessage?: string;
   allowClear?: boolean;
   clearLabel?: string;
@@ -49,6 +50,7 @@ export default function Dropdown(props: DropdownProps) {
     options,
     searchable = false,
     searchPlaceholder = 'Search...',
+    onSearchChange,
     emptyMessage = 'No results found',
     allowClear = false,
     clearLabel = props.multiple ? 'Clear all' : 'Clear',
@@ -86,6 +88,7 @@ export default function Dropdown(props: DropdownProps) {
   const close = () => {
     setOpen(false);
     setQuery('');
+    onSearchChange?.('');
   };
 
   const selectOption = (option: DropdownOption) => {
@@ -165,7 +168,10 @@ export default function Dropdown(props: DropdownProps) {
                   aria-label={searchPlaceholder}
                   placeholder={searchPlaceholder}
                   className="h-8 w-full rounded-md border border-border bg-surface py-1 pl-2.5 pr-8 text-[13px] text-ink outline-none placeholder:text-slate-400 focus:border-ink/50"
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    onSearchChange?.(event.target.value);
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === 'Escape') close();
                   }}

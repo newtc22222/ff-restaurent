@@ -19,6 +19,30 @@ export type RestaurantPlatformLink = {
   sortOrder?: number;
 };
 
+export type Cuisine = {
+  id: string;
+  name: string;
+  type: string;
+  description?: string | null;
+};
+
+export type DiningArea = {
+  id: string;
+  name: string;
+  address: string;
+  addressLine?: string | null;
+  provinceCode?: string | null;
+  provinceName?: string | null;
+  wardCode?: string | null;
+  wardName?: string | null;
+  description?: string | null;
+};
+
+export type CatalogPage<T> = {
+  items: T[];
+  pageInfo: { endCursor: string | null; hasNextPage: boolean };
+};
+
 export type User = {
   id: string;
   username: string;
@@ -40,10 +64,13 @@ export type RestaurantEntry = {
   wardName?: string | null;
   phone?: string | null;
   bannerImageUrl?: string | null;
+  diningAreaId?: string | null;
+  diningArea?: DiningArea | null;
   cuisineType: string;
   type: string;
   avatarUrl?: string | null;
   platformLinks?: RestaurantPlatformLink[];
+  cuisines?: { isPrimary: boolean; cuisine: Cuisine }[];
   isRecommended: boolean;
   isFavorite: boolean;
   isFavoritedByMe?: boolean;
