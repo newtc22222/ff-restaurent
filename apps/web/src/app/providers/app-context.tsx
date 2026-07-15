@@ -11,7 +11,6 @@ import type {
   Notification,
   PasswordResetRequest,
   RestaurantEntry,
-  Stats,
   User,
 } from '../../lib/api';
 import { session } from '../../lib/session';
@@ -21,7 +20,6 @@ export interface AppLoaderData {
   bills: Bill[];
   restaurants: RestaurantEntry[];
   users: User[];
-  stats: Stats | null;
   notifications: Notification[];
   passwordResetRequests: PasswordResetRequest[];
   warning: string | null;

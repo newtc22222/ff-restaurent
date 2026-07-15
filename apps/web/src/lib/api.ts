@@ -59,6 +59,11 @@ export type Bill = {
 };
 
 export type Stats = {
+  totals: {
+    paid: number;
+    waiting: number;
+    totalObligation: number;
+  };
   total: number;
   byPaymentStatus: Record<string, number>;
   byCuisineType: Record<string, number>;
