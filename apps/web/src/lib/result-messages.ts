@@ -1,5 +1,9 @@
 const errorTranslationKeys: Record<string, string> = {
   FINAL_HEAD_CHEF_REQUIRED: 'error.finalHeadChefRequired',
+  FEEDBACK_ALREADY_EXISTS: 'error.feedbackAlreadyExists',
+  FEEDBACK_CURSOR_INVALID: 'error.feedbackCursorInvalid',
+  FEEDBACK_NOT_FOUND: 'error.feedbackNotFound',
+  FEEDBACK_PAYMENT_REQUIRED: 'error.feedbackPaymentRequired',
   IDENTIFIER_TAKEN: 'error.identifierTaken',
   INTERNAL_ERROR: 'error.internal',
   INVALID_CREDENTIALS: 'error.invalidCredentials',

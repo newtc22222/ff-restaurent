@@ -1,8 +1,8 @@
 import { ExternalLink, Heart, Pencil, Phone, ThumbsUp } from 'lucide-react';
 import { useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router';
+import { Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
 import { canChef, isHead } from '../lib/helpers';
-import type { VietnamAddress } from '../lib/api';
+import type { RestaurantFeedbackPage, VietnamAddress } from '../lib/api';
 import { useAppContext } from '../app/providers/app-context';
 import { useI18n } from '../app/providers/i18n';
 import { useMutation } from '../hooks/useMutation';
@@ -19,6 +19,7 @@ import { platformLabel } from '../components/restaurants/PlatformLinksEditor';
 import RestaurantCatalogFields, {
   type RestaurantCatalogValue,
 } from '../components/restaurants/RestaurantCatalogFields';
+import RestaurantFeedback from '../components/restaurants/RestaurantFeedback';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,
@@ -30,6 +31,7 @@ export default function RestaurantDetailPage() {
   const { user, restaurants } = useAppContext();
   const { locale, t } = useI18n();
   const { mutate } = useMutation();
+  const feedback = useLoaderData() as RestaurantFeedbackPage;
 
   const restaurant = restaurants.find(
     (candidate) => candidate.id === restaurantId,
@@ -305,6 +307,7 @@ export default function RestaurantDetailPage() {
           </div>
         )}
       </section>
+      <RestaurantFeedback data={feedback} />
     </div>
   );
 }

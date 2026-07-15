@@ -75,6 +75,37 @@ export type RestaurantEntry = {
   isFavorite: boolean;
   isFavoritedByMe?: boolean;
   status: EntryStatus;
+  feedbackAggregates?: FeedbackAggregates;
+};
+
+export type FeedbackAggregates = {
+  foodRating: number | null;
+  serviceRating: number | null;
+  feedbackCount: number;
+};
+
+export type RestaurantFeedback = {
+  id: string;
+  billId: string;
+  restaurantId: string;
+  foodRating: number;
+  serviceRating: number;
+  comment?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: Pick<User, 'id' | 'username' | 'name'>;
+};
+
+export type RestaurantFeedbackPage = {
+  items: RestaurantFeedback[];
+  pageInfo: { endCursor: string | null; hasNextPage: boolean };
+  aggregates: FeedbackAggregates;
+  eligibleBills: {
+    billId: string;
+    billCreatedAt: string;
+    billStatus: EntryStatus;
+    feedback: RestaurantFeedback | null;
+  }[];
 };
 
 export type VietnamAddress = Pick<
@@ -218,6 +249,7 @@ export class ApiClient {
         error.code,
       );
     }
+    if (response.status === 204) return undefined as T;
     return response.json() as Promise<T>;
   }
 
