@@ -13,16 +13,19 @@ import Dropdown from '../components/ui/Dropdown';
  * AdminPage lists all workspace members and allows a Head Chef to update their system roles.
  */
 export default function AdminPage() {
-  const { user, users, setError } = useAppContext();
+  const { user, users } = useAppContext();
   const { t } = useI18n();
-  const { mutate } = useMutation(setError);
+  const { mutate } = useMutation();
 
   if (!isHead(user)) return <Navigate to="/bills" replace />;
 
   const updateRole = (id: string, chefRole: ChefRole) =>
     mutate(
       { intent: 'update-role', userId: id, chefRole },
-      { fallback: 'Could not update user role' },
+      {
+        fallback: t('toast.roleUpdateFailed'),
+        success: t('toast.roleUpdated'),
+      },
     );
 
   return (

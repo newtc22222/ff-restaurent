@@ -22,9 +22,9 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 export default function BillDetailPage() {
   const navigate = useNavigate();
   const { billId } = useParams();
-  const { user, bills, setError } = useAppContext();
+  const { user, bills } = useAppContext();
   const { t } = useI18n();
-  const { mutate } = useMutation(setError);
+  const { mutate } = useMutation();
   const [confirmAction, setConfirmAction] = useState<
     'archive' | 'restore' | null
   >(null);
@@ -32,7 +32,6 @@ export default function BillDetailPage() {
     memberId: string;
     current: 'PAID' | 'WAITING';
   } | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const bill = bills.find((candidate) => candidate.id === billId);
   if (!bill) return <Navigate to="/bills" replace />;
@@ -99,12 +98,6 @@ export default function BillDetailPage() {
             </div>
           </div>
         </section>
-
-        {notice && (
-          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-            {notice}
-          </div>
-        )}
 
         {bill.paymentUrl && (
           <a
@@ -285,8 +278,8 @@ export default function BillDetailPage() {
                 void mutate(
                   { intent: 'bill-reminders' },
                   {
-                    fallback: 'Could not send reminders',
-                    onSuccess: () => setNotice('Payment reminders processed.'),
+                    fallback: t('toast.remindersFailed'),
+                    success: t('toast.remindersProcessed'),
                   },
                 )
               }
@@ -329,7 +322,18 @@ export default function BillDetailPage() {
             setConfirmAction(null);
             void mutate(
               { intent: 'bill-status', status: action },
-              { fallback: `Could not ${action} bill` },
+              {
+                fallback: t(
+                  action === 'archive'
+                    ? 'toast.billArchiveFailed'
+                    : 'toast.billRestoreFailed',
+                ),
+                success: t(
+                  action === 'archive'
+                    ? 'toast.billArchived'
+                    : 'toast.billRestored',
+                ),
+              },
             );
           }}
           onCancel={() => setConfirmAction(null)}
@@ -350,7 +354,10 @@ export default function BillDetailPage() {
                 expectedStatus: pending.current,
                 status: pending.current === 'PAID' ? 'WAITING' : 'PAID',
               },
-              { fallback: 'Could not update payment status' },
+              {
+                fallback: t('toast.paymentUpdateFailed'),
+                success: t('toast.paymentUpdated'),
+              },
             );
           }}
           onCancel={() => setPendingPayment(null)}

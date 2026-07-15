@@ -20,9 +20,9 @@ import Dropdown from '../components/ui/Dropdown';
  */
 export default function RestaurantsPage() {
   const navigate = useNavigate();
-  const { user, restaurants, setError } = useAppContext();
+  const { user, restaurants } = useAppContext();
   const { locale, t } = useI18n();
-  const { mutate } = useMutation(setError);
+  const { mutate } = useMutation();
   const typeOptions = locale === 'vi' ? TYPE_OPTIONS_VI : TYPE_OPTIONS_EN;
   const [sortByName, setSortByName] = useState(false);
   const [filterCuisine, setFilterCuisine] = useState('');
@@ -57,13 +57,19 @@ export default function RestaurantsPage() {
   const toggleFavorite = (id: string) =>
     mutate(
       { intent: 'restaurant-favorite', restaurantId: id },
-      { fallback: 'Could not toggle favorite', clearFirst: false },
+      {
+        fallback: t('toast.favoriteFailed'),
+        success: t('toast.favoriteUpdated'),
+      },
     );
 
   const toggleRecommend = (id: string) =>
     mutate(
       { intent: 'restaurant-recommend', restaurantId: id },
-      { fallback: 'Could not toggle recommend', clearFirst: false },
+      {
+        fallback: t('toast.recommendationFailed'),
+        success: t('toast.recommendationUpdated'),
+      },
     );
 
   const submit = (event: FormEvent) => {
@@ -71,7 +77,8 @@ export default function RestaurantsPage() {
     void mutate(
       { intent: 'create-restaurant', payload: form },
       {
-        fallback: 'Could not save restaurant',
+        fallback: t('toast.restaurantCreateFailed'),
+        success: t('toast.restaurantCreated'),
         onSuccess: () =>
           setForm({
             name: '',

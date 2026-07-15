@@ -7,12 +7,19 @@ import { I18nProvider } from '../app/providers/i18n';
 import { ThemeProvider } from '../app/providers/theme';
 import LoginPage from './LoginPage';
 
+const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }));
+
+vi.mock('react-hot-toast', () => ({
+  default: { error: toastError, success: vi.fn() },
+}));
+
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>();
   return { ...actual, useFetcher: vi.fn() };
 });
 
 beforeEach(() => {
+  toastError.mockClear();
   localStorage.clear();
   localStorage.setItem('ff-locale', 'en');
   vi.stubGlobal(
@@ -26,7 +33,7 @@ beforeEach(() => {
 });
 
 describe('LoginPage', () => {
-  it('shows and dismisses handled fetcher action errors inline', async () => {
+  it('shows handled fetcher action errors once as localized toasts', async () => {
     vi.mocked(useFetcher).mockReturnValue({
       state: 'idle',
       data: {
@@ -45,11 +52,15 @@ describe('LoginPage', () => {
       </ThemeProvider>,
     );
 
-    expect(await screen.findByText('Invalid credentials')).toBeTruthy();
+    expect(toastError).toHaveBeenCalledWith(
+      'The username, phone number, or password is incorrect.',
+      { id: 'auth-login-INVALID_CREDENTIALS' },
+    );
+    expect(screen.queryByText('Invalid credentials')).toBeNull();
 
     fireEvent.change(screen.getByLabelText('Phone / Username'), {
       target: { value: 'another-user' },
     });
-    expect(screen.queryByText('Invalid credentials')).toBeNull();
+    expect(toastError).toHaveBeenCalledTimes(1);
   });
 });

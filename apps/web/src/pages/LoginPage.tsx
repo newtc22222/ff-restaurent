@@ -1,7 +1,9 @@
-import { useEffect, useState, type SubmitEvent } from 'react';
+import { useEffect, useRef, useState, type SubmitEvent } from 'react';
+import toast from 'react-hot-toast';
 import { useFetcher } from 'react-router';
 import type { LoginActionData } from '../app/router';
 import { seededUsers } from '../lib/helpers';
+import { resultErrorMessage } from '../lib/result-messages';
 import { useI18n } from '../app/providers/i18n';
 import { useTheme } from '../app/providers/theme';
 import BrandIcon from '../components/ui/BrandIcon';
@@ -24,33 +26,38 @@ export default function LoginPage() {
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regInviteCode, setRegInviteCode] = useState('');
-  const [activeError, setActiveError] = useState<string | null>(null);
+  const lastError = useRef<LoginActionData | null>(null);
   const busy = fetcher.state !== 'idle';
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.error) {
-      setActiveError(fetcher.data.error);
+      if (lastError.current !== fetcher.data) {
+        lastError.current = fetcher.data;
+        toast.error(
+          resultErrorMessage(fetcher.data.code, t('toast.authFailed'), t),
+          { id: `auth-${fetcher.data.intent}-${fetcher.data.code ?? 'error'}` },
+        );
+      }
     }
-  }, [fetcher.data, fetcher.state]);
-
-  const clearError = () => {
-    if (activeError) {
-      setActiveError(null);
-    }
-  };
+  }, [fetcher.data, fetcher.state, t]);
 
   const submitLogin = (event: SubmitEvent) => {
     event.preventDefault();
-    setActiveError(null);
+    lastError.current = null;
     fetcher.submit(
-      { intent: 'login', identifier, password },
+      {
+        intent: 'login',
+        identifier,
+        password,
+        toastSuccess: t('toast.signInSuccess'),
+      },
       { method: 'post', encType: 'application/json' },
     );
   };
 
   const submitRegister = (event: SubmitEvent) => {
     event.preventDefault();
-    setActiveError(null);
+    lastError.current = null;
     fetcher.submit(
       {
         intent: 'register',
@@ -59,6 +66,7 @@ export default function LoginPage() {
         phone: regPhone,
         password: regPassword,
         inviteCode: regInviteCode,
+        toastSuccess: t('toast.registerSuccess'),
       },
       { method: 'post', encType: 'application/json' },
     );
@@ -89,22 +97,13 @@ export default function LoginPage() {
                 {t('app.tagline')}
               </p>
             </div>
-            {activeError && (
-              <div className="mb-5 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-                {activeError}
-              </div>
-            )}
             <label className="mb-5 block space-y-2">
               <span className="label">{t('auth.identifier')}</span>
               <input
                 className="field w-full"
                 type="text"
                 value={identifier}
-                onChange={(event) => {
-                  setIdentifier(event.target.value);
-                  clearError();
-                }}
-                onFocus={clearError}
+                onChange={(event) => setIdentifier(event.target.value)}
               />
             </label>
             <label className="mb-5 block space-y-2">
@@ -113,11 +112,7 @@ export default function LoginPage() {
                 className="field w-full"
                 type="password"
                 value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  clearError();
-                }}
-                onFocus={clearError}
+                onChange={(event) => setPassword(event.target.value)}
               />
             </label>
             <button className="btn btn-primary mb-5 w-full" disabled={busy}>
@@ -140,7 +135,6 @@ export default function LoginPage() {
                         }`}
                         onClick={() => {
                           setIdentifier(seedId);
-                          clearError();
                         }}
                       >
                         {t(labelKey)}
@@ -157,7 +151,6 @@ export default function LoginPage() {
                 className="font-semibold text-ink underline"
                 onClick={() => {
                   setMode('register');
-                  clearError();
                 }}
               >
                 {t('auth.register')}
@@ -175,22 +168,13 @@ export default function LoginPage() {
                 {t('auth.register')}
               </h1>
             </div>
-            {activeError && (
-              <div className="mb-5 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-                {activeError}
-              </div>
-            )}
             <label className="mb-4 block space-y-2">
               <span className="label">{t('auth.name')}</span>
               <input
                 className="field w-full"
                 type="text"
                 value={regName}
-                onChange={(e) => {
-                  setRegName(e.target.value);
-                  clearError();
-                }}
-                onFocus={clearError}
+                onChange={(e) => setRegName(e.target.value)}
                 required
               />
             </label>
@@ -200,11 +184,7 @@ export default function LoginPage() {
                 className="field w-full"
                 type="text"
                 value={regUsername}
-                onChange={(e) => {
-                  setRegUsername(e.target.value);
-                  clearError();
-                }}
-                onFocus={clearError}
+                onChange={(e) => setRegUsername(e.target.value)}
                 required
               />
             </label>
@@ -214,11 +194,7 @@ export default function LoginPage() {
                 className="field w-full"
                 type="tel"
                 value={regPhone}
-                onChange={(e) => {
-                  setRegPhone(e.target.value);
-                  clearError();
-                }}
-                onFocus={clearError}
+                onChange={(e) => setRegPhone(e.target.value)}
               />
             </label>
             <label className="mb-5 block space-y-2">
@@ -227,11 +203,7 @@ export default function LoginPage() {
                 className="field w-full"
                 type="password"
                 value={regPassword}
-                onChange={(e) => {
-                  setRegPassword(e.target.value);
-                  clearError();
-                }}
-                onFocus={clearError}
+                onChange={(e) => setRegPassword(e.target.value)}
                 required
                 minLength={8}
               />
@@ -242,10 +214,7 @@ export default function LoginPage() {
                 className="field w-full"
                 type="password"
                 value={regInviteCode}
-                onChange={(event) => {
-                  setRegInviteCode(event.target.value);
-                  clearError();
-                }}
+                onChange={(event) => setRegInviteCode(event.target.value)}
                 required
                 autoComplete="off"
               />
@@ -260,7 +229,6 @@ export default function LoginPage() {
                 className="font-semibold text-ink underline"
                 onClick={() => {
                   setMode('login');
-                  clearError();
                 }}
               >
                 {t('auth.signIn')}
