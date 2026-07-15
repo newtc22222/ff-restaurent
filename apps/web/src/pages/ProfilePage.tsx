@@ -174,6 +174,37 @@ export default function ProfilePage() {
 
       <div className="panel mt-4 p-6">
         <h2 className="text-lg font-bold text-ink">
+          {t('profile.notificationPreferences')}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {t('profile.notificationPreferencesDescription')}
+        </p>
+        <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-4">
+          <span className="text-sm font-semibold text-ink">
+            {t('profile.paymentReminders')}
+          </span>
+          <input
+            type="checkbox"
+            aria-label={t('profile.paymentReminders')}
+            checked={user.paymentRemindersEnabled !== false}
+            onChange={(event) =>
+              void mutate(
+                {
+                  intent: 'notification-preferences',
+                  payload: { paymentRemindersEnabled: event.target.checked },
+                },
+                {
+                  fallback: t('toast.notificationPreferencesFailed'),
+                  success: t('toast.notificationPreferencesUpdated'),
+                },
+              )
+            }
+          />
+        </label>
+      </div>
+
+      <div className="panel mt-4 p-6">
+        <h2 className="text-lg font-bold text-ink">
           {t('profile.changePassword')}
         </h2>
         <p className="mt-1 text-sm text-slate-500">

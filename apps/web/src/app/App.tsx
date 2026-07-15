@@ -68,6 +68,16 @@ function AppShellContent() {
     if (notification.billId) navigate(`/bills/${notification.billId}`);
   };
 
+  const markAllNotificationsRead = () =>
+    mutate(
+      { intent: 'read-all-notifications' },
+      {
+        action: '/bills',
+        fallback: t('toast.notificationsReadFailed'),
+        success: t('toast.notificationsRead'),
+      },
+    );
+
   const nav: readonly (readonly [string, LucideIcon, string])[] = [
     ['/bills', LayoutDashboard, t('nav.bills')],
     ['/restaurants', Store, t('nav.restaurants')],
@@ -87,6 +97,7 @@ function AppShellContent() {
         onProfile={() => navigate('/profile')}
         notifications={notifications}
         onOpenNotification={openNotification}
+        onMarkAllNotificationsRead={markAllNotificationsRead}
         sidebarCollapsed={sidebarCollapsed}
         onToggleSidebar={() => setSidebarCollapsed((current) => !current)}
       />

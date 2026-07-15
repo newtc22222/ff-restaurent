@@ -20,6 +20,7 @@ import {
   type Bill,
   type BillActivityEvent,
   type Notification,
+  type ParticipantGroup,
   type PasswordResetRequest,
   type RestaurantEntry,
   type RestaurantFeedbackPage,
@@ -38,6 +39,7 @@ export async function appLoader(): Promise<AppLoaderData> {
       api.request<Bill[]>('/bills?includeArchived=true'),
       api.request<RestaurantEntry[]>('/restaurants?includeArchived=true'),
       api.request<Notification[]>('/notifications'),
+      api.request<ParticipantGroup[]>('/participant-groups'),
     ]);
     const user = await userPromise;
     const [sharedResults, usersResult, passwordResetRequestsResult] =
@@ -80,6 +82,7 @@ export async function appLoader(): Promise<AppLoaderData> {
       sharedResults[1],
       usersResult,
       sharedResults[2],
+      sharedResults[3],
     ] as const;
     const value = <T>(result: PromiseSettledResult<T>, fallback: T) =>
       result.status === 'fulfilled' ? result.value : fallback;
@@ -89,6 +92,7 @@ export async function appLoader(): Promise<AppLoaderData> {
       restaurants: value(results[1], []),
       users: value(results[2], []),
       notifications: value(results[3], []),
+      participantGroups: value(results[4], []),
       passwordResetRequests: value(passwordResetRequestsResult, []),
       warning: [...results, passwordResetRequestsResult].some(
         (result) => result.status === 'rejected',
@@ -335,6 +339,20 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
         return await api.request(`/feedback/${body.feedbackId}`, {
           method: 'DELETE',
         });
+      case 'create-participant-group':
+        return await api.request('/participant-groups', {
+          method: 'POST',
+          body: JSON.stringify(body.payload),
+        });
+      case 'update-participant-group':
+        return await api.request(`/participant-groups/${body.groupId}`, {
+          method: 'PUT',
+          body: JSON.stringify(body.payload),
+        });
+      case 'delete-participant-group':
+        return await api.request(`/participant-groups/${body.groupId}`, {
+          method: 'DELETE',
+        });
       case 'update-role':
         return await api.request(`/users/${body.userId}/chef-role`, {
           method: 'PATCH',
@@ -375,6 +393,15 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
       case 'read-notification':
         return await api.request(`/notifications/${body.notificationId}/read`, {
           method: 'PATCH',
+        });
+      case 'read-all-notifications':
+        return await api.request('/notifications/read-all', {
+          method: 'PATCH',
+        });
+      case 'notification-preferences':
+        return await api.request('/me/notification-preferences', {
+          method: 'PATCH',
+          body: JSON.stringify(body.payload),
         });
       default:
         throw new Response('Unknown mutation intent', { status: 400 });

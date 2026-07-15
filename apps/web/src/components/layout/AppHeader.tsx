@@ -21,6 +21,7 @@ interface AppHeaderProps {
   onProfile?: () => void;
   notifications?: Notification[];
   onOpenNotification?: (notification: Notification) => void;
+  onMarkAllNotificationsRead?: () => void;
   sidebarCollapsed?: boolean;
   onToggleSidebar?: () => void;
 }
@@ -30,6 +31,7 @@ export default function AppHeader({
   onProfile,
   notifications = [],
   onOpenNotification,
+  onMarkAllNotificationsRead,
   sidebarCollapsed = false,
   onToggleSidebar,
 }: AppHeaderProps) {
@@ -265,13 +267,24 @@ export default function AppHeader({
         <div className="fixed left-3 right-3 top-16 z-[60] overflow-hidden rounded-xl border border-border bg-surface shadow-panel sm:left-auto sm:right-4 sm:w-[22rem]">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <span className="text-sm font-bold">{t('nav.notifications')}</span>
-            <button
-              type="button"
-              className="text-xs font-semibold text-slate-500 hover:text-ink"
-              onClick={() => setShowNotifications(false)}
-            >
-              {t('auth.cancel')}
-            </button>
+            <div className="flex items-center gap-3">
+              {unreadCount > 0 && onMarkAllNotificationsRead && (
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-orange-700 hover:text-orange-900 dark:text-orange-300"
+                  onClick={onMarkAllNotificationsRead}
+                >
+                  {t('notifications.markAllRead')}
+                </button>
+              )}
+              <button
+                type="button"
+                className="text-xs font-semibold text-slate-500 hover:text-ink"
+                onClick={() => setShowNotifications(false)}
+              >
+                {t('auth.cancel')}
+              </button>
+            </div>
           </div>
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (

@@ -335,6 +335,25 @@ export const collectionShareSchema = z.object({
   userId: z.string().min(1),
 });
 
+export const participantGroupSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    memberIds: z.array(z.string().min(1)).min(2).max(100),
+  })
+  .superRefine((value, context) => {
+    if (new Set(value.memberIds).size !== value.memberIds.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['memberIds'],
+        message: 'Participant group members must be unique',
+      });
+    }
+  });
+
+export const notificationPreferenceSchema = z.object({
+  paymentRemindersEnabled: z.boolean(),
+});
+
 const halfPointRatingSchema = z
   .number()
   .min(1)
@@ -385,6 +404,7 @@ export const billSchema = z.object({
   discounts: z.array(discountSchema).optional(),
   vouchers: z.array(voucherSchema).optional(),
   participants: z.array(participantSchema).min(2),
+  allowDuplicate: z.boolean().default(false),
 });
 
 export const chefRoleSchema = z.object({

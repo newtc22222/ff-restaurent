@@ -31,6 +31,7 @@ const user = {
   chefRole: 'HEAD_CHEF' as const,
   systemRole: 'ROOT_ADMIN' as const,
   roles: ['CUSTOMER', 'HEAD_CHEF', 'ROOT_ADMIN'],
+  paymentRemindersEnabled: true,
 };
 
 afterEach(() => {
@@ -74,6 +75,7 @@ describe('appLoader', () => {
         if (url.endsWith('/admin/password-reset-requests'))
           return jsonResponse([]);
         if (url.endsWith('/notifications')) return jsonResponse([]);
+        if (url.endsWith('/participant-groups')) return jsonResponse([]);
         return jsonResponse({}, 404);
       }),
     );

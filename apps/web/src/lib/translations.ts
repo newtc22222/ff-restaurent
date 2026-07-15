@@ -20,6 +20,7 @@ export const translations = {
     'nav.language': 'Ngôn ngữ',
     'nav.theme': 'Giao diện',
     'notifications.empty': 'Chưa có thông báo.',
+    'notifications.markAllRead': 'Đánh dấu tất cả đã đọc',
     'nav.members': 'Thành viên',
 
     // Auth
@@ -126,6 +127,14 @@ export const translations = {
     'createBill.base': 'Gốc (tổng thành viên)',
     'createBill.created': 'Đã tạo hóa đơn!',
     'createBill.submit': 'Lưu hóa đơn',
+    'groups.title': 'Nhóm thành viên dùng lại',
+    'groups.choose': 'Chọn nhóm',
+    'groups.apply': 'Áp dụng nhóm',
+    'groups.name': 'Tên nhóm mới',
+    'groups.save': 'Lưu nhóm hiện tại',
+    'duplicate.title': 'Phát hiện hóa đơn trùng',
+    'duplicate.message':
+      'Một hóa đơn đang hoạt động có cùng địa điểm, chi phí, điều chỉnh và thành viên. Bạn vẫn muốn tạo bản trùng?',
 
     // Restaurants
     'restaurants.title': 'Nhà hàng & quán ăn',
@@ -285,6 +294,15 @@ export const translations = {
     'toast.passwordResetIssueFailed': 'Không thể cấp mã đặt lại.',
     'toast.passwordResetRejected': 'Đã từ chối yêu cầu đặt lại.',
     'toast.passwordResetRejectFailed': 'Không thể từ chối yêu cầu đặt lại.',
+    'toast.notificationsRead': 'Đã đánh dấu tất cả thông báo là đã đọc.',
+    'toast.notificationsReadFailed': 'Không thể cập nhật thông báo.',
+    'toast.notificationPreferencesUpdated': 'Đã cập nhật tùy chọn thông báo.',
+    'toast.notificationPreferencesFailed':
+      'Không thể cập nhật tùy chọn thông báo.',
+    'toast.participantGroupSaved': 'Đã lưu nhóm thành viên.',
+    'toast.participantGroupSaveFailed': 'Không thể lưu nhóm thành viên.',
+    'toast.participantGroupDeleted': 'Đã xóa nhóm thành viên.',
+    'toast.participantGroupDeleteFailed': 'Không thể xóa nhóm thành viên.',
 
     // API result errors
     'error.invalidCredentials':
@@ -298,6 +316,9 @@ export const translations = {
     'error.notFound': 'Không tìm thấy mục được yêu cầu.',
     'error.internal': 'Đã xảy ra lỗi máy chủ. Vui lòng thử lại.',
     'error.invalidParticipants': 'Danh sách thành viên hóa đơn không hợp lệ.',
+    'error.billDuplicateDetected': 'Đã phát hiện hóa đơn trùng khớp.',
+    'error.participantGroupNameTaken': 'Tên nhóm này đã được sử dụng.',
+    'error.participantGroupNotFound': 'Không tìm thấy nhóm thành viên.',
     'error.feedbackPaymentRequired':
       'Bạn phải thanh toán phần của mình trước khi đánh giá.',
     'error.feedbackAlreadyExists': 'Hóa đơn này đã có đánh giá của bạn.',
@@ -345,6 +366,10 @@ export const translations = {
     'profile.newPassword': 'Mật khẩu mới',
     'profile.confirmPassword': 'Xác nhận mật khẩu mới',
     'profile.changePasswordAction': 'Đổi mật khẩu',
+    'profile.notificationPreferences': 'Tùy chọn thông báo',
+    'profile.notificationPreferencesDescription':
+      'Kiểm soát những lời nhắc thanh toán bạn nhận được.',
+    'profile.paymentReminders': 'Nhận lời nhắc thanh toán',
 
     // Theme
     'theme.light': 'Sáng',
@@ -379,6 +404,7 @@ export const translations = {
     'nav.language': 'Language',
     'nav.theme': 'Theme',
     'notifications.empty': 'No notifications yet.',
+    'notifications.markAllRead': 'Mark all read',
     'nav.members': 'Members',
 
     // Auth
@@ -485,6 +511,14 @@ export const translations = {
     'createBill.base': 'Base (sum of members)',
     'createBill.created': 'Bill created!',
     'createBill.submit': 'Save bill',
+    'groups.title': 'Reusable participant groups',
+    'groups.choose': 'Choose a group',
+    'groups.apply': 'Apply group',
+    'groups.name': 'New group name',
+    'groups.save': 'Save current group',
+    'duplicate.title': 'Duplicate bill detected',
+    'duplicate.message':
+      'An active bill has the same restaurant, costs, adjustments, and participants. Create the duplicate anyway?',
 
     // Restaurants
     'restaurants.title': 'Restaurants & eateries',
@@ -598,6 +632,10 @@ export const translations = {
     'profile.newPassword': 'New password',
     'profile.confirmPassword': 'Confirm new password',
     'profile.changePasswordAction': 'Change password',
+    'profile.notificationPreferences': 'Notification preferences',
+    'profile.notificationPreferencesDescription':
+      'Control the payment reminders you receive.',
+    'profile.paymentReminders': 'Receive payment reminders',
 
     // Validation
     'validation.vietnamMobilePhone':
@@ -660,6 +698,16 @@ export const translations = {
     'toast.passwordResetIssueFailed': 'Could not issue the reset code.',
     'toast.passwordResetRejected': 'Password reset request rejected.',
     'toast.passwordResetRejectFailed': 'Could not reject the reset request.',
+    'toast.notificationsRead': 'All notifications marked as read.',
+    'toast.notificationsReadFailed': 'Could not update notifications.',
+    'toast.notificationPreferencesUpdated': 'Notification preferences updated.',
+    'toast.notificationPreferencesFailed':
+      'Could not update notification preferences.',
+    'toast.participantGroupSaved': 'Participant group saved.',
+    'toast.participantGroupSaveFailed': 'Could not save the participant group.',
+    'toast.participantGroupDeleted': 'Participant group deleted.',
+    'toast.participantGroupDeleteFailed':
+      'Could not delete the participant group.',
 
     // API result errors
     'error.invalidCredentials':
@@ -673,6 +721,9 @@ export const translations = {
     'error.notFound': 'The requested item was not found.',
     'error.internal': 'A server error occurred. Please try again.',
     'error.invalidParticipants': 'The bill participant list is invalid.',
+    'error.billDuplicateDetected': 'An identical active bill was detected.',
+    'error.participantGroupNameTaken': 'That group name is already in use.',
+    'error.participantGroupNotFound': 'Participant group was not found.',
     'error.feedbackPaymentRequired':
       'You must pay your bill share before leaving feedback.',
     'error.feedbackAlreadyExists': 'You already reviewed this bill.',

@@ -51,6 +51,16 @@ export type User = {
   chefRole: ChefRole;
   systemRole: SystemRole;
   roles: string[];
+  paymentRemindersEnabled?: boolean;
+};
+
+export type ParticipantGroup = {
+  id: string;
+  name: string;
+  ownerId: string;
+  members: { userId: string; user: User }[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type RestaurantEntry = {

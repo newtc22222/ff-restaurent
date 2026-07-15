@@ -33,6 +33,7 @@ export const sanitizeUser = (user: User) => ({
   name: user.name,
   chefRole: user.chefRole,
   systemRole: user.systemRole,
+  paymentRemindersEnabled: user.paymentRemindersEnabled,
   roles: [
     'CUSTOMER',
     ...(user.chefRole ? [user.chefRole] : []),
