@@ -70,6 +70,8 @@ describe('appLoader', () => {
         if (url.includes('/restaurants')) return jsonResponse([]);
         if (url.includes('/stats/me')) return jsonResponse({ total: 0 });
         if (url.endsWith('/users')) return jsonResponse([user]);
+        if (url.endsWith('/admin/password-reset-requests'))
+          return jsonResponse([]);
         if (url.endsWith('/notifications')) return jsonResponse([]);
         return jsonResponse({}, 404);
       }),
@@ -168,6 +170,28 @@ describe('loginLoader', () => {
 });
 
 describe('loginAction', () => {
+  it('submits an opaque password reset request without creating a session', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }, 202));
+    vi.stubGlobal('fetch', fetchMock);
+    const request = new Request('http://localhost/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'forgot-request',
+        identifier: 'member-one',
+      }),
+    });
+
+    await expect(
+      loginAction({ request, params: {}, context: {} } as never),
+    ).resolves.toEqual({ success: true, intent: 'forgot-request' });
+    expect(localStorage.getItem('ff-token')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/auth\/password-reset-requests$/),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
   it('returns invalid credentials as handled action data', async () => {
     vi.stubGlobal(
       'fetch',

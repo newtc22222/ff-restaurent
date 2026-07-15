@@ -19,6 +19,7 @@ import {
   ApiError,
   type Bill,
   type Notification,
+  type PasswordResetRequest,
   type RestaurantEntry,
   type Stats,
   type User,
@@ -38,23 +39,41 @@ export async function appLoader(): Promise<AppLoaderData> {
       api.request<Notification[]>('/notifications'),
     ]);
     const user = await userPromise;
-    const [sharedResults, usersResult] = await Promise.all([
-      sharedResultsPromise,
-      api
-        .request<User[]>(
-          user.systemRole === 'ROOT_ADMIN' ? '/users' : '/members',
-        )
-        .then(
-          (value): PromiseSettledResult<User[]> => ({
-            status: 'fulfilled',
-            value,
-          }),
-          (reason): PromiseSettledResult<User[]> => ({
-            status: 'rejected',
-            reason,
-          }),
-        ),
-    ]);
+    const [sharedResults, usersResult, passwordResetRequestsResult] =
+      await Promise.all([
+        sharedResultsPromise,
+        api
+          .request<User[]>(
+            user.systemRole === 'ROOT_ADMIN' ? '/users' : '/members',
+          )
+          .then(
+            (value): PromiseSettledResult<User[]> => ({
+              status: 'fulfilled',
+              value,
+            }),
+            (reason): PromiseSettledResult<User[]> => ({
+              status: 'rejected',
+              reason,
+            }),
+          ),
+        user.systemRole === 'ROOT_ADMIN'
+          ? api
+              .request<PasswordResetRequest[]>('/admin/password-reset-requests')
+              .then(
+                (value): PromiseSettledResult<PasswordResetRequest[]> => ({
+                  status: 'fulfilled',
+                  value,
+                }),
+                (reason): PromiseSettledResult<PasswordResetRequest[]> => ({
+                  status: 'rejected',
+                  reason,
+                }),
+              )
+          : Promise.resolve<PromiseSettledResult<PasswordResetRequest[]>>({
+              status: 'fulfilled',
+              value: [],
+            }),
+      ]);
     const results = [
       sharedResults[0],
       sharedResults[1],
@@ -71,7 +90,10 @@ export async function appLoader(): Promise<AppLoaderData> {
       stats: value(results[2], null),
       users: value(results[3], []),
       notifications: value(results[4], []),
-      warning: results.some((result) => result.status === 'rejected')
+      passwordResetRequests: value(passwordResetRequestsResult, []),
+      warning: [...results, passwordResetRequestsResult].some(
+        (result) => result.status === 'rejected',
+      )
         ? 'Some data could not be refreshed. Your session is still active.'
         : null,
     };
@@ -94,17 +116,42 @@ export async function loginLoader() {
 }
 
 export type LoginActionData = {
-  error: string;
+  error?: string;
   code?: string;
-  intent: 'login' | 'register';
+  success?: boolean;
+  intent: 'login' | 'register' | 'forgot-request' | 'forgot-reset';
 };
 
 export async function loginAction({ request }: ActionFunctionArgs) {
   const body = await request.json();
   const api = session.api();
-  const intent = body.intent === 'register' ? 'register' : 'login';
+  const intent: LoginActionData['intent'] =
+    body.intent === 'register' ||
+    body.intent === 'forgot-request' ||
+    body.intent === 'forgot-reset'
+      ? body.intent
+      : 'login';
 
   try {
+    if (intent === 'forgot-request') {
+      await api.request('/auth/password-reset-requests', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: body.identifier }),
+      });
+      return { success: true, intent } satisfies LoginActionData;
+    }
+    if (intent === 'forgot-reset') {
+      await api.request('/auth/password-reset', {
+        method: 'POST',
+        body: JSON.stringify({
+          identifier: body.identifier,
+          code: body.code,
+          newPassword: body.newPassword,
+          confirmation: body.confirmation,
+        }),
+      });
+      return { success: true, intent } satisfies LoginActionData;
+    }
     const result =
       intent === 'register'
         ? await api.register(
@@ -228,6 +275,16 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
         session.setToken(result.token);
         return { ok: true };
       }
+      case 'issue-password-reset':
+        return await api.request(
+          `/admin/password-reset-requests/${body.requestId}/issue`,
+          { method: 'POST' },
+        );
+      case 'reject-password-reset':
+        return await api.request(
+          `/admin/password-reset-requests/${body.requestId}/reject`,
+          { method: 'POST' },
+        );
       case 'read-notification':
         return await api.request(`/notifications/${body.notificationId}/read`, {
           method: 'PATCH',

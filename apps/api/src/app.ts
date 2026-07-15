@@ -11,6 +11,7 @@ import { registerAuthRoutes } from './routes/auth-routes.js';
 import { registerBillRoutes } from './routes/bill-routes.js';
 import { registerMemberRoutes } from './routes/member-routes.js';
 import { registerNotificationRoutes } from './routes/notification-routes.js';
+import { registerPasswordResetRoutes } from './routes/password-reset-routes.js';
 import { registerProfileRoutes } from './routes/profile-routes.js';
 import { registerRestaurantRoutes } from './routes/restaurant-routes.js';
 import { registerStatsRoutes } from './routes/stats-routes.js';
@@ -53,6 +54,7 @@ const registerRoutes = (app: FastifyInstance) => {
   });
 
   registerAuthRoutes(app);
+  registerPasswordResetRoutes(app);
   registerProfileRoutes(app);
   registerMemberRoutes(app);
   registerRestaurantRoutes(app);

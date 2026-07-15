@@ -76,6 +76,15 @@ export type Notification = {
   createdAt: string;
 };
 
+export type PasswordResetRequest = {
+  id: string;
+  status: 'PENDING' | 'CODE_ISSUED';
+  expiresAt?: string | null;
+  failedAttempts: number;
+  createdAt: string;
+  user: Pick<User, 'id' | 'username' | 'name' | 'phone' | 'systemRole'>;
+};
+
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
 export class ApiError extends Error {

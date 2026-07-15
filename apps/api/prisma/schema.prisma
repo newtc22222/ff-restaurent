@@ -16,6 +16,16 @@ enum SystemRole {
   ROOT_ADMIN
 }
 
+enum PasswordResetStatus {
+  PENDING
+  CODE_ISSUED
+  USED
+  REJECTED
+  SUPERSEDED
+  LOCKED
+  EXPIRED
+}
+
 enum EntryStatus {
   ACTIVE
   ARCHIVED
@@ -47,6 +57,24 @@ model User {
   favorites           UserFavorite[]
   rootTransfersFrom   RootAdminTransferAudit[] @relation("RootTransferredFrom")
   rootTransfersTo     RootAdminTransferAudit[] @relation("RootTransferredTo")
+  passwordResetRequests PasswordResetRequest[]
+}
+
+model PasswordResetRequest {
+  id             String              @id @default(cuid())
+  userId         String
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeKey      String?             @unique
+  status         PasswordResetStatus @default(PENDING)
+  codeHash       String?
+  expiresAt      DateTime?
+  failedAttempts Int                 @default(0)
+  resolvedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }
 
 model RootAdminTransferAudit {

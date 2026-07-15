@@ -7,10 +7,13 @@ import { I18nProvider } from '../app/providers/i18n';
 import { ThemeProvider } from '../app/providers/theme';
 import LoginPage from './LoginPage';
 
-const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }));
+const { toastError, toastSuccess } = vi.hoisted(() => ({
+  toastError: vi.fn(),
+  toastSuccess: vi.fn(),
+}));
 
 vi.mock('react-hot-toast', () => ({
-  default: { error: toastError, success: vi.fn() },
+  default: { error: toastError, success: toastSuccess },
 }));
 
 vi.mock('react-router', async (importOriginal) => {
@@ -20,6 +23,7 @@ vi.mock('react-router', async (importOriginal) => {
 
 beforeEach(() => {
   toastError.mockClear();
+  toastSuccess.mockClear();
   localStorage.clear();
   localStorage.setItem('ff-locale', 'en');
   vi.stubGlobal(
@@ -93,5 +97,36 @@ describe('LoginPage', () => {
       (screen.getByRole('button', { name: 'Register' }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
+  });
+
+  it('submits forgot-password requests without exposing account existence', () => {
+    const submit = vi.fn();
+    vi.mocked(useFetcher).mockReturnValue({
+      state: 'idle',
+      data: undefined,
+      submit,
+    } as never);
+
+    render(
+      <ThemeProvider>
+        <I18nProvider>
+          <LoginPage />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
+    fireEvent.change(screen.getByLabelText('Phone / Username'), {
+      target: { value: 'member-one' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Request password reset' }),
+    );
+
+    expect(submit).toHaveBeenCalledWith(
+      { intent: 'forgot-request', identifier: 'member-one' },
+      { method: 'post', encType: 'application/json' },
+    );
+    expect(screen.queryByText(/account exists/i)).toBeNull();
   });
 });
