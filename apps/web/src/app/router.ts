@@ -22,6 +22,7 @@ import {
   type Notification,
   type PasswordResetRequest,
   type RestaurantEntry,
+  type RestaurantFeedbackPage,
   type Stats,
   type User,
 } from '../lib/api';
@@ -147,6 +148,32 @@ export async function billActivityLoader({ params }: LoaderFunctionArgs) {
     return await session
       .api()
       .request<BillActivityEvent[]>(`/bills/${params.billId}/activity`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      session.clear();
+      throw redirect('/login');
+    }
+    throw error;
+  }
+}
+
+export async function restaurantFeedbackLoader({
+  params,
+  request,
+}: LoaderFunctionArgs) {
+  if (!session.getToken()) throw redirect('/login');
+  if (!params.restaurantId)
+    throw new Response('Restaurant id is required', { status: 400 });
+  const url = new URL(request.url);
+  const query = new URLSearchParams();
+  const cursor = url.searchParams.get('cursor');
+  if (cursor) query.set('cursor', cursor);
+  try {
+    return await session
+      .api()
+      .request<RestaurantFeedbackPage>(
+        `/restaurants/${params.restaurantId}/feedback?${query}`,
+      );
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       session.clear();
@@ -294,6 +321,20 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
           `/restaurants/${body.restaurantId ?? params.restaurantId}/${body.status}`,
           { method: 'PATCH' },
         );
+      case 'create-feedback':
+        return await api.request(`/bills/${body.billId}/feedback`, {
+          method: 'POST',
+          body: JSON.stringify(body.payload),
+        });
+      case 'update-feedback':
+        return await api.request(`/feedback/${body.feedbackId}`, {
+          method: 'PUT',
+          body: JSON.stringify(body.payload),
+        });
+      case 'delete-feedback':
+        return await api.request(`/feedback/${body.feedbackId}`, {
+          method: 'DELETE',
+        });
       case 'update-role':
         return await api.request(`/users/${body.userId}/chef-role`, {
           method: 'PATCH',
@@ -443,6 +484,7 @@ export const routes = [
           },
           {
             path: 'restaurants/:restaurantId',
+            loader: restaurantFeedbackLoader,
             action: mutationAction,
             lazy: page(() => import('../pages/RestaurantDetailPage')),
           },

@@ -144,6 +144,21 @@ export const translations = {
     'restaurants.searchCuisine': 'Tìm loại ẩm thực...',
     'restaurants.filterFavorite': 'Yêu thích',
     'restaurants.filterRecommended': 'Đề xuất',
+    'feedback.title': 'Đánh giá món ăn và dịch vụ',
+    'feedback.food': 'Món ăn',
+    'feedback.service': 'Dịch vụ',
+    'feedback.count': 'lượt đánh giá',
+    'feedback.yourFeedback': 'Đánh giá của bạn',
+    'feedback.chooseBill': 'Chọn hóa đơn đã thanh toán',
+    'feedback.comment': 'Nhận xét (không bắt buộc)',
+    'feedback.save': 'Lưu đánh giá',
+    'feedback.update': 'Cập nhật đánh giá',
+    'feedback.delete': 'Xóa đánh giá',
+    'feedback.confirmDelete': 'Xác nhận xóa đánh giá này?',
+    'feedback.noEligibleBills':
+      'Bạn có thể đánh giá sau khi thanh toán phần của mình trong hóa đơn.',
+    'feedback.empty': 'Chưa có đánh giá nào cho địa điểm này.',
+    'feedback.nextPage': 'Xem thêm đánh giá',
 
     // Stats
     'stats.title': 'Thống kê cá nhân',
@@ -254,6 +269,11 @@ export const translations = {
     'toast.restaurantArchiveFailed': 'Không thể lưu trữ địa điểm.',
     'toast.restaurantRestored': 'Đã khôi phục địa điểm.',
     'toast.restaurantRestoreFailed': 'Không thể khôi phục địa điểm.',
+    'toast.feedbackCreated': 'Đã gửi đánh giá.',
+    'toast.feedbackUpdated': 'Đã cập nhật đánh giá.',
+    'toast.feedbackDeleted': 'Đã xóa đánh giá.',
+    'toast.feedbackSaveFailed': 'Không thể lưu đánh giá.',
+    'toast.feedbackDeleteFailed': 'Không thể xóa đánh giá.',
     'toast.profileUpdated': 'Đã cập nhật hồ sơ.',
     'toast.profileUpdateFailed': 'Không thể cập nhật hồ sơ.',
     'toast.passwordChanged': 'Đã đổi mật khẩu và đăng xuất các phiên khác.',
@@ -278,6 +298,11 @@ export const translations = {
     'error.notFound': 'Không tìm thấy mục được yêu cầu.',
     'error.internal': 'Đã xảy ra lỗi máy chủ. Vui lòng thử lại.',
     'error.invalidParticipants': 'Danh sách thành viên hóa đơn không hợp lệ.',
+    'error.feedbackPaymentRequired':
+      'Bạn phải thanh toán phần của mình trước khi đánh giá.',
+    'error.feedbackAlreadyExists': 'Hóa đơn này đã có đánh giá của bạn.',
+    'error.feedbackNotFound': 'Không tìm thấy đánh giá.',
+    'error.feedbackCursorInvalid': 'Trang đánh giá không còn hợp lệ.',
     'error.paidBillAmendmentBlocked':
       'Không thể thay đổi tài chính sau khi bắt đầu thanh toán.',
     'error.paymentStatusConflict':
@@ -478,6 +503,21 @@ export const translations = {
     'restaurants.searchCuisine': 'Search cuisines...',
     'restaurants.filterFavorite': 'Favorite',
     'restaurants.filterRecommended': 'Recommended',
+    'feedback.title': 'Food and service feedback',
+    'feedback.food': 'Food',
+    'feedback.service': 'Service',
+    'feedback.count': 'reviews',
+    'feedback.yourFeedback': 'Your feedback',
+    'feedback.chooseBill': 'Choose a paid bill',
+    'feedback.comment': 'Comment (optional)',
+    'feedback.save': 'Submit feedback',
+    'feedback.update': 'Update feedback',
+    'feedback.delete': 'Delete feedback',
+    'feedback.confirmDelete': 'Confirm deleting this feedback?',
+    'feedback.noEligibleBills':
+      'You can leave feedback after paying your share of a bill.',
+    'feedback.empty': 'No feedback has been shared for this restaurant.',
+    'feedback.nextPage': 'View more feedback',
 
     // Stats
     'stats.title': 'Personal statistics',
@@ -602,6 +642,11 @@ export const translations = {
     'toast.restaurantArchiveFailed': 'Could not archive the restaurant entry.',
     'toast.restaurantRestored': 'Restaurant entry restored.',
     'toast.restaurantRestoreFailed': 'Could not restore the restaurant entry.',
+    'toast.feedbackCreated': 'Feedback submitted.',
+    'toast.feedbackUpdated': 'Feedback updated.',
+    'toast.feedbackDeleted': 'Feedback deleted.',
+    'toast.feedbackSaveFailed': 'Could not save feedback.',
+    'toast.feedbackDeleteFailed': 'Could not delete feedback.',
     'toast.profileUpdated': 'Profile updated.',
     'toast.profileUpdateFailed': 'Could not update the profile.',
     'toast.passwordChanged':
@@ -628,6 +673,11 @@ export const translations = {
     'error.notFound': 'The requested item was not found.',
     'error.internal': 'A server error occurred. Please try again.',
     'error.invalidParticipants': 'The bill participant list is invalid.',
+    'error.feedbackPaymentRequired':
+      'You must pay your bill share before leaving feedback.',
+    'error.feedbackAlreadyExists': 'You already reviewed this bill.',
+    'error.feedbackNotFound': 'Feedback was not found.',
+    'error.feedbackCursorInvalid': 'That feedback page is no longer valid.',
     'error.paidBillAmendmentBlocked':
       'Financial details cannot change after payment has started.',
     'error.paymentStatusConflict':

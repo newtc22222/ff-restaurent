@@ -1549,3 +1549,208 @@ integrationTest(
     );
   },
 );
+
+integrationTest(
+  'paid participants own precise, paginated restaurant feedback',
+  async () => {
+    const freshTokenFor = async (id: string) => {
+      const user = await prisma.user.findUniqueOrThrow({ where: { id } });
+      return tokenFor(id, '8h', user.sessionVersion);
+    };
+    const [customerAToken, customerBToken, sousToken, headToken] =
+      await Promise.all([
+        freshTokenFor(customerAId),
+        freshTokenFor(customerBId),
+        freshTokenFor(sousId),
+        freshTokenFor(headId),
+      ]);
+    const feedbackBill = await prisma.bill.create({
+      data: {
+        restaurantId,
+        createdById: sousId,
+        baseCost: 9000,
+        vat: 0,
+        shippingFee: 0,
+        totalCost: 9000,
+        participants: {
+          create: [
+            {
+              memberId: customerAId,
+              originCost: 3000,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 3000,
+              paymentStatus: PaymentStatus.PAID,
+              paidAt: new Date(),
+            },
+            {
+              memberId: sousId,
+              originCost: 3000,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 3000,
+              paymentStatus: PaymentStatus.PAID,
+              paidAt: new Date(),
+            },
+            {
+              memberId: customerBId,
+              originCost: 3000,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 3000,
+            },
+          ],
+        },
+      },
+    });
+
+    for (const rating of [0.5, 10.5, 4.25]) {
+      const invalid = await app.inject({
+        method: 'POST',
+        url: `/bills/${feedbackBill.id}/feedback`,
+        headers: auth(customerAToken),
+        payload: { foodRating: rating, serviceRating: 8 },
+      });
+      assert.equal(invalid.statusCode, 400);
+      assert.equal(invalid.json().code, 'VALIDATION_ERROR');
+    }
+
+    const unpaid = await app.inject({
+      method: 'POST',
+      url: `/bills/${feedbackBill.id}/feedback`,
+      headers: auth(customerBToken),
+      payload: { foodRating: 8, serviceRating: 8 },
+    });
+    assert.equal(unpaid.statusCode, 403);
+    assert.equal(unpaid.json().code, 'FEEDBACK_PAYMENT_REQUIRED');
+    const nonParticipant = await app.inject({
+      method: 'POST',
+      url: `/bills/${feedbackBill.id}/feedback`,
+      headers: auth(headToken),
+      payload: { foodRating: 8, serviceRating: 8 },
+    });
+    assert.equal(nonParticipant.statusCode, 403);
+
+    const duplicateRace = await Promise.all([
+      app.inject({
+        method: 'POST',
+        url: `/bills/${feedbackBill.id}/feedback`,
+        headers: auth(customerAToken),
+        payload: { foodRating: 8.5, serviceRating: 7, comment: 'Tasty' },
+      }),
+      app.inject({
+        method: 'POST',
+        url: `/bills/${feedbackBill.id}/feedback`,
+        headers: auth(customerAToken),
+        payload: { foodRating: 9, serviceRating: 8 },
+      }),
+    ]);
+    assert.deepEqual(
+      duplicateRace.map(({ statusCode }) => statusCode).sort(),
+      [201, 409],
+    );
+    assert.equal(
+      duplicateRace.find(({ statusCode }) => statusCode === 409)?.json().code,
+      'FEEDBACK_ALREADY_EXISTS',
+    );
+    const customerFeedback = duplicateRace
+      .find(({ statusCode }) => statusCode === 201)!
+      .json();
+
+    await prisma.bill.update({
+      where: { id: feedbackBill.id },
+      data: { status: 'ARCHIVED' },
+    });
+    const chefFeedback = await app.inject({
+      method: 'POST',
+      url: `/bills/${feedbackBill.id}/feedback`,
+      headers: auth(sousToken),
+      payload: { foodRating: 9.5, serviceRating: 8.5 },
+    });
+    assert.equal(chefFeedback.statusCode, 201);
+
+    const foreignEdit = await app.inject({
+      method: 'PUT',
+      url: `/feedback/${customerFeedback.id}`,
+      headers: auth(sousToken),
+      payload: { foodRating: 1, serviceRating: 1 },
+    });
+    assert.equal(foreignEdit.statusCode, 404);
+    assert.equal(foreignEdit.json().code, 'FEEDBACK_NOT_FOUND');
+
+    const updated = await app.inject({
+      method: 'PUT',
+      url: `/feedback/${customerFeedback.id}`,
+      headers: auth(customerAToken),
+      payload: { foodRating: 6.5, serviceRating: 7.5, comment: 'Updated' },
+    });
+    assert.equal(updated.statusCode, 200);
+    assert.equal(updated.json().foodRating, 6.5);
+
+    const firstPage = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}/feedback?limit=1`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(firstPage.statusCode, 200);
+    assert.equal(firstPage.json().items.length, 1);
+    assert.equal(firstPage.json().pageInfo.hasNextPage, true);
+    assert.equal(firstPage.json().aggregates.feedbackCount, 2);
+    assert.equal(firstPage.json().aggregates.foodRating, 8);
+    assert.equal(firstPage.json().aggregates.serviceRating, 8);
+    assert.equal(
+      JSON.stringify(firstPage.json()).includes('passwordHash'),
+      false,
+    );
+
+    const secondPage = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}/feedback?limit=1&cursor=${firstPage.json().pageInfo.endCursor}`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(secondPage.statusCode, 200);
+    assert.equal(secondPage.json().items.length, 1);
+    assert.notEqual(
+      secondPage.json().items[0].id,
+      firstPage.json().items[0].id,
+    );
+
+    await prisma.restaurantEntry.update({
+      where: { id: restaurantId },
+      data: { status: 'ARCHIVED' },
+    });
+    const inaccessible = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}/feedback`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(inaccessible.statusCode, 404);
+    const headAccess = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}/feedback`,
+      headers: auth(headToken),
+    });
+    assert.equal(headAccess.statusCode, 200);
+    await prisma.restaurantEntry.update({
+      where: { id: restaurantId },
+      data: { status: 'ACTIVE' },
+    });
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: `/feedback/${customerFeedback.id}`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(deleted.statusCode, 204);
+    const afterDelete = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}/feedback`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(afterDelete.json().aggregates.feedbackCount, 1);
+    assert.equal(afterDelete.json().aggregates.foodRating, 9.5);
+  },
+);

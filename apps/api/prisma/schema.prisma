@@ -75,6 +75,7 @@ model User {
   passwordResetRequests PasswordResetRequest[]
   ownedCollections      Collection[]             @relation("CollectionOwner")
   collectionShares      CollectionShare[]
+  feedback              Feedback[]
 }
 
 model PasswordResetRequest {
@@ -130,6 +131,7 @@ model RestaurantEntry {
   platformLinks  RestaurantPlatformLink[]
   cuisines       RestaurantCuisine[]
   collections    CollectionRestaurant[]
+  feedback       Feedback[]
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
 
@@ -205,6 +207,7 @@ model Bill {
   createdBy    User              @relation("BillCreator", fields: [createdById], references: [id])
   participants BillParticipant[]
   auditLogs    BillAuditLog[]
+  feedback     Feedback[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 }
@@ -223,6 +226,25 @@ model BillParticipant {
   member            User          @relation(fields: [memberId], references: [id])
 
   @@id([billId, memberId])
+}
+
+model Feedback {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billId        String
+  bill          Bill            @relation(fields: [billId], references: [id], onDelete: Cascade)
+  restaurantId  String
+  restaurant    RestaurantEntry @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  foodRating    Decimal         @db.Decimal(3, 1)
+  serviceRating Decimal         @db.Decimal(3, 1)
+  comment       String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([billId, userId])
+  @@index([restaurantId, createdAt, id])
+  @@index([userId, createdAt])
 }
 
 model Notification {

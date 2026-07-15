@@ -131,10 +131,31 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
           },
         },
       });
+      const feedbackAggregates = await prisma.feedback.groupBy({
+        by: ['restaurantId'],
+        where: { restaurantId: { in: restaurants.map(({ id }) => id) } },
+        _avg: { foodRating: true, serviceRating: true },
+        _count: { _all: true },
+      });
+      const aggregateByRestaurant = new Map(
+        feedbackAggregates.map((aggregate) => [
+          aggregate.restaurantId,
+          {
+            foodRating: aggregate._avg.foodRating?.toNumber() ?? null,
+            serviceRating: aggregate._avg.serviceRating?.toNumber() ?? null,
+            feedbackCount: aggregate._count._all,
+          },
+        ]),
+      );
       return restaurants.map((restaurant) => ({
         ...restaurant,
         isFavoritedByMe: restaurant.favorites.length > 0,
         favorites: undefined,
+        feedbackAggregates: aggregateByRestaurant.get(restaurant.id) ?? {
+          foodRating: null,
+          serviceRating: null,
+          feedbackCount: 0,
+        },
       }));
     },
   );
