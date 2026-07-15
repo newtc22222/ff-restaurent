@@ -277,7 +277,9 @@ test('member changes password while older sessions are invalidated', async ({
   await page.goto('/profile');
 
   await page.getByLabel('Current password').fill('password123');
-  await page.getByLabel('New password').fill('new-password-123');
+  await page
+    .getByLabel('New password', { exact: true })
+    .fill('new-password-123');
   await page.getByLabel('Confirm new password').fill('new-password-123');
   await page.getByRole('button', { name: 'Change password' }).click();
   await expect(
@@ -291,7 +293,7 @@ test('member changes password while older sessions are invalidated', async ({
   expect((await oldSession.json()).code).toBe('SESSION_INVALIDATED');
 
   await page.getByLabel('Current password').fill('new-password-123');
-  await page.getByLabel('New password').fill('password123');
+  await page.getByLabel('New password', { exact: true }).fill('password123');
   await page.getByLabel('Confirm new password').fill('password123');
   await page.getByRole('button', { name: 'Change password' }).click();
   await expect(page.getByLabel('Current password')).toHaveValue('');
