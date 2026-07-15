@@ -1,5 +1,6 @@
 import {
   BarChart2,
+  FolderHeart,
   LayoutDashboard,
   Store,
   Users,
@@ -81,6 +82,7 @@ function AppShellContent() {
   const nav: readonly (readonly [string, LucideIcon, string])[] = [
     ['/bills', LayoutDashboard, t('nav.bills')],
     ['/restaurants', Store, t('nav.restaurants')],
+    ['/collections', FolderHeart, t('nav.collections')],
     ['/stats', BarChart2, t('nav.stats')],
     ...(isRootAdmin(user)
       ? ([['/admin', Users, t('nav.members')]] as [

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Heart, Store, ThumbsUp } from 'lucide-react';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
-import type { CatalogPage, RestaurantEntry } from '../lib/api';
+import type { RestaurantDirectoryData } from '../lib/api';
 import {
   TYPE_OPTIONS_VI,
   TYPE_OPTIONS_EN,
@@ -33,7 +33,7 @@ import RestaurantCatalogFields, {
 export default function RestaurantsPage() {
   const navigate = useNavigate();
   const { user, restaurants: snapshotRestaurants } = useAppContext();
-  const page = useLoaderData() as CatalogPage<RestaurantEntry>;
+  const page = useLoaderData() as RestaurantDirectoryData;
   const restaurants = page.items;
   const [searchParams, setSearchParams] = useSearchParams();
   const searchParamsRef = useRef(searchParams);
@@ -45,7 +45,12 @@ export default function RestaurantsPage() {
   const typeOptions = locale === 'vi' ? TYPE_OPTIONS_VI : TYPE_OPTIONS_EN;
   const search = searchParams.get('search') ?? '';
   const sort = searchParams.get('sort') ?? 'name-asc';
-  const filterCuisine = searchParams.get('cuisineId') ?? '';
+  const filterCuisine =
+    searchParams.get('primaryCuisineId') ?? searchParams.get('cuisineId') ?? '';
+  const cuisineMatch = searchParams.has('primaryCuisineId') ? 'primary' : 'all';
+  const filterDiningArea = searchParams.get('diningAreaId') ?? '';
+  const filterCollection = searchParams.get('collectionId') ?? '';
+  const filterPlatform = searchParams.get('platform') ?? '';
   const filterFav = searchParams.get('favorite') === 'true';
   const filterRec = searchParams.get('recommended') === 'true';
   const filterArchive = searchParams.get('archive') ?? 'active';
@@ -89,10 +94,56 @@ export default function RestaurantsPage() {
   const activeFilterCount =
     (search ? 1 : 0) +
     (filterCuisine ? 1 : 0) +
+    (filterDiningArea ? 1 : 0) +
+    (filterCollection ? 1 : 0) +
+    (filterPlatform ? 1 : 0) +
     (filterFav ? 1 : 0) +
     (filterRec ? 1 : 0) +
     (filterArchive !== 'active' ? 1 : 0) +
     (sort !== 'name-asc' ? 1 : 0);
+
+  const diningAreaOptions = Array.from(
+    new Map(
+      snapshotRestaurants
+        .filter((entry) => entry.diningArea)
+        .map((entry) => [
+          entry.diningArea!.id,
+          {
+            value: entry.diningArea!.id,
+            label: entry.diningArea!.name,
+          },
+        ]),
+    ).values(),
+  ).sort((left, right) => left.label.localeCompare(right.label));
+  const platformOptions = Array.from(
+    new Set(
+      snapshotRestaurants.flatMap((entry) =>
+        (entry.platformLinks ?? []).map((link) => link.platform),
+      ),
+    ),
+  ).map((platform) => ({
+    value: platform,
+    label: platform.replaceAll('_', ' '),
+  }));
+  const collectionOptions = page.collections.map((collection) => ({
+    value: collection.id,
+    label: collection.name,
+  }));
+
+  const changeCuisineMatch = (match: string) => {
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.delete('cursor');
+    next.delete('cuisineId');
+    next.delete('primaryCuisineId');
+    if (filterCuisine) {
+      next.set(
+        match === 'primary' ? 'primaryCuisineId' : 'cuisineId',
+        filterCuisine,
+      );
+    }
+    searchParamsRef.current = next;
+    setSearchParams(next);
+  };
 
   const toggleFavorite = (id: string) =>
     mutate(
@@ -164,11 +215,61 @@ export default function RestaurantsPage() {
             variant="filter"
             label={t('restaurants.filterCuisine')}
             value={filterCuisine}
-            onChange={(value) => setQuery('cuisineId', value)}
+            onChange={(value) => {
+              if (cuisineMatch === 'primary') {
+                setQuery('primaryCuisineId', value);
+                if (value) setQuery('cuisineId');
+              } else {
+                setQuery('cuisineId', value);
+                if (value) setQuery('primaryCuisineId');
+              }
+            }}
             options={cuisineOptions}
             searchable
             searchPlaceholder={t('restaurants.searchCuisine')}
             emptyMessage={t('bills.noFilterResults')}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+          />
+          <select
+            className="field h-9 py-0 text-[12px]"
+            aria-label={t('restaurants.cuisineMatch')}
+            value={cuisineMatch}
+            onChange={(event) => changeCuisineMatch(event.target.value)}
+          >
+            <option value="all">{t('restaurants.anyCuisine')}</option>
+            <option value="primary">{t('restaurants.primaryCuisine')}</option>
+          </select>
+          <Dropdown
+            variant="filter"
+            label={t('restaurants.filterDiningArea')}
+            value={filterDiningArea}
+            onChange={(value) => setQuery('diningAreaId', value)}
+            options={diningAreaOptions}
+            searchable
+            searchPlaceholder={t('restaurants.searchDiningArea')}
+            emptyMessage={t('bills.noFilterResults')}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+          />
+          <Dropdown
+            variant="filter"
+            label={t('restaurants.filterCollection')}
+            value={filterCollection}
+            onChange={(value) => setQuery('collectionId', value)}
+            options={collectionOptions}
+            searchable
+            searchPlaceholder={t('restaurants.searchCollection')}
+            emptyMessage={t('bills.noFilterResults')}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+          />
+          <Dropdown
+            variant="filter"
+            label={t('restaurants.filterPlatform')}
+            value={filterPlatform}
+            onChange={(value) => setQuery('platform', value)}
+            options={platformOptions}
             allowClear
             clearLabel={t('bills.clearAll')}
           />

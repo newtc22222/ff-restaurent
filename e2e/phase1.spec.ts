@@ -250,6 +250,59 @@ test('server-backed directory filters survive direct links and reloads', async (
   await expect(page.getByLabel('From')).toHaveValue('2026-01-01');
 });
 
+test('member discovers, manages, shares, and reviews Collection places', async ({
+  page,
+}) => {
+  await login(page, 'e2e-customer');
+  await page.getByRole('link', { name: 'Restaurants' }).click();
+  await page.getByText('Existing E2E Restaurant').click();
+  await page.getByRole('button', { name: 'Favorite' }).click();
+  await page.getByLabel('Food').selectOption('8.5');
+  await page.getByLabel('Service').selectOption('9');
+  await page.getByLabel('Comment (optional)').fill('Reliable team lunch.');
+  await page.getByRole('button', { name: 'Submit feedback' }).click();
+  await expect(page.getByText('Feedback submitted.')).toBeVisible();
+
+  await page.getByRole('link', { name: 'Collections' }).click();
+  await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
+  await expect(page.getByText('Recommended', { exact: true })).toBeVisible();
+  await page.getByLabel('Name').fill('E2E Team Spots');
+  await page.getByLabel('Description').fill('Shared browser journey');
+  const createResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/collections') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Create Collection' }).click();
+  expect((await createResponse).status()).toBe(201);
+  await page.getByRole('button', { name: /E2E Team Spots/ }).click();
+
+  await page.getByRole('button', { name: 'Add a place' }).click();
+  await page.getByRole('option', { name: /Existing E2E Restaurant/ }).click();
+  await page.getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
+  await page.getByRole('button', { name: 'Choose a member' }).click();
+  await page.getByRole('option', { name: /Sous E2E/ }).click();
+  await page.getByRole('button', { name: 'Share' }).click();
+  await expect(page.getByText('Sous E2E')).toBeVisible();
+
+  await page.evaluate(() => localStorage.removeItem('ff-token'));
+  await login(page, 'e2e-sous');
+  await page.getByRole('link', { name: 'Collections' }).click();
+  await page.getByLabel('Visibility').selectOption('shared');
+  await page.getByRole('button', { name: /E2E Team Spots/ }).click();
+  await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
 test('Root Admin archives, restores, administers roles, and cannot alter root through chef roles', async ({
   page,
 }) => {

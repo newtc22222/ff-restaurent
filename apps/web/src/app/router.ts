@@ -20,11 +20,16 @@ import {
   type Bill,
   type BillActivityEvent,
   type CatalogPage,
+  type Collection,
+  type CollectionDetailData,
+  type CollectionRestaurant,
+  type CollectionShare,
   type Notification,
   type ParticipantGroup,
   type PasswordResetRequest,
   type RestaurantEntry,
   type RestaurantFeedbackPage,
+  type RestaurantDirectoryData,
   type Stats,
   type User,
 } from '../lib/api';
@@ -200,9 +205,59 @@ export async function restaurantsLoader({ request }: LoaderFunctionArgs) {
       'recommended',
     ]),
   );
+  const [page, collections] = await Promise.all([
+    session
+      .api()
+      .request<CatalogPage<RestaurantEntry>>(`/restaurants?${query}`),
+    fetchAllPages<Collection>('/collections?limit=100'),
+  ]);
+  return { ...page, collections } satisfies RestaurantDirectoryData;
+}
+
+export async function collectionsLoader({ request }: LoaderFunctionArgs) {
+  if (!session.getToken()) throw redirect('/login');
+  const query = forwardListQuery(
+    request,
+    new Set(['cursor', 'limit', 'sort', 'search', 'visibility', 'systemType']),
+  );
   return session
     .api()
-    .request<CatalogPage<RestaurantEntry>>(`/restaurants?${query}`);
+    .request<CatalogPage<Collection>>(`/collections?${query}`);
+}
+
+export async function collectionDetailLoader({
+  params,
+  request,
+}: LoaderFunctionArgs): Promise<CollectionDetailData> {
+  if (!session.getToken()) throw redirect('/login');
+  if (!params.collectionId)
+    throw new Response('Collection id is required', { status: 400 });
+  const api = session.api();
+  const collection = await api.request<Collection>(
+    `/collections/${params.collectionId}`,
+  );
+  const source = new URL(request.url).searchParams;
+  const query = new URLSearchParams();
+  for (const key of ['cursor', 'limit', 'search', 'sort']) {
+    const value = source.get(key);
+    if (value) query.set(key, value);
+  }
+  const [restaurants, shares] = await Promise.all([
+    api.request<CatalogPage<CollectionRestaurant>>(
+      `/collections/${params.collectionId}/restaurants?${query}`,
+    ),
+    collection.ownerId && collection.systemType === null
+      ? api
+          .request<CatalogPage<CollectionShare>>(
+            `/collections/${params.collectionId}/shares?limit=100`,
+          )
+          .catch((error) => {
+            if (error instanceof ApiError && error.status === 403) return null;
+            throw error;
+          })
+      : Promise.resolve(null),
+  ]);
+  return { collection, restaurants, shares };
 }
 
 export async function loginLoader() {
@@ -395,6 +450,40 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
           `/restaurants/${body.restaurantId ?? params.restaurantId}/${body.status}`,
           { method: 'PATCH' },
         );
+      case 'create-collection':
+        return await api.request('/collections', {
+          method: 'POST',
+          body: JSON.stringify(body.payload),
+        });
+      case 'update-collection':
+        return await api.request(`/collections/${body.collectionId}`, {
+          method: 'PUT',
+          body: JSON.stringify(body.payload),
+        });
+      case 'delete-collection':
+        return await api.request(`/collections/${body.collectionId}`, {
+          method: 'DELETE',
+        });
+      case 'add-collection-restaurant':
+        return await api.request(
+          `/collections/${body.collectionId}/restaurants/${body.restaurantId}`,
+          { method: 'POST' },
+        );
+      case 'remove-collection-restaurant':
+        return await api.request(
+          `/collections/${body.collectionId}/restaurants/${body.restaurantId}`,
+          { method: 'DELETE' },
+        );
+      case 'share-collection':
+        return await api.request(`/collections/${body.collectionId}/shares`, {
+          method: 'POST',
+          body: JSON.stringify({ userId: body.userId }),
+        });
+      case 'unshare-collection':
+        return await api.request(
+          `/collections/${body.collectionId}/shares/${body.userId}`,
+          { method: 'DELETE' },
+        );
       case 'create-feedback':
         return await api.request(`/bills/${body.billId}/feedback`, {
           method: 'POST',
@@ -553,6 +642,12 @@ export const routes = [
             lazy: page(() => import('../pages/RestaurantsPage')),
           },
           {
+            path: 'collections',
+            loader: collectionsLoader,
+            action: mutationAction,
+            lazy: page(() => import('../pages/CollectionsPage')),
+          },
+          {
             path: 'stats',
             loader: statsLoader,
             lazy: page(() => import('../pages/StatsPage')),
@@ -586,6 +681,12 @@ export const routes = [
             loader: restaurantFeedbackLoader,
             action: mutationAction,
             lazy: page(() => import('../pages/RestaurantDetailPage')),
+          },
+          {
+            path: 'collections/:collectionId',
+            loader: collectionDetailLoader,
+            action: mutationAction,
+            lazy: page(() => import('../pages/CollectionDetailPage')),
           },
           {
             path: 'profile',
