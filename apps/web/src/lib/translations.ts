@@ -90,6 +90,26 @@ export const translations = {
     'bills.qrCode': 'Mã QR thanh toán',
     'bills.uploadQr': 'Tải lên mã QR',
 
+    // Bill activity
+    'activity.title': 'Lịch sử hoạt động',
+    'activity.subtitle': 'Các thay đổi và hành động liên quan đến hóa đơn này.',
+    'activity.created': 'Tạo hóa đơn',
+    'activity.updated': 'Cập nhật hóa đơn',
+    'activity.paymentChanged': 'Thay đổi trạng thái thanh toán',
+    'activity.remindersSent': 'Gửi nhắc nhở thanh toán',
+    'activity.archived': 'Lưu trữ hóa đơn',
+    'activity.restored': 'Khôi phục hóa đơn',
+    'activity.changed': 'Đã thay đổi',
+    'activity.sent': 'đã gửi',
+    'activity.skipped': 'bỏ qua',
+    'activity.participant': 'Thành viên',
+    'activity.noEvents': 'Chưa có hoạt động nào.',
+    'activity.change.restaurant': 'nhà hàng',
+    'activity.change.costs': 'chi phí',
+    'activity.change.adjustments': 'điều chỉnh',
+    'activity.change.paymentLink': 'liên kết thanh toán',
+    'activity.change.participants': 'thành viên',
+
     // Create Bill
     'createBill.title': 'Tạo hóa đơn',
     'createBill.subtitle':
@@ -393,6 +413,26 @@ export const translations = {
     'bills.confirmRestore': 'Are you sure you want to restore this bill?',
     'bills.qrCode': 'Payment QR Code',
     'bills.uploadQr': 'Upload QR',
+
+    // Bill activity
+    'activity.title': 'Activity history',
+    'activity.subtitle': 'Changes and actions related to this bill.',
+    'activity.created': 'Bill created',
+    'activity.updated': 'Bill updated',
+    'activity.paymentChanged': 'Payment status changed',
+    'activity.remindersSent': 'Payment reminders sent',
+    'activity.archived': 'Bill archived',
+    'activity.restored': 'Bill restored',
+    'activity.changed': 'Changed',
+    'activity.sent': 'sent',
+    'activity.skipped': 'skipped',
+    'activity.participant': 'Participant',
+    'activity.noEvents': 'No activity yet.',
+    'activity.change.restaurant': 'restaurant',
+    'activity.change.costs': 'costs',
+    'activity.change.adjustments': 'adjustments',
+    'activity.change.paymentLink': 'payment link',
+    'activity.change.participants': 'participants',
 
     // Create Bill
     'createBill.title': 'Create bill',
