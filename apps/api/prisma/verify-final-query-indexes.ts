@@ -55,6 +55,7 @@ try {
   }
 
   await prisma.$executeRawUnsafe('SET enable_seqscan = off');
+  await prisma.$executeRawUnsafe('SET enable_bitmapscan = off');
   for (const query of queryShapes) {
     const planRows = await prisma.$queryRawUnsafe<
       Array<{ 'QUERY PLAN': unknown }>
