@@ -402,7 +402,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const created = await prisma.$transaction(async (tx) => {
         if (!computed.allowDuplicate) {
           const lockKey = `${request.currentUser.id}:${computed.bill.duplicateFingerprint}`;
-          await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+          await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))::text AS lock`;
           let duplicate = await tx.bill.findFirst({
             where: {
               createdById: request.currentUser.id,
