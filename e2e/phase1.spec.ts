@@ -219,6 +219,37 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   expect(denied.status()).toBe(403);
 });
 
+test('server-backed directory filters survive direct links and reloads', async ({
+  page,
+}) => {
+  await login(page, 'e2e-head');
+  await page.getByRole('link', { name: 'Restaurants' }).click();
+  await page
+    .getByRole('searchbox', { name: 'Search restaurants without accents...' })
+    .fill('existing e2e');
+  await page.getByLabel('Sort restaurants').selectOption('name-desc');
+  await expect(page).toHaveURL(/search=existing(?:\+|%20)e2e/);
+  await expect(page).toHaveURL(/sort=name-desc/);
+  await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
+
+  await page.reload();
+  await expect(
+    page.getByRole('searchbox', {
+      name: 'Search restaurants without accents...',
+    }),
+  ).toHaveValue('existing e2e');
+  await expect(page.getByLabel('Sort restaurants')).toHaveValue('name-desc');
+
+  await page.getByRole('link', { name: 'Bills' }).click();
+  await page.getByLabel('Sort bills').selectOption('total-desc');
+  await page.getByLabel('From').fill('2026-01-01');
+  await expect(page).toHaveURL(/sort=total-desc/);
+  await expect(page).toHaveURL(/from=2026-01-01/);
+  await page.reload();
+  await expect(page.getByLabel('Sort bills')).toHaveValue('total-desc');
+  await expect(page.getByLabel('From')).toHaveValue('2026-01-01');
+});
+
 test('Root Admin archives, restores, administers roles, and cannot alter root through chef roles', async ({
   page,
 }) => {

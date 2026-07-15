@@ -10,11 +10,13 @@ import { matchRoutes } from 'react-router';
 import {
   appLoader,
   billActivityLoader,
+  billsLoader,
   loginAction,
   loginLoader,
   mutationAction,
   roleGuard,
   routes,
+  restaurantsLoader,
   statsLoader,
 } from './router';
 
@@ -22,6 +24,12 @@ const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json' },
+  });
+
+const pageResponse = (items: unknown[] = [], endCursor: string | null = null) =>
+  jsonResponse({
+    items,
+    pageInfo: { endCursor, hasNextPage: endCursor !== null },
   });
 
 const user = {
@@ -69,9 +77,9 @@ describe('appLoader', () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.endsWith('/me')) return jsonResponse(user);
-        if (url.includes('/bills')) return jsonResponse([]);
-        if (url.includes('/restaurants')) return jsonResponse([]);
-        if (url.endsWith('/users')) return jsonResponse([user]);
+        if (url.includes('/bills')) return pageResponse();
+        if (url.includes('/restaurants')) return pageResponse();
+        if (url.includes('/users?')) return pageResponse([user]);
         if (url.endsWith('/admin/password-reset-requests'))
           return jsonResponse([]);
         if (url.endsWith('/notifications')) return jsonResponse([]);
@@ -95,6 +103,12 @@ describe('appLoader', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/me')) return userResponse;
+      if (
+        url.includes('/bills?') ||
+        url.includes('/restaurants?') ||
+        url.includes('/users?')
+      )
+        return pageResponse();
       return jsonResponse([]);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -123,6 +137,8 @@ describe('appLoader', () => {
         const url = String(input);
         if (url.endsWith('/me')) return jsonResponse(user);
         if (url.includes('/bills')) return jsonResponse({}, 500);
+        if (url.includes('/restaurants?') || url.includes('/users?'))
+          return pageResponse();
         return jsonResponse([]);
       }),
     );
@@ -130,6 +146,62 @@ describe('appLoader', () => {
     const data = await appLoader();
     expect(data.bills).toEqual([]);
     expect(data.warning).toMatch(/Some data/);
+  });
+});
+
+describe('paginated list loaders', () => {
+  it('forwards durable bill filters and ignores unknown query state', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const response = {
+      items: [],
+      pageInfo: { endCursor: null, hasNextPage: false },
+    };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
+      jsonResponse(response),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      billsLoader({
+        request: new Request(
+          'http://localhost/bills?participantIds=a%2Cb&paymentStatus=WAITING&from=2026-07-01&unknown=drop',
+        ),
+        params: {},
+        context: {},
+      } as never),
+    ).resolves.toEqual(response);
+    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    expect(requestedUrl).toContain('participantIds=a%2Cb');
+    expect(requestedUrl).toContain('paymentStatus=WAITING');
+    expect(requestedUrl).toContain('from=2026-07-01');
+    expect(requestedUrl).not.toContain('unknown');
+  });
+
+  it('forwards normalized restaurant discovery filters and cursor state', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const response = {
+      items: [],
+      pageInfo: { endCursor: null, hasNextPage: false },
+    };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
+      jsonResponse(response),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      restaurantsLoader({
+        request: new Request(
+          'http://localhost/restaurants?search=bep+viet&cuisineId=cuisine-1&favorite=true&cursor=restaurant-1',
+        ),
+        params: {},
+        context: {},
+      } as never),
+    ).resolves.toEqual(response);
+    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    expect(requestedUrl).toContain('search=bep+viet');
+    expect(requestedUrl).toContain('cuisineId=cuisine-1');
+    expect(requestedUrl).toContain('favorite=true');
+    expect(requestedUrl).toContain('cursor=restaurant-1');
   });
 });
 

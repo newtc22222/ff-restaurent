@@ -11,6 +11,8 @@ import {
   collectionShareSchema,
   collectionUpdateSchema,
 } from '../schemas.js';
+import { normalizeSearchQuery } from '../search-normalization.js';
+import { pageResult } from '../pagination.js';
 
 const collectionSelect = {
   id: true,
@@ -100,36 +102,49 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
     async (request) => {
       await ensureDefaultCollections(request.currentUser.id);
       const query = catalogQuerySchema.parse(request.query);
+      const visibilityFilter: Prisma.CollectionWhereInput =
+        query.visibility === 'owned'
+          ? { ownerId: request.currentUser.id }
+          : query.visibility === 'public'
+            ? { isPublic: true }
+            : query.visibility === 'shared'
+              ? { shares: { some: { userId: request.currentUser.id } } }
+              : {};
+      const orderBy: Prisma.CollectionOrderByWithRelationInput[] =
+        query.sort === 'name-desc'
+          ? [{ name: 'desc' }, { id: 'desc' }]
+          : query.sort === 'created-asc'
+            ? [{ createdAt: 'asc' }, { id: 'asc' }]
+            : query.sort === 'name-asc'
+              ? [{ name: 'asc' }, { id: 'asc' }]
+              : [{ createdAt: 'desc' }, { id: 'desc' }];
       const items = await prisma.collection.findMany({
         where: {
           AND: [
             visibleWhere(request.currentUser.id),
+            visibilityFilter,
+            query.systemType === 'custom'
+              ? { systemType: null }
+              : query.systemType
+                ? { systemType: query.systemType }
+                : {},
             ...(query.search
               ? [
                   {
-                    name: {
-                      contains: query.search,
-                      mode: 'insensitive' as const,
+                    searchText: {
+                      contains: normalizeSearchQuery(query.search),
                     },
                   },
                 ]
               : []),
           ],
         },
-        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        orderBy,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
         take: query.limit + 1,
         select: collectionSelect,
       });
-      const hasNextPage = items.length > query.limit;
-      const page = items.slice(0, query.limit);
-      return {
-        items: page,
-        pageInfo: {
-          endCursor: hasNextPage ? (page.at(-1)?.id ?? null) : null,
-          hasNextPage,
-        },
-      };
+      return pageResult(items, query.limit);
     },
   );
 

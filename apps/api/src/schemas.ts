@@ -321,6 +321,63 @@ export const catalogQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   cursor: z.string().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
+  sort: z
+    .enum(['name-asc', 'name-desc', 'created-desc', 'created-asc'])
+    .default('name-asc'),
+  type: z.string().trim().max(80).optional(),
+  provinceCode: z.string().trim().max(20).optional(),
+  visibility: z.enum(['all', 'owned', 'public', 'shared']).default('all'),
+  systemType: z.enum(['FAVORITES', 'RECOMMENDED', 'custom']).optional(),
+});
+
+export const memberQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  sort: z.enum(['name-asc', 'name-desc', 'created-desc']).default('name-asc'),
+});
+
+export const billListQuerySchema = z.object({
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  sort: z
+    .enum(['created-desc', 'created-asc', 'total-desc', 'total-asc'])
+    .default('created-desc'),
+  restaurantId: z.string().min(1).optional(),
+  participantId: z.string().min(1).optional(),
+  participantIds: z.string().max(4000).optional(),
+  paymentStatus: z.enum(['PAID', 'WAITING']).optional(),
+  archive: z.enum(['active', 'archived', 'all']).default('active'),
+  ownerId: z.string().min(1).optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+
+export const restaurantListQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  sort: z
+    .enum(['name-asc', 'name-desc', 'created-desc', 'created-asc'])
+    .default('name-asc'),
+  cuisineId: z.string().min(1).optional(),
+  primaryCuisineId: z.string().min(1).optional(),
+  diningAreaId: z.string().min(1).optional(),
+  collectionId: z.string().min(1).optional(),
+  platform: z
+    .enum([
+      'GRAB',
+      'SHOPEE_FOOD',
+      'BE_FOOD',
+      'GOJEK',
+      'WEBSITE',
+      'FACEBOOK',
+      'OTHER',
+    ])
+    .optional(),
+  archive: z.enum(['active', 'archived', 'all']).default('active'),
+  favorite: z.enum(['true', 'false']).optional(),
+  recommended: z.enum(['true', 'false']).optional(),
 });
 
 export const collectionSchema = z.object({

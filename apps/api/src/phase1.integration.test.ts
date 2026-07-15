@@ -5,6 +5,7 @@ import {
   CollectionSystemType,
   PaymentStatus,
   Prisma,
+  RestaurantPlatform,
   SystemRole,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -324,6 +325,173 @@ integrationTest('the database permits exactly one ROOT_ADMIN', async () => {
     1,
   );
 });
+
+integrationTest(
+  'server search and composable filters paginate deterministically within authorization scope',
+  async () => {
+    const cuisine = await prisma.cuisine.create({
+      data: {
+        name: 'Ẩm thực Việt FF23',
+        nameKey: 'am-thuc-viet-ff23',
+        type: 'Vietnamese',
+      },
+    });
+    const diningArea = await prisma.diningArea.create({
+      data: {
+        name: 'Quận Một FF23',
+        normalizedKey: 'quan-mot-ff23|1 duong thu nghiem',
+        address: '1 Đường Thử Nghiệm',
+      },
+    });
+    const restaurantIds: string[] = [];
+    for (const suffix of ['A', 'B']) {
+      const restaurant = await prisma.restaurantEntry.create({
+        data: {
+          name: `Bếp Việt Đậm Đà ${suffix}`,
+          address: '1 Đường Trần Hưng Đạo',
+          cuisineType: cuisine.name,
+          type: 'Restaurant',
+          diningAreaId: diningArea.id,
+          createdById: sousId,
+          isRecommended: true,
+          cuisines: {
+            create: { cuisineId: cuisine.id, isPrimary: true },
+          },
+          platformLinks: {
+            create: {
+              platform: RestaurantPlatform.WEBSITE,
+              url: `https://ff23-${suffix.toLowerCase()}.example.test`,
+              sortOrder: 0,
+            },
+          },
+          favorites: { create: { userId: customerAId } },
+        },
+      });
+      restaurantIds.push(restaurant.id);
+    }
+    const collection = await prisma.collection.create({
+      data: {
+        name: 'Bộ sưu tập FF23',
+        isPublic: false,
+        ownerId: customerAId,
+        restaurants: {
+          create: restaurantIds.map((restaurantId) => ({ restaurantId })),
+        },
+      },
+    });
+
+    const members = await app.inject({
+      method: 'GET',
+      url: '/members?search=customer&sort=name-asc&limit=1',
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(members.statusCode, 200);
+    assert.equal(members.json().items.length, 1);
+    assert.equal(members.json().pageInfo.hasNextPage, true);
+    assert.equal(
+      JSON.stringify(members.json()).includes('passwordHash'),
+      false,
+    );
+
+    const firstRestaurants = await app.inject({
+      method: 'GET',
+      url: `/restaurants?search=bep+viet+dam+da&cuisineId=${cuisine.id}&diningAreaId=${diningArea.id}&collectionId=${collection.id}&platform=WEBSITE&favorite=true&recommended=true&sort=name-asc&limit=1`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(firstRestaurants.statusCode, 200);
+    assert.equal(firstRestaurants.json().items.length, 1);
+    assert.equal(firstRestaurants.json().pageInfo.hasNextPage, true);
+    const restaurantCursor = firstRestaurants.json().pageInfo.endCursor;
+    assert.ok(restaurantCursor);
+    const secondRestaurants = await app.inject({
+      method: 'GET',
+      url: `/restaurants?search=bep+viet+dam+da&cuisineId=${cuisine.id}&diningAreaId=${diningArea.id}&collectionId=${collection.id}&platform=WEBSITE&favorite=true&recommended=true&sort=name-asc&limit=1&cursor=${restaurantCursor}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(secondRestaurants.statusCode, 200);
+    assert.equal(secondRestaurants.json().items.length, 1);
+    assert.notEqual(
+      secondRestaurants.json().items[0].id,
+      firstRestaurants.json().items[0].id,
+    );
+    const hiddenCollectionFilter = await app.inject({
+      method: 'GET',
+      url: `/restaurants?collectionId=${collection.id}`,
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(hiddenCollectionFilter.statusCode, 200);
+    assert.deepEqual(hiddenCollectionFilter.json().items, []);
+
+    const paginatedBillIds: string[] = [];
+    for (const [index, totalCost] of [10_000, 20_000].entries()) {
+      const createdBill = await prisma.bill.create({
+        data: {
+          restaurantId: restaurantIds[index]!,
+          baseCost: totalCost,
+          vat: 0,
+          shippingFee: 0,
+          totalCost,
+          createdById: sousId,
+          participants: {
+            create: [
+              {
+                memberId: customerAId,
+                originCost: totalCost / 2,
+                allocatedVat: 0,
+                allocatedShipping: 0,
+                discountApplied: 0,
+                finalPrice: totalCost / 2,
+                paymentStatus: PaymentStatus.WAITING,
+              },
+              {
+                memberId: customerBId,
+                originCost: totalCost / 2,
+                allocatedVat: 0,
+                allocatedShipping: 0,
+                discountApplied: 0,
+                finalPrice: totalCost / 2,
+                paymentStatus: PaymentStatus.PAID,
+              },
+            ],
+          },
+        },
+      });
+      paginatedBillIds.push(createdBill.id);
+    }
+
+    const firstBills = await app.inject({
+      method: 'GET',
+      url: `/bills?participantIds=${customerAId},${customerBId}&participantId=${customerAId}&paymentStatus=WAITING&ownerId=${sousId}&from=2026-01-01&to=2030-12-31&sort=total-asc&limit=1`,
+      headers: auth(tokenFor(headId)),
+    });
+    assert.equal(firstBills.statusCode, 200);
+    assert.equal(firstBills.json().items.length, 1);
+    assert.equal(firstBills.json().items[0].totalCost, 10_000);
+    assert.equal(firstBills.json().pageInfo.hasNextPage, true);
+    const secondBills = await app.inject({
+      method: 'GET',
+      url: `/bills?participantIds=${customerAId},${customerBId}&participantId=${customerAId}&paymentStatus=WAITING&ownerId=${sousId}&from=2026-01-01&to=2030-12-31&sort=total-asc&limit=1&cursor=${firstBills.json().pageInfo.endCursor}`,
+      headers: auth(tokenFor(headId)),
+    });
+    assert.equal(secondBills.statusCode, 200);
+    assert.equal(secondBills.json().items[0].totalCost, 20_000);
+
+    const customerPaymentScope = await app.inject({
+      method: 'GET',
+      url: '/bills?paymentStatus=WAITING',
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(customerPaymentScope.statusCode, 200);
+    assert.equal(
+      customerPaymentScope
+        .json()
+        .items.some((bill: { id: string }) =>
+          paginatedBillIds.includes(bill.id),
+        ),
+      false,
+    );
+  },
+);
 
 integrationTest(
   'Collections enforce visibility, ownership, system invariants, pagination, and shortcut compatibility',

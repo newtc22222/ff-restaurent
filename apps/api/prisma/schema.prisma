@@ -56,6 +56,7 @@ model User {
   username                    String                   @unique
   phone                       String?                  @unique
   name                        String
+  searchText                  String                   @default("")
   passwordHash                String
   chefRole                    ChefRole?
   systemRole                  SystemRole?              @unique
@@ -110,6 +111,7 @@ model RootAdminTransferAudit {
 model RestaurantEntry {
   id             String                   @id @default(cuid())
   name           String
+  searchText     String                   @default("")
   address        String
   addressLine    String?
   provinceCode   String?
@@ -139,12 +141,16 @@ model RestaurantEntry {
   updatedAt      DateTime                 @updatedAt
 
   @@index([diningAreaId])
+  @@index([status, createdAt, id])
+  @@index([createdById, createdAt, id])
+  @@index([isRecommended, status, createdAt, id])
 }
 
 model Cuisine {
   id          String              @id @default(cuid())
   name        String
   nameKey     String              @unique
+  searchText  String              @default("")
   type        String
   description String?
   restaurants RestaurantCuisine[]
@@ -167,6 +173,7 @@ model DiningArea {
   id            String            @id @default(cuid())
   name          String
   normalizedKey String            @unique
+  searchText    String            @default("")
   address       String
   addressLine   String?
   provinceCode  String?
@@ -216,6 +223,9 @@ model Bill {
   duplicateFingerprint String?
 
   @@index([createdById, duplicateFingerprint, status])
+  @@index([status, createdAt, id])
+  @@index([restaurantId, createdAt, id])
+  @@index([createdById, createdAt, id])
 }
 
 model BillParticipant {
@@ -232,6 +242,8 @@ model BillParticipant {
   member            User          @relation(fields: [memberId], references: [id])
 
   @@id([billId, memberId])
+  @@index([memberId, paymentStatus, billId])
+  @@index([paymentStatus, billId])
 }
 
 model Feedback {
@@ -323,6 +335,7 @@ model UserFavorite {
 model Collection {
   id          String                 @id @default(cuid())
   name        String
+  searchText  String                 @default("")
   description String?
   isPublic    Boolean                @default(false)
   systemType  CollectionSystemType?
