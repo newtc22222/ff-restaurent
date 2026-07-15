@@ -1,8 +1,8 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../prisma.js';
-import { isHeadChef, isSousChefOrAbove } from '../roles.js';
+import { isHeadChef, isRootAdmin, isSousChefOrAbove } from '../roles.js';
 
-type JwtPayload = { sub: string };
+type JwtPayload = { sub: string; ver?: number };
 
 /**
  * Verifies the bearer token and stores the minimal user identity needed by
@@ -17,7 +17,17 @@ export const requireAuthenticatedUser = async (
     const payload = request.user as JwtPayload;
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user) {
-      reply.code(401).send({ message: 'User no longer exists' });
+      reply.code(401).send({
+        code: 'AUTHENTICATION_REQUIRED',
+        message: 'User no longer exists',
+      });
+      return;
+    }
+    if ((payload.ver ?? 0) !== user.sessionVersion) {
+      reply.code(401).send({
+        code: 'SESSION_INVALIDATED',
+        message: 'This session is no longer valid',
+      });
       return;
     }
     request.currentUser = {
@@ -25,9 +35,15 @@ export const requireAuthenticatedUser = async (
       username: user.username,
       name: user.name,
       chefRole: user.chefRole,
+      systemRole: user.systemRole,
     };
   } catch {
-    reply.code(401).send({ message: 'Authentication required' });
+    if (!reply.sent) {
+      reply.code(401).send({
+        code: 'AUTHENTICATION_REQUIRED',
+        message: 'Authentication required',
+      });
+    }
   }
 };
 
@@ -45,7 +61,7 @@ export const requireSousChefOrHeadChef = async (
 };
 
 /**
- * Allows only HEAD_CHEF users for administrative actions.
+ * Allows HEAD_CHEF and the inherited ROOT_ADMIN for global content actions.
  * This guard must run after requireAuthenticatedUser.
  */
 export const requireHeadChef = async (
@@ -54,5 +70,18 @@ export const requireHeadChef = async (
 ): Promise<void> => {
   if (!isHeadChef(request.currentUser)) {
     reply.code(403).send({ message: 'HEAD_CHEF required' });
+  }
+};
+
+/** Allows only the singleton ROOT_ADMIN to access system administration. */
+export const requireRootAdmin = async (
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> => {
+  if (!isRootAdmin(request.currentUser)) {
+    reply.code(403).send({
+      code: 'ROOT_ADMIN_REQUIRED',
+      message: 'ROOT_ADMIN required',
+    });
   }
 };

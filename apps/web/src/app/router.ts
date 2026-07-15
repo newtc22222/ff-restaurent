@@ -24,7 +24,7 @@ import {
   type User,
 } from '../lib/api';
 import { session } from '../lib/session';
-import { canChef, isHead } from '../lib/helpers';
+import { canChef, isRootAdmin } from '../lib/helpers';
 
 export async function appLoader(): Promise<AppLoaderData> {
   if (!session.getToken()) throw redirect('/login');
@@ -41,7 +41,9 @@ export async function appLoader(): Promise<AppLoaderData> {
     const [sharedResults, usersResult] = await Promise.all([
       sharedResultsPromise,
       api
-        .request<User[]>(user.chefRole === 'HEAD_CHEF' ? '/users' : '/members')
+        .request<User[]>(
+          user.systemRole === 'ROOT_ADMIN' ? '/users' : '/members',
+        )
         .then(
           (value): PromiseSettledResult<User[]> => ({
             status: 'fulfilled',
@@ -204,6 +206,15 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
           method: 'PATCH',
           body: JSON.stringify({ chefRole: body.chefRole }),
         });
+      case 'root-transfer':
+        await api.request('/admin/root-transfer', {
+          method: 'POST',
+          body: JSON.stringify(body.payload),
+        });
+        session.clear();
+        if (typeof body.toastSuccess === 'string')
+          toast.success(body.toastSuccess);
+        return redirect('/login');
       case 'update-profile':
         return await api.request('/me/profile', {
           method: 'PUT',
@@ -231,7 +242,7 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
   }
 }
 
-async function roleGuard(
+export async function roleGuard(
   predicate: (user: User) => boolean,
   _args: LoaderFunctionArgs,
 ) {
@@ -293,7 +304,7 @@ export const routes = [
           { path: 'stats', lazy: page(() => import('../pages/StatsPage')) },
           {
             path: 'admin',
-            loader: (args) => roleGuard(isHead, args),
+            loader: (args) => roleGuard(isRootAdmin, args),
             action: mutationAction,
             lazy: page(() => import('../pages/AdminPage')),
           },

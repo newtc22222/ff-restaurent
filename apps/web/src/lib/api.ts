@@ -1,4 +1,5 @@
 export type ChefRole = 'SOUS_CHEF' | 'HEAD_CHEF' | null;
+export type SystemRole = 'ROOT_ADMIN' | null;
 export type PaymentStatus = 'PAID' | 'WAITING';
 export type EntryStatus = 'ACTIVE' | 'ARCHIVED';
 
@@ -8,6 +9,7 @@ export type User = {
   phone?: string | null;
   name: string;
   chefRole: ChefRole;
+  systemRole: SystemRole;
   roles: string[];
 };
 

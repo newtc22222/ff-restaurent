@@ -3,6 +3,10 @@ export enum ChefRole {
   HEAD_CHEF = 'HEAD_CHEF',
 }
 
+export enum SystemRole {
+  ROOT_ADMIN = 'ROOT_ADMIN',
+}
+
 export enum EntryStatus {
   ACTIVE = 'ACTIVE',
   ARCHIVED = 'ARCHIVED',
@@ -24,11 +28,13 @@ export const ROLE_LABELS: Record<string, Record<string, string>> = {
     CUSTOMER: 'Khách hàng',
     SOUS_CHEF: 'Sous chef',
     HEAD_CHEF: 'Bếp trưởng',
+    ROOT_ADMIN: 'Quản trị viên gốc',
   },
   en: {
     CUSTOMER: 'Customer',
     SOUS_CHEF: 'Sous chef',
-    HEAD_CHEF: 'Executive chef',
+    HEAD_CHEF: 'Head Chef',
+    ROOT_ADMIN: 'Root Admin',
   },
 };
 

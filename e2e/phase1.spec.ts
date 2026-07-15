@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ChefRole, PrismaClient } from '@prisma/client';
+import { ChefRole, PrismaClient, SystemRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -17,6 +17,7 @@ const login = async (page: Page, username: string) => {
 
 test.beforeAll(async () => {
   await prisma.notification.deleteMany();
+  await prisma.rootAdminTransferAudit.deleteMany();
   await prisma.billAuditLog.deleteMany();
   await prisma.roleAuditLog.deleteMany();
   await prisma.billParticipant.deleteMany();
@@ -32,6 +33,7 @@ test.beforeAll(async () => {
         name: 'Head E2E',
         passwordHash,
         chefRole: ChefRole.HEAD_CHEF,
+        systemRole: SystemRole.ROOT_ADMIN,
       },
     }),
     prisma.user.create({
@@ -185,7 +187,7 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   expect(denied.status()).toBe(403);
 });
 
-test('Head Chef archives, restores, administers roles, and cannot self-demote', async ({
+test('Root Admin archives, restores, administers roles, and cannot alter root through chef roles', async ({
   page,
 }) => {
   await login(page, 'e2e-head');

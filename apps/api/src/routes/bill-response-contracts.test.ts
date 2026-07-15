@@ -9,12 +9,14 @@ const expectedPublicUserFields = [
   'id',
   'name',
   'phone',
+  'systemRole',
   'username',
 ];
 
 const assertPublicUserContract = (select: typeof publicUserSelect) => {
   assert.deepEqual(Object.keys(select).sort(), expectedPublicUserFields);
   assert.equal('passwordHash' in select, false);
+  assert.equal('sessionVersion' in select, false);
 };
 
 test('bill list, detail, create, edit, archive, and restore responses select only public users', () => {

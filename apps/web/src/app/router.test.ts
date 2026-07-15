@@ -12,6 +12,7 @@ import {
   loginAction,
   loginLoader,
   mutationAction,
+  roleGuard,
   routes,
 } from './router';
 
@@ -26,7 +27,8 @@ const user = {
   username: 'head',
   name: 'Head Chef',
   chefRole: 'HEAD_CHEF' as const,
-  roles: ['CUSTOMER', 'HEAD_CHEF'],
+  systemRole: 'ROOT_ADMIN' as const,
+  roles: ['CUSTOMER', 'HEAD_CHEF', 'ROOT_ADMIN'],
 };
 
 afterEach(() => {
@@ -124,6 +126,29 @@ describe('appLoader', () => {
     const data = await appLoader();
     expect(data.bills).toEqual([]);
     expect(data.warning).toMatch(/Some data/);
+  });
+});
+
+describe('roleGuard', () => {
+  it('redirects a Head Chef away from ROOT_ADMIN-only routes', async () => {
+    localStorage.setItem('ff-token', 'token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        jsonResponse({
+          ...user,
+          systemRole: null,
+          roles: ['CUSTOMER', 'HEAD_CHEF'],
+        }),
+      ),
+    );
+
+    await expect(
+      roleGuard(
+        (candidate) => candidate.systemRole === 'ROOT_ADMIN',
+        {} as never,
+      ),
+    ).rejects.toMatchObject({ status: 302 });
   });
 });
 
@@ -278,5 +303,32 @@ describe('mutationAction', () => {
       data: { error: 'Status changed', code: 'PAYMENT_STATUS_CONFLICT' },
       init: { status: 409 },
     });
+  });
+
+  it('clears the current session after a successful root transfer', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const request = new Request('http://localhost/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'root-transfer',
+        payload: {
+          currentPassword: 'password123',
+          targetUsername: 'member-one',
+          confirmationUsername: 'member-one',
+        },
+      }),
+    });
+
+    await expect(
+      mutationAction({ request, params: {}, context: {} } as never),
+    ).resolves.toMatchObject({ status: 302 });
+    expect(localStorage.getItem('ff-token')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/admin\/root-transfer$/),
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 });
