@@ -39,17 +39,21 @@ export default function BillsPage() {
   const sort = searchParams.get('sort') ?? 'created-desc';
 
   const setQuery = (key: string, value?: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.delete('cursor');
-    if (value) next.set(key, value);
-    else next.delete(key);
-    setSearchParams(next);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete('cursor');
+      if (value) next.set(key, value);
+      else next.delete(key);
+      return next;
+    });
   };
 
   const goToNextPage = (cursor: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('cursor', cursor);
-    setSearchParams(next);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set('cursor', cursor);
+      return next;
+    });
   };
 
   const restaurantOptions = Array.from(
