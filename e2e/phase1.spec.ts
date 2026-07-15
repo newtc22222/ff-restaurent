@@ -301,7 +301,10 @@ test('member discovers, manages, shares, and reviews Collection places', async (
   await page.getByRole('link', { name: 'Restaurants' }).click();
   await expect(page).toHaveURL(/\/restaurants$/);
   await expect(
-    page.getByRole('heading', { name: 'Restaurants', exact: true }),
+    page.getByRole('heading', {
+      name: 'Restaurants & eateries',
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.locator('article').filter({ hasText: 'Existing E2E Restaurant' }),
