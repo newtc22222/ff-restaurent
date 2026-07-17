@@ -187,6 +187,7 @@ export type Bill = {
   totalCost: number;
   discounts: { type: 'FIXED' | 'PERCENTAGE'; value: number; label?: string }[];
   vouchers: { code: string; value: number }[];
+  adjustmentAllocation: 'EQUAL' | 'PROPORTIONAL';
   qrCodePath?: string | null;
   paymentUrl?: string | null;
   status: EntryStatus;

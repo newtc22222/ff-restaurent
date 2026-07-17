@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { AdjustmentType, parseVietnamMobilePhone } from '@ff-restaurent/shared';
+import {
+  AdjustmentAllocation,
+  AdjustmentType,
+  parseVietnamMobilePhone,
+} from '@ff-restaurent/shared';
 
 export const vietnamMobilePhoneSchema = z
   .union([z.string().max(40), z.null()])
@@ -460,6 +464,7 @@ export const billSchema = z.object({
     .optional(),
   discounts: z.array(discountSchema).optional(),
   vouchers: z.array(voucherSchema).optional(),
+  adjustmentAllocation: z.nativeEnum(AdjustmentAllocation).optional(),
   participants: z.array(participantSchema).min(2),
   allowDuplicate: z.boolean().default(false),
 });

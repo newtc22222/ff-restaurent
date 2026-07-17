@@ -2,7 +2,11 @@ import { FormEvent, useMemo, useState } from 'react';
 import { ChevronRight, Plus, X } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
 import { Navigate, useNavigate, useParams } from 'react-router';
-import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
+import {
+  AdjustmentAllocation,
+  AdjustmentType,
+  calculateBillSplit,
+} from '@ff-restaurent/shared';
 import { money } from '../lib/api';
 import { canChef, uniqueUsers } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
@@ -64,6 +68,11 @@ export default function CreateBillPage() {
   const [vouchers, setVouchers] = useState<VoucherDraft[]>(
     editBill?.vouchers ?? [],
   );
+  const [adjustmentAllocation, setAdjustmentAllocation] =
+    useState<AdjustmentAllocation>(
+      (editBill?.adjustmentAllocation as AdjustmentAllocation | undefined) ??
+        AdjustmentAllocation.PROPORTIONAL,
+    );
   const [paymentUrl, setPaymentUrl] = useState(editBill?.paymentUrl ?? '');
   const [participants, setParticipants] = useState<ParticipantDraft[]>(
     editBill?.participants?.map((p) => ({
@@ -90,12 +99,21 @@ export default function CreateBillPage() {
         shippingFee,
         discounts,
         vouchers,
+        adjustmentAllocation,
         participants,
       });
     } catch (error) {
       return error instanceof Error ? error : null;
     }
-  }, [discounts, participants, shippingFee, totalBase, vat, vouchers]);
+  }, [
+    adjustmentAllocation,
+    discounts,
+    participants,
+    shippingFee,
+    totalBase,
+    vat,
+    vouchers,
+  ]);
   const calculationError = preview instanceof Error ? preview.message : null;
   const calculatedPreview = preview instanceof Error ? null : preview;
   const grandTotal =
@@ -136,6 +154,7 @@ export default function CreateBillPage() {
       shippingFee,
       discounts,
       vouchers,
+      adjustmentAllocation,
       ...(paymentUrl ? { paymentUrl } : {}),
       participants: participants.map((p) => ({
         memberId: p.memberId,
@@ -263,6 +282,33 @@ export default function CreateBillPage() {
             </div>
 
             <div className="mb-6 space-y-3">
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <span className="label">
+                  {t('createBill.adjustmentAllocation')}
+                </span>
+                <div className="mt-2">
+                  <Dropdown
+                    label={t('createBill.adjustmentAllocation')}
+                    ariaLabel={t('createBill.adjustmentAllocation')}
+                    value={adjustmentAllocation}
+                    onChange={(value) =>
+                      setAdjustmentAllocation(value as AdjustmentAllocation)
+                    }
+                    options={[
+                      {
+                        value: AdjustmentAllocation.PROPORTIONAL,
+                        label: t('createBill.allocationProportional'),
+                        description: t('createBill.allocationProportionalHint'),
+                      },
+                      {
+                        value: AdjustmentAllocation.EQUAL,
+                        label: t('createBill.allocationEqual'),
+                        description: t('createBill.allocationEqualHint'),
+                      },
+                    ]}
+                  />
+                </div>
+              </div>
               <div className="flex items-center justify-between">
                 <span className="label">Discounts</span>
                 <button
@@ -285,6 +331,7 @@ export default function CreateBillPage() {
                 >
                   <select
                     className="field w-full"
+                    aria-label={`Discount ${index + 1} type`}
                     value={discount.type}
                     onChange={(event) =>
                       setDiscounts((current) =>
@@ -293,6 +340,7 @@ export default function CreateBillPage() {
                             ? {
                                 ...item,
                                 type: event.target.value as AdjustmentType,
+                                value: 0,
                               }
                             : item,
                         ),
@@ -318,6 +366,7 @@ export default function CreateBillPage() {
                   />
                   <CurrencyInput
                     className="field w-full text-right"
+                    aria-label={`Discount ${index + 1} value`}
                     value={discount.value === 0 ? '' : discount.value}
                     allowDecimals={discount.type === AdjustmentType.PERCENTAGE}
                     decimalsLimit={2}

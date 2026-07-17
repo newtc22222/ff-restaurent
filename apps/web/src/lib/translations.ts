@@ -161,6 +161,13 @@ export const translations = {
     'groups.delete': 'Xóa nhóm thành viên',
     'groups.confirmDelete':
       'Xóa nhóm này? Hành động này không ảnh hưởng các hóa đơn hiện có.',
+    'createBill.adjustmentAllocation': 'Phân bổ giảm giá và voucher',
+    'createBill.allocationProportional': 'Theo tỷ lệ hóa đơn',
+    'createBill.allocationProportionalHint':
+      'Theo tỷ lệ chi phí gốc của từng thành viên.',
+    'createBill.allocationEqual': 'Chia đều',
+    'createBill.allocationEqualHint':
+      'Mỗi thành viên nhận phần giảm giá bằng nhau.',
     'duplicate.title': 'Phát hiện hóa đơn trùng',
     'duplicate.message':
       'Một hóa đơn đang hoạt động có cùng địa điểm, chi phí, điều chỉnh và thành viên. Bạn vẫn muốn tạo bản trùng?',
@@ -648,6 +655,13 @@ export const translations = {
     'groups.delete': 'Delete participant group',
     'groups.confirmDelete':
       'Delete this group? Existing bills will not be affected.',
+    'createBill.adjustmentAllocation': 'Discount and voucher allocation',
+    'createBill.allocationProportional': 'By bill share',
+    'createBill.allocationProportionalHint':
+      'Use each member’s percentage of the base cost.',
+    'createBill.allocationEqual': 'Split equally',
+    'createBill.allocationEqualHint':
+      'Give every member an equal adjustment share.',
     'duplicate.title': 'Duplicate bill detected',
     'duplicate.message':
       'An active bill has the same restaurant, costs, adjustments, and participants. Create the duplicate anyway?',

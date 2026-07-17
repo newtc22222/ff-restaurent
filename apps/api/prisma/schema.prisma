@@ -36,6 +36,11 @@ enum PaymentStatus {
   WAITING
 }
 
+enum AdjustmentAllocation {
+  EQUAL
+  PROPORTIONAL
+}
+
 enum RestaurantPlatform {
   GRAB
   SHOPEE_FOOD
@@ -201,25 +206,26 @@ model RestaurantPlatformLink {
 }
 
 model Bill {
-  id                   String            @id @default(cuid())
+  id                   String               @id @default(cuid())
   restaurantId         String
-  restaurant           RestaurantEntry   @relation(fields: [restaurantId], references: [id])
+  restaurant           RestaurantEntry      @relation(fields: [restaurantId], references: [id])
   baseCost             Int
   vat                  Int
   shippingFee          Int
-  discounts            Json              @default("[]")
-  vouchers             Json              @default("[]")
+  discounts            Json                 @default("[]")
+  vouchers             Json                 @default("[]")
+  adjustmentAllocation AdjustmentAllocation @default(PROPORTIONAL)
   totalCost            Int
   qrCodePath           String?
   paymentUrl           String?
-  status               EntryStatus       @default(ACTIVE)
+  status               EntryStatus          @default(ACTIVE)
   createdById          String
-  createdBy            User              @relation("BillCreator", fields: [createdById], references: [id])
+  createdBy            User                 @relation("BillCreator", fields: [createdById], references: [id])
   participants         BillParticipant[]
   auditLogs            BillAuditLog[]
   feedback             Feedback[]
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
   duplicateFingerprint String?
 
   @@index([createdById, duplicateFingerprint, status])

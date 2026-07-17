@@ -1,7 +1,10 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { createHash } from 'node:crypto';
 import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
-import { calculateBillSplit } from '@ff-restaurent/shared';
+import {
+  AdjustmentAllocation,
+  calculateBillSplit,
+} from '@ff-restaurent/shared';
 import {
   requireAuthenticatedUser,
   requireHeadChef,
@@ -92,7 +95,8 @@ const updatedFields = (
     changes.add('costs');
   if (
     valueChanged(before.discounts, after.discounts) ||
-    valueChanged(before.vouchers, after.vouchers)
+    valueChanged(before.vouchers, after.vouchers) ||
+    valueChanged(before.adjustmentAllocation, after.adjustmentAllocation)
   )
     changes.add('adjustments');
   if (valueChanged(before.paymentUrl, after.paymentUrl))
@@ -196,6 +200,7 @@ type FingerprintBill = {
   paymentUrl?: string | null;
   discounts?: unknown[];
   vouchers?: unknown[];
+  adjustmentAllocation?: AdjustmentAllocation | 'EQUAL' | 'PROPORTIONAL';
   participants: Array<{ memberId: string; originCost?: number }>;
 };
 
@@ -212,6 +217,8 @@ export const createBillFingerprint = (bill: FingerprintBill) => {
     vouchers: [...(bill.vouchers ?? [])].sort((left, right) =>
       JSON.stringify(left).localeCompare(JSON.stringify(right)),
     ),
+    adjustmentAllocation:
+      bill.adjustmentAllocation ?? AdjustmentAllocation.PROPORTIONAL,
     participants: bill.participants
       .map(({ memberId, originCost }) => ({ memberId, originCost }))
       .sort((left, right) => left.memberId.localeCompare(right.memberId)),
@@ -219,9 +226,15 @@ export const createBillFingerprint = (bill: FingerprintBill) => {
   return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
 };
 
-const computeBillCreateData = (body: unknown, createdById: string) => {
+const computeBillCreateData = (
+  body: unknown,
+  createdById: string,
+  fallbackAllocation = AdjustmentAllocation.PROPORTIONAL,
+) => {
   const parsed = billSchema.parse(body);
-  const split = calculateBillSplit(parsed);
+  const adjustmentAllocation =
+    parsed.adjustmentAllocation ?? fallbackAllocation;
+  const split = calculateBillSplit({ ...parsed, adjustmentAllocation });
   return {
     allowDuplicate: parsed.allowDuplicate,
     bill: {
@@ -232,9 +245,13 @@ const computeBillCreateData = (body: unknown, createdById: string) => {
       paymentUrl: parsed.paymentUrl ?? null,
       discounts: (parsed.discounts ?? []) as Prisma.InputJsonValue,
       vouchers: (parsed.vouchers ?? []) as Prisma.InputJsonValue,
+      adjustmentAllocation,
       totalCost: split.totalCost,
       createdById,
-      duplicateFingerprint: createBillFingerprint(parsed),
+      duplicateFingerprint: createBillFingerprint({
+        ...parsed,
+        adjustmentAllocation,
+      }),
     },
     participants: split.participants,
   };
@@ -570,6 +587,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const computed = computeBillCreateData(
         request.body,
         existing.createdById,
+        existing.adjustmentAllocation as AdjustmentAllocation,
       );
       const participantIds = computed.participants.map(
         (participant) => participant.memberId,
@@ -581,7 +599,11 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       );
       if (
         hasPaidParticipant &&
-        participantAllocationsChanged(existing.participants, nextParticipants)
+        (existing.adjustmentAllocation !== computed.bill.adjustmentAllocation ||
+          participantAllocationsChanged(
+            existing.participants,
+            nextParticipants,
+          ))
       ) {
         return reply.code(409).send({
           code: 'PAID_BILL_AMENDMENT_BLOCKED',

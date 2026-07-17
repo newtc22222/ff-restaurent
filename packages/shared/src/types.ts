@@ -22,6 +22,11 @@ export enum AdjustmentType {
   PERCENTAGE = 'PERCENTAGE',
 }
 
+export enum AdjustmentAllocation {
+  EQUAL = 'EQUAL',
+  PROPORTIONAL = 'PROPORTIONAL',
+}
+
 /** Display labels for roles */
 export const ROLE_LABELS: Record<string, Record<string, string>> = {
   vi: {
@@ -69,6 +74,7 @@ export type BillSplitInput = {
   shippingFee: number;
   discounts?: DiscountInput[];
   vouchers?: VoucherInput[];
+  adjustmentAllocation?: AdjustmentAllocation;
   participants: ParticipantInput[];
 };
 

@@ -173,8 +173,28 @@ describe('CreateBillPage repeat workflows', () => {
     expect(mutate.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
         intent: 'create-bill',
-        payload: expect.objectContaining({ allowDuplicate: true }),
+        payload: expect.objectContaining({
+          adjustmentAllocation: 'PROPORTIONAL',
+          allowDuplicate: true,
+        }),
       }),
     );
+  });
+
+  it('resets a discount value when its type changes', () => {
+    render(
+      <I18nProvider>
+        <CreateBillPage />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add discount' }));
+    const value = screen.getByLabelText('Discount 1 value');
+    fireEvent.change(value, { target: { value: '500' } });
+    expect((value as HTMLInputElement).value).toContain('500');
+    fireEvent.change(screen.getByLabelText('Discount 1 type'), {
+      target: { value: 'PERCENTAGE' },
+    });
+    expect((value as HTMLInputElement).value).toBe('');
   });
 });
