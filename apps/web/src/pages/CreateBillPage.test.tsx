@@ -125,7 +125,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('CreateBillPage repeat workflows', () => {
-  it('applies and saves an owner participant group', () => {
+  it('applies an owner participant group without managing it inline', () => {
     render(
       <I18nProvider>
         <CreateBillPage />
@@ -139,20 +139,10 @@ describe('CreateBillPage repeat workflows', () => {
     expect(screen.getByLabelText('Base amount for Alice')).toBeTruthy();
     expect(screen.getByLabelText('Base amount for Bob')).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText('New group name'), {
-      target: { value: 'Friday team' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Save current group' }));
-    expect(mutate).toHaveBeenCalledWith(
-      {
-        intent: 'create-participant-group',
-        payload: {
-          name: 'Friday team',
-          memberIds: ['user-1', 'user-2'],
-        },
-      },
-      expect.objectContaining({ success: 'Participant group saved.' }),
-    );
+    expect(screen.queryByLabelText('New group name')).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Save current group' }),
+    ).toBeNull();
   });
 
   it('requires explicit confirmation before overriding an exact duplicate', () => {

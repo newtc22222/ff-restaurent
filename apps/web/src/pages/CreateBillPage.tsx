@@ -73,7 +73,6 @@ export default function CreateBillPage() {
   );
   const [localError, setLocalError] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState('');
-  const [groupName, setGroupName] = useState('');
   const [duplicateDetected, setDuplicateDetected] = useState(false);
   const { mutate } = useMutation();
   const activeRestaurants = restaurants.filter(
@@ -196,36 +195,6 @@ export default function CreateBillPage() {
           ? { ...current.find(({ memberId }) => memberId === userId)! }
           : { memberId: userId, originCost: 0 },
       ),
-    );
-  };
-
-  const saveGroup = () => {
-    if (!groupName.trim() || participants.length < 2) return;
-    void mutate(
-      {
-        intent: 'create-participant-group',
-        payload: {
-          name: groupName.trim(),
-          memberIds: participants.map(({ memberId }) => memberId),
-        },
-      },
-      {
-        fallback: t('toast.participantGroupSaveFailed'),
-        success: t('toast.participantGroupSaved'),
-        onSuccess: () => setGroupName(''),
-      },
-    );
-  };
-
-  const deleteGroup = () => {
-    if (!selectedGroupId) return;
-    void mutate(
-      { intent: 'delete-participant-group', groupId: selectedGroupId },
-      {
-        fallback: t('toast.participantGroupDeleteFailed'),
-        success: t('toast.participantGroupDeleted'),
-        onSuccess: () => setSelectedGroupId(''),
-      },
     );
   };
 
@@ -489,20 +458,23 @@ export default function CreateBillPage() {
             <div className="mb-6">
               <div className="mb-5 rounded-lg border border-border bg-muted/30 p-3">
                 <span className="label">{t('groups.title')}</span>
-                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-                  <select
-                    className="field w-full"
-                    aria-label={t('groups.choose')}
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <Dropdown
+                    label={t('groups.choose')}
+                    ariaLabel={t('groups.choose')}
                     value={selectedGroupId}
-                    onChange={(event) => setSelectedGroupId(event.target.value)}
-                  >
-                    <option value="">{t('groups.choose')}</option>
-                    {participantGroups.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name} ({group.members.length})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setSelectedGroupId}
+                    options={participantGroups.map((group) => ({
+                      value: group.id,
+                      label: group.name,
+                      description: `${group.members.length} ${t('groups.members')}`,
+                    }))}
+                    searchable
+                    searchPlaceholder={t('groups.search')}
+                    emptyMessage={t('groups.empty')}
+                    allowClear
+                    clearLabel={t('bills.clearAll')}
+                  />
                   <button
                     type="button"
                     className="btn btn-soft"
@@ -510,32 +482,6 @@ export default function CreateBillPage() {
                     onClick={applyGroup}
                   >
                     {t('groups.apply')}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-soft text-red-600"
-                    disabled={!selectedGroupId}
-                    onClick={deleteGroup}
-                  >
-                    {t('common.remove')}
-                  </button>
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <input
-                    className="field min-w-0 flex-1"
-                    value={groupName}
-                    maxLength={80}
-                    aria-label={t('groups.name')}
-                    placeholder={t('groups.name')}
-                    onChange={(event) => setGroupName(event.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-soft"
-                    disabled={!groupName.trim() || participants.length < 2}
-                    onClick={saveGroup}
-                  >
-                    {t('groups.save')}
                   </button>
                 </div>
               </div>

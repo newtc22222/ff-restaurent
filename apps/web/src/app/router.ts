@@ -648,6 +648,11 @@ export const routes = [
             lazy: page(() => import('../pages/CollectionsPage')),
           },
           {
+            path: 'participant-groups',
+            action: mutationAction,
+            lazy: page(() => import('../pages/ParticipantGroupsPage')),
+          },
+          {
             path: 'stats',
             loader: statsLoader,
             lazy: page(() => import('../pages/StatsPage')),
