@@ -35,8 +35,5 @@
   "devDependencies": {
     "prisma": "^6.11.1",
     "tsx": "^4.20.3"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   }
 }
