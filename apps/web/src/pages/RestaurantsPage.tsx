@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Heart, Store, ThumbsUp } from 'lucide-react';
+import { Plus, Store } from 'lucide-react';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
 import type { RestaurantDirectoryData } from '../lib/api';
 import {
@@ -14,6 +14,7 @@ import { useMutation } from '../hooks/useMutation';
 import SectionTitle from '../components/ui/SectionTitle';
 import EmptyState from '../components/ui/EmptyState';
 import Dropdown from '../components/ui/Dropdown';
+import Modal from '../components/ui/Modal';
 import VietnamAddressFields, {
   emptyVietnamAddress,
   isVietnamAddressComplete,
@@ -51,9 +52,8 @@ export default function RestaurantsPage() {
   const filterDiningArea = searchParams.get('diningAreaId') ?? '';
   const filterCollection = searchParams.get('collectionId') ?? '';
   const filterPlatform = searchParams.get('platform') ?? '';
-  const filterFav = searchParams.get('favorite') === 'true';
-  const filterRec = searchParams.get('recommended') === 'true';
   const filterArchive = searchParams.get('archive') ?? 'active';
+  const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({
     name: '',
     ...emptyVietnamAddress(),
@@ -61,7 +61,7 @@ export default function RestaurantsPage() {
     ...emptyRestaurantCatalogs(),
     cuisineType: '',
     type: typeOptions[0] ?? 'Restaurant',
-    isRecommended: false,
+    collectionIds: [] as string[],
   });
 
   const setQuery = (key: string, value?: string) => {
@@ -97,8 +97,6 @@ export default function RestaurantsPage() {
     (filterDiningArea ? 1 : 0) +
     (filterCollection ? 1 : 0) +
     (filterPlatform ? 1 : 0) +
-    (filterFav ? 1 : 0) +
-    (filterRec ? 1 : 0) +
     (filterArchive !== 'active' ? 1 : 0) +
     (sort !== 'name-asc' ? 1 : 0);
 
@@ -129,6 +127,22 @@ export default function RestaurantsPage() {
     value: collection.id,
     label: collection.name,
   }));
+  const manageableCollectionOptions = page.collections
+    .filter(
+      (collection) =>
+        collection.ownerId === user.id ||
+        (canChef(user) && collection.systemType === 'RECOMMENDED'),
+    )
+    .map((collection) => ({
+      value: collection.id,
+      label: collection.name,
+      description:
+        collection.systemType === 'FAVORITES'
+          ? t('restaurants.favorite')
+          : collection.systemType === 'RECOMMENDED'
+            ? t('restaurants.recommended')
+            : undefined,
+    }));
 
   const changeCuisineMatch = (match: string) => {
     const next = new URLSearchParams(searchParamsRef.current);
@@ -145,24 +159,6 @@ export default function RestaurantsPage() {
     setSearchParams(next);
   };
 
-  const toggleFavorite = (id: string) =>
-    mutate(
-      { intent: 'restaurant-favorite', restaurantId: id },
-      {
-        fallback: t('toast.favoriteFailed'),
-        success: t('toast.favoriteUpdated'),
-      },
-    );
-
-  const toggleRecommend = (id: string) =>
-    mutate(
-      { intent: 'restaurant-recommend', restaurantId: id },
-      {
-        fallback: t('toast.recommendationFailed'),
-        success: t('toast.recommendationUpdated'),
-      },
-    );
-
   const submit = (event: FormEvent) => {
     event.preventDefault();
     void mutate(
@@ -170,7 +166,8 @@ export default function RestaurantsPage() {
       {
         fallback: t('toast.restaurantCreateFailed'),
         success: t('toast.restaurantCreated'),
-        onSuccess: () =>
+        onSuccess: () => {
+          setCreateOpen(false);
           setForm({
             name: '',
             ...emptyVietnamAddress(),
@@ -178,136 +175,132 @@ export default function RestaurantsPage() {
             ...emptyRestaurantCatalogs(),
             cuisineType: '',
             type: typeOptions[0] ?? 'Restaurant',
-            isRecommended: false,
-          }),
+            collectionIds: [],
+          });
+        },
       },
     );
   };
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
+    <div className="space-y-4">
       <div className="space-y-4">
-        <SectionTitle
-          title={t('restaurants.title')}
-          subtitle={t('restaurants.subtitle')}
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            className="field h-8 min-w-52 py-0 text-[12px]"
-            type="search"
-            value={search}
-            onChange={(event) => setQuery('search', event.target.value)}
-            placeholder={t('restaurants.search')}
-            aria-label={t('restaurants.search')}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionTitle
+            title={t('restaurants.title')}
+            subtitle={t('restaurants.subtitle')}
           />
-          <select
-            className="field h-8 min-w-36 py-0 text-[12px]"
-            aria-label={t('restaurants.sort')}
-            value={sort}
-            onChange={(event) => setQuery('sort', event.target.value)}
-          >
-            <option value="name-asc">{t('restaurants.nameAsc')}</option>
-            <option value="name-desc">{t('restaurants.nameDesc')}</option>
-            <option value="created-desc">{t('restaurants.newest')}</option>
-            <option value="created-asc">{t('restaurants.oldest')}</option>
-          </select>
-          <Dropdown
-            variant="filter"
-            label={t('restaurants.filterCuisine')}
-            value={filterCuisine}
-            onChange={(value) => {
-              if (cuisineMatch === 'primary') {
-                setQuery('primaryCuisineId', value);
-                if (value) setQuery('cuisineId');
-              } else {
-                setQuery('cuisineId', value);
-                if (value) setQuery('primaryCuisineId');
-              }
-            }}
-            options={cuisineOptions}
-            searchable
-            searchPlaceholder={t('restaurants.searchCuisine')}
-            emptyMessage={t('bills.noFilterResults')}
-            allowClear
-            clearLabel={t('bills.clearAll')}
-          />
-          <select
-            className="field h-9 py-0 text-[12px]"
-            aria-label={t('restaurants.cuisineMatch')}
-            value={cuisineMatch}
-            onChange={(event) => changeCuisineMatch(event.target.value)}
-          >
-            <option value="all">{t('restaurants.anyCuisine')}</option>
-            <option value="primary">{t('restaurants.primaryCuisine')}</option>
-          </select>
-          <Dropdown
-            variant="filter"
-            label={t('restaurants.filterDiningArea')}
-            value={filterDiningArea}
-            onChange={(value) => setQuery('diningAreaId', value)}
-            options={diningAreaOptions}
-            searchable
-            searchPlaceholder={t('restaurants.searchDiningArea')}
-            emptyMessage={t('bills.noFilterResults')}
-            allowClear
-            clearLabel={t('bills.clearAll')}
-          />
-          <Dropdown
-            variant="filter"
-            label={t('restaurants.filterCollection')}
-            value={filterCollection}
-            onChange={(value) => setQuery('collectionId', value)}
-            options={collectionOptions}
-            searchable
-            searchPlaceholder={t('restaurants.searchCollection')}
-            emptyMessage={t('bills.noFilterResults')}
-            allowClear
-            clearLabel={t('bills.clearAll')}
-          />
-          <Dropdown
-            variant="filter"
-            label={t('restaurants.filterPlatform')}
-            value={filterPlatform}
-            onChange={(value) => setQuery('platform', value)}
-            options={platformOptions}
-            allowClear
-            clearLabel={t('bills.clearAll')}
-          />
-          <button
-            className={`flex h-8 items-center gap-1.5 rounded-md border px-3 text-[12px] font-semibold transition-all ${
-              filterFav
-                ? 'border-red-300 bg-red-50 text-red-600 dark:border-red-700 dark:bg-red-950 dark:text-red-400'
-                : 'border-border bg-surface text-slate-500 hover:text-ink'
-            }`}
-            onClick={() => setQuery('favorite', filterFav ? undefined : 'true')}
-          >
-            <Heart size={12} fill={filterFav ? 'currentColor' : 'none'} />{' '}
-            {t('restaurants.filterFavorite')}
-          </button>
-          <button
-            className={`flex h-8 items-center gap-1.5 rounded-md border px-3 text-[12px] font-semibold transition-all ${
-              filterRec
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-                : 'border-border bg-surface text-slate-500 hover:text-ink'
-            }`}
-            onClick={() =>
-              setQuery('recommended', filterRec ? undefined : 'true')
-            }
-          >
-            <ThumbsUp size={12} /> {t('restaurants.filterRecommended')}
-          </button>
-          {isHead(user) && (
-            <select
-              className="field h-8 min-w-32 py-0 text-[12px]"
-              aria-label={t('restaurants.archiveFilter')}
-              value={filterArchive}
-              onChange={(event) => setQuery('archive', event.target.value)}
+          {canChef(user) && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setCreateOpen(true)}
             >
-              <option value="active">{t('bills.activeOnly')}</option>
-              <option value="archived">{t('bills.archivedOnly')}</option>
-              <option value="all">{t('bills.allStatuses')}</option>
-            </select>
+              <Plus size={14} /> {t('restaurants.addEntry')}
+            </button>
           )}
+        </div>
+        <section className="panel w-full space-y-3 p-3">
+          <div className="grid gap-2 md:grid-cols-3">
+            <input
+              className="field w-full"
+              type="search"
+              value={search}
+              onChange={(event) => setQuery('search', event.target.value)}
+              placeholder={t('restaurants.search')}
+              aria-label={t('restaurants.search')}
+            />
+            {isHead(user) ? (
+              <Dropdown
+                label={t('restaurants.archiveFilter')}
+                ariaLabel={t('restaurants.archiveFilter')}
+                value={filterArchive}
+                onChange={(value) => setQuery('archive', value)}
+                options={[
+                  { value: 'active', label: t('bills.activeOnly') },
+                  { value: 'archived', label: t('bills.archivedOnly') },
+                  { value: 'all', label: t('bills.allStatuses') },
+                ]}
+              />
+            ) : (
+              <div className="hidden md:block" />
+            )}
+            <Dropdown
+              label={t('restaurants.sort')}
+              ariaLabel={t('restaurants.sort')}
+              value={sort}
+              onChange={(value) => setQuery('sort', value)}
+              options={[
+                { value: 'name-asc', label: t('restaurants.nameAsc') },
+                { value: 'name-desc', label: t('restaurants.nameDesc') },
+                { value: 'created-desc', label: t('restaurants.newest') },
+                { value: 'created-asc', label: t('restaurants.oldest') },
+              ]}
+            />
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            <Dropdown
+              label={t('restaurants.filterDiningArea')}
+              value={filterDiningArea}
+              onChange={(value) => setQuery('diningAreaId', value)}
+              options={diningAreaOptions}
+              searchable
+              searchPlaceholder={t('restaurants.searchDiningArea')}
+              emptyMessage={t('bills.noFilterResults')}
+              allowClear
+              clearLabel={t('bills.clearAll')}
+            />
+            <Dropdown
+              label={t('restaurants.filterCollection')}
+              value={filterCollection}
+              onChange={(value) => setQuery('collectionId', value)}
+              options={collectionOptions}
+              searchable
+              searchPlaceholder={t('restaurants.searchCollection')}
+              emptyMessage={t('bills.noFilterResults')}
+              allowClear
+              clearLabel={t('bills.clearAll')}
+            />
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <Dropdown
+                label={t('restaurants.filterCuisine')}
+                value={filterCuisine}
+                onChange={(value) => {
+                  if (cuisineMatch === 'primary') {
+                    setQuery('primaryCuisineId', value);
+                    if (value) setQuery('cuisineId');
+                  } else {
+                    setQuery('cuisineId', value);
+                    if (value) setQuery('primaryCuisineId');
+                  }
+                }}
+                options={cuisineOptions}
+                searchable
+                searchPlaceholder={t('restaurants.searchCuisine')}
+                emptyMessage={t('bills.noFilterResults')}
+                allowClear
+                clearLabel={t('bills.clearAll')}
+              />
+              <Dropdown
+                label={t('restaurants.cuisineMatch')}
+                value={cuisineMatch}
+                onChange={changeCuisineMatch}
+                options={[
+                  { value: 'all', label: t('restaurants.anyCuisine') },
+                  { value: 'primary', label: t('restaurants.primaryCuisine') },
+                ]}
+                fullWidth={false}
+              />
+            </div>
+            <Dropdown
+              label={t('restaurants.filterPlatform')}
+              value={filterPlatform}
+              onChange={(value) => setQuery('platform', value)}
+              options={platformOptions}
+              allowClear
+              clearLabel={t('bills.clearAll')}
+            />
+          </div>
           {activeFilterCount > 0 && (
             <button
               type="button"
@@ -317,7 +310,7 @@ export default function RestaurantsPage() {
               {t('bills.clearAll')}
             </button>
           )}
-        </div>
+        </section>
         {restaurants.length === 0 && activeFilterCount === 0 && (
           <EmptyState
             icon={Store}
@@ -353,44 +346,6 @@ export default function RestaurantsPage() {
                   </p>
                   <p className="mt-1 truncate text-sm">{entry.address}</p>
                 </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <button
-                    className="flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-red-50 dark:hover:bg-red-950"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(entry.id);
-                    }}
-                    title={t('restaurants.favorite')}
-                  >
-                    <Heart
-                      size={14}
-                      className={
-                        entry.isFavoritedByMe
-                          ? 'fill-red-500 text-red-500'
-                          : 'text-slate-400'
-                      }
-                    />
-                  </button>
-                  {canChef(user) && (
-                    <button
-                      className="flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-950"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleRecommend(entry.id);
-                      }}
-                      title={t('restaurants.recommended')}
-                    >
-                      <ThumbsUp
-                        size={14}
-                        className={
-                          entry.isRecommended
-                            ? 'fill-emerald-500 text-emerald-500'
-                            : 'text-slate-400'
-                        }
-                      />
-                    </button>
-                  )}
-                </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
                 {entry.isFavoritedByMe && (
@@ -422,12 +377,16 @@ export default function RestaurantsPage() {
           </button>
         )}
       </div>
-      {canChef(user) && (
-        <form className="panel h-fit space-y-4 p-4" onSubmit={submit}>
-          <SectionTitle
-            title={t('restaurants.addEntry')}
-            subtitle={t('restaurants.addEntrySubtitle')}
-          />
+      <Modal
+        open={createOpen}
+        title={t('restaurants.addEntry')}
+        size="lg"
+        onClose={() => setCreateOpen(false)}
+      >
+        <form className="space-y-4" onSubmit={submit}>
+          <p className="text-sm text-slate-500">
+            {t('restaurants.addEntrySubtitle')}
+          </p>
           <label className="block space-y-1">
             <span className="label">{locale === 'vi' ? 'Tên' : 'Name'}</span>
             <input
@@ -468,16 +427,21 @@ export default function RestaurantsPage() {
               }))}
             />
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.isRecommended}
-              onChange={(e) =>
-                setForm({ ...form, isRecommended: e.target.checked })
-              }
-            />
-            {t('restaurants.recommended')}
-          </label>
+          <Dropdown
+            multiple
+            fullWidth
+            label={t('restaurants.collections')}
+            values={form.collectionIds}
+            onChange={(collectionIds) =>
+              setForm((current) => ({ ...current, collectionIds }))
+            }
+            options={manageableCollectionOptions}
+            searchable
+            searchPlaceholder={t('restaurants.searchCollection')}
+            emptyMessage={t('bills.noFilterResults')}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+          />
           <button
             className="btn btn-primary w-full"
             disabled={
@@ -493,7 +457,7 @@ export default function RestaurantsPage() {
             {t('restaurants.createEntry')}
           </button>
         </form>
-      )}
+      </Modal>
     </div>
   );
 }

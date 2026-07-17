@@ -209,6 +209,7 @@ export const translations = {
     'restaurants.filterDiningArea': 'Khu vực ăn uống',
     'restaurants.searchDiningArea': 'Tìm khu vực...',
     'restaurants.filterCollection': 'Bộ sưu tập',
+    'restaurants.collections': 'Bộ sưu tập',
     'restaurants.searchCollection': 'Tìm bộ sưu tập...',
     'restaurants.filterPlatform': 'Nền tảng',
 
@@ -718,6 +719,7 @@ export const translations = {
     'restaurants.filterDiningArea': 'Dining Area',
     'restaurants.searchDiningArea': 'Search Dining Areas...',
     'restaurants.filterCollection': 'Collection',
+    'restaurants.collections': 'Collections',
     'restaurants.searchCollection': 'Search Collections...',
     'restaurants.filterPlatform': 'Platform',
 

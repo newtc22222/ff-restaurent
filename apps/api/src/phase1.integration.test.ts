@@ -717,6 +717,70 @@ integrationTest(
       }),
     );
 
+    const customerCollections = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${restaurantId}/collections`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { collectionIds: [favorites.id, collectionId] },
+    });
+    assert.equal(customerCollections.statusCode, 200);
+    const restaurantDetail = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(restaurantDetail.statusCode, 200);
+    assert.deepEqual(
+      new Set(
+        restaurantDetail
+          .json()
+          .collections.map((collection: { id: string }) => collection.id),
+      ),
+      new Set([favorites.id, collectionId, recommended.id]),
+    );
+
+    const forbiddenRecommended = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${restaurantId}/collections`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { collectionIds: [recommended.id] },
+    });
+    assert.equal(forbiddenRecommended.statusCode, 403);
+
+    const chefCollections = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${restaurantId}/collections`,
+      headers: auth(tokenFor(sousId)),
+      payload: { collectionIds: [recommended.id] },
+    });
+    assert.equal(chefCollections.statusCode, 200);
+    assert.equal(
+      await prisma.collectionRestaurant.count({
+        where: { collectionId, restaurantId },
+      }),
+      1,
+    );
+
+    const clearCustomerCollections = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${restaurantId}/collections`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { collectionIds: [] },
+    });
+    assert.equal(clearCustomerCollections.statusCode, 200);
+    assert.equal(
+      await prisma.userFavorite.count({
+        where: { userId: customerAId, restaurantId },
+      }),
+      0,
+    );
+    assert.equal(
+      await prisma.collectionRestaurant.count({
+        where: { collectionId: recommended.id, restaurantId },
+      }),
+      1,
+    );
+
     await assert.rejects(
       prisma.collection.create({
         data: {

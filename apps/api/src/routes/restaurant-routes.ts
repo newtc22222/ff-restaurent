@@ -14,12 +14,16 @@ import {
 } from '../catalog-normalization.js';
 import {
   normalizeVietnamAddressSnapshot,
+  restaurantCollectionsSchema,
   restaurantListQuerySchema,
   restaurantSchema,
   restaurantUpdateSchema,
 } from '../schemas.js';
 import {
+  ensureDefaultCollections,
   ensureRecommendedCollection,
+  getVisibleRestaurantCollections,
+  reconcileRestaurantCollections,
   toggleFavoriteShortcut,
   toggleRecommendedShortcut,
 } from '../collection-service.js';
@@ -198,17 +202,64 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
     },
   );
 
+  app.get(
+    '/restaurants/:id',
+    { preHandler: requireAuthenticatedUser },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      await ensureDefaultCollections(request.currentUser.id);
+      const restaurant = await prisma.restaurantEntry.findFirst({
+        where: {
+          id,
+          status: isHeadChef(request.currentUser)
+            ? undefined
+            : EntryStatus.ACTIVE,
+        },
+        select: {
+          ...publicRestaurantSelect,
+          favorites: {
+            where: { userId: request.currentUser.id },
+            select: { userId: true },
+          },
+        },
+      });
+      if (!restaurant) {
+        throw Object.assign(new Error('Restaurant not found'), {
+          statusCode: 404,
+          code: 'RESTAURANT_NOT_FOUND',
+        });
+      }
+      const collections = await getVisibleRestaurantCollections(
+        request.currentUser.id,
+        id,
+      );
+      return {
+        ...restaurant,
+        favorites: undefined,
+        isFavoritedByMe: restaurant.favorites.length > 0,
+        collections,
+      };
+    },
+  );
+
   app.post(
     '/restaurants',
     { preHandler: [requireAuthenticatedUser, requireSousChefOrHeadChef] },
     async (request, reply) => {
       const body = restaurantSchema.parse(request.body);
       const data = normalizeVietnamAddressSnapshot(body);
-      const { platformLinks, cuisineIds, primaryCuisineId, ...restaurantData } =
-        data;
-      const recommendedCollection = restaurantData.isRecommended
-        ? await ensureRecommendedCollection()
-        : null;
+      const {
+        platformLinks,
+        cuisineIds,
+        primaryCuisineId,
+        collectionIds,
+        ...restaurantData
+      } = data;
+      const defaults = await ensureDefaultCollections(request.currentUser.id);
+      const selectedCollectionIds = new Set(collectionIds ?? []);
+      if (restaurantData.isRecommended) {
+        selectedCollectionIds.add(defaults.recommended.id);
+      }
       const created = await prisma.$transaction(async (tx) => {
         const cuisineSelection = await resolveCuisineSelection(tx, {
           cuisineType: restaurantData.cuisineType,
@@ -216,7 +267,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
           primaryCuisineId,
         });
         if (!cuisineSelection) throw invalidCuisineSelection();
-        return tx.restaurantEntry.create({
+        const entry = await tx.restaurantEntry.create({
           data: {
             ...restaurantData,
             cuisineType: cuisineSelection.primaryName,
@@ -228,14 +279,17 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
               })),
             },
             cuisines: { create: cuisineSelection.joins },
-            ...(recommendedCollection
-              ? {
-                  collections: {
-                    create: { collectionId: recommendedCollection.id },
-                  },
-                }
-              : {}),
           },
+          select: { id: true },
+        });
+        await reconcileRestaurantCollections(
+          tx,
+          request.currentUser,
+          entry.id,
+          [...selectedCollectionIds],
+        );
+        return tx.restaurantEntry.findUniqueOrThrow({
+          where: { id: entry.id },
           select: publicRestaurantSelect,
         });
       });
@@ -250,9 +304,18 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const body = restaurantUpdateSchema.parse(request.body);
       const data = normalizeVietnamAddressSnapshot(body);
-      const { platformLinks, cuisineIds, primaryCuisineId, ...restaurantData } =
-        data;
+      const {
+        platformLinks,
+        cuisineIds,
+        primaryCuisineId,
+        collectionIds,
+        ...restaurantData
+      } = data;
+      if (collectionIds) {
+        await ensureDefaultCollections(request.currentUser.id);
+      }
       const recommendedCollection =
+        collectionIds === undefined &&
         restaurantData.isRecommended !== undefined
           ? await ensureRecommendedCollection()
           : null;
@@ -313,7 +376,58 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
             });
           }
         }
+        if (collectionIds) {
+          await reconcileRestaurantCollections(
+            tx,
+            request.currentUser,
+            id,
+            collectionIds,
+          );
+          return tx.restaurantEntry.findUniqueOrThrow({
+            where: { id },
+            select: publicRestaurantSelect,
+          });
+        }
         return updated;
+      });
+    },
+  );
+
+  app.put(
+    '/restaurants/:id/collections',
+    { preHandler: requireAuthenticatedUser },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const { collectionIds } = restaurantCollectionsSchema.parse(request.body);
+      await ensureDefaultCollections(request.currentUser.id);
+      return prisma.$transaction(async (tx) => {
+        await tx.restaurantEntry.findUniqueOrThrow({
+          where: { id },
+          select: { id: true },
+        });
+        await reconcileRestaurantCollections(
+          tx,
+          request.currentUser,
+          id,
+          collectionIds,
+        );
+        return {
+          collections: await tx.collection.findMany({
+            where: {
+              id: { in: collectionIds },
+              restaurants: { some: { restaurantId: id } },
+            },
+            orderBy: [{ systemType: 'desc' }, { name: 'asc' }],
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              isPublic: true,
+              systemType: true,
+              ownerId: true,
+            },
+          }),
+        };
       });
     },
   );

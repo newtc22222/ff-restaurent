@@ -1,8 +1,8 @@
-import { ExternalLink, Heart, Pencil, Phone, ThumbsUp } from 'lucide-react';
+import { ExternalLink, Pencil, Phone } from 'lucide-react';
 import { useState } from 'react';
-import { Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
+import { useLoaderData, useNavigate } from 'react-router';
 import { canChef, isHead } from '../lib/helpers';
-import type { RestaurantFeedbackPage, VietnamAddress } from '../lib/api';
+import type { RestaurantDetailData, VietnamAddress } from '../lib/api';
 import { useAppContext } from '../app/providers/app-context';
 import { useI18n } from '../app/providers/i18n';
 import { useMutation } from '../hooks/useMutation';
@@ -20,6 +20,7 @@ import RestaurantCatalogFields, {
   type RestaurantCatalogValue,
 } from '../components/restaurants/RestaurantCatalogFields';
 import RestaurantFeedback from '../components/restaurants/RestaurantFeedback';
+import Dropdown from '../components/ui/Dropdown';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,
@@ -27,52 +28,51 @@ import RestaurantFeedback from '../components/restaurants/RestaurantFeedback';
  */
 export default function RestaurantDetailPage() {
   const navigate = useNavigate();
-  const { restaurantId } = useParams();
-  const { user, restaurants } = useAppContext();
+  const { user } = useAppContext();
   const { locale, t } = useI18n();
   const { mutate } = useMutation();
-  const feedback = useLoaderData() as RestaurantFeedbackPage;
-
-  const restaurant = restaurants.find(
-    (candidate) => candidate.id === restaurantId,
-  );
+  const { restaurant, feedback, collections } =
+    useLoaderData() as RestaurantDetailData;
   const [editingProfile, setEditingProfile] = useState(false);
   const [address, setAddress] = useState<VietnamAddress>(() => ({
-    address: restaurant?.address ?? '',
-    addressLine: restaurant?.addressLine ?? null,
-    provinceCode: restaurant?.provinceCode ?? null,
-    provinceName: restaurant?.provinceName ?? null,
-    wardCode: restaurant?.wardCode ?? null,
-    wardName: restaurant?.wardName ?? null,
+    address: restaurant.address,
+    addressLine: restaurant.addressLine ?? null,
+    provinceCode: restaurant.provinceCode ?? null,
+    provinceName: restaurant.provinceName ?? null,
+    wardCode: restaurant.wardCode ?? null,
+    wardName: restaurant.wardName ?? null,
   }));
   const [profile, setProfile] = useState<RestaurantProfileDraft>(() => ({
-    phone: restaurant?.phone ?? '',
-    bannerImageUrl: restaurant?.bannerImageUrl ?? '',
-    platformLinks: restaurant?.platformLinks ?? [],
+    phone: restaurant.phone ?? '',
+    bannerImageUrl: restaurant.bannerImageUrl ?? '',
+    platformLinks: restaurant.platformLinks ?? [],
   }));
   const [catalogs, setCatalogs] = useState<RestaurantCatalogValue>(() => ({
-    cuisineIds: restaurant?.cuisines?.map((item) => item.cuisine.id) ?? [],
+    cuisineIds: restaurant.cuisines?.map((item) => item.cuisine.id) ?? [],
     primaryCuisineId:
-      restaurant?.cuisines?.find((item) => item.isPrimary)?.cuisine.id ?? '',
-    diningAreaId: restaurant?.diningAreaId ?? null,
+      restaurant.cuisines?.find((item) => item.isPrimary)?.cuisine.id ?? '',
+    diningAreaId: restaurant.diningAreaId ?? null,
   }));
   const [primaryCuisineName, setPrimaryCuisineName] = useState(
-    restaurant?.cuisines?.find((item) => item.isPrimary)?.cuisine.name ??
-      restaurant?.cuisineType ??
+    restaurant.cuisines?.find((item) => item.isPrimary)?.cuisine.name ??
+      restaurant.cuisineType ??
       '',
   );
-  if (!restaurant) return <Navigate to="/restaurants" replace />;
+  const manageableCollections = collections.filter(
+    (collection) =>
+      collection.ownerId === user.id ||
+      (canChef(user) && collection.systemType === 'RECOMMENDED'),
+  );
+  const manageableCollectionIds = new Set(
+    manageableCollections.map(({ id }) => id),
+  );
+  const [collectionIds, setCollectionIds] = useState(() =>
+    restaurant.collections
+      .map(({ id }) => id)
+      .filter((id) => manageableCollectionIds.has(id)),
+  );
 
   const onBack = () => navigate('/restaurants');
-
-  const toggleFavorite = () =>
-    mutate(
-      { intent: 'restaurant-favorite' },
-      {
-        fallback: t('toast.favoriteFailed'),
-        success: t('toast.favoriteUpdated'),
-      },
-    );
 
   const runAction = (
     status: 'archive' | 'restore',
@@ -99,6 +99,7 @@ export default function RestaurantDetailPage() {
           cuisineIds: catalogs.cuisineIds,
           primaryCuisineId: catalogs.primaryCuisineId,
           diningAreaId: catalogs.diningAreaId,
+          collectionIds,
         },
       },
       {
@@ -115,199 +116,210 @@ export default function RestaurantDetailPage() {
     );
 
   return (
-    <div className="mx-auto w-full max-w-2xl py-2">
+    <div className="mx-auto w-full max-w-6xl py-2">
       <BackButton onClick={onBack} label={t('nav.restaurants')} />
 
-      <section className="panel p-6">
-        <RestaurantBanner
-          name={restaurant.name}
-          url={restaurant.bannerImageUrl}
-        />
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-[22px] font-bold text-ink">
-              {restaurant.name}
-            </h2>
-            <p className="mt-0.5 text-[13px] text-slate-500">
-              {restaurant.type} /{' '}
-              {restaurant.cuisines
-                ?.filter((item) => item.isPrimary)
-                .map((item) => item.cuisine.name)
-                .join(', ') || restaurant.cuisineType}
-            </p>
-            <p className="mt-1 text-[14px]">{restaurant.address}</p>
-          </div>
-          <span
-            className={`shrink-0 rounded-full px-3 py-1 text-[12px] font-bold ${
-              restaurant.status === 'ACTIVE'
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
-            }`}
-          >
-            {restaurant.status}
-          </span>
-        </div>
-
-        {canChef(user) && !editingProfile && (
-          <button
-            className="btn btn-soft mb-4 flex items-center gap-2"
-            onClick={() => setEditingProfile(true)}
-          >
-            <Pencil size={13} />
-            {locale === 'vi' ? 'Sửa hồ sơ' : 'Edit profile'}
-          </button>
-        )}
-
-        {editingProfile && (
-          <div className="mb-4 space-y-3 rounded-lg border border-border bg-muted/40 p-4">
-            <VietnamAddressFields value={address} onChange={setAddress} />
-            <RestaurantProfileFields value={profile} onChange={setProfile} />
-            <RestaurantCatalogFields
-              value={catalogs}
-              onChange={setCatalogs}
-              onPrimaryCuisineNameChange={setPrimaryCuisineName}
-              initialCuisines={
-                restaurant.cuisines?.map((item) => item.cuisine) ?? []
-              }
-              initialDiningArea={restaurant.diningArea}
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                className="btn btn-soft"
-                onClick={() => setEditingProfile(false)}
-              >
-                {locale === 'vi' ? 'Hủy' : 'Cancel'}
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={
-                  !isVietnamAddressComplete(address) ||
-                  !isRestaurantProfileValid(profile) ||
-                  catalogs.cuisineIds.length === 0 ||
-                  !catalogs.primaryCuisineId
-                }
-                onClick={() => void saveProfile()}
-              >
-                {locale === 'vi' ? 'Lưu hồ sơ' : 'Save profile'}
-              </button>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)] lg:items-start">
+        <section className="panel p-6">
+          <RestaurantBanner
+            name={restaurant.name}
+            url={restaurant.bannerImageUrl}
+          />
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="text-[22px] font-bold text-ink">
+                {restaurant.name}
+              </h2>
+              <p className="mt-0.5 text-[13px] text-slate-500">
+                {restaurant.type} /{' '}
+                {restaurant.cuisines
+                  ?.filter((item) => item.isPrimary)
+                  .map((item) => item.cuisine.name)
+                  .join(', ') || restaurant.cuisineType}
+              </p>
+              <p className="mt-1 text-[14px]">{restaurant.address}</p>
             </div>
-          </div>
-        )}
-
-        <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition-all ${
-              restaurant.isFavoritedByMe
-                ? 'border-red-300 bg-red-50 text-red-600 dark:border-red-700 dark:bg-red-950 dark:text-red-400'
-                : 'border-border text-slate-500 hover:text-ink'
-            }`}
-            onClick={toggleFavorite}
-          >
-            <Heart
-              size={14}
-              fill={restaurant.isFavoritedByMe ? 'currentColor' : 'none'}
-            />
-            {restaurant.isFavoritedByMe
-              ? '♥ ' + t('restaurants.favorite')
-              : t('restaurants.favorite')}
-          </button>
-          {restaurant.isRecommended && (
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[13px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-              <ThumbsUp size={14} /> {t('restaurants.recommended')}
+            <span
+              className={`shrink-0 rounded-full px-3 py-1 text-[12px] font-bold ${
+                restaurant.status === 'ACTIVE'
+                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+              }`}
+            >
+              {restaurant.status}
             </span>
+          </div>
+
+          {canChef(user) && !editingProfile && (
+            <button
+              className="btn btn-soft mb-4 flex items-center gap-2"
+              onClick={() => setEditingProfile(true)}
+            >
+              <Pencil size={13} />
+              {locale === 'vi' ? 'Sửa hồ sơ' : 'Edit profile'}
+            </button>
           )}
-        </div>
 
-        {restaurant.phone && (
-          <a
-            className="mb-4 flex w-fit items-center gap-2 text-sm font-semibold text-ink hover:underline"
-            href={`tel:${restaurant.phone}`}
-          >
-            <Phone aria-hidden="true" size={14} /> {restaurant.phone}
-          </a>
-        )}
+          {editingProfile && (
+            <div className="mb-4 space-y-3 rounded-lg border border-border bg-muted/40 p-4">
+              <VietnamAddressFields value={address} onChange={setAddress} />
+              <RestaurantProfileFields value={profile} onChange={setProfile} />
+              <RestaurantCatalogFields
+                value={catalogs}
+                onChange={setCatalogs}
+                onPrimaryCuisineNameChange={setPrimaryCuisineName}
+                initialCuisines={
+                  restaurant.cuisines?.map((item) => item.cuisine) ?? []
+                }
+                initialDiningArea={restaurant.diningArea}
+              />
+              <Dropdown
+                multiple
+                fullWidth
+                label={t('restaurants.collections')}
+                values={collectionIds}
+                onChange={setCollectionIds}
+                options={manageableCollections.map((collection) => ({
+                  value: collection.id,
+                  label: collection.name,
+                }))}
+                searchable
+                searchPlaceholder={t('restaurants.searchCollection')}
+                emptyMessage={t('bills.noFilterResults')}
+                allowClear
+                clearLabel={t('bills.clearAll')}
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  className="btn btn-soft"
+                  onClick={() => setEditingProfile(false)}
+                >
+                  {locale === 'vi' ? 'Hủy' : 'Cancel'}
+                </button>
+                <button
+                  className="btn btn-primary"
+                  disabled={
+                    !isVietnamAddressComplete(address) ||
+                    !isRestaurantProfileValid(profile) ||
+                    catalogs.cuisineIds.length === 0 ||
+                    !catalogs.primaryCuisineId
+                  }
+                  onClick={() => void saveProfile()}
+                >
+                  {locale === 'vi' ? 'Lưu hồ sơ' : 'Save profile'}
+                </button>
+              </div>
+            </div>
+          )}
 
-        {restaurant.cuisines && restaurant.cuisines.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-2">
-            {restaurant.cuisines.map((item) => (
+            {restaurant.collections.map((collection) => (
               <span
-                key={item.cuisine.id}
-                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                  item.isPrimary
-                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200'
-                    : 'bg-muted text-slate-600 dark:text-slate-300'
+                key={collection.id}
+                className={`rounded-full px-3 py-1.5 text-[13px] font-semibold ${
+                  collection.systemType === 'FAVORITES'
+                    ? 'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400'
+                    : collection.systemType === 'RECOMMENDED'
+                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                      : 'bg-muted text-slate-600 dark:text-slate-300'
                 }`}
               >
-                {item.cuisine.name}
-                {item.isPrimary
-                  ? ` · ${locale === 'vi' ? 'Chính' : 'Primary'}`
-                  : ''}
+                {collection.name}
               </span>
             ))}
           </div>
-        )}
 
-        {restaurant.diningArea && (
-          <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-sm">
-            <p className="font-semibold">{restaurant.diningArea.name}</p>
-            <p className="text-slate-500">{restaurant.diningArea.address}</p>
-          </div>
-        )}
+          {restaurant.phone && (
+            <a
+              className="mb-4 flex w-fit items-center gap-2 text-sm font-semibold text-ink hover:underline"
+              href={`tel:${restaurant.phone}`}
+            >
+              <Phone aria-hidden="true" size={14} /> {restaurant.phone}
+            </a>
+          )}
 
-        {(restaurant.platformLinks?.length ?? 0) > 0 && (
-          <div className="mb-4">
-            <h3 className="label mb-2">Links</h3>
-            <div className="flex flex-wrap gap-2">
-              {restaurant.platformLinks?.map((link) => (
-                <a
-                  key={link.id ?? `${link.platform}:${link.url}`}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-muted"
+          {restaurant.cuisines && restaurant.cuisines.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {restaurant.cuisines.map((item) => (
+                <span
+                  key={item.cuisine.id}
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    item.isPrimary
+                      ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200'
+                      : 'bg-muted text-slate-600 dark:text-slate-300'
+                  }`}
                 >
-                  <ExternalLink aria-hidden="true" size={12} />{' '}
-                  {link.label || platformLabel(link.platform)}
-                </a>
+                  {item.cuisine.name}
+                  {item.isPrimary
+                    ? ` · ${locale === 'vi' ? 'Chính' : 'Primary'}`
+                    : ''}
+                </span>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {isHead(user) && (
-          <div className="flex gap-3 border-t border-muted pt-4">
-            {restaurant.status === 'ACTIVE' && (
-              <button
-                className="btn btn-soft flex-1 hover:border-red-300 hover:text-red-500"
-                onClick={() =>
-                  runAction(
-                    'archive',
-                    t('toast.restaurantArchiveFailed'),
-                    t('toast.restaurantArchived'),
-                  )
-                }
-              >
-                {t('bills.archive')}
-              </button>
-            )}
-            {restaurant.status === 'ARCHIVED' && (
-              <button
-                className="btn btn-soft flex-1 hover:border-emerald-300 hover:text-emerald-500"
-                onClick={() =>
-                  runAction(
-                    'restore',
-                    t('toast.restaurantRestoreFailed'),
-                    t('toast.restaurantRestored'),
-                  )
-                }
-              >
-                {t('bills.restore')}
-              </button>
-            )}
-          </div>
-        )}
-      </section>
-      <RestaurantFeedback data={feedback} />
+          {restaurant.diningArea && (
+            <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+              <p className="font-semibold">{restaurant.diningArea.name}</p>
+              <p className="text-slate-500">{restaurant.diningArea.address}</p>
+            </div>
+          )}
+
+          {(restaurant.platformLinks?.length ?? 0) > 0 && (
+            <div className="mb-4">
+              <h3 className="label mb-2">Links</h3>
+              <div className="flex flex-wrap gap-2">
+                {restaurant.platformLinks?.map((link) => (
+                  <a
+                    key={link.id ?? `${link.platform}:${link.url}`}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-muted"
+                  >
+                    <ExternalLink aria-hidden="true" size={12} />{' '}
+                    {link.label || platformLabel(link.platform)}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isHead(user) && (
+            <div className="flex gap-3 border-t border-muted pt-4">
+              {restaurant.status === 'ACTIVE' && (
+                <button
+                  className="btn btn-soft flex-1 hover:border-red-300 hover:text-red-500"
+                  onClick={() =>
+                    runAction(
+                      'archive',
+                      t('toast.restaurantArchiveFailed'),
+                      t('toast.restaurantArchived'),
+                    )
+                  }
+                >
+                  {t('bills.archive')}
+                </button>
+              )}
+              {restaurant.status === 'ARCHIVED' && (
+                <button
+                  className="btn btn-soft flex-1 hover:border-emerald-300 hover:text-emerald-500"
+                  onClick={() =>
+                    runAction(
+                      'restore',
+                      t('toast.restaurantRestoreFailed'),
+                      t('toast.restaurantRestored'),
+                    )
+                  }
+                >
+                  {t('bills.restore')}
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+        <RestaurantFeedback data={feedback} />
+      </div>
     </div>
   );
 }

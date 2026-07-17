@@ -253,6 +253,13 @@ const restaurantObjectSchema = z.object({
     .optional(),
   isRecommended: z.boolean().optional(),
   isFavorite: z.boolean().optional(),
+  collectionIds: z
+    .array(z.string().min(1))
+    .max(100)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Collection selections must be unique',
+    })
+    .optional(),
 });
 
 type RestaurantCatalogInput = {
@@ -395,6 +402,15 @@ export const collectionUpdateSchema = collectionSchema.partial();
 
 export const collectionShareSchema = z.object({
   userId: z.string().min(1),
+});
+
+export const restaurantCollectionsSchema = z.object({
+  collectionIds: z
+    .array(z.string().min(1))
+    .max(100)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Collection selections must be unique',
+    }),
 });
 
 export const participantGroupSchema = z

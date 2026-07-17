@@ -1,5 +1,118 @@
 import { CollectionSystemType, Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
+import { isSousChefOrAbove, type CurrentUser } from './roles.js';
+
+export const restaurantCollectionSelect = {
+  id: true,
+  name: true,
+  description: true,
+  isPublic: true,
+  systemType: true,
+  ownerId: true,
+} satisfies Prisma.CollectionSelect;
+
+const visibleCollectionWhere = (
+  userId: string,
+): Prisma.CollectionWhereInput => ({
+  OR: [
+    { ownerId: userId },
+    { isPublic: true },
+    { shares: { some: { userId } } },
+  ],
+});
+
+const manageableCollectionWhere = (
+  user: CurrentUser,
+): Prisma.CollectionWhereInput => ({
+  OR: [
+    { ownerId: user.id },
+    ...(isSousChefOrAbove(user)
+      ? [{ systemType: CollectionSystemType.RECOMMENDED }]
+      : []),
+  ],
+});
+
+export const getVisibleRestaurantCollections = (
+  userId: string,
+  restaurantId: string,
+) =>
+  prisma.collection.findMany({
+    where: {
+      AND: [
+        visibleCollectionWhere(userId),
+        { restaurants: { some: { restaurantId } } },
+      ],
+    },
+    orderBy: [{ systemType: 'desc' }, { name: 'asc' }, { id: 'asc' }],
+    select: restaurantCollectionSelect,
+  });
+
+export const reconcileRestaurantCollections = async (
+  tx: Prisma.TransactionClient,
+  user: CurrentUser,
+  restaurantId: string,
+  collectionIds: string[],
+) => {
+  const manageable = await tx.collection.findMany({
+    where: manageableCollectionWhere(user),
+    select: { id: true, ownerId: true, systemType: true },
+  });
+  const manageableIds = new Set(manageable.map(({ id }) => id));
+  const forbidden = collectionIds.find((id) => !manageableIds.has(id));
+  if (forbidden) {
+    throw Object.assign(
+      new Error('A selected collection cannot be managed by this user'),
+      { statusCode: 403, code: 'COLLECTION_MANAGER_REQUIRED' },
+    );
+  }
+
+  const selectedIds = new Set(collectionIds);
+  await tx.collectionRestaurant.deleteMany({
+    where: {
+      restaurantId,
+      collectionId: {
+        in: manageable.map(({ id }) => id),
+        notIn: collectionIds,
+      },
+    },
+  });
+  if (collectionIds.length > 0) {
+    await tx.collectionRestaurant.createMany({
+      data: collectionIds.map((collectionId) => ({
+        collectionId,
+        restaurantId,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  const favorites = manageable.find(
+    (collection) =>
+      collection.ownerId === user.id &&
+      collection.systemType === CollectionSystemType.FAVORITES,
+  );
+  if (favorites && selectedIds.has(favorites.id)) {
+    await tx.userFavorite.upsert({
+      where: { userId_restaurantId: { userId: user.id, restaurantId } },
+      update: {},
+      create: { userId: user.id, restaurantId },
+    });
+  } else if (favorites) {
+    await tx.userFavorite.deleteMany({
+      where: { userId: user.id, restaurantId },
+    });
+  }
+
+  const recommended = manageable.find(
+    (collection) => collection.systemType === CollectionSystemType.RECOMMENDED,
+  );
+  if (recommended) {
+    await tx.restaurantEntry.update({
+      where: { id: restaurantId },
+      data: { isRecommended: selectedIds.has(recommended.id) },
+    });
+  }
+};
 
 const findFavorites = (userId: string) =>
   prisma.collection.findFirst({

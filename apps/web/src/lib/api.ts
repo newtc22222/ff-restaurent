@@ -84,6 +84,17 @@ export type RestaurantDirectoryData = CatalogPage<RestaurantEntry> & {
   collections: Collection[];
 };
 
+export type RestaurantCollectionSummary = Pick<
+  Collection,
+  'id' | 'name' | 'description' | 'isPublic' | 'systemType' | 'ownerId'
+>;
+
+export type RestaurantDetailData = {
+  restaurant: RestaurantEntry & { collections: RestaurantCollectionSummary[] };
+  feedback: RestaurantFeedbackPage;
+  collections: Collection[];
+};
+
 export type User = {
   id: string;
   username: string;

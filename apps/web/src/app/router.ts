@@ -28,6 +28,7 @@ import {
   type ParticipantGroup,
   type PasswordResetRequest,
   type RestaurantEntry,
+  type RestaurantDetailData,
   type RestaurantFeedbackPage,
   type RestaurantDirectoryData,
   type Stats,
@@ -299,11 +300,17 @@ export async function restaurantFeedbackLoader({
   const cursor = url.searchParams.get('cursor');
   if (cursor) query.set('cursor', cursor);
   try {
-    return await session
-      .api()
-      .request<RestaurantFeedbackPage>(
+    const api = session.api();
+    const [restaurant, feedback, collections] = await Promise.all([
+      api.request<RestaurantDetailData['restaurant']>(
+        `/restaurants/${params.restaurantId}`,
+      ),
+      api.request<RestaurantFeedbackPage>(
         `/restaurants/${params.restaurantId}/feedback?${query}`,
-      );
+      ),
+      fetchAllPages<Collection>('/collections?limit=100'),
+    ]);
+    return { restaurant, feedback, collections } satisfies RestaurantDetailData;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       session.clear();
@@ -434,6 +441,14 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
           method: 'PUT',
           body: JSON.stringify(body.payload),
         });
+      case 'update-restaurant-collections':
+        return await api.request(
+          `/restaurants/${params.restaurantId}/collections`,
+          {
+            method: 'PUT',
+            body: JSON.stringify({ collectionIds: body.collectionIds }),
+          },
+        );
       case 'restaurant-favorite':
         return await api.request(
           `/restaurants/${body.restaurantId ?? params.restaurantId}/favorite`,

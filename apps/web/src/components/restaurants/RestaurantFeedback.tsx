@@ -80,7 +80,7 @@ export default function RestaurantFeedback({
   };
 
   return (
-    <section className="panel mt-5 p-6" aria-labelledby="feedback-title">
+    <section className="panel p-6" aria-labelledby="feedback-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="feedback-title" className="text-lg font-bold text-ink">
@@ -113,7 +113,7 @@ export default function RestaurantFeedback({
             <label className="block">
               <span className="label">{t('feedback.chooseBill')}</span>
               <select
-                className="input mt-1 w-full"
+                className="field mt-1 w-full"
                 value={selectedBill?.billId ?? ''}
                 onChange={(event) => setSelectedBillId(event.target.value)}
               >
@@ -142,7 +142,7 @@ export default function RestaurantFeedback({
             <label className="block">
               <span className="label">{t('feedback.comment')}</span>
               <textarea
-                className="input mt-1 min-h-24 w-full resize-y"
+                className="field mt-1 min-h-24 w-full resize-y py-2"
                 maxLength={2000}
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
@@ -278,7 +278,7 @@ function RatingSelect({
     <label className="block">
       <span className="label">{label}</span>
       <select
-        className="input mt-1 w-full"
+        className="field mt-1 w-full"
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
       >

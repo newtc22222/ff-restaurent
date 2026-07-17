@@ -159,7 +159,7 @@ export default function CollectionDetailPage() {
               </p>
             )}
           </div>
-          {canEdit && (
+          {canEdit && !editing && (
             <div className="flex gap-2">
               <button
                 type="button"
@@ -365,84 +365,87 @@ export default function CollectionDetailPage() {
             )}
         </section>
 
-        {isOwner && collection.systemType === null && shares && (
-          <aside className="panel h-fit p-4">
-            <h3 className="font-bold">{t('collections.sharing')}</h3>
-            <p className="mt-1 text-xs text-slate-500">
-              {t('collections.sharingHint')}
-            </p>
-            <div className="mt-3 space-y-2">
-              <Dropdown
-                fullWidth
-                label={t('collections.chooseMember')}
-                value={shareUserId}
-                onChange={setShareUserId}
-                options={shareOptions}
-                searchable
-                searchPlaceholder={t('bills.searchMembers')}
-                emptyMessage={t('bills.noFilterResults')}
-              />
-              <button
-                type="button"
-                className="btn btn-primary w-full"
-                disabled={!shareUserId}
-                onClick={() =>
-                  void mutate(
-                    {
-                      intent: 'share-collection',
-                      collectionId: collection.id,
-                      userId: shareUserId,
-                    },
-                    {
-                      fallback: t('toast.collectionShareFailed'),
-                      success: t('toast.collectionShared'),
-                      onSuccess: () => setShareUserId(''),
-                    },
-                  )
-                }
-              >
-                <Share2 size={13} /> {t('collections.share')}
-              </button>
-            </div>
-            <div className="mt-4 space-y-2">
-              {shares.items.map((share) => (
-                <div
-                  key={share.id}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2"
+        {isOwner &&
+          collection.systemType === null &&
+          !collection.isPublic &&
+          shares && (
+            <aside className="panel h-fit p-4">
+              <h3 className="font-bold">{t('collections.sharing')}</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {t('collections.sharingHint')}
+              </p>
+              <div className="mt-3 space-y-2">
+                <Dropdown
+                  fullWidth
+                  label={t('collections.chooseMember')}
+                  value={shareUserId}
+                  onChange={setShareUserId}
+                  options={shareOptions}
+                  searchable
+                  searchPlaceholder={t('bills.searchMembers')}
+                  emptyMessage={t('bills.noFilterResults')}
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary w-full"
+                  disabled={!shareUserId}
+                  onClick={() =>
+                    void mutate(
+                      {
+                        intent: 'share-collection',
+                        collectionId: collection.id,
+                        userId: shareUserId,
+                      },
+                      {
+                        fallback: t('toast.collectionShareFailed'),
+                        success: t('toast.collectionShared'),
+                        onSuccess: () => setShareUserId(''),
+                      },
+                    )
+                  }
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">
-                      {share.name}
-                    </p>
-                    <p className="truncate text-xs text-slate-500">
-                      @{share.username}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-red-500"
-                    aria-label={t('collections.removeShare')}
-                    onClick={() =>
-                      void mutate(
-                        {
-                          intent: 'unshare-collection',
-                          collectionId: collection.id,
-                          userId: share.id,
-                        },
-                        {
-                          fallback: t('toast.collectionUnshareFailed'),
-                          success: t('toast.collectionUnshared'),
-                        },
-                      )
-                    }
+                  <Share2 size={13} /> {t('collections.share')}
+                </button>
+              </div>
+              <div className="mt-4 space-y-2">
+                {shares.items.map((share) => (
+                  <div
+                    key={share.id}
+                    className="flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2"
                   >
-                    <UserMinus size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </aside>
-        )}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {share.name}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">
+                        @{share.username}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-red-500"
+                      aria-label={t('collections.removeShare')}
+                      onClick={() =>
+                        void mutate(
+                          {
+                            intent: 'unshare-collection',
+                            collectionId: collection.id,
+                            userId: share.id,
+                          },
+                          {
+                            fallback: t('toast.collectionUnshareFailed'),
+                            success: t('toast.collectionUnshared'),
+                          },
+                        )
+                      }
+                    >
+                      <UserMinus size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          )}
       </div>
 
       {confirmDelete && (
