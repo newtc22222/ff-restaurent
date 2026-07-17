@@ -343,6 +343,7 @@ export const memberQuerySchema = z.object({
 
 export const billListQuerySchema = z.object({
   cursor: z.string().min(1).optional(),
+  direction: z.enum(['forward', 'backward']).default('forward'),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   sort: z
     .enum(['created-desc', 'created-asc', 'total-desc', 'total-asc'])

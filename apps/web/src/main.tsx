@@ -6,6 +6,7 @@ import { I18nProvider } from './app/providers/i18n';
 import { ThemeProvider } from './app/providers/theme';
 import { API_URL } from './lib/api';
 import ToastHost from './components/ui/ToastHost';
+import 'react-datepicker/dist/react-datepicker.css';
 import './index.css';
 
 const apiOrigin = new URL(API_URL, window.location.href).origin;

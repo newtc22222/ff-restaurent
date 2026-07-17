@@ -171,6 +171,7 @@ export async function billsLoader({ request }: LoaderFunctionArgs) {
     request,
     new Set([
       'cursor',
+      'direction',
       'limit',
       'sort',
       'restaurantId',

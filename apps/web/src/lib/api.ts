@@ -43,6 +43,16 @@ export type CatalogPage<T> = {
   pageInfo: { endCursor: string | null; hasNextPage: boolean };
 };
 
+export type BillPage = {
+  items: Bill[];
+  pageInfo: {
+    startCursor: string | null;
+    endCursor: string | null;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+  };
+};
+
 export type CollectionSystemType = 'FAVORITES' | 'RECOMMENDED' | null;
 
 export type Collection = {

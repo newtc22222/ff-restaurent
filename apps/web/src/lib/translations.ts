@@ -106,6 +106,20 @@ export const translations = {
     'bills.qrCode': 'Mã QR thanh toán',
     'bills.uploadQr': 'Tải lên mã QR',
 
+    'bills.layoutCard': 'Dạng thẻ',
+    'bills.layoutList': 'Dạng danh sách',
+    'bills.layoutTable': 'Dạng bảng',
+    'bills.status': 'Trạng thái',
+    'bills.advancedFilters': 'Bộ lọc nâng cao',
+    'bills.chooseDate': 'Chọn ngày',
+    'bills.rowsPerPage': 'Số dòng mỗi trang',
+    'bills.rows': 'dòng',
+    'bills.restaurant': 'Nhà hàng / Quán ăn',
+    'bills.date': 'Ngày',
+    'bills.createdBy': 'Người tạo',
+    'bills.paymentProgress': 'Tiến độ thanh toán',
+    'bills.total': 'Tổng cộng',
+
     // Bill activity
     'activity.title': 'Lịch sử hoạt động',
     'activity.subtitle': 'Các thay đổi và hành động liên quan đến hóa đơn này.',
@@ -492,6 +506,7 @@ export const translations = {
     'common.yes': 'Có',
     'common.no': 'Không',
     'common.nextPage': 'Trang tiếp theo',
+    'common.previousPage': 'Trang trước',
   },
   en: {
     'language.english': 'English',
@@ -598,6 +613,20 @@ export const translations = {
     'bills.confirmRestore': 'Are you sure you want to restore this bill?',
     'bills.qrCode': 'Payment QR Code',
     'bills.uploadQr': 'Upload QR',
+
+    'bills.layoutCard': 'Card view',
+    'bills.layoutList': 'List view',
+    'bills.layoutTable': 'Table view',
+    'bills.status': 'Status',
+    'bills.advancedFilters': 'Advanced filters',
+    'bills.chooseDate': 'Choose a date',
+    'bills.rowsPerPage': 'Rows per page',
+    'bills.rows': 'rows',
+    'bills.restaurant': 'Restaurant / Eatery',
+    'bills.date': 'Date',
+    'bills.createdBy': 'Created by',
+    'bills.paymentProgress': 'Payment progress',
+    'bills.total': 'Total',
 
     // Bill activity
     'activity.title': 'Activity history',
@@ -993,6 +1022,7 @@ export const translations = {
     'common.yes': 'Yes',
     'common.no': 'No',
     'common.nextPage': 'Next page',
+    'common.previousPage': 'Previous page',
   },
 } as const;
 

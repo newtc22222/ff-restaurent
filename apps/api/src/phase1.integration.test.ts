@@ -475,6 +475,16 @@ integrationTest(
     });
     assert.equal(secondBills.statusCode, 200);
     assert.equal(secondBills.json().items[0].totalCost, 20_000);
+    assert.equal(secondBills.json().pageInfo.hasPreviousPage, true);
+    const previousBills = await app.inject({
+      method: 'GET',
+      url: `/bills?participantIds=${customerAId},${customerBId}&participantId=${customerAId}&paymentStatus=WAITING&ownerId=${sousId}&from=2026-01-01&to=2030-12-31&sort=total-asc&limit=1&cursor=${secondBills.json().pageInfo.startCursor}&direction=backward`,
+      headers: auth(tokenFor(headId)),
+    });
+    assert.equal(previousBills.statusCode, 200);
+    assert.equal(previousBills.json().items[0].totalCost, 10_000);
+    assert.equal(previousBills.json().pageInfo.hasPreviousPage, false);
+    assert.equal(previousBills.json().pageInfo.hasNextPage, true);
 
     const customerPaymentScope = await app.inject({
       method: 'GET',

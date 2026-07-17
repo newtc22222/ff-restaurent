@@ -18,7 +18,6 @@ import {
   paymentStatusSchema,
 } from '../schemas.js';
 import { publicRestaurantSelect } from '../restaurant-contract.js';
-import { pageResult } from '../pagination.js';
 
 const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
 
@@ -393,7 +392,8 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             : query.sort === 'total-asc'
               ? [{ totalCost: 'asc' }, { id: 'asc' }]
               : [{ createdAt: 'desc' }, { id: 'desc' }];
-      const rows = await prisma.bill.findMany({
+      const backward = query.direction === 'backward' && Boolean(query.cursor);
+      const queriedRows = await prisma.bill.findMany({
         where: {
           AND: [
             authorization,
@@ -413,9 +413,24 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         include: billResponseInclude,
         orderBy,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-        take: query.limit + 1,
+        take: backward ? -(query.limit + 1) : query.limit + 1,
       });
-      return pageResult(rows, query.limit);
+      const orderedRows = backward ? queriedRows.reverse() : queriedRows;
+      const hasExtra = orderedRows.length > query.limit;
+      const rows = backward
+        ? hasExtra
+          ? orderedRows.slice(1)
+          : orderedRows
+        : orderedRows.slice(0, query.limit);
+      return {
+        items: rows,
+        pageInfo: {
+          startCursor: rows.at(0)?.id ?? null,
+          endCursor: rows.at(-1)?.id ?? null,
+          hasPreviousPage: backward ? hasExtra : Boolean(query.cursor),
+          hasNextPage: backward ? true : hasExtra,
+        },
+      };
     },
   );
 

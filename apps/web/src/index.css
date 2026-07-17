@@ -72,3 +72,41 @@ select {
 .panel {
   @apply rounded-xl border border-border bg-surface shadow-sm;
 }
+
+.react-datepicker-wrapper,
+.react-datepicker__input-container {
+  width: 100%;
+}
+
+.react-datepicker {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: inherit;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 12%);
+}
+
+.react-datepicker__header {
+  border-color: var(--color-border);
+  background: var(--color-muted);
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name,
+.react-datepicker__day {
+  color: var(--color-ink);
+}
+
+.react-datepicker__day:hover {
+  background: var(--color-muted);
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+
+.react-datepicker__day--disabled {
+  color: rgb(148 163 184);
+}
