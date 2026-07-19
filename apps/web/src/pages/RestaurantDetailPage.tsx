@@ -1,6 +1,7 @@
 import { ExternalLink, Pencil, Phone } from 'lucide-react';
 import { useState } from 'react';
-import { useLoaderData, useNavigate } from 'react-router';
+import toast from 'react-hot-toast';
+import { useLoaderData, useNavigate, useRevalidator } from 'react-router';
 import { canChef, isHead } from '../lib/helpers';
 import type { RestaurantDetailData, VietnamAddress } from '../lib/api';
 import { useAppContext } from '../app/providers/app-context';
@@ -21,6 +22,9 @@ import RestaurantCatalogFields, {
 } from '../components/restaurants/RestaurantCatalogFields';
 import RestaurantFeedback from '../components/restaurants/RestaurantFeedback';
 import Dropdown from '../components/ui/Dropdown';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import ImagePicker from '../components/ui/ImagePicker';
+import { session } from '../lib/session';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,
@@ -28,12 +32,20 @@ import Dropdown from '../components/ui/Dropdown';
  */
 export default function RestaurantDetailPage() {
   const navigate = useNavigate();
+  const revalidator = useRevalidator();
   const { user } = useAppContext();
   const { locale, t } = useI18n();
-  const { mutate } = useMutation();
+  const { fetcher, mutate } = useMutation();
   const { restaurant, feedback, collections } =
     useLoaderData() as RestaurantDetailData;
   const [editingProfile, setEditingProfile] = useState(false);
+  const [media, setMedia] = useState<{
+    logo: File | null;
+    banner: File | null;
+  }>({ logo: null, banner: null });
+  const [confirmStatus, setConfirmStatus] = useState<
+    'archive' | 'restore' | null
+  >(null);
   const [address, setAddress] = useState<VietnamAddress>(() => ({
     address: restaurant.address,
     addressLine: restaurant.addressLine ?? null,
@@ -84,6 +96,38 @@ export default function RestaurantDetailPage() {
       { fallback, success, onSuccess: onBack },
     );
 
+  const finishProfileSave = async () => {
+    try {
+      for (const [kind, file] of Object.entries(media) as Array<
+        ['logo' | 'banner', File | null]
+      >) {
+        if (!file) continue;
+        const body = new FormData();
+        body.append('file', file);
+        await session.api().request(`/restaurants/${restaurant.id}/${kind}`, {
+          method: 'PUT',
+          body,
+        });
+      }
+      setMedia({ logo: null, banner: null });
+      setEditingProfile(false);
+      void revalidator.revalidate();
+    } catch {
+      toast.error('Profile saved, but an image upload failed. Please retry.');
+    }
+  };
+
+  const removeMedia = async (kind: 'logo' | 'banner') => {
+    try {
+      await session.api().request(`/restaurants/${restaurant.id}/${kind}`, {
+        method: 'DELETE',
+      });
+      void revalidator.revalidate();
+    } catch {
+      toast.error('Could not remove the image.');
+    }
+  };
+
   const saveProfile = () =>
     mutate(
       {
@@ -111,7 +155,7 @@ export default function RestaurantDetailPage() {
           locale === 'vi'
             ? 'Đã cập nhật hồ sơ địa điểm.'
             : 'Restaurant profile updated.',
-        onSuccess: () => setEditingProfile(false),
+        onSuccess: () => void finishProfileSave(),
       },
     );
 
@@ -124,6 +168,7 @@ export default function RestaurantDetailPage() {
           <RestaurantBanner
             name={restaurant.name}
             url={restaurant.bannerImageUrl}
+            logoUrl={restaurant.avatarUrl}
           />
           <div className="mb-4 flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -164,6 +209,26 @@ export default function RestaurantDetailPage() {
             <div className="mb-4 space-y-3 rounded-lg border border-border bg-muted/40 p-4">
               <VietnamAddressFields value={address} onChange={setAddress} />
               <RestaurantProfileFields value={profile} onChange={setProfile} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ImagePicker
+                  label={locale === 'vi' ? 'Logo quán' : 'Restaurant logo'}
+                  currentUrl={restaurant.avatarUrl}
+                  maxSizeMb={5}
+                  onFile={(logo) =>
+                    setMedia((current) => ({ ...current, logo }))
+                  }
+                  onRemove={() => void removeMedia('logo')}
+                />
+                <ImagePicker
+                  label={locale === 'vi' ? 'Ảnh bìa' : 'Banner image'}
+                  currentUrl={restaurant.bannerImageUrl}
+                  maxSizeMb={5}
+                  onFile={(banner) =>
+                    setMedia((current) => ({ ...current, banner }))
+                  }
+                  onRemove={() => void removeMedia('banner')}
+                />
+              </div>
               <RestaurantCatalogFields
                 value={catalogs}
                 onChange={setCatalogs}
@@ -290,13 +355,7 @@ export default function RestaurantDetailPage() {
               {restaurant.status === 'ACTIVE' && (
                 <button
                   className="btn btn-soft flex-1 hover:border-red-300 hover:text-red-500"
-                  onClick={() =>
-                    runAction(
-                      'archive',
-                      t('toast.restaurantArchiveFailed'),
-                      t('toast.restaurantArchived'),
-                    )
-                  }
+                  onClick={() => setConfirmStatus('archive')}
                 >
                   {t('bills.archive')}
                 </button>
@@ -304,13 +363,7 @@ export default function RestaurantDetailPage() {
               {restaurant.status === 'ARCHIVED' && (
                 <button
                   className="btn btn-soft flex-1 hover:border-emerald-300 hover:text-emerald-500"
-                  onClick={() =>
-                    runAction(
-                      'restore',
-                      t('toast.restaurantRestoreFailed'),
-                      t('toast.restaurantRestored'),
-                    )
-                  }
+                  onClick={() => setConfirmStatus('restore')}
                 >
                   {t('bills.restore')}
                 </button>
@@ -320,6 +373,39 @@ export default function RestaurantDetailPage() {
         </section>
         <RestaurantFeedback data={feedback} />
       </div>
+      {confirmStatus && (
+        <ConfirmDialog
+          title={
+            confirmStatus === 'archive'
+              ? t('bills.archive')
+              : t('bills.restore')
+          }
+          message={`${
+            confirmStatus === 'archive'
+              ? t('bills.confirmArchive')
+              : t('bills.confirmRestore')
+          } ${restaurant.name}`}
+          pending={fetcher.state !== 'idle'}
+          onCancel={() => setConfirmStatus(null)}
+          onConfirm={() => {
+            const status = confirmStatus;
+            void runAction(
+              status,
+              t(
+                status === 'archive'
+                  ? 'toast.restaurantArchiveFailed'
+                  : 'toast.restaurantRestoreFailed',
+              ),
+              t(
+                status === 'archive'
+                  ? 'toast.restaurantArchived'
+                  : 'toast.restaurantRestored',
+              ),
+            );
+          }}
+          t={t}
+        />
+      )}
     </div>
   );
 }

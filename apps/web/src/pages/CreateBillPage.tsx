@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Plus, X } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
 import { Navigate, useNavigate, useParams } from 'react-router';
@@ -7,7 +7,8 @@ import {
   AdjustmentType,
   calculateBillSplit,
 } from '@ff-restaurent/shared';
-import { money } from '../lib/api';
+import { money, type PaymentQrImage } from '../lib/api';
+import { session } from '../lib/session';
 import { canChef, uniqueUsers } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
 import { useI18n } from '../app/providers/i18n';
@@ -73,7 +74,10 @@ export default function CreateBillPage() {
       (editBill?.adjustmentAllocation as AdjustmentAllocation | undefined) ??
         AdjustmentAllocation.PROPORTIONAL,
     );
-  const [paymentUrl, setPaymentUrl] = useState(editBill?.paymentUrl ?? '');
+  const [paymentQrImageId, setPaymentQrImageId] = useState(
+    editBill?.paymentQrImageId ?? editBill?.paymentQrImage?.id ?? '',
+  );
+  const [paymentQrImages, setPaymentQrImages] = useState<PaymentQrImage[]>([]);
   const [participants, setParticipants] = useState<ParticipantDraft[]>(
     editBill?.participants?.map((p) => ({
       memberId: p.memberId,
@@ -84,6 +88,17 @@ export default function CreateBillPage() {
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [duplicateDetected, setDuplicateDetected] = useState(false);
   const { mutate } = useMutation();
+  useEffect(() => {
+    void session
+      .api()
+      .request<PaymentQrImage[]>(
+        isEditing && editBill
+          ? `/bills/${editBill.id}/payment-qr-options`
+          : '/me/payment-qr-images',
+      )
+      .then(setPaymentQrImages)
+      .catch(() => setPaymentQrImages([]));
+  }, [editBill?.id, isEditing]);
   const activeRestaurants = restaurants.filter(
     (entry) => entry.status === 'ACTIVE' || entry.id === restaurantId,
   );
@@ -155,7 +170,7 @@ export default function CreateBillPage() {
       discounts,
       vouchers,
       adjustmentAllocation,
-      ...(paymentUrl ? { paymentUrl } : {}),
+      paymentQrImageId: paymentQrImageId || null,
       participants: participants.map((p) => ({
         memberId: p.memberId,
         originCost: p.originCost,
@@ -329,27 +344,28 @@ export default function CreateBillPage() {
                   key={index}
                   className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[9rem_minmax(0,1fr)_10rem_2.5rem] sm:items-end"
                 >
-                  <select
-                    className="field w-full"
-                    aria-label={`Discount ${index + 1} type`}
+                  <Dropdown
+                    label="Discount type"
+                    ariaLabel={`Discount ${index + 1} type`}
                     value={discount.type}
-                    onChange={(event) =>
+                    onChange={(value) =>
                       setDiscounts((current) =>
                         current.map((item, itemIndex) =>
                           itemIndex === index
                             ? {
                                 ...item,
-                                type: event.target.value as AdjustmentType,
+                                type: value as AdjustmentType,
                                 value: 0,
                               }
                             : item,
                         ),
                       )
                     }
-                  >
-                    <option value={AdjustmentType.FIXED}>Fixed</option>
-                    <option value={AdjustmentType.PERCENTAGE}>Percent</option>
-                  </select>
+                    options={[
+                      { value: AdjustmentType.FIXED, label: 'Fixed' },
+                      { value: AdjustmentType.PERCENTAGE, label: 'Percent' },
+                    ]}
+                  />
                   <input
                     className="field w-full"
                     value={discount.label}
@@ -492,17 +508,42 @@ export default function CreateBillPage() {
               </p>
             </div>
 
-            <label className="mb-6 block space-y-1.5">
-              <span className="label">Payment link (HTTPS)</span>
-              <input
-                className="field w-full"
-                type="url"
-                value={paymentUrl}
-                onChange={(event) => setPaymentUrl(event.target.value)}
-                placeholder="https://pay.example.com/..."
-                pattern="https://.*"
+            <div className="mb-6 space-y-2">
+              <span className="label">{t('bills.paymentQr')}</span>
+              <Dropdown
+                label="No payment QR"
+                ariaLabel={t('bills.paymentQr')}
+                value={paymentQrImageId}
+                onChange={setPaymentQrImageId}
+                options={paymentQrImages.map((qr) => ({
+                  value: qr.id,
+                  label: qr.label,
+                  icon: (
+                    <img
+                      src={qr.imageUrl}
+                      alt=""
+                      className="h-4 w-4 rounded-sm object-contain"
+                    />
+                  ),
+                }))}
+                allowClear
               />
-            </label>
+              {paymentQrImageId && (
+                <img
+                  src={
+                    paymentQrImages.find((qr) => qr.id === paymentQrImageId)
+                      ?.imageUrl ?? editBill?.paymentQrImage?.imageUrl
+                  }
+                  alt="Selected payment QR"
+                  className="h-32 w-32 rounded-lg border border-border bg-white object-contain p-2"
+                />
+              )}
+              {!paymentQrImageId && editBill?.paymentUrl && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  This bill keeps its legacy payment link as read-only until a QR image is selected.
+                </p>
+              )}
+            </div>
 
             <div className="mb-6">
               <div className="mb-5 rounded-lg border border-border bg-muted/30 p-3">

@@ -145,8 +145,7 @@ export default function BillDetailPage() {
       <div className="mx-auto w-full max-w-6xl py-2">
         <BackButton onClick={onBack} label={t('bills.backToBills')} />
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] lg:items-start">
-          <section className="rounded-xl border border-border bg-surface p-6 shadow-sm lg:col-start-1">
+          <section className="rounded-xl border border-border bg-surface p-6 shadow-sm">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="truncate text-[22px] font-bold text-ink">
@@ -188,19 +187,11 @@ export default function BillDetailPage() {
             </div>
           </section>
 
-          {bill.paymentUrl && (
-            <a
-              className="btn btn-primary w-full lg:col-start-2"
-              href={bill.paymentUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open secure payment link <ExternalLink size={14} />
-            </a>
-          )}
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] lg:items-start">
+            <div className="space-y-4">
 
           {(bill.discounts.length > 0 || bill.vouchers.length > 0) && (
-            <section className="rounded-xl border border-border bg-surface p-5 shadow-sm lg:col-start-1">
+            <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
               <h3 className="label mb-3">Adjustments</h3>
               <div className="space-y-2 text-sm">
                 {bill.discounts.map((discount, index) => (
@@ -233,7 +224,7 @@ export default function BillDetailPage() {
           )}
 
           {pieData.length > 1 && (
-            <section className="rounded-xl border border-border bg-surface p-5 shadow-sm lg:col-start-1">
+            <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
               <h3 className="label mb-3">Bill share breakdown</h3>
               <div className="flex items-center justify-center">
                 <ResponsiveContainer width="100%" height={200}>
@@ -278,8 +269,30 @@ export default function BillDetailPage() {
             </section>
           )}
 
+            </div>
+            <div className="space-y-4">
+              {bill.paymentQrImage ? (
+                <section className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+                  <p className="label mb-3">{t('bills.paymentQr')} · {bill.paymentQrImage.label}</p>
+                  <img
+                    src={bill.paymentQrImage.imageUrl}
+                    alt={bill.paymentQrImage.label}
+                    className="mx-auto aspect-square w-full max-w-56 rounded-lg bg-white object-contain p-2"
+                  />
+                </section>
+              ) : bill.paymentUrl ? (
+                <a
+                  className="btn btn-primary w-full"
+                  href={bill.paymentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open secure payment link <ExternalLink size={14} />
+                </a>
+              ) : null}
+
           {canManage && canChef(user) && (
-            <div className="flex gap-3 lg:col-start-2">
+            <div className="flex gap-3">
               <button
                 className="btn btn-soft flex-1"
                 onClick={() => navigate(`/bills/${bill.id}/edit`)}
@@ -289,7 +302,7 @@ export default function BillDetailPage() {
             </div>
           )}
 
-          <section className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm lg:col-start-2">
+          <section className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
             <div className="flex items-center justify-between border-b border-muted px-5 py-3">
               <span className="label">{t('bills.memberBreakdown')}</span>
               <span className="label">{t('bills.amountStatus')}</span>
@@ -360,7 +373,46 @@ export default function BillDetailPage() {
             ))}
           </section>
 
-          <section className="panel overflow-hidden lg:col-start-1">
+          {canManage && canChef(user) && (
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                className="btn btn-soft flex-1"
+                disabled={allPaid}
+                title={allPaid ? 'All members have paid' : undefined}
+                onClick={() =>
+                  void mutate(
+                    { intent: 'bill-reminders' },
+                    {
+                      fallback: t('toast.remindersFailed'),
+                      success: t('toast.remindersProcessed'),
+                    },
+                  )
+                }
+              >
+                {t('bills.sendReminders')}
+              </button>
+              {isHead(user) && bill.status === 'ACTIVE' && (
+                <button
+                  className="btn btn-soft flex-1 hover:border-red-300 hover:text-red-500"
+                  onClick={() => setConfirmAction('archive')}
+                >
+                  {t('bills.archiveBill')}
+                </button>
+              )}
+              {isHead(user) && bill.status === 'ARCHIVED' && (
+                <button
+                  className="btn btn-soft flex-1 hover:border-emerald-300 hover:text-emerald-500"
+                  onClick={() => setConfirmAction('restore')}
+                >
+                  {t('bills.restoreBill')}
+                </button>
+              )}
+            </div>
+          )}
+            </div>
+          </div>
+
+          <section className="panel mt-4 overflow-hidden">
             <div className="flex items-start gap-3 border-b border-border px-5 py-4">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-ink">
                 <History size={17} />
@@ -421,43 +473,6 @@ export default function BillDetailPage() {
             )}
           </section>
 
-          {canManage && canChef(user) && (
-            <div className="flex flex-col gap-3 sm:flex-row lg:col-start-2 lg:self-start">
-              <button
-                className="btn btn-soft flex-1"
-                disabled={allPaid}
-                title={allPaid ? 'All members have paid' : undefined}
-                onClick={() =>
-                  void mutate(
-                    { intent: 'bill-reminders' },
-                    {
-                      fallback: t('toast.remindersFailed'),
-                      success: t('toast.remindersProcessed'),
-                    },
-                  )
-                }
-              >
-                {t('bills.sendReminders')}
-              </button>
-              {isHead(user) && bill.status === 'ACTIVE' && (
-                <button
-                  className="btn btn-soft flex-1 hover:border-red-300 hover:text-red-500"
-                  onClick={() => setConfirmAction('archive')}
-                >
-                  {t('bills.archiveBill')}
-                </button>
-              )}
-              {isHead(user) && bill.status === 'ARCHIVED' && (
-                <button
-                  className="btn btn-soft flex-1 hover:border-emerald-300 hover:text-emerald-500"
-                  onClick={() => setConfirmAction('restore')}
-                >
-                  {t('bills.restoreBill')}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
       </div>
       {confirmAction && (
         <ConfirmDialog
