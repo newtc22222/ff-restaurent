@@ -344,6 +344,7 @@ export const catalogQuerySchema = z.object({
 export const memberQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   cursor: z.string().min(1).optional(),
+  direction: z.enum(['forward', 'backward']).default('forward'),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   sort: z.enum(['name-asc', 'name-desc', 'created-desc']).default('name-asc'),
 });
@@ -368,6 +369,7 @@ export const billListQuerySchema = z.object({
 export const restaurantListQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   cursor: z.string().min(1).optional(),
+  direction: z.enum(['forward', 'backward']).default('forward'),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   sort: z
     .enum(['name-asc', 'name-desc', 'created-desc', 'created-asc'])
@@ -479,6 +481,7 @@ export const billSchema = z.object({
       message: 'Payment URL must use HTTPS',
     })
     .optional(),
+  paymentQrImageId: z.string().min(1).nullable().optional(),
   discounts: z.array(discountSchema).optional(),
   vouchers: z.array(voucherSchema).optional(),
   adjustmentAllocation: z.nativeEnum(AdjustmentAllocation).optional(),

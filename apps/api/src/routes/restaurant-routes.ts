@@ -28,7 +28,7 @@ import {
   toggleRecommendedShortcut,
 } from '../collection-service.js';
 import { normalizeSearchQuery } from '../search-normalization.js';
-import { pageResult } from '../pagination.js';
+import { cursorPageResult } from '../pagination.js';
 
 type RestaurantCuisineInput = {
   cuisineType?: string;
@@ -154,13 +154,15 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
             ? [{ createdAt: 'desc' }, { id: 'desc' }]
             : query.sort === 'created-asc'
               ? [{ createdAt: 'asc' }, { id: 'asc' }]
-              : [{ name: 'asc' }, { id: 'asc' }];
+               : [{ name: 'asc' }, { id: 'asc' }];
+      const backward =
+        query.direction === 'backward' && Boolean(query.cursor);
 
       const restaurants = await prisma.restaurantEntry.findMany({
         where,
         orderBy,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-        take: query.limit + 1,
+        take: backward ? -(query.limit + 1) : query.limit + 1,
         select: {
           ...publicRestaurantSelect,
           favorites: {
@@ -169,7 +171,13 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
           },
         },
       });
-      const visibleRows = restaurants.slice(0, query.limit);
+      const page = cursorPageResult(
+        restaurants,
+        query.limit,
+        backward,
+        query.cursor,
+      );
+      const visibleRows = page.items;
       const feedbackAggregates = await prisma.feedback.groupBy({
         by: ['restaurantId'],
         where: { restaurantId: { in: visibleRows.map(({ id }) => id) } },
@@ -186,8 +194,8 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
           },
         ]),
       );
-      return pageResult(
-        restaurants.map((restaurant) => ({
+      return {
+        items: visibleRows.map((restaurant) => ({
           ...restaurant,
           isFavoritedByMe: restaurant.favorites.length > 0,
           favorites: undefined,
@@ -197,8 +205,8 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
             feedbackCount: 0,
           },
         })),
-        query.limit,
-      );
+        pageInfo: page.pageInfo,
+      };
     },
   );
 

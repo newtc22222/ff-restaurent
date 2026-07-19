@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Plus, Store } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Store } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
 import type { RestaurantDirectoryData } from '../lib/api';
 import {
@@ -26,6 +27,8 @@ import RestaurantProfileFields, {
 import RestaurantCatalogFields, {
   emptyRestaurantCatalogs,
 } from '../components/restaurants/RestaurantCatalogFields';
+import ImagePicker from '../components/ui/ImagePicker';
+import { session } from '../lib/session';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
@@ -53,7 +56,12 @@ export default function RestaurantsPage() {
   const filterCollection = searchParams.get('collectionId') ?? '';
   const filterPlatform = searchParams.get('platform') ?? '';
   const filterArchive = searchParams.get('archive') ?? 'active';
+  const limit = searchParams.get('limit') ?? '25';
   const [createOpen, setCreateOpen] = useState(false);
+  const [media, setMedia] = useState<{
+    logo: File | null;
+    banner: File | null;
+  }>({ logo: null, banner: null });
   const [form, setForm] = useState({
     name: '',
     ...emptyVietnamAddress(),
@@ -67,15 +75,17 @@ export default function RestaurantsPage() {
   const setQuery = (key: string, value?: string) => {
     const next = new URLSearchParams(searchParamsRef.current);
     next.delete('cursor');
+    next.delete('direction');
     if (value) next.set(key, value);
     else next.delete(key);
     searchParamsRef.current = next;
     setSearchParams(next);
   };
 
-  const goToNextPage = (cursor: string) => {
+  const goToPage = (cursor: string, direction: 'forward' | 'backward') => {
     const next = new URLSearchParams(searchParamsRef.current);
     next.set('cursor', cursor);
+    next.set('direction', direction);
     searchParamsRef.current = next;
     setSearchParams(next);
   };
@@ -159,6 +169,40 @@ export default function RestaurantsPage() {
     setSearchParams(next);
   };
 
+  const finishCreate = async (data: unknown) => {
+    const id =
+      typeof data === 'object' && data !== null && 'id' in data
+        ? String((data as { id: unknown }).id)
+        : '';
+    if (!id) return;
+    try {
+      for (const [kind, file] of Object.entries(media) as Array<
+        ['logo' | 'banner', File | null]
+      >) {
+        if (!file) continue;
+        const body = new FormData();
+        body.append('file', file);
+        await session.api().request(`/restaurants/${id}/${kind}`, {
+          method: 'PUT',
+          body,
+        });
+      }
+    } catch {
+      toast.error('Restaurant was created, but an image upload failed. Retry from Edit.');
+    }
+    setCreateOpen(false);
+    setMedia({ logo: null, banner: null });
+    setForm({
+      name: '',
+      ...emptyVietnamAddress(),
+      ...emptyRestaurantProfile(),
+      ...emptyRestaurantCatalogs(),
+      cuisineType: '',
+      type: typeOptions[0] ?? 'Restaurant',
+      collectionIds: [],
+    });
+  };
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     void mutate(
@@ -166,18 +210,7 @@ export default function RestaurantsPage() {
       {
         fallback: t('toast.restaurantCreateFailed'),
         success: t('toast.restaurantCreated'),
-        onSuccess: () => {
-          setCreateOpen(false);
-          setForm({
-            name: '',
-            ...emptyVietnamAddress(),
-            ...emptyRestaurantProfile(),
-            ...emptyRestaurantCatalogs(),
-            cuisineType: '',
-            type: typeOptions[0] ?? 'Restaurant',
-            collectionIds: [],
-          });
-        },
+        onSuccess: (data) => void finishCreate(data),
       },
     );
   };
@@ -367,15 +400,46 @@ export default function RestaurantsPage() {
             </article>
           ))}
         </div>
-        {page.pageInfo.hasNextPage && page.pageInfo.endCursor && (
-          <button
-            type="button"
-            className="btn btn-soft w-full justify-center"
-            onClick={() => goToNextPage(page.pageInfo.endCursor!)}
-          >
-            {t('common.nextPage')}
-          </button>
-        )}
+        <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-28">
+            <Dropdown
+              label={t('common.rows')}
+              ariaLabel={t('common.rowsPerPage')}
+              value={limit}
+              onChange={(value) => setQuery('limit', value)}
+              options={['10', '25', '50'].map((value) => ({
+                value,
+                label: `${value} ${t('common.rows')}`,
+              }))}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn btn-soft"
+              disabled={
+                !page.pageInfo.hasPreviousPage || !page.pageInfo.startCursor
+              }
+              onClick={() =>
+                page.pageInfo.startCursor &&
+                goToPage(page.pageInfo.startCursor, 'backward')
+              }
+            >
+              <ChevronLeft size={14} /> {t('common.previousPage')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-soft"
+              disabled={!page.pageInfo.hasNextPage || !page.pageInfo.endCursor}
+              onClick={() =>
+                page.pageInfo.endCursor &&
+                goToPage(page.pageInfo.endCursor, 'forward')
+              }
+            >
+              {t('common.nextPage')} <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
       </div>
       <Modal
         open={createOpen}
@@ -404,6 +468,20 @@ export default function RestaurantsPage() {
             value={form}
             onChange={(profile) => setForm({ ...form, ...profile })}
           />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ImagePicker
+              label={locale === 'vi' ? 'Logo quán' : 'Restaurant logo'}
+              maxSizeMb={5}
+              onFile={(logo) => setMedia((current) => ({ ...current, logo }))}
+            />
+            <ImagePicker
+              label={locale === 'vi' ? 'Ảnh bìa' : 'Banner image'}
+              maxSizeMb={5}
+              onFile={(banner) =>
+                setMedia((current) => ({ ...current, banner }))
+              }
+            />
+          </div>
           <RestaurantCatalogFields
             value={form}
             onChange={(catalogs) => setForm({ ...form, ...catalogs })}

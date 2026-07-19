@@ -10,7 +10,7 @@ import { sanitizeUser } from '../roles.js';
 import { chefRoleSchema, rootAdminTransferSchema } from '../schemas.js';
 import { memberQuerySchema } from '../schemas.js';
 import { normalizeSearchQuery } from '../search-normalization.js';
-import { pageResult } from '../pagination.js';
+import { cursorPageResult } from '../pagination.js';
 
 const listMembers = async (queryValue: unknown) => {
   const query = memberQuerySchema.parse(queryValue);
@@ -20,15 +20,21 @@ const listMembers = async (queryValue: unknown) => {
       : query.sort === 'created-desc'
         ? [{ createdAt: 'desc' as const }, { id: 'desc' as const }]
         : [{ name: 'asc' as const }, { id: 'asc' as const }];
+  const backward = query.direction === 'backward' && Boolean(query.cursor);
   const users = await prisma.user.findMany({
     where: query.search
       ? { searchText: { contains: normalizeSearchQuery(query.search) } }
       : undefined,
     orderBy,
     ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-    take: query.limit + 1,
+    take: backward ? -(query.limit + 1) : query.limit + 1,
   });
-  return pageResult(users.map(sanitizeUser), query.limit);
+  return cursorPageResult(
+    users.map(sanitizeUser),
+    query.limit,
+    backward,
+    query.cursor,
+  );
 };
 
 /**
