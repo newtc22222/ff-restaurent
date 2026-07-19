@@ -79,6 +79,25 @@ npm run dev -w @ff-restaurent/web
 
 Open the same local URLs listed above.
 
+### Supabase Storage setup
+
+Image uploads are mediated by the API; the Supabase service-role key must never
+be exposed through a `VITE_*` variable or committed to Git.
+
+Create these buckets in the Supabase dashboard:
+
+- `ff-public-images`: public, allowed MIME types `image/jpeg`, `image/png`, and
+  `image/webp`, maximum file size 5 MiB. It stores user avatars and restaurant
+  logos/banners.
+- `ff-payment-qr`: private, the same MIME allowlist, maximum file size 2 MiB.
+  The API serves these objects through short-lived signed URLs.
+
+Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PUBLIC_BUCKET`,
+`SUPABASE_QR_BUCKET`, and optionally `SUPABASE_SIGNED_URL_TTL_SECONDS` (default
+`900`). The backend validates file signatures in addition to the bucket rules.
+Without these variables the rest of the app remains available, while media
+endpoints return `STORAGE_NOT_CONFIGURED`.
+
 ## Verification
 
 ```bash
