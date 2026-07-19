@@ -9,6 +9,11 @@ export type AppConfig = {
   provincesApiUrl: string;
   provincesApiTimeoutMs: number;
   provincesCacheTtlMs: number;
+  supabaseUrl?: string;
+  supabaseServiceRoleKey?: string;
+  supabasePublicBucket: string;
+  supabaseQrBucket: string;
+  supabaseSignedUrlTtlSeconds: number;
 };
 
 const positiveInteger = (value: string | undefined, fallback: number) => {
@@ -60,6 +65,15 @@ export const loadConfig = (): AppConfig => {
     provincesCacheTtlMs: positiveInteger(
       process.env.PROVINCES_CACHE_TTL_MS,
       86_400_000,
+    ),
+    supabaseUrl: process.env.SUPABASE_URL,
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    supabasePublicBucket:
+      process.env.SUPABASE_PUBLIC_BUCKET ?? 'ff-public-images',
+    supabaseQrBucket: process.env.SUPABASE_QR_BUCKET ?? 'ff-payment-qr',
+    supabaseSignedUrlTtlSeconds: positiveInteger(
+      process.env.SUPABASE_SIGNED_URL_TTL_SECONDS,
+      900,
     ),
   };
 };
