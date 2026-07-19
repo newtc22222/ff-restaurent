@@ -19,6 +19,7 @@ interface ConfirmDialogProps {
    * Translation utility function.
    */
   t: (key: string) => string;
+  pending?: boolean;
 }
 
 /**
@@ -30,11 +31,12 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   t,
+  pending = false,
 }: ConfirmDialogProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={onCancel}
+      onClick={() => !pending && onCancel()}
     >
       <div
         className="mx-4 w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-lg"
@@ -43,11 +45,11 @@ export default function ConfirmDialog({
         <h3 className="mb-2 text-[16px] font-bold text-ink">{title}</h3>
         <p className="mb-5 text-[14px] text-slate-500">{message}</p>
         <div className="flex gap-3">
-          <button className="btn btn-soft flex-1" onClick={onCancel}>
+          <button className="btn btn-soft flex-1" disabled={pending} onClick={onCancel}>
             {t('auth.cancel')}
           </button>
-          <button className="btn btn-primary flex-1" onClick={onConfirm}>
-            {t('common.confirm')}
+          <button className="btn btn-primary flex-1" disabled={pending} onClick={onConfirm}>
+            {pending ? t('common.loading') : t('common.confirm')}
           </button>
         </div>
       </div>

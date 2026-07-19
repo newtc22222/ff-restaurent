@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { useI18n } from '../../app/providers/i18n';
 import { useMutation } from '../../hooks/useMutation';
 import type { RestaurantFeedbackPage } from '../../lib/api';
+import Dropdown from '../ui/Dropdown';
 
 const ratingOptions = Array.from({ length: 19 }, (_, index) => 1 + index / 2);
 
@@ -110,23 +111,24 @@ export default function RestaurantFeedback({
           </p>
         ) : (
           <div className="mt-3 space-y-3">
-            <label className="block">
+            <div className="block">
               <span className="label">{t('feedback.chooseBill')}</span>
-              <select
-                className="field mt-1 w-full"
-                value={selectedBill?.billId ?? ''}
-                onChange={(event) => setSelectedBillId(event.target.value)}
-              >
-                {data.eligibleBills.map((bill) => (
-                  <option key={bill.billId} value={bill.billId}>
-                    {new Intl.DateTimeFormat(locale, {
+              <div className="mt-1">
+                <Dropdown
+                  label={t('feedback.chooseBill')}
+                  ariaLabel={t('feedback.chooseBill')}
+                  value={selectedBill?.billId ?? ''}
+                  onChange={setSelectedBillId}
+                  options={data.eligibleBills.map((bill) => ({
+                    value: bill.billId,
+                    label: `${new Intl.DateTimeFormat(locale, {
                       dateStyle: 'medium',
-                    }).format(new Date(bill.billCreatedAt))}
-                    {bill.feedback ? ' · ✓' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
+                    }).format(new Date(bill.billCreatedAt))}${bill.feedback ? ' · ✓' : ''}`,
+                  }))}
+                  searchable
+                />
+              </div>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <RatingSelect
                 label={t('feedback.food')}
@@ -275,19 +277,20 @@ function RatingSelect({
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="block">
+    <div className="block">
       <span className="label">{label}</span>
-      <select
-        className="field mt-1 w-full"
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
-      >
-        {ratingOptions.map((rating) => (
-          <option key={rating} value={rating}>
-            {rating.toFixed(1)} / 10
-          </option>
-        ))}
-      </select>
-    </label>
+      <div className="mt-1">
+        <Dropdown
+          label={label}
+          ariaLabel={label}
+          value={String(value)}
+          onChange={(rating) => onChange(Number(rating))}
+          options={ratingOptions.map((rating) => ({
+            value: String(rating),
+            label: `${rating.toFixed(1)} / 10`,
+          }))}
+        />
+      </div>
+    </div>
   );
 }

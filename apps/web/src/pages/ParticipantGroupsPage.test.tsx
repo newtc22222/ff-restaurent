@@ -72,6 +72,7 @@ describe('ParticipantGroupsPage', () => {
       </I18nProvider>,
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Add group' }));
     fireEvent.change(screen.getByLabelText('New group name'), {
       target: { value: 'Friday team' },
     });
@@ -81,7 +82,7 @@ describe('ParticipantGroupsPage', () => {
     members.options[0]!.selected = true;
     members.options[1]!.selected = true;
     fireEvent.change(members);
-    fireEvent.click(screen.getByRole('button', { name: 'Add group' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add group' })[1]!);
     expect(mutate).toHaveBeenCalledWith(
       {
         intent: 'create-participant-group',

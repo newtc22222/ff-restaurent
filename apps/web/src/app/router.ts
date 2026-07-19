@@ -194,6 +194,7 @@ export async function restaurantsLoader({ request }: LoaderFunctionArgs) {
     request,
     new Set([
       'cursor',
+      'direction',
       'limit',
       'sort',
       'search',
@@ -225,6 +226,15 @@ export async function collectionsLoader({ request }: LoaderFunctionArgs) {
   return session
     .api()
     .request<CatalogPage<Collection>>(`/collections?${query}`);
+}
+
+export async function membersLoader(args: LoaderFunctionArgs) {
+  await roleGuard(isRootAdmin, args);
+  const query = forwardListQuery(
+    args.request,
+    new Set(['cursor', 'direction', 'limit', 'sort', 'search']),
+  );
+  return session.api().request<CatalogPage<User>>(`/users?${query}`);
 }
 
 export async function collectionDetailLoader({
@@ -675,7 +685,7 @@ export const routes = [
           },
           {
             path: 'admin',
-            loader: (args) => roleGuard(isRootAdmin, args),
+            loader: membersLoader,
             action: mutationAction,
             lazy: page(() => import('../pages/AdminPage')),
           },

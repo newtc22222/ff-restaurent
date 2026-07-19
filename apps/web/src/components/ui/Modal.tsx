@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import ScrollArea from './ScrollArea';
 
 interface ModalProps {
   open: boolean;
@@ -30,7 +31,7 @@ export default function Modal({
     };
     document.addEventListener('keydown', onKeyDown);
     document.body.style.overflow = 'hidden';
-    requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
       const focusable = dialogRef.current?.querySelector<HTMLElement>(
         'input, textarea, select, button, [tabindex]:not([tabindex="-1"])',
       );
@@ -56,7 +57,7 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`panel max-h-[calc(100vh-2rem)] w-full overflow-y-auto ${
+        className={`panel flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden ${
           size === 'lg' ? 'max-w-3xl' : 'max-w-lg'
         }`}
       >
@@ -73,7 +74,9 @@ export default function Modal({
             <X size={17} aria-hidden="true" />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <ScrollArea className="min-h-0 flex-1" contentClassName="p-5">
+          {children}
+        </ScrollArea>
       </div>
     </div>,
     document.body,

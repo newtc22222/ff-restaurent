@@ -40,7 +40,12 @@ export type DiningArea = {
 
 export type CatalogPage<T> = {
   items: T[];
-  pageInfo: { endCursor: string | null; hasNextPage: boolean };
+  pageInfo: {
+    startCursor?: string | null;
+    endCursor: string | null;
+    hasPreviousPage?: boolean;
+    hasNextPage: boolean;
+  };
 };
 
 export type BillPage = {
@@ -100,10 +105,22 @@ export type User = {
   username: string;
   phone?: string | null;
   name: string;
+  avatarUrl?: string | null;
   chefRole: ChefRole;
   systemRole: SystemRole;
   roles: string[];
   paymentRemindersEnabled?: boolean;
+};
+
+export type PaymentQrImage = {
+  id: string;
+  label: string;
+  mimeType: string;
+  sizeBytes: number;
+  status: EntryStatus;
+  imageUrl: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ParticipantGroup = {
@@ -211,6 +228,11 @@ export type Bill = {
   adjustmentAllocation: 'EQUAL' | 'PROPORTIONAL';
   qrCodePath?: string | null;
   paymentUrl?: string | null;
+  paymentQrImageId?: string | null;
+  paymentQrImage?: Pick<
+    PaymentQrImage,
+    'id' | 'label' | 'status' | 'imageUrl'
+  > | null;
   status: EntryStatus;
   createdAt: string;
   updatedAt: string;
@@ -294,10 +316,14 @@ export class ApiClient {
   }
 
   async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const isFormData =
+      typeof FormData !== 'undefined' && init.body instanceof FormData;
     const response = await fetch(`${API_URL}${path}`, {
       ...init,
       headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(init.body && !isFormData
+          ? { 'Content-Type': 'application/json' }
+          : {}),
         ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
         ...init.headers,
       },

@@ -65,8 +65,8 @@ describe('RestaurantFeedback', () => {
     expect(screen.getByText('8.5')).toBeTruthy();
     expect(screen.getAllByText('7.5').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Great food').length).toBe(2);
-    const ratingSelects = screen.getAllByRole('combobox');
-    fireEvent.change(ratingSelects[1], { target: { value: '9.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }));
+    fireEvent.click(screen.getByRole('option', { name: '9.5 / 10' }));
     fireEvent.click(screen.getByRole('button', { name: 'Update feedback' }));
 
     expect(mutate).toHaveBeenCalledWith(

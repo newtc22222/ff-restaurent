@@ -1,4 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { Scrollbar } from 'react-scrollbars-custom';
 
 interface ScrollAreaProps {
@@ -6,23 +11,28 @@ interface ScrollAreaProps {
   className?: string;
   contentClassName?: string;
   desktopOnly?: boolean;
+  axis?: 'x' | 'y' | 'both';
+  style?: CSSProperties;
 }
 
-/** Shared vertical scroll container with native mobile fallback when requested. */
+/** Shared custom scroll container with an intentional native mobile fallback. */
 export default function ScrollArea({
   children,
   className = '',
   contentClassName = '',
   desktopOnly = false,
+  axis = 'y',
+  style,
 }: ScrollAreaProps) {
   const [isDesktop, setIsDesktop] = useState(() =>
-    typeof window === 'undefined'
+    typeof window === 'undefined' || typeof window.matchMedia !== 'function'
       ? false
       : window.matchMedia('(min-width: 1280px)').matches,
   );
 
   useEffect(() => {
     if (!desktopOnly) return;
+    if (typeof window.matchMedia !== 'function') return;
     const query = window.matchMedia('(min-width: 1280px)');
     const update = () => setIsDesktop(query.matches);
     update();
@@ -37,7 +47,9 @@ export default function ScrollArea({
   return (
     <Scrollbar
       className={className}
-      noScrollX
+      style={style}
+      noScrollX={axis === 'y'}
+      noScrollY={axis === 'x'}
       mobileNative
       removeTrackXWhenNotUsed
       removeTrackYWhenNotUsed
@@ -55,6 +67,23 @@ export default function ScrollArea({
         style: {
           width: 4,
           marginLeft: 2,
+          borderRadius: 999,
+          background: 'rgb(148 163 184 / 0.65)',
+        },
+      }}
+      trackXProps={{
+        style: {
+          height: 8,
+          left: 4,
+          right: 4,
+          bottom: 2,
+          background: 'transparent',
+        },
+      }}
+      thumbXProps={{
+        style: {
+          height: 4,
+          marginTop: 2,
           borderRadius: 999,
           background: 'rgb(148 163 184 / 0.65)',
         },

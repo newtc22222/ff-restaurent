@@ -8,6 +8,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Dropdown from '../components/ui/Dropdown';
 import EmptyState from '../components/ui/EmptyState';
 import SectionTitle from '../components/ui/SectionTitle';
+import Modal from '../components/ui/Modal';
 
 type GroupDraft = { id?: string; name: string; memberIds: string[] };
 
@@ -18,6 +19,7 @@ export default function ParticipantGroupsPage() {
   const { t } = useI18n();
   const { mutate } = useMutation();
   const [draft, setDraft] = useState<GroupDraft>(emptyDraft);
+  const [modalOpen, setModalOpen] = useState(false);
   const [deleting, setDeleting] = useState<ParticipantGroup | null>(null);
   const memberOptions = useMemo(
     () =>
@@ -36,13 +38,18 @@ export default function ParticipantGroupsPage() {
   const editing = Boolean(draft.id);
   const ready = draft.name.trim().length > 0 && draft.memberIds.length >= 2;
 
-  const reset = () => setDraft(emptyDraft());
-  const edit = (group: ParticipantGroup) =>
+  const reset = () => {
+    setDraft(emptyDraft());
+    setModalOpen(false);
+  };
+  const edit = (group: ParticipantGroup) => {
     setDraft({
       id: group.id,
       name: group.name,
       memberIds: group.members.map(({ userId }) => userId),
     });
+    setModalOpen(true);
+  };
   const save = () => {
     if (!ready) return;
     void mutate(
@@ -64,24 +71,26 @@ export default function ParticipantGroupsPage() {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5 py-2">
       <SectionTitle title={t('groups.title')} subtitle={t('groups.subtitle')} />
+      <div className="flex justify-end">
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => {
+            setDraft(emptyDraft());
+            setModalOpen(true);
+          }}
+        >
+          <Plus size={14} /> {t('groups.create')}
+        </button>
+      </div>
 
-      <section className="panel p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="font-bold text-ink">
-              {t(editing ? 'groups.edit' : 'groups.create')}
-            </h3>
-            <p className="mt-1 text-xs text-slate-500">
-              {t('groups.formHint')}
-            </p>
-          </div>
-          {editing && (
-            <button type="button" className="btn btn-soft" onClick={reset}>
-              {t('common.cancel')}
-            </button>
-          )}
-        </div>
-        <div className="grid gap-3 md:grid-cols-[minmax(180px,0.7fr)_minmax(260px,1.3fr)_auto]">
+      <Modal
+        open={modalOpen}
+        title={t(editing ? 'groups.edit' : 'groups.create')}
+        onClose={reset}
+      >
+        <p className="mb-4 text-sm text-slate-500">{t('groups.formHint')}</p>
+        <div className="space-y-4">
           <label className="space-y-1">
             <span className="label">{t('groups.name')}</span>
             <input
@@ -119,7 +128,7 @@ export default function ParticipantGroupsPage() {
           </label>
           <button
             type="button"
-            className="btn btn-primary self-end"
+            className="btn btn-primary w-full"
             disabled={!ready}
             onClick={save}
           >
@@ -127,7 +136,7 @@ export default function ParticipantGroupsPage() {
             {t(editing ? 'common.save' : 'groups.create')}
           </button>
         </div>
-      </section>
+      </Modal>
 
       <section className="space-y-3">
         {participantGroups.length === 0 && (

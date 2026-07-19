@@ -16,6 +16,7 @@ import BrandIcon from '../ui/BrandIcon';
 import ThemeToggle from '../ui/ThemeToggle';
 import LocaleToggle from '../ui/LocaleToggle';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import ScrollArea from '../ui/ScrollArea';
 
 interface AppHeaderProps {
   onProfile?: () => void;
@@ -298,7 +299,7 @@ export default function AppHeader({
                 </button>
               </div>
             </div>
-            <div className="max-h-80 overflow-y-auto">
+            <ScrollArea className="h-80">
               {notifications.length === 0 ? (
                 <p className="px-4 py-6 text-center text-sm text-slate-500">
                   {t('notifications.empty')}
@@ -327,7 +328,7 @@ export default function AppHeader({
                   </button>
                 ))
               )}
-            </div>
+            </ScrollArea>
           </div>
         </>
       )}

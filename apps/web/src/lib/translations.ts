@@ -490,6 +490,22 @@ export const translations = {
     'profile.notificationPreferencesDescription':
       'Kiểm soát những lời nhắc thanh toán bạn nhận được.',
     'profile.paymentReminders': 'Nhận lời nhắc thanh toán',
+    'profile.avatar': 'Ảnh đại diện',
+    'profile.qrTitle': 'Ảnh QR thanh toán',
+    'profile.qrDescription': 'Quản lý tối đa năm ảnh QR để gắn vào hóa đơn.',
+    'profile.qrAdd': 'Thêm QR',
+    'profile.qrEmpty': 'Chưa có ảnh QR thanh toán.',
+    'profile.qrEdit': 'Sửa QR thanh toán',
+    'profile.qrAddTitle': 'Thêm QR thanh toán',
+    'profile.qrLabel': 'Nhãn',
+    'profile.qrImage': 'Ảnh QR',
+    'profile.qrRemove': 'Xóa QR thanh toán',
+    'profile.qrRemoveHint': 'Hóa đơn cũ vẫn giữ ảnh QR đã đính kèm.',
+    'media.choose': 'Chọn ảnh',
+    'media.replace': 'Thay ảnh',
+    'media.remove': 'Xóa',
+    'media.formats': 'JPEG, PNG hoặc WebP',
+    'bills.paymentQr': 'Ảnh QR thanh toán',
 
     // Theme
     'theme.light': 'Sáng',
@@ -508,6 +524,8 @@ export const translations = {
     'common.no': 'Không',
     'common.nextPage': 'Trang tiếp theo',
     'common.previousPage': 'Trang trước',
+    'common.rows': 'dòng',
+    'common.rowsPerPage': 'Số dòng mỗi trang',
   },
   en: {
     'language.english': 'English',
@@ -869,6 +887,22 @@ export const translations = {
     'profile.notificationPreferencesDescription':
       'Control the payment reminders you receive.',
     'profile.paymentReminders': 'Receive payment reminders',
+    'profile.avatar': 'Avatar',
+    'profile.qrTitle': 'Payment QR images',
+    'profile.qrDescription': 'Manage up to five QR images for bills.',
+    'profile.qrAdd': 'Add QR',
+    'profile.qrEmpty': 'No payment QR images yet.',
+    'profile.qrEdit': 'Edit payment QR',
+    'profile.qrAddTitle': 'Add payment QR',
+    'profile.qrLabel': 'Label',
+    'profile.qrImage': 'QR image',
+    'profile.qrRemove': 'Remove payment QR',
+    'profile.qrRemoveHint': 'Historical bills keep their attached QR image.',
+    'media.choose': 'Choose image',
+    'media.replace': 'Replace',
+    'media.remove': 'Remove',
+    'media.formats': 'JPEG, PNG or WebP',
+    'bills.paymentQr': 'Payment QR image',
 
     // Validation
     'validation.vietnamMobilePhone':
@@ -1025,6 +1059,8 @@ export const translations = {
     'common.no': 'No',
     'common.nextPage': 'Next page',
     'common.previousPage': 'Previous page',
+    'common.rows': 'rows',
+    'common.rowsPerPage': 'Rows per page',
   },
 } as const;
 

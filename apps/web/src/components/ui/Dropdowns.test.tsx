@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import Dropdown, { type DropdownOption } from './Dropdown';
 
 const options: DropdownOption[] = [
@@ -54,6 +54,61 @@ function MultiSelectHarness() {
 }
 
 describe('searchable dropdowns', () => {
+  it('flips above the trigger when the viewport bottom cannot fit the menu', async () => {
+    const rect = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: Element) {
+        if (
+          this instanceof HTMLButtonElement &&
+          this.getAttribute('aria-haspopup')
+        ) {
+          return {
+            top: 560,
+            left: 20,
+            right: 220,
+            bottom: 600,
+            width: 200,
+            height: 40,
+            x: 20,
+            y: 560,
+            toJSON: () => ({}),
+          } as DOMRect;
+        }
+        return {
+          top: 0,
+          left: 20,
+          right: 220,
+          bottom: 180,
+          width: 200,
+          height: 180,
+          x: 20,
+          y: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+    Object.defineProperty(window, 'innerHeight', {
+      value: 640,
+      configurable: true,
+    });
+    render(
+      <Dropdown
+        label="Rows"
+        ariaLabel="Rows"
+        value="25"
+        onChange={() => undefined}
+        options={[{ value: '25', label: '25 rows' }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Rows' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('listbox').closest('[data-placement]')?.getAttribute(
+          'data-placement',
+        ),
+      ).toBe('top'),
+    );
+    rect.mockRestore();
+  });
   it('filters case-insensitively, reports empty results, and clears a selection', () => {
     render(<SelectHarness />);
 

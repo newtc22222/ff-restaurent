@@ -23,6 +23,7 @@ import { useMutation } from '../hooks/useMutation';
 import Dropdown from '../components/ui/Dropdown';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import ScrollArea from '../components/ui/ScrollArea';
 
 const parseDateOnly = (value: string) => {
   if (!value) return null;
@@ -541,7 +542,7 @@ function BillTable({ bills, locale, onView, t }: BillTableProps) {
           />
         ))}
       </div>
-      <div className="panel hidden overflow-x-auto md:block">
+      <ScrollArea axis="x" className="panel hidden md:block">
         <table className="w-full border-collapse text-left text-sm">
           <thead className="border-b border-border bg-muted/60">
             <tr className="label">
@@ -594,7 +595,7 @@ function BillTable({ bills, locale, onView, t }: BillTableProps) {
             })}
           </tbody>
         </table>
-      </div>
+      </ScrollArea>
     </>
   );
 }
