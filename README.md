@@ -58,6 +58,11 @@ VITE_API_URL=http://localhost:4000
 ```bash
 npm install
 npm run build -w @ff-restaurent/shared
+
+# Reset local database
+npx prisma migrate reset --schema apps/api/prisma/schema.prisma --force
+
+# Run migrate database
 npm run prisma:migrate -w @ff-restaurent/api
 npm run prisma:seed -w @ff-restaurent/api
 ```
