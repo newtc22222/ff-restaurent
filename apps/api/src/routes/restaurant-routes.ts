@@ -7,7 +7,10 @@ import {
 } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import { isHeadChef } from '../roles.js';
-import { publicRestaurantSelect } from '../restaurant-contract.js';
+import {
+  publicRestaurantSelect,
+  serializePublicRestaurant,
+} from '../restaurant-contract.js';
 import {
   normalizeCatalogKey,
   normalizeDisplayText,
@@ -19,6 +22,7 @@ import {
   restaurantUpdateSchema,
 } from '../schemas.js';
 import {
+  ensureFavoritesCollection,
   ensureRecommendedCollection,
   toggleFavoriteShortcut,
   toggleRecommendedShortcut,
@@ -45,7 +49,7 @@ const resolveCuisineSelection = async (
   if (input.cuisineIds && input.primaryCuisineId) {
     const cuisines = await tx.cuisine.findMany({
       where: { id: { in: input.cuisineIds } },
-      select: { id: true, name: true },
+      select: { id: true },
     });
     if (cuisines.length !== input.cuisineIds.length) {
       throw invalidCuisineSelection();
@@ -55,7 +59,6 @@ const resolveCuisineSelection = async (
     );
     if (!primary) throw invalidCuisineSelection();
     return {
-      primaryName: primary.name,
       joins: input.cuisineIds.map((cuisineId) => ({
         cuisineId,
         isPrimary: cuisineId === input.primaryCuisineId,
@@ -73,12 +76,9 @@ const resolveCuisineSelection = async (
       nameKey: normalizeCatalogKey(name),
       type: 'Legacy',
     },
-    select: { id: true, name: true },
+    select: { id: true },
   });
-  return {
-    primaryName: cuisine.name,
-    joins: [{ cuisineId: cuisine.id, isPrimary: true }],
-  };
+  return { joins: [{ cuisineId: cuisine.id, isPrimary: true }] };
 };
 
 /**
@@ -101,14 +101,27 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
         : EntryStatus.ACTIVE;
       const where: Prisma.RestaurantEntryWhereInput = {
         status,
-        searchText: query.search
-          ? { contains: normalizeSearchQuery(query.search) }
+        OR: query.search
+          ? [
+              {
+                searchText: {
+                  contains: normalizeSearchQuery(query.search),
+                },
+              },
+              {
+                cuisines: {
+                  some: {
+                    cuisine: {
+                      searchText: {
+                        contains: normalizeSearchQuery(query.search),
+                      },
+                    },
+                  },
+                },
+              },
+            ]
           : undefined,
         diningAreaId: query.diningAreaId,
-        isRecommended:
-          query.recommended === undefined
-            ? undefined
-            : query.recommended === 'true',
         cuisines: query.primaryCuisineId
           ? {
               some: {
@@ -122,27 +135,51 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
         platformLinks: query.platform
           ? { some: { platform: query.platform } }
           : undefined,
-        collections: query.collectionId
-          ? {
-              some: {
-                collectionId: query.collectionId,
-                collection: {
-                  OR: [
-                    { ownerId: request.currentUser.id },
-                    { isPublic: true },
-                    { shares: { some: { userId: request.currentUser.id } } },
-                  ],
-                },
-              },
-            }
-          : undefined,
       };
-      if (query.favorite !== undefined) {
-        where.favorites =
-          query.favorite === 'true'
-            ? { some: { userId: request.currentUser.id } }
-            : { none: { userId: request.currentUser.id } };
+      const filters: Prisma.RestaurantEntryWhereInput[] = [];
+      if (query.collectionId) {
+        filters.push({
+          collections: {
+            some: {
+              collectionId: query.collectionId,
+              collection: {
+                OR: [
+                  { ownerId: request.currentUser.id },
+                  { isPublic: true },
+                  { shares: { some: { userId: request.currentUser.id } } },
+                ],
+              },
+            },
+          },
+        });
       }
+      if (query.recommended !== undefined) {
+        const recommendedFilter = {
+          collection: { systemType: 'RECOMMENDED' as const },
+        };
+        filters.push({
+          collections:
+            query.recommended === 'true'
+              ? { some: recommendedFilter }
+              : { none: recommendedFilter },
+        });
+      }
+      if (query.favorite !== undefined) {
+        const favoriteFilter = {
+          collection: {
+            systemType: 'FAVORITES' as const,
+            ownerId: request.currentUser.id,
+          },
+        };
+        const favoriteClause: Prisma.RestaurantEntryWhereInput = {
+          collections:
+            query.favorite === 'true'
+              ? { some: favoriteFilter }
+              : { none: favoriteFilter },
+        };
+        filters.push(favoriteClause);
+      }
+      if (filters.length > 0) where.AND = filters;
       const orderBy: Prisma.RestaurantEntryOrderByWithRelationInput[] =
         query.sort === 'name-desc'
           ? [{ name: 'desc' }, { id: 'desc' }]
@@ -157,13 +194,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
         orderBy,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
         take: query.limit + 1,
-        select: {
-          ...publicRestaurantSelect,
-          favorites: {
-            where: { userId: request.currentUser.id },
-            select: { userId: true },
-          },
-        },
+        select: publicRestaurantSelect,
       });
       const visibleRows = restaurants.slice(0, query.limit);
       const feedbackAggregates = await prisma.feedback.groupBy({
@@ -184,9 +215,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       );
       return pageResult(
         restaurants.map((restaurant) => ({
-          ...restaurant,
-          isFavoritedByMe: restaurant.favorites.length > 0,
-          favorites: undefined,
+          ...serializePublicRestaurant(restaurant, request.currentUser.id),
           feedbackAggregates: aggregateByRestaurant.get(restaurant.id) ?? {
             foodRating: null,
             serviceRating: null,
@@ -204,14 +233,24 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
     async (request, reply) => {
       const body = restaurantSchema.parse(request.body);
       const data = normalizeVietnamAddressSnapshot(body);
-      const { platformLinks, cuisineIds, primaryCuisineId, ...restaurantData } =
-        data;
-      const recommendedCollection = restaurantData.isRecommended
+      const {
+        platformLinks,
+        cuisineIds,
+        primaryCuisineId,
+        cuisineType,
+        isRecommended,
+        isFavorite,
+        ...restaurantData
+      } = data;
+      const recommendedCollection = isRecommended
         ? await ensureRecommendedCollection()
+        : null;
+      const favoritesCollection = isFavorite
+        ? await ensureFavoritesCollection(request.currentUser.id)
         : null;
       const created = await prisma.$transaction(async (tx) => {
         const cuisineSelection = await resolveCuisineSelection(tx, {
-          cuisineType: restaurantData.cuisineType,
+          cuisineType,
           cuisineIds,
           primaryCuisineId,
         });
@@ -219,7 +258,6 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
         return tx.restaurantEntry.create({
           data: {
             ...restaurantData,
-            cuisineType: cuisineSelection.primaryName,
             createdById: request.currentUser.id,
             platformLinks: {
               create: (platformLinks ?? []).map((link, sortOrder) => ({
@@ -228,10 +266,12 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
               })),
             },
             cuisines: { create: cuisineSelection.joins },
-            ...(recommendedCollection
+            ...(recommendedCollection || favoritesCollection
               ? {
                   collections: {
-                    create: { collectionId: recommendedCollection.id },
+                    create: [recommendedCollection, favoritesCollection]
+                      .filter((collection) => collection !== null)
+                      .map((collection) => ({ collectionId: collection.id })),
                   },
                 }
               : {}),
@@ -239,7 +279,9 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
           select: publicRestaurantSelect,
         });
       });
-      return reply.code(201).send(created);
+      return reply
+        .code(201)
+        .send(serializePublicRestaurant(created, request.currentUser.id));
     },
   );
 
@@ -250,25 +292,35 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const body = restaurantUpdateSchema.parse(request.body);
       const data = normalizeVietnamAddressSnapshot(body);
-      const { platformLinks, cuisineIds, primaryCuisineId, ...restaurantData } =
-        data;
+      const {
+        platformLinks,
+        cuisineIds,
+        primaryCuisineId,
+        cuisineType,
+        isRecommended,
+        isFavorite,
+        ...restaurantData
+      } = data;
       const recommendedCollection =
-        restaurantData.isRecommended !== undefined
+        isRecommended !== undefined
           ? await ensureRecommendedCollection()
+          : null;
+      const favoritesCollection =
+        isFavorite !== undefined
+          ? await ensureFavoritesCollection(request.currentUser.id)
           : null;
       return prisma.$transaction(async (tx) => {
         const cuisineSelection = await resolveCuisineSelection(tx, {
-          cuisineType: restaurantData.cuisineType,
+          cuisineType,
           cuisineIds,
           primaryCuisineId,
         });
-        const updated = await tx.restaurantEntry.update({
+        await tx.restaurantEntry.update({
           where: { id },
           data: {
             ...restaurantData,
             ...(cuisineSelection
               ? {
-                  cuisineType: cuisineSelection.primaryName,
                   cuisines: {
                     deleteMany: {},
                     create: cuisineSelection.joins,
@@ -290,7 +342,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
           select: publicRestaurantSelect,
         });
         if (recommendedCollection) {
-          if (restaurantData.isRecommended) {
+          if (isRecommended) {
             await tx.collectionRestaurant.upsert({
               where: {
                 collectionId_restaurantId: {
@@ -313,7 +365,32 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
             });
           }
         }
-        return updated;
+        if (favoritesCollection) {
+          if (isFavorite) {
+            await tx.collectionRestaurant.upsert({
+              where: {
+                collectionId_restaurantId: {
+                  collectionId: favoritesCollection.id,
+                  restaurantId: id,
+                },
+              },
+              update: {},
+              create: {
+                collectionId: favoritesCollection.id,
+                restaurantId: id,
+              },
+            });
+          } else {
+            await tx.collectionRestaurant.deleteMany({
+              where: { collectionId: favoritesCollection.id, restaurantId: id },
+            });
+          }
+        }
+        const current = await tx.restaurantEntry.findUniqueOrThrow({
+          where: { id },
+          select: publicRestaurantSelect,
+        });
+        return serializePublicRestaurant(current, request.currentUser.id);
       });
     },
   );
@@ -323,11 +400,12 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
     { preHandler: [requireAuthenticatedUser, requireHeadChef] },
     async (request) => {
       const { id } = request.params as { id: string };
-      return prisma.restaurantEntry.update({
+      const restaurant = await prisma.restaurantEntry.update({
         where: { id },
         data: { status: EntryStatus.ARCHIVED },
         select: publicRestaurantSelect,
       });
+      return serializePublicRestaurant(restaurant, request.currentUser.id);
     },
   );
 
@@ -336,11 +414,12 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
     { preHandler: [requireAuthenticatedUser, requireHeadChef] },
     async (request) => {
       const { id } = request.params as { id: string };
-      return prisma.restaurantEntry.update({
+      const restaurant = await prisma.restaurantEntry.update({
         where: { id },
         data: { status: EntryStatus.ACTIVE },
         select: publicRestaurantSelect,
       });
+      return serializePublicRestaurant(restaurant, request.currentUser.id);
     },
   );
 
@@ -366,7 +445,10 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
           where: { id },
           select: publicRestaurantSelect,
         })
-        .then((entry) => ({ ...entry, isRecommended: recommended }));
+        .then((entry) => ({
+          ...serializePublicRestaurant(entry, request.currentUser.id),
+          isRecommended: recommended,
+        }));
     },
   );
 };

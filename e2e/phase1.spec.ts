@@ -1,8 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ChefRole, PrismaClient, SystemRole } from '@prisma/client';
+import {
+  ChefRole,
+  CollectionSystemType,
+  PrismaClient,
+  SystemRole,
+} from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+const apiUrl = `http://127.0.0.1:${process.env.E2E_API_PORT ?? 4000}`;
 
 const login = async (page: Page, username: string) => {
   await page.addInitScript(() => localStorage.setItem('ff-locale', 'en'));
@@ -23,7 +29,6 @@ test.beforeAll(async () => {
   await prisma.billParticipant.deleteMany();
   await prisma.bill.deleteMany();
   await prisma.collection.deleteMany();
-  await prisma.userFavorite.deleteMany();
   await prisma.restaurantEntry.deleteMany();
   await prisma.cuisine.deleteMany();
   await prisma.diningArea.deleteMany();
@@ -59,11 +64,25 @@ test.beforeAll(async () => {
   const cuisine = await prisma.cuisine.create({
     data: { name: 'Vietnamese', nameKey: 'vietnamese', type: 'Regional' },
   });
+  await prisma.collection.createMany({
+    data: [head, sous, customer].map((user) => ({
+      id: `favorites-${user.id}`,
+      name: 'Favorites',
+      systemType: CollectionSystemType.FAVORITES,
+      ownerId: user.id,
+    })),
+  });
+  await prisma.collection.create({
+    data: {
+      name: 'Recommended',
+      isPublic: true,
+      systemType: CollectionSystemType.RECOMMENDED,
+    },
+  });
   const restaurant = await prisma.restaurantEntry.create({
     data: {
       name: 'Existing E2E Restaurant',
       address: '1 Browser Street',
-      cuisineType: 'Vietnamese',
       type: 'Restaurant',
       createdById: sous.id,
       cuisines: { create: { cuisineId: cuisine.id, isPrimary: true } },
@@ -135,7 +154,7 @@ test('Customer views notifications, pays, corrects, and is denied chef actions',
   await expect(paidButton).toBeEnabled();
 
   const token = await page.evaluate(() => localStorage.getItem('ff-token'));
-  const denied = await page.request.post('http://127.0.0.1:4000/bills', {
+  const denied = await page.request.post(`${apiUrl}/bills`, {
     headers: { authorization: `Bearer ${token}` },
     data: {},
   });
@@ -213,7 +232,7 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
   await expect(page.getByText('Created E2E Restaurant')).toBeVisible();
 
   const token = await page.evaluate(() => localStorage.getItem('ff-token'));
-  const denied = await page.request.get('http://127.0.0.1:4000/users', {
+  const denied = await page.request.get(`${apiUrl}/users`, {
     headers: { authorization: `Bearer ${token}` },
   });
   expect(denied.status()).toBe(403);
@@ -266,8 +285,14 @@ test('member discovers, manages, shares, and reviews Collection places', async (
     prisma.feedback.deleteMany({
       where: { userId: customer.id, restaurantId: restaurant.id },
     }),
-    prisma.userFavorite.deleteMany({
-      where: { userId: customer.id, restaurantId: restaurant.id },
+    prisma.collectionRestaurant.deleteMany({
+      where: {
+        restaurantId: restaurant.id,
+        collection: {
+          ownerId: customer.id,
+          systemType: CollectionSystemType.FAVORITES,
+        },
+      },
     }),
     prisma.collection.deleteMany({
       where: { ownerId: customer.id, name: 'E2E Team Spots' },
@@ -313,7 +338,7 @@ test('member discovers, manages, shares, and reviews Collection places', async (
     localStorage.getItem('ff-token'),
   );
   const eligibilityResponse = await page.request.get(
-    `http://127.0.0.1:4000/restaurants/${restaurant.id}/feedback`,
+    `${apiUrl}/restaurants/${restaurant.id}/feedback`,
     { headers: { authorization: `Bearer ${customerToken}` } },
   );
   expect(eligibilityResponse.status()).toBe(200);
@@ -324,7 +349,7 @@ test('member discovers, manages, shares, and reviews Collection places', async (
     ]),
   );
   const createFeedbackResponse = await page.request.post(
-    `http://127.0.0.1:4000/bills/${feedbackBill.id}/feedback`,
+    `${apiUrl}/bills/${feedbackBill.id}/feedback`,
     {
       headers: { authorization: `Bearer ${customerToken}` },
       data: {
@@ -479,7 +504,7 @@ test('Root Admin archives, restores, administers roles, and cannot alter root th
     where: { username: 'e2e-head' },
   });
   const denied = await page.request.patch(
-    `http://127.0.0.1:4000/users/${head.id}/chef-role`,
+    `${apiUrl}/users/${head.id}/chef-role`,
     {
       headers: { authorization: `Bearer ${token}` },
       data: { chefRole: null },
@@ -543,7 +568,7 @@ test('member changes password while older sessions are invalidated', async ({
     page.getByText('Password changed and other sessions were signed out.'),
   ).toBeVisible();
 
-  const oldSession = await page.request.get('http://127.0.0.1:4000/me', {
+  const oldSession = await page.request.get(`${apiUrl}/me`, {
     headers: { authorization: `Bearer ${oldToken}` },
   });
   expect(oldSession.status()).toBe(401);

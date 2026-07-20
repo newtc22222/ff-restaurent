@@ -71,7 +71,6 @@ model User {
   roleChangesMade             RoleAuditLog[]           @relation("RoleChangedBy")
   roleChangesReceived         RoleAuditLog[]           @relation("RoleChangedUser")
   billAuditLogs               BillAuditLog[]
-  favorites                   UserFavorite[]
   rootTransfersFrom           RootAdminTransferAudit[] @relation("RootTransferredFrom")
   rootTransfersTo             RootAdminTransferAudit[] @relation("RootTransferredTo")
   passwordResetRequests       PasswordResetRequest[]
@@ -122,17 +121,12 @@ model RestaurantEntry {
   bannerImageUrl String?
   diningAreaId   String?
   diningArea     DiningArea?              @relation(fields: [diningAreaId], references: [id], onDelete: Restrict)
-  cuisineType    String
   type           String
   avatarUrl      String?
-  links          Json                     @default("[]")
-  isRecommended  Boolean                  @default(false)
-  isFavorite     Boolean                  @default(false)
   status         EntryStatus              @default(ACTIVE)
   createdById    String
   createdBy      User                     @relation("RestaurantCreator", fields: [createdById], references: [id])
   bills          Bill[]
-  favorites      UserFavorite[]
   platformLinks  RestaurantPlatformLink[]
   cuisines       RestaurantCuisine[]
   collections    CollectionRestaurant[]
@@ -143,7 +137,6 @@ model RestaurantEntry {
   @@index([diningAreaId])
   @@index([status, createdAt, id])
   @@index([createdById, createdAt, id])
-  @@index([isRecommended, status, createdAt, id])
 }
 
 model Cuisine {
@@ -326,16 +319,6 @@ model BillAuditLog {
   createdAt DateTime @default(now())
 
   @@index([billId, createdAt, id])
-}
-
-model UserFavorite {
-  userId       String
-  restaurantId String
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  restaurant   RestaurantEntry @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  createdAt    DateTime        @default(now())
-
-  @@id([userId, restaurantId])
 }
 
 model Collection {

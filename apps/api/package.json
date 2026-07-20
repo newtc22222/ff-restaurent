@@ -1,6 +1,6 @@
 {
   "name": "@ff-restaurent/api",
-  "version": "1.1.0-rc.1",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -15,7 +15,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:indexes:verify": "tsx prisma/verify-final-query-indexes.ts",
     "prisma:phones:backfill": "tsx prisma/backfill-user-phones.ts",
-    "prisma:phase2:backfill": "tsx prisma/backfill-phase2.ts",
+    "prisma:phase2:contract:verify": "tsx prisma/verify-phase2-contract.ts",
     "prisma:root:bootstrap": "tsx prisma/bootstrap-root-admin.ts",
     "prisma:root:recover": "tsx prisma/recover-root-admin.ts",
     "prisma:seed": "tsx prisma/seed.ts"
@@ -26,7 +26,7 @@
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
-    "@ff-restaurent/shared": "1.1.0-rc.1",
+    "@ff-restaurent/shared": "1.1.0",
     "@prisma/client": "^6.11.1",
     "bcryptjs": "^3.0.2",
     "fastify": "^5.4.0",

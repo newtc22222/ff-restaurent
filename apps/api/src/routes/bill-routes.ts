@@ -14,7 +14,11 @@ import {
   billSchema,
   paymentStatusSchema,
 } from '../schemas.js';
-import { publicRestaurantSelect } from '../restaurant-contract.js';
+import {
+  type PublicRestaurantRecord,
+  publicRestaurantSelect,
+  serializePublicRestaurant,
+} from '../restaurant-contract.js';
 import { pageResult } from '../pagination.js';
 
 const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
@@ -32,6 +36,16 @@ export const paymentResponseInclude = {
   member: { select: publicUserSelect },
   bill: true,
 };
+
+const serializeBillResponse = <
+  T extends { restaurant: PublicRestaurantRecord },
+>(
+  bill: T,
+  userId: string,
+) => ({
+  ...bill,
+  restaurant: serializePublicRestaurant(bill.restaurant, userId),
+});
 
 export const billActivityActorSelect = {
   id: true,
@@ -398,7 +412,10 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
         take: query.limit + 1,
       });
-      return pageResult(rows, query.limit);
+      return pageResult(
+        rows.map((bill) => serializeBillResponse(bill, request.currentUser.id)),
+        query.limit,
+      );
     },
   );
 
@@ -417,7 +434,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           .code(403)
           .send({ message: 'Not allowed to view this bill' });
       }
-      return bill;
+      return serializeBillResponse(bill, request.currentUser.id);
     },
   );
 
@@ -548,7 +565,9 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       }
       const { bill } = created;
       request.log.info({ event: 'bill_created', billId: bill.id });
-      return reply.code(201).send(bill);
+      return reply
+        .code(201)
+        .send(serializeBillResponse(bill, request.currentUser.id));
     },
   );
 
@@ -627,7 +646,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         });
         return updated;
       });
-      return bill;
+      return serializeBillResponse(bill, request.currentUser.id);
     },
   );
 
@@ -658,7 +677,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             after: { status: EntryStatus.ARCHIVED },
           },
         });
-        return updated;
+        return serializeBillResponse(updated, request.currentUser.id);
       });
     },
   );
@@ -685,7 +704,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             after: { status: EntryStatus.ACTIVE },
           },
         });
-        return updated;
+        return serializeBillResponse(updated, request.currentUser.id);
       });
     },
   );
