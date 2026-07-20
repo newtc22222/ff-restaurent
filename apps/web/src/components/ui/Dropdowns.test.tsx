@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import Dropdown, { type DropdownOption } from './Dropdown';
 
 const options: DropdownOption[] = [
@@ -10,6 +16,8 @@ const options: DropdownOption[] = [
   { value: 'pho', label: 'Pho House' },
   { value: 'rice', label: 'Rice Corner' },
 ];
+
+afterEach(cleanup);
 
 function SelectHarness() {
   const [value, setValue] = useState('');
@@ -54,6 +62,64 @@ function MultiSelectHarness() {
 }
 
 describe('searchable dropdowns', () => {
+  it('sizes a header menu to its trigger without a minimum-width floor', async () => {
+    const rect = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: Element) {
+        if (
+          this instanceof HTMLButtonElement &&
+          this.getAttribute('aria-haspopup')
+        ) {
+          return {
+            top: 20,
+            left: 100,
+            right: 220,
+            bottom: 52,
+            width: 120,
+            height: 32,
+            x: 100,
+            y: 20,
+            toJSON: () => ({}),
+          } as DOMRect;
+        }
+        return {
+          top: 0,
+          left: 0,
+          right: 2,
+          bottom: 146,
+          width: 2,
+          height: 146,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+
+    render(
+      <Dropdown
+        label="Language"
+        ariaLabel="Language: English"
+        value="en"
+        variant="header"
+        onChange={() => undefined}
+        options={[
+          { value: 'en', label: 'English' },
+          { value: 'vi', label: 'Vietnamese' },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Language: English' }));
+    await waitFor(() => {
+      const menu = screen
+        .getByRole('listbox')
+        .closest('[data-placement]') as HTMLElement;
+      expect(menu.style.width).toBe('120px');
+      expect(menu.className).not.toContain('min-w-');
+    });
+    rect.mockRestore();
+  });
+
   it('flips above the trigger when the viewport bottom cannot fit the menu', async () => {
     const rect = vi
       .spyOn(Element.prototype, 'getBoundingClientRect')
@@ -102,9 +168,10 @@ describe('searchable dropdowns', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rows' }));
     await waitFor(() =>
       expect(
-        screen.getByRole('listbox').closest('[data-placement]')?.getAttribute(
-          'data-placement',
-        ),
+        screen
+          .getByRole('listbox')
+          .closest('[data-placement]')
+          ?.getAttribute('data-placement'),
       ).toBe('top'),
     );
     rect.mockRestore();

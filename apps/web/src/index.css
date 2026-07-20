@@ -8,6 +8,8 @@
   --color-ink: hsl(222 47% 11%);
   --color-surface: #ffffff;
   --color-bg: #faf8f5;
+  --scrollbar-thumb: rgb(100 116 139 / 55%);
+  --scrollbar-thumb-hover: rgb(71 85 105 / 75%);
 
   font-family:
     Inter,
@@ -27,6 +29,8 @@
   --color-ink: hsl(210 20% 92%);
   --color-surface: hsl(220 15% 13%);
   --color-bg: hsl(220 15% 9%);
+  --scrollbar-thumb: rgb(148 163 184 / 55%);
+  --scrollbar-thumb-hover: rgb(203 213 225 / 72%);
 }
 
 body {
@@ -71,6 +75,34 @@ select {
 
 .panel {
   @apply rounded-xl border border-border bg-surface shadow-sm;
+}
+
+.scroll-area {
+  overscroll-behavior: contain;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-area::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
 }
 
 .react-datepicker-wrapper,

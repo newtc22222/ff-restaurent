@@ -47,7 +47,7 @@ export default function Modal({
   if (!open) return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -74,7 +74,10 @@ export default function Modal({
             <X size={17} aria-hidden="true" />
           </button>
         </div>
-        <ScrollArea className="min-h-0 flex-1" contentClassName="p-5">
+        <ScrollArea
+          className="min-h-0 max-h-[calc(100vh-6.5rem)] shrink"
+          contentClassName="p-5"
+        >
           {children}
         </ScrollArea>
       </div>

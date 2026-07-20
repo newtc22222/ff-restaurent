@@ -57,7 +57,7 @@ type DropdownProps = CommonDropdownProps &
 type MenuPosition = {
   top: number;
   left: number;
-  width?: number;
+  width: number;
   maxWidth: number;
   placement: 'top' | 'bottom';
 };
@@ -119,7 +119,8 @@ export default function Dropdown(props: DropdownProps) {
     setQuery('');
     setActiveIndex(0);
     onSearchChange?.('');
-    if (restoreFocus) window.requestAnimationFrame(() => triggerRef.current?.focus());
+    if (restoreFocus)
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
   const updatePosition = () => {
@@ -129,15 +130,14 @@ export default function Dropdown(props: DropdownProps) {
     const triggerRect = trigger.getBoundingClientRect();
     const menuRect = menu.getBoundingClientRect();
     const maxWidth = Math.max(0, window.innerWidth - VIEWPORT_GAP * 2);
-    const menuWidth = Math.min(
-      fullWidth ? triggerRect.width : Math.max(208, menuRect.width),
-      maxWidth,
-    );
+    const menuWidth = Math.min(triggerRect.width, maxWidth);
     const menuHeight = menuRect.height;
     const below = window.innerHeight - triggerRect.bottom - VIEWPORT_GAP;
     const above = triggerRect.top - VIEWPORT_GAP;
     const placement =
-      below < menuHeight && above > below ? ('top' as const) : ('bottom' as const);
+      below < menuHeight && above > below
+        ? ('top' as const)
+        : ('bottom' as const);
     const unclampedLeft =
       menuAlign === 'right' ? triggerRect.right - menuWidth : triggerRect.left;
     const left = Math.min(
@@ -155,7 +155,7 @@ export default function Dropdown(props: DropdownProps) {
     setPosition({
       top,
       left,
-      width: fullWidth ? menuWidth : undefined,
+      width: menuWidth,
       maxWidth,
       placement,
     });
@@ -303,7 +303,7 @@ export default function Dropdown(props: DropdownProps) {
               id={menuId}
               data-placement={position?.placement}
               style={menuStyle}
-              className="fixed z-[80] min-w-52 overflow-hidden rounded-lg border border-border bg-surface shadow-panel"
+              className="fixed z-[80] overflow-hidden rounded-lg border border-border bg-surface shadow-panel"
               onKeyDown={onMenuKeyDown}
             >
               {searchable && (
@@ -339,13 +339,7 @@ export default function Dropdown(props: DropdownProps) {
                 </button>
               )}
 
-              <ScrollArea
-                className="max-h-64"
-                style={{
-                  height: Math.min(256, Math.max(44, visibleOptions.length * 48)),
-                }}
-                contentClassName="p-1.5"
-              >
+              <ScrollArea className="max-h-64" contentClassName="p-1.5">
                 <div
                   role="listbox"
                   aria-label={label}
@@ -391,7 +385,9 @@ export default function Dropdown(props: DropdownProps) {
                             </span>
                           )}
                         </span>
-                        {active && <Check size={13} className="shrink-0 text-ink" />}
+                        {active && (
+                          <Check size={13} className="shrink-0 text-ink" />
+                        )}
                       </button>
                     );
                   })}
