@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { useI18n } from '../../app/providers/i18n';
 import { useMutation } from '../../hooks/useMutation';
 import type { RestaurantFeedbackPage } from '../../lib/api';
-import Dropdown from '../ui/Dropdown';
+import Dropdown from '../../components/ui/Dropdown';
 
 const ratingOptions = Array.from({ length: 19 }, (_, index) => 1 + index / 2);
 

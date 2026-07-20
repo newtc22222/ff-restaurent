@@ -10,33 +10,33 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
-import type { RestaurantDirectoryData } from '../lib/api';
+import type { RestaurantDirectoryData } from '../../lib/api';
 import {
   TYPE_OPTIONS_VI,
   TYPE_OPTIONS_EN,
   canChef,
   isHead,
-} from '../lib/helpers';
-import { useAppContext } from '../app/providers/app-context';
-import { useI18n } from '../app/providers/i18n';
-import { useMutation } from '../hooks/useMutation';
-import SectionTitle from '../components/ui/SectionTitle';
-import EmptyState from '../components/ui/EmptyState';
-import Dropdown from '../components/ui/Dropdown';
-import Modal from '../components/ui/Modal';
+} from '../../lib/helpers';
+import { useAppContext } from '../../app/providers/app-context';
+import { useI18n } from '../../app/providers/i18n';
+import { useMutation } from '../../hooks/useMutation';
+import SectionTitle from '../../components/ui/SectionTitle';
+import EmptyState from '../../components/ui/EmptyState';
+import Dropdown from '../../components/ui/Dropdown';
+import Modal from '../../components/ui/Modal';
 import VietnamAddressFields, {
   emptyVietnamAddress,
   isVietnamAddressComplete,
-} from '../components/address/VietnamAddressFields';
+} from '../../components/address/VietnamAddressFields';
 import RestaurantProfileFields, {
   emptyRestaurantProfile,
   isRestaurantProfileValid,
-} from '../components/restaurants/RestaurantProfileFields';
+} from './RestaurantProfileFields';
 import RestaurantCatalogFields, {
   emptyRestaurantCatalogs,
-} from '../components/restaurants/RestaurantCatalogFields';
-import ImagePicker from '../components/ui/ImagePicker';
-import { session } from '../lib/session';
+} from './RestaurantCatalogFields';
+import ImagePicker from '../../components/ui/ImagePicker';
+import { session } from '../../lib/session';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,

@@ -665,7 +665,7 @@ export const routes = [
             path: 'restaurants',
             loader: restaurantsLoader,
             action: mutationAction,
-            lazy: page(() => import('../pages/RestaurantsPage')),
+            lazy: page(() => import('../features/restaurants/RestaurantsPage')),
           },
           {
             path: 'collections',
@@ -711,7 +711,9 @@ export const routes = [
             path: 'restaurants/:restaurantId',
             loader: restaurantFeedbackLoader,
             action: mutationAction,
-            lazy: page(() => import('../pages/RestaurantDetailPage')),
+            lazy: page(
+              () => import('../features/restaurants/RestaurantDetailPage'),
+            ),
           },
           {
             path: 'collections/:collectionId',

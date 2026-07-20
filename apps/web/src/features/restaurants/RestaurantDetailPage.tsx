@@ -2,29 +2,29 @@ import { ExternalLink, Images, Layers, Pencil, Phone } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate, useRevalidator } from 'react-router';
-import { canChef, isHead } from '../lib/helpers';
-import type { RestaurantDetailData, VietnamAddress } from '../lib/api';
-import { useAppContext } from '../app/providers/app-context';
-import { useI18n } from '../app/providers/i18n';
-import { useMutation } from '../hooks/useMutation';
-import BackButton from '../components/ui/BackButton';
+import { canChef, isHead } from '../../lib/helpers';
+import type { RestaurantDetailData, VietnamAddress } from '../../lib/api';
+import { useAppContext } from '../../app/providers/app-context';
+import { useI18n } from '../../app/providers/i18n';
+import { useMutation } from '../../hooks/useMutation';
+import BackButton from '../../components/ui/BackButton';
 import VietnamAddressFields, {
   isVietnamAddressComplete,
-} from '../components/address/VietnamAddressFields';
+} from '../../components/address/VietnamAddressFields';
 import RestaurantProfileFields, {
   isRestaurantProfileValid,
   type RestaurantProfileDraft,
-} from '../components/restaurants/RestaurantProfileFields';
-import RestaurantBanner from '../components/restaurants/RestaurantBanner';
-import { platformLabel } from '../components/restaurants/PlatformLinksEditor';
+} from './RestaurantProfileFields';
+import RestaurantBanner from './RestaurantBanner';
+import { platformLabel } from './PlatformLinksEditor';
 import RestaurantCatalogFields, {
   type RestaurantCatalogValue,
-} from '../components/restaurants/RestaurantCatalogFields';
-import RestaurantFeedback from '../components/restaurants/RestaurantFeedback';
-import Dropdown from '../components/ui/Dropdown';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
-import ImagePicker from '../components/ui/ImagePicker';
-import { session } from '../lib/session';
+} from './RestaurantCatalogFields';
+import RestaurantFeedback from './RestaurantFeedback';
+import Dropdown from '../../components/ui/Dropdown';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import ImagePicker from '../../components/ui/ImagePicker';
+import { session } from '../../lib/session';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,

@@ -88,8 +88,9 @@ The schema is in an **expand + dual-read/dual-write** state. Legacy fields `Rest
 `apps/web/src/` is organized as:
 
 - `app/` — `App.tsx`, hash-free state router (`router.ts`), and providers (`app-context`, `i18n`, `theme`)
-- `pages/` — one component per screen (Login, Bills, BillDetail, CreateBill, Restaurants, RestaurantDetail, Collections, CollectionDetail, ParticipantGroups, Stats, Profile, Admin)
-- `components/` — `ui/` primitives, `layout/`, `restaurants/`, `address/`
+- `pages/` — one component per non-feature screen (Login, Bills, BillDetail, CreateBill, Collections, CollectionDetail, ParticipantGroups, Stats, Profile, Admin)
+- `features/` — domain-owned pages, components, and colocated tests; `restaurants/` contains the restaurant directory and detail feature
+- `components/` — shared `ui/` primitives, `layout/`, and `address/`
 - `lib/` — `api.ts` (`ApiClient` class, all API calls, local response types), `session.ts`, `translations.ts`, `pwa.ts`
 - `hooks/` — e.g. `useMutation`
 

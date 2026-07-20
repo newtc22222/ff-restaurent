@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp, Link2, Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '../../app/providers/i18n';
 import type { RestaurantPlatform, RestaurantPlatformLink } from '../../lib/api';
-import Dropdown from '../ui/Dropdown';
+import Dropdown from '../../components/ui/Dropdown';
 
 const platforms: RestaurantPlatform[] = [
   'GRAB',

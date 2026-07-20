@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { useI18n } from '../../app/providers/i18n';
 import type { CatalogPage, Cuisine, DiningArea } from '../../lib/api';
 import { session } from '../../lib/session';
-import Dropdown from '../ui/Dropdown';
+import Dropdown from '../../components/ui/Dropdown';
 
 export type RestaurantCatalogValue = {
   cuisineIds: string[];
