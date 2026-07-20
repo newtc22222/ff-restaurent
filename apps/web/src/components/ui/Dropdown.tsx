@@ -308,6 +308,7 @@ export default function Dropdown(props: DropdownProps) {
         createPortal(
           <>
             <div
+              data-testid="dropdown-backdrop"
               className="fixed inset-0 z-[70]"
               aria-hidden="true"
               onClick={() => close()}

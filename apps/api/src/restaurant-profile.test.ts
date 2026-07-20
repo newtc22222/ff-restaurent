@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { publicRestaurantSelect } from './restaurant-contract.js';
+import {
+  type PublicRestaurantRecord,
+  publicRestaurantSelect,
+  serializePublicRestaurant,
+} from './restaurant-contract.js';
 import { restaurantSchema } from './schemas.js';
 
 const base = {
@@ -99,4 +103,31 @@ test('legacy link input is accepted but translated out of the new contract', () 
       url: 'http://legacy.example.test/menu',
     },
   ]);
+});
+
+test('normalized cuisines and Collections derive the legacy response aliases', () => {
+  const restaurant = {
+    id: 'restaurant-1',
+    cuisines: [
+      {
+        isPrimary: true,
+        cuisine: {
+          id: 'cuisine-1',
+          name: 'Vietnamese',
+          type: 'Regional',
+          description: null,
+        },
+      },
+    ],
+    collections: [
+      { collection: { systemType: 'RECOMMENDED', ownerId: null } },
+      { collection: { systemType: 'FAVORITES', ownerId: 'user-1' } },
+    ],
+  } as PublicRestaurantRecord;
+  const response = serializePublicRestaurant(restaurant, 'user-1');
+  assert.equal(response.cuisineType, 'Vietnamese');
+  assert.equal(response.isRecommended, true);
+  assert.equal(response.isFavoritedByMe, true);
+  assert.equal(response.isFavorite, true);
+  assert.equal('collections' in response, false);
 });

@@ -17,7 +17,11 @@ import {
   billSchema,
   paymentStatusSchema,
 } from '../schemas.js';
-import { publicRestaurantSelect } from '../restaurant-contract.js';
+import {
+  type PublicRestaurantRecord,
+  publicRestaurantSelect,
+  serializePublicRestaurant,
+} from '../restaurant-contract.js';
 import { signedQrUrl } from '../storage.js';
 
 const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
@@ -39,13 +43,22 @@ export const billResponseInclude = {
   },
 };
 
-const serializeBill = async <T extends { paymentQrImage?: null | {
-  id: string;
-  label: string;
-  storagePath: string;
-  status: EntryStatus;
-} }>(bill: T) => ({
+const serializeBill = async <
+  T extends {
+    restaurant: PublicRestaurantRecord;
+    paymentQrImage?: null | {
+      id: string;
+      label: string;
+      storagePath: string;
+      status: EntryStatus;
+    };
+  },
+>(
+  bill: T,
+  userId: string,
+) => ({
   ...bill,
+  restaurant: serializePublicRestaurant(bill.restaurant, userId),
   paymentQrImage: bill.paymentQrImage
     ? {
         id: bill.paymentQrImage.id,
@@ -478,7 +491,9 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           : orderedRows
         : orderedRows.slice(0, query.limit);
       return {
-        items: await Promise.all(rows.map(serializeBill)),
+        items: await Promise.all(
+          rows.map((bill) => serializeBill(bill, request.currentUser.id)),
+        ),
         pageInfo: {
           startCursor: rows.at(0)?.id ?? null,
           endCursor: rows.at(-1)?.id ?? null,
@@ -504,7 +519,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           .code(403)
           .send({ message: 'Not allowed to view this bill' });
       }
-      return serializeBill(bill);
+      return serializeBill(bill, request.currentUser.id);
     },
   );
 
@@ -643,7 +658,9 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       }
       const { bill } = created;
       request.log.info({ event: 'bill_created', billId: bill.id });
-      return reply.code(201).send(await serializeBill(bill));
+      return reply
+        .code(201)
+        .send(await serializeBill(bill, request.currentUser.id));
     },
   );
 
@@ -736,7 +753,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         });
         return updated;
       });
-      return serializeBill(bill);
+      return serializeBill(bill, request.currentUser.id);
     },
   );
 
@@ -769,7 +786,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         });
         return updated;
       });
-      return serializeBill(updated);
+      return serializeBill(updated, request.currentUser.id);
     },
   );
 
@@ -797,7 +814,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         });
         return updated;
       });
-      return serializeBill(updated);
+      return serializeBill(updated, request.currentUser.id);
     },
   );
 

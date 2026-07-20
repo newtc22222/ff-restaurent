@@ -8,11 +8,10 @@ Phase 1 / version 1.0.0 is operationally complete. The release was promoted to
 `main`, the production recovery drill and authenticated staging smoke both
 passed, and Linear issue `FF-21` is Done.
 
-Phase 2 implementation is also complete on `develop` at `3e513f2` after PRs
-#11–#28. The Linear milestone `Phase 2 — Reliability & Retention` is at 100%,
-while the overall roadmap remains In Progress for Phases 3–4. Release work is
-now preparing the backward-compatible `v1.1.0-rc.1` expand/backfill candidate;
-the FF-38 contract migration remains gated by its 24-hour observation window.
+Phase 2 implementation and the `v1.1.0-rc.1` observation window are complete.
+Resume all Phase 2 release work from `.codex/PHASE_2_HANDOFF.md` and
+`releases/Release_1-1-0.md`. The overall roadmap remains In Progress for later
+phases.
 
 Read these files before starting Phase 2 or another production operation:
 

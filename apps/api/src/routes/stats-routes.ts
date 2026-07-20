@@ -75,7 +75,7 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
       for (const participant of participants) {
         const primaryCuisine =
           participant.bill.restaurant.cuisines[0]?.cuisine.name ??
-          participant.bill.restaurant.cuisineType;
+          'Uncategorized';
         addAmountToBucket(
           byPaymentStatus,
           participant.paymentStatus,
