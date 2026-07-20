@@ -18,6 +18,7 @@
     "prisma:phase2:backfill": "tsx prisma/backfill-phase2.ts",
     "prisma:root:bootstrap": "tsx prisma/bootstrap-root-admin.ts",
     "prisma:root:recover": "tsx prisma/recover-root-admin.ts",
+    "prisma:cuisines:seed": "tsx prisma/seed-popular-cuisines.ts",
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {

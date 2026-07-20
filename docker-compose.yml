@@ -52,6 +52,7 @@ services:
         else
           npx tsx prisma/seed-if-empty.ts;
         fi &&
+        npm run prisma:cuisines:seed &&
         npm run prisma:phones:backfill &&
         npm run prisma:root:bootstrap &&
         exec node dist/server.js

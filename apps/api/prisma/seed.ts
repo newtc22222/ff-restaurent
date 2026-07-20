@@ -7,6 +7,7 @@ import {
   SystemRole,
 } from '@prisma/client';
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
+import { seedPopularVietnamCuisines } from '../src/popular-cuisine-seed.js';
 
 const prisma = new PrismaClient();
 
@@ -232,6 +233,8 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
     shippingFee: 10000,
     participantIds: [customer.id, sousChef.id],
   });
+
+  await seedPopularVietnamCuisines(prisma);
 }
 
 if (

@@ -67,6 +67,17 @@ npm run prisma:migrate -w @ff-restaurent/api
 npm run prisma:seed -w @ff-restaurent/api
 ```
 
+The demo seed also loads the popular Vietnamese cuisine catalog. To add only
+that catalog without resetting application data, run:
+
+```bash
+npm run prisma:cuisines:seed -w @ff-restaurent/api
+```
+
+This command is idempotent: it inserts missing normalized cuisine names and
+does not update or delete existing catalog entries. API container deployments
+run it automatically after Prisma migrations and before the API starts.
+
 Run the API and web app in separate terminals:
 
 ```bash
