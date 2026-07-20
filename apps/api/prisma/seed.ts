@@ -61,7 +61,6 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
   if (reset) {
     await prisma.passwordResetRequest.deleteMany();
     await prisma.collection.deleteMany();
-    await prisma.userFavorite.deleteMany();
     await prisma.notification.deleteMany();
     await prisma.billAuditLog.deleteMany();
     await prisma.rootAdminTransferAudit.deleteMany();
@@ -122,10 +121,7 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
       data: {
         name: 'Phở Thứ Sáu',
         address: '12 Đường Phở',
-        cuisineType: 'Phở',
         type: 'Nhà hàng',
-        isFavorite: true,
-        isRecommended: true,
         createdById: sousChef.id,
         cuisines: {
           create: { cuisineId: phoCuisine.id, isPrimary: true },
@@ -136,9 +132,7 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
       data: {
         name: 'Sushi Nhanh',
         address: '88 Đường Giao Hàng',
-        cuisineType: 'Nhật Bản',
         type: 'Quán ăn',
-        isRecommended: true,
         createdById: headChef.id,
         cuisines: {
           create: { cuisineId: japaneseCuisine.id, isPrimary: true },
@@ -149,7 +143,6 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
       data: {
         name: 'Bánh & Bill',
         address: '4 Đường Buổi Sáng',
-        cuisineType: 'Tiệm bánh',
         type: 'Tiệm bánh',
         createdById: sousChef.id,
         cuisines: {
@@ -184,18 +177,13 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
       }),
     ),
   ]);
-  await Promise.all([
-    prisma.userFavorite.create({
-      data: { userId: customer.id, restaurantId: pho.id },
-    }),
-    prisma.collectionRestaurant.createMany({
-      data: [
-        { collectionId: customerFavorites.id, restaurantId: pho.id },
-        { collectionId: recommended.id, restaurantId: pho.id },
-        { collectionId: recommended.id, restaurantId: sushi.id },
-      ],
-    }),
-  ]);
+  await prisma.collectionRestaurant.createMany({
+    data: [
+      { collectionId: customerFavorites.id, restaurantId: pho.id },
+      { collectionId: recommended.id, restaurantId: pho.id },
+      { collectionId: recommended.id, restaurantId: sushi.id },
+    ],
+  });
 
   await createBill({
     restaurantId: pho.id,

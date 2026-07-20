@@ -1,103 +1,41 @@
-# Phase 2 expand/backfill/contract runbook
+# Phase 2 contract verification runbook
 
-This runbook covers FF-38 for the backward-compatible `v1.1.0` release. The
-current code remains in the **expand + dual-read/dual-write** state. Do not
-remove `RestaurantEntry.cuisineType`, `links`, `isFavorite`, `isRecommended`,
-or `UserFavorite` until the release candidate has completed its production
-observation window and rollback evidence is retained.
+The expand/backfill operations are retired after accepted production repeat run 29760632288. Do not run the removed backfill command after migration 14.
 
-## Required preflight evidence
+## Deployment gate
 
-1. Capture a PostgreSQL snapshot and the expected row counts from that same
-   exported snapshot, following the Phase 1 recovery procedure.
-2. Record the deployed application SHA and migration count.
-3. Apply additive Prisma migrations.
-4. Run the backfill in dry-run mode and retain its JSON report:
+Migration `20260720000000_contract_phase2_normalized_restaurants` performs all
+legacy-equivalence and normalized-invariant checks before dropping any schema.
+Any failed precondition aborts the migration and blocks deployment.
 
-```bash
-PHASE2_BACKFILL_DRY_RUN=1 \
-PHASE2_BACKFILL_REPORT_PATH=artifacts/phase2-backfill-dry-run.json \
-npm run prisma:phase2:backfill -w @ff-restaurent/api
-```
+The production container sequence remains:
 
-The dry run must be reviewed for invalid banner/platform URLs, invalid legacy
-link JSON, and normalized Cuisine collisions. Every exception must have an
-operator disposition; the command never silently deletes or rewrites an
-invalid value.
+1. `prisma migrate deploy`
+2. user-phone normalization
+3. ROOT_ADMIN bootstrap
+4. `exec node dist/server.js`
 
-## Execute and verify
+## Post-deployment verification
 
-Run with an explicit report path. The process uses deterministic batches and
-idempotent inserts/upserts, so rerunning the same command resumes safely after
-an interruption.
+Dispatch the `Phase 2 contract verification` workflow on the deployed `main`
+SHA. It runs:
 
 ```bash
-PHASE2_BACKFILL_BATCH_SIZE=100 \
-PHASE2_BACKFILL_REPORT_PATH=artifacts/phase2-backfill-applied.json \
-npm run prisma:phase2:backfill -w @ff-restaurent/api
+npm run prisma:phase2:contract:verify -w @ff-restaurent/api
 ```
 
-Retain these `pre` and `post` report fields in the release evidence:
+Require `passed=true`, `migrationCount=14`, zero restaurants without exactly
+one primary Cuisine, zero users without exactly one Favorites collection,
+exactly one Recommended collection, and zero legacy columns/tables.
 
-| Count                                  | Pre | Post |
-| -------------------------------------- | --: | ---: |
-| Users                                  |     |      |
-| Restaurants                            |     |      |
-| Legacy favorites                       |     |      |
-| Legacy recommended flags               |     |      |
-| Legacy ownerless/global favorite flags |     |      |
-| Cuisines                               |     |      |
-| Primary Cuisine joins                  |     |      |
-| Platform links                         |     |      |
-| Favorites collections                  |     |      |
-| Recommended collections                |     |      |
-| Collection memberships                 |     |      |
+Then run authenticated `Staging smoke` and `Backup restore drill`. The restored
+manifest must match the dump snapshot exactly and include 14 migrations. Record
+all run IDs, counts, and the deployed SHA in `releases/Release_1-1-0.md` and
+`.codex/PHASE_2_HANDOFF.md` before tagging.
 
-The report must finish with all verification values below:
+## Failure response
 
-- `restaurantsWithoutPrimaryCuisine = 0`
-- `usersWithoutFavorites = 0`
-- `duplicateFavoritesOwners = 0`
-- `recommendedCollections = 1`
-- `passed = true`
-
-Immediately rerun the applied command. The second report must still pass and
-must show zero created Cuisines, primary joins, promoted banners, platform
-links, default Collections, and memberships. This is the resumability and
-idempotency proof.
-
-## Smoke and count reconciliation
-
-After the applied run:
-
-1. Reconcile the report's unchanged user, restaurant, bill, and legacy
-   favorite counts against the snapshot-consistent expected counts.
-2. Sign in as Customer, Sous Chef, Head Chef, and ROOT_ADMIN.
-3. Verify Favorites toggles update the private Favorites collection.
-4. Verify only chefs can change Recommended membership.
-5. Verify a private shared Collection disappears immediately after unsharing.
-6. Verify every restaurant has exactly one primary Cuisine and existing bills
-   still resolve their restaurant.
-7. Run the staging smoke suite and a recovery restore against the retained
-   snapshot.
-
-## Rollback and recovery rehearsal
-
-The preferred rollback before contract is to redeploy the prior compatible
-application SHA; additive tables and dual-written legacy fields may remain.
-If data restoration is required, restore the pre-backfill snapshot into a new
-database, compare the snapshot-consistent counts, run health/authentication
-smoke checks, and only then redirect traffic. Do not attempt an ad-hoc reverse
-delete because banner promotion and normalized joins may contain valid new
-production writes.
-
-Record the restore target, snapshot identifier, expected/restored counts,
-migration count, smoke result, and recovery time in the `v1.1.0` evidence.
-
-## Contract gate
-
-Contract migration is allowed only after the `v1.1.0-rc.1` observation window
-completes, all exceptions are resolved or explicitly accepted, the applied and
-repeat reports pass, and snapshot restore is rehearsed. The contract change is
-a separate release operation; this FF-38 implementation intentionally does not
-drop legacy data.
+Do not force or manually edit the migration. Preserve the failed logs, restore
+the previous application if required, correct the normalized source data using
+a reviewed one-off operation, repeat recovery/smoke gates, and redeploy the same
+reviewed release lineage. Any unresolved failure blocks `v1.1.0`.

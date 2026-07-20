@@ -40,7 +40,11 @@ jobs:
       - name: Generate Prisma client (workspace)
         run: npm run prisma:generate --workspace @ff-restaurent/api
       - run: npm run typecheck
+      - name: Verify representative RC upgrade and contract failures
+        shell: bash
+        run: bash scripts/verify-phase2-contract-migration.sh
       - run: npm run prisma:migrate:deploy -w @ff-restaurent/api
+      - run: npm run prisma:phase2:contract:verify -w @ff-restaurent/api
       - run: npm run prisma:indexes:verify -w @ff-restaurent/api
       - run: npm test
       - run: npm run build

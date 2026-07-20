@@ -38,7 +38,7 @@ const registerCorePlugins = async (app: FastifyInstance) => {
   }
   await app.register(swagger, {
     openapi: {
-      info: { title: 'FF RESTaurent API', version: '0.1.0' },
+      info: { title: 'FF RESTaurent API', version: '1.1.0' },
       components: {
         securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer' } },
       },

@@ -229,7 +229,7 @@ const migrateLegacyPlatformLinks = <T extends RestaurantProfileInput>(
 const restaurantObjectSchema = z.object({
   ...vietnamAddressShape,
   name: z.string().min(1),
-  cuisineType: z.string().min(1),
+  cuisineType: z.string().min(1).optional(),
   cuisineIds: z.array(z.string().min(1)).min(1).max(20).optional(),
   primaryCuisineId: z.string().min(1).optional(),
   diningAreaId: z.string().min(1).nullable().optional(),
@@ -290,6 +290,15 @@ export const restaurantSchema = restaurantObjectSchema
   .superRefine(validateStructuredAddress)
   .superRefine(validatePlatformLinks)
   .superRefine(validateRestaurantCatalogs)
+  .superRefine((value, context) => {
+    if (value.cuisineType || (value.cuisineIds && value.primaryCuisineId))
+      return;
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['cuisineIds'],
+      message: 'At least one cuisine and a primary cuisine are required',
+    });
+  })
   .transform(migrateLegacyPlatformLinks);
 export const restaurantUpdateSchema = restaurantObjectSchema
   .partial()

@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-/** Public restaurant contract intentionally excludes the legacy `links` JSON. */
+/** Public restaurant query shape. Legacy fields are derived during serialization. */
 export const publicRestaurantSelect = {
   id: true,
   name: true,
@@ -26,11 +26,8 @@ export const publicRestaurantSelect = {
       description: true,
     },
   },
-  cuisineType: true,
   type: true,
   avatarUrl: true,
-  isRecommended: true,
-  isFavorite: true,
   status: true,
   createdById: true,
   createdAt: true,
@@ -62,4 +59,42 @@ export const publicRestaurantSelect = {
       },
     },
   },
+  collections: {
+    where: { collection: { systemType: { not: null } } },
+    select: {
+      collection: {
+        select: { systemType: true, ownerId: true },
+      },
+    },
+  },
 } satisfies Prisma.RestaurantEntrySelect;
+
+export type PublicRestaurantRecord = Prisma.RestaurantEntryGetPayload<{
+  select: typeof publicRestaurantSelect;
+}>;
+
+export const serializePublicRestaurant = (
+  restaurant: PublicRestaurantRecord,
+  userId?: string,
+) => {
+  const { collections, ...publicFields } = restaurant;
+  const isRecommended = collections.some(
+    ({ collection }) => collection.systemType === 'RECOMMENDED',
+  );
+  const isFavoritedByMe = Boolean(
+    userId &&
+    collections.some(
+      ({ collection }) =>
+        collection.systemType === 'FAVORITES' && collection.ownerId === userId,
+    ),
+  );
+  return {
+    ...publicFields,
+    cuisineType:
+      restaurant.cuisines.find(({ isPrimary }) => isPrimary)?.cuisine.name ??
+      'Uncategorized',
+    isRecommended,
+    isFavoritedByMe,
+    isFavorite: isFavoritedByMe,
+  };
+};

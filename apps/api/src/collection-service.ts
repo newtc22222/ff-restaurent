@@ -30,19 +30,6 @@ export const ensureFavoritesCollection = async (userId: string) => {
   }
   if (!collection) throw new Error('Favorites collection could not be created');
 
-  const legacy = await prisma.userFavorite.findMany({
-    where: { userId },
-    select: { restaurantId: true },
-  });
-  if (legacy.length > 0) {
-    await prisma.collectionRestaurant.createMany({
-      data: legacy.map(({ restaurantId }) => ({
-        collectionId: collection.id,
-        restaurantId,
-      })),
-      skipDuplicates: true,
-    });
-  }
   return collection;
 };
 
@@ -75,19 +62,6 @@ export const ensureRecommendedCollection = async () => {
   if (!collection)
     throw new Error('Recommended collection could not be created');
 
-  const legacy = await prisma.restaurantEntry.findMany({
-    where: { isRecommended: true },
-    select: { id: true },
-  });
-  if (legacy.length > 0) {
-    await prisma.collectionRestaurant.createMany({
-      data: legacy.map(({ id: restaurantId }) => ({
-        collectionId: collection.id,
-        restaurantId,
-      })),
-      skipDuplicates: true,
-    });
-  }
   return collection;
 };
 
@@ -109,36 +83,29 @@ export const toggleFavoriteShortcut = async (
       where: { id: restaurantId },
       select: { id: true },
     });
-    const [legacy, membership] = await Promise.all([
-      tx.userFavorite.findUnique({
-        where: { userId_restaurantId: { userId, restaurantId } },
-        select: { userId: true },
-      }),
-      tx.collectionRestaurant.findUnique({
+    const membership = await tx.collectionRestaurant.findUnique({
+      where: {
+        collectionId_restaurantId: {
+          collectionId: collection.id,
+          restaurantId,
+        },
+      },
+      select: { collectionId: true },
+    });
+    if (membership) {
+      await tx.collectionRestaurant.delete({
         where: {
           collectionId_restaurantId: {
             collectionId: collection.id,
             restaurantId,
           },
         },
-        select: { collectionId: true },
-      }),
-    ]);
-    if (legacy || membership) {
-      await Promise.all([
-        tx.userFavorite.deleteMany({ where: { userId, restaurantId } }),
-        tx.collectionRestaurant.deleteMany({
-          where: { collectionId: collection.id, restaurantId },
-        }),
-      ]);
+      });
       return false;
     }
-    await Promise.all([
-      tx.userFavorite.create({ data: { userId, restaurantId } }),
-      tx.collectionRestaurant.create({
-        data: { collectionId: collection.id, restaurantId },
-      }),
-    ]);
+    await tx.collectionRestaurant.create({
+      data: { collectionId: collection.id, restaurantId },
+    });
     return true;
   });
 };
@@ -146,9 +113,9 @@ export const toggleFavoriteShortcut = async (
 export const toggleRecommendedShortcut = async (restaurantId: string) => {
   const collection = await ensureRecommendedCollection();
   return prisma.$transaction(async (tx) => {
-    const restaurant = await tx.restaurantEntry.findUniqueOrThrow({
+    await tx.restaurantEntry.findUniqueOrThrow({
       where: { id: restaurantId },
-      select: { id: true, isRecommended: true },
+      select: { id: true },
     });
     const membership = await tx.collectionRestaurant.findUnique({
       where: {
@@ -159,11 +126,7 @@ export const toggleRecommendedShortcut = async (restaurantId: string) => {
       },
       select: { collectionId: true },
     });
-    const recommended = !(restaurant.isRecommended || membership);
-    await tx.restaurantEntry.update({
-      where: { id: restaurantId },
-      data: { isRecommended: recommended },
-    });
+    const recommended = !membership;
     if (recommended) {
       await tx.collectionRestaurant.upsert({
         where: {

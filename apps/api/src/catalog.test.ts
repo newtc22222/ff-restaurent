@@ -25,7 +25,9 @@ test('restaurant catalog selections require one included primary cuisine', () =>
   };
   assert.equal(
     restaurantSchema.safeParse({
-      ...base,
+      name: base.name,
+      address: base.address,
+      type: base.type,
       cuisineIds: ['cuisine-1', 'cuisine-2'],
       primaryCuisineId: 'cuisine-2',
     }).success,
@@ -44,6 +46,14 @@ test('restaurant catalog selections require one included primary cuisine', () =>
       ...base,
       cuisineIds: ['cuisine-1', 'cuisine-1'],
       primaryCuisineId: 'cuisine-1',
+    }).success,
+    false,
+  );
+  assert.equal(
+    restaurantSchema.safeParse({
+      name: base.name,
+      address: base.address,
+      type: base.type,
     }).success,
     false,
   );
