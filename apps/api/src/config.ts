@@ -6,9 +6,6 @@ export type AppConfig = {
   jwtExpiresIn: string;
   corsOrigins: string[];
   registrationInviteCode: string;
-  provincesApiUrl: string;
-  provincesApiTimeoutMs: number;
-  provincesCacheTtlMs: number;
   supabaseUrl?: string;
   supabaseServiceRoleKey?: string;
   supabasePublicBucket: string;
@@ -55,17 +52,6 @@ export const loadConfig = (): AppConfig => {
     jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '8h',
     corsOrigins,
     registrationInviteCode,
-    provincesApiUrl: (
-      process.env.PROVINCES_API_URL ?? 'https://provinces.open-api.vn/api/v2/'
-    ).replace(/\/*$/, '/'),
-    provincesApiTimeoutMs: positiveInteger(
-      process.env.PROVINCES_API_TIMEOUT_MS,
-      5_000,
-    ),
-    provincesCacheTtlMs: positiveInteger(
-      process.env.PROVINCES_CACHE_TTL_MS,
-      86_400_000,
-    ),
     supabaseUrl: process.env.SUPABASE_URL,
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     supabasePublicBucket:

@@ -198,7 +198,7 @@ export type VietnamAddress = Pick<
 >;
 
 export type AddressDirectoryResult = {
-  items: { code: string; name: string }[];
+  items: { code: string; name: string; aliases?: string[] }[];
   stale: boolean;
 };
 

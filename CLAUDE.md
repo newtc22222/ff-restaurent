@@ -107,12 +107,11 @@ JWT_EXPIRES_IN=8h
 CORS_ORIGINS=http://localhost:5173
 REGISTRATION_INVITE_CODE=replace-with-a-private-group-invite
 ROOT_ADMIN_USERNAME=replace-with-an-existing-username
-PROVINCES_API_URL=https://provinces.open-api.vn/api/v2/
 API_PORT=4000
 VITE_API_URL=http://localhost:4000
 ```
 
-The address directory proxies the Vietnam provinces API (`PROVINCES_API_URL`) with in-process caching.
+The address directory uses the validated Vietnam province and ward dataset bundled with the API.
 
 ## Operations & Releases
 

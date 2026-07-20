@@ -98,6 +98,14 @@ Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PUBLIC_BUCKET`,
 Without these variables the rest of the app remains available, while media
 endpoints return `STORAGE_NOT_CONFIGURED`.
 
+### Vietnam address directory
+
+The API bundles the complete 34-province, 3,321-ward directory effective July
+1, 2025. Address pickers use the authenticated `/address/provinces` and
+`/address/provinces/:provinceCode/wards` endpoints without contacting an
+external province service. Existing numeric address snapshots are preserved
+and remapped by province and ward name when edited.
+
 ## Verification
 
 ```bash

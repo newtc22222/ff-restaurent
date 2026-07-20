@@ -41,6 +41,21 @@ const formatAddress = (value: VietnamAddress) =>
     .filter(Boolean)
     .join(', ');
 
+export const addressLookupKey = (value: string, kind: 'province' | 'ward') => {
+  const normalized = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  const prefix =
+    kind === 'province'
+      ? /^(?:tinh|thanh pho|tp)\s+/
+      : /^(?:phuong|xa|thi tran|dac khu)\s+/;
+  return normalized.replace(prefix, '').replace(/\s+/g, ' ');
+};
+
 type VietnamAddressFieldsProps = {
   value: VietnamAddress;
   onChange: (value: VietnamAddress) => void;
@@ -70,6 +85,10 @@ export default function VietnamAddressFields({
           retry: 'Thử lại',
           unavailable: 'Không thể tải danh mục địa chỉ.',
           stale: 'Đang dùng danh mục đã lưu do nguồn dữ liệu chưa phản hồi.',
+          legacyProvince:
+            'Địa chỉ đã lưu dùng danh mục cũ. Hãy chọn lại tỉnh / thành phố và phường / xã hiện tại.',
+          legacyWard:
+            'Tỉnh / thành phố đã được cập nhật. Hãy chọn lại phường / xã hiện tại.',
           manual: 'Nhập địa chỉ thủ công',
           structured: 'Chọn địa chỉ có cấu trúc',
           manualPlaceholder: 'Nhập địa chỉ đầy đủ',
@@ -88,6 +107,10 @@ export default function VietnamAddressFields({
           retry: 'Retry',
           unavailable: 'The address directory could not be loaded.',
           stale: 'Using saved address data while the directory is unavailable.',
+          legacyProvince:
+            'This saved address uses the previous directory. Select its current province and ward.',
+          legacyWard:
+            'The province was updated. Select the current ward for this address.',
           manual: 'Enter address manually',
           structured: 'Choose a structured address',
           manualPlaceholder: 'Enter the complete address',
@@ -104,6 +127,12 @@ export default function VietnamAddressFields({
   const [provinceError, setProvinceError] = useState(false);
   const [wardError, setWardError] = useState(false);
   const [stale, setStale] = useState(false);
+  const [legacyIssue, setLegacyIssue] = useState<'province' | 'ward' | null>(
+    null,
+  );
+
+  const commit = (next: VietnamAddress) =>
+    onChange({ ...next, address: formatAddress(next) });
 
   const reportStale = useCallback(
     (result: AddressDirectoryResult) => {
@@ -121,9 +150,11 @@ export default function VietnamAddressFields({
       const result = await loadDirectory('/address/provinces');
       setProvinces(result.items);
       reportStale(result);
+      return result.items;
     } catch {
       setProvinceError(true);
       toast.error(text.unavailable, { id: 'address-directory-error' });
+      return null;
     } finally {
       setLoadingProvinces(false);
     }
@@ -139,9 +170,11 @@ export default function VietnamAddressFields({
         );
         setWards(result.items);
         reportStale(result);
+        return result.items;
       } catch {
         setWardError(true);
         toast.error(text.unavailable, { id: 'address-directory-error' });
+        return null;
       } finally {
         setLoadingWards(false);
       }
@@ -151,12 +184,83 @@ export default function VietnamAddressFields({
 
   useEffect(() => {
     if (manual) return;
-    void loadProvinces();
-    if (value.provinceCode) void loadWards(value.provinceCode);
-  }, [manual]);
+    let cancelled = false;
+    void (async () => {
+      const provinceItems = await loadProvinces();
+      if (
+        cancelled ||
+        !provinceItems ||
+        (!value.provinceCode && !value.provinceName)
+      ) {
+        return;
+      }
 
-  const commit = (next: VietnamAddress) =>
-    onChange({ ...next, address: formatAddress(next) });
+      let province = provinceItems.find(
+        (item) => item.code === value.provinceCode,
+      );
+      if (!province && value.provinceName) {
+        const savedProvince = addressLookupKey(value.provinceName, 'province');
+        province = provinceItems.find((item) =>
+          [item.name, ...(item.aliases ?? [])].some(
+            (name) => addressLookupKey(name, 'province') === savedProvince,
+          ),
+        );
+      }
+
+      if (!province) {
+        setWards([]);
+        setLegacyIssue('province');
+        onChange({
+          ...value,
+          provinceCode: null,
+          provinceName: null,
+          wardCode: null,
+          wardName: null,
+        });
+        return;
+      }
+
+      const wardItems = await loadWards(province.code);
+      if (cancelled || !wardItems) return;
+      let ward = wardItems.find((item) => item.code === value.wardCode);
+      if (!ward && value.wardName) {
+        const savedWard = addressLookupKey(value.wardName, 'ward');
+        ward = wardItems.find(
+          (item) => addressLookupKey(item.name, 'ward') === savedWard,
+        );
+      }
+
+      if (!ward) {
+        setLegacyIssue('ward');
+        onChange({
+          ...value,
+          provinceCode: province.code,
+          provinceName: province.name,
+          wardCode: null,
+          wardName: null,
+        });
+        return;
+      }
+
+      if (
+        province.code !== value.provinceCode ||
+        province.name !== value.provinceName ||
+        ward.code !== value.wardCode ||
+        ward.name !== value.wardName
+      ) {
+        commit({
+          ...value,
+          provinceCode: province.code,
+          provinceName: province.name,
+          wardCode: ward.code,
+          wardName: ward.name,
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [manual]);
 
   const chooseProvince = (provinceCode: string) => {
     const province = provinces.find((item) => item.code === provinceCode);
@@ -169,6 +273,7 @@ export default function VietnamAddressFields({
     };
     setWards([]);
     setWardError(false);
+    if (legacyIssue === 'province') setLegacyIssue('ward');
     commit(next);
     if (province) void loadWards(province.code);
   };
@@ -180,6 +285,7 @@ export default function VietnamAddressFields({
       wardCode: ward?.code ?? null,
       wardName: ward?.name ?? null,
     });
+    setLegacyIssue(null);
   };
 
   const toggleMode = () => {
@@ -187,6 +293,7 @@ export default function VietnamAddressFields({
     setManual(nextManual);
     setProvinceError(false);
     setWardError(false);
+    setLegacyIssue(null);
     if (nextManual) {
       onChange({
         address: value.address,
@@ -251,6 +358,7 @@ export default function VietnamAddressFields({
                 options={provinces.map((item) => ({
                   value: item.code,
                   label: item.name,
+                  searchText: [item.name, ...(item.aliases ?? [])].join(' '),
                 }))}
                 searchPlaceholder={text.searchProvince}
                 emptyMessage={text.noResults}
@@ -299,6 +407,16 @@ export default function VietnamAddressFields({
               className="text-xs text-amber-700 dark:text-amber-300"
             >
               {text.stale}
+            </p>
+          )}
+          {legacyIssue && (
+            <p
+              role="status"
+              className="text-xs text-amber-700 dark:text-amber-300"
+            >
+              {legacyIssue === 'province'
+                ? text.legacyProvince
+                : text.legacyWard}
             </p>
           )}
         </>

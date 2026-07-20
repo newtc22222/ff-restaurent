@@ -1,27 +1,35 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 import { z } from 'zod';
 import { AddressDirectory } from '../address-directory.js';
-import { loadConfig } from '../config.js';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 
-export const registerAddressRoutes = (app: FastifyInstance) => {
-  const config = loadConfig();
-  const directory = new AddressDirectory({
-    baseUrl: config.provincesApiUrl,
-    timeoutMs: config.provincesApiTimeoutMs,
-    cacheTtlMs: config.provincesCacheTtlMs,
-  });
+type AddressRouteOptions = {
+  authenticate?: preHandlerHookHandler;
+  directory?: AddressDirectory;
+};
 
-  app.get('/address/provinces', { preHandler: requireAuthenticatedUser }, () =>
+export const registerAddressRoutes = (
+  app: FastifyInstance,
+  options: AddressRouteOptions = {},
+) => {
+  const directory = options.directory ?? new AddressDirectory();
+  const authenticate = options.authenticate ?? requireAuthenticatedUser;
+
+  app.get('/address/provinces', { preHandler: authenticate }, () =>
     directory.getProvinces(),
   );
 
   app.get(
     '/address/provinces/:provinceCode/wards',
-    { preHandler: requireAuthenticatedUser },
+    { preHandler: authenticate },
     (request) => {
       const { provinceCode } = z
-        .object({ provinceCode: z.string().regex(/^\d{1,3}$/) })
+        .object({
+          provinceCode: z
+            .string()
+            .regex(/^p-[a-z0-9-]{1,62}$/)
+            .max(64),
+        })
         .parse(request.params);
       return directory.getWards(provinceCode);
     },

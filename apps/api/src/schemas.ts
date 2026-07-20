@@ -336,7 +336,7 @@ export const catalogQuerySchema = z.object({
     .enum(['name-asc', 'name-desc', 'created-desc', 'created-asc'])
     .default('name-asc'),
   type: z.string().trim().max(80).optional(),
-  provinceCode: z.string().trim().max(20).optional(),
+  provinceCode: z.string().trim().max(64).optional(),
   visibility: z.enum(['all', 'owned', 'public', 'shared']).default('all'),
   systemType: z.enum(['FAVORITES', 'RECOMMENDED', 'custom']).optional(),
 });
