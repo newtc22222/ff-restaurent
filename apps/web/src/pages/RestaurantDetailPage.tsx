@@ -1,4 +1,4 @@
-import { ExternalLink, Pencil, Phone } from 'lucide-react';
+import { ExternalLink, Images, Layers, Pencil, Phone } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate, useRevalidator } from 'react-router';
@@ -169,31 +169,33 @@ export default function RestaurantDetailPage() {
             name={restaurant.name}
             url={restaurant.bannerImageUrl}
             logoUrl={restaurant.avatarUrl}
+            overlay={
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="truncate text-[22px] font-bold text-white [text-shadow:0_1px_6px_rgb(0_0_0_/_45%)]">
+                    {restaurant.name}
+                  </h2>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+                      restaurant.status === 'ACTIVE'
+                        ? 'bg-basil text-white'
+                        : 'bg-white/20 text-white backdrop-blur-sm'
+                    }`}
+                  >
+                    {restaurant.status}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate text-[13px] font-medium text-white/85">
+                  {restaurant.type} ·{' '}
+                  {restaurant.cuisines
+                    ?.filter((item) => item.isPrimary)
+                    .map((item) => item.cuisine.name)
+                    .join(', ') || restaurant.cuisineType}
+                </p>
+              </div>
+            }
           />
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h2 className="text-[22px] font-bold text-ink">
-                {restaurant.name}
-              </h2>
-              <p className="mt-0.5 text-[13px] text-slate-500">
-                {restaurant.type} /{' '}
-                {restaurant.cuisines
-                  ?.filter((item) => item.isPrimary)
-                  .map((item) => item.cuisine.name)
-                  .join(', ') || restaurant.cuisineType}
-              </p>
-              <p className="mt-1 text-[14px]">{restaurant.address}</p>
-            </div>
-            <span
-              className={`shrink-0 rounded-full px-3 py-1 text-[12px] font-bold ${
-                restaurant.status === 'ACTIVE'
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
-              }`}
-            >
-              {restaurant.status}
-            </span>
-          </div>
+          <p className="mb-4 text-[14px]">{restaurant.address}</p>
 
           {canChef(user) && !editingProfile && (
             <button
@@ -209,25 +211,31 @@ export default function RestaurantDetailPage() {
             <div className="mb-4 space-y-3 rounded-lg border border-border bg-muted/40 p-4">
               <VietnamAddressFields value={address} onChange={setAddress} />
               <RestaurantProfileFields value={profile} onChange={setProfile} />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <ImagePicker
-                  label={locale === 'vi' ? 'Logo quán' : 'Restaurant logo'}
-                  currentUrl={restaurant.avatarUrl}
-                  maxSizeMb={5}
-                  onFile={(logo) =>
-                    setMedia((current) => ({ ...current, logo }))
-                  }
-                  onRemove={() => void removeMedia('logo')}
-                />
-                <ImagePicker
-                  label={locale === 'vi' ? 'Ảnh bìa' : 'Banner image'}
-                  currentUrl={restaurant.bannerImageUrl}
-                  maxSizeMb={5}
-                  onFile={(banner) =>
-                    setMedia((current) => ({ ...current, banner }))
-                  }
-                  onRemove={() => void removeMedia('banner')}
-                />
+              <div className="field-group">
+                <p className="field-group-title">
+                  <Images size={13} aria-hidden="true" />
+                  {locale === 'vi' ? 'Hình ảnh' : 'Media'}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <ImagePicker
+                    label={locale === 'vi' ? 'Logo quán' : 'Restaurant logo'}
+                    currentUrl={restaurant.avatarUrl}
+                    maxSizeMb={5}
+                    onFile={(logo) =>
+                      setMedia((current) => ({ ...current, logo }))
+                    }
+                    onRemove={() => void removeMedia('logo')}
+                  />
+                  <ImagePicker
+                    label={locale === 'vi' ? 'Ảnh bìa' : 'Banner image'}
+                    currentUrl={restaurant.bannerImageUrl}
+                    maxSizeMb={5}
+                    onFile={(banner) =>
+                      setMedia((current) => ({ ...current, banner }))
+                    }
+                    onRemove={() => void removeMedia('banner')}
+                  />
+                </div>
               </div>
               <RestaurantCatalogFields
                 value={catalogs}
@@ -238,22 +246,28 @@ export default function RestaurantDetailPage() {
                 }
                 initialDiningArea={restaurant.diningArea}
               />
-              <Dropdown
-                multiple
-                fullWidth
-                label={t('restaurants.collections')}
-                values={collectionIds}
-                onChange={setCollectionIds}
-                options={manageableCollections.map((collection) => ({
-                  value: collection.id,
-                  label: collection.name,
-                }))}
-                searchable
-                searchPlaceholder={t('restaurants.searchCollection')}
-                emptyMessage={t('bills.noFilterResults')}
-                allowClear
-                clearLabel={t('bills.clearAll')}
-              />
+              <div className="field-group">
+                <p className="field-group-title">
+                  <Layers size={13} aria-hidden="true" />
+                  {t('restaurants.collections')}
+                </p>
+                <Dropdown
+                  multiple
+                  fullWidth
+                  label={t('restaurants.collections')}
+                  values={collectionIds}
+                  onChange={setCollectionIds}
+                  options={manageableCollections.map((collection) => ({
+                    value: collection.id,
+                    label: collection.name,
+                  }))}
+                  searchable
+                  searchPlaceholder={t('restaurants.searchCollection')}
+                  emptyMessage={t('bills.noFilterResults')}
+                  allowClear
+                  clearLabel={t('bills.clearAll')}
+                />
+              </div>
               <div className="flex justify-end gap-2">
                 <button
                   className="btn btn-soft"
@@ -281,12 +295,12 @@ export default function RestaurantDetailPage() {
             {restaurant.collections.map((collection) => (
               <span
                 key={collection.id}
-                className={`rounded-full px-3 py-1.5 text-[13px] font-semibold ${
+                className={`chip ${
                   collection.systemType === 'FAVORITES'
-                    ? 'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400'
+                    ? 'chip-chili'
                     : collection.systemType === 'RECOMMENDED'
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                      : 'bg-muted text-slate-600 dark:text-slate-300'
+                      ? 'chip-basil'
+                      : 'chip-muted'
                 }`}
               >
                 {collection.name}
@@ -308,11 +322,7 @@ export default function RestaurantDetailPage() {
               {restaurant.cuisines.map((item) => (
                 <span
                   key={item.cuisine.id}
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    item.isPrimary
-                      ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200'
-                      : 'bg-muted text-slate-600 dark:text-slate-300'
-                  }`}
+                  className={`chip ${item.isPrimary ? 'chip-saffron' : 'chip-muted'}`}
                 >
                   {item.cuisine.name}
                   {item.isPrimary
@@ -340,7 +350,7 @@ export default function RestaurantDetailPage() {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-muted"
+                    className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-[13px] font-medium text-ink transition-colors hover:border-saffron hover:bg-muted"
                   >
                     <ExternalLink aria-hidden="true" size={12} />{' '}
                     {link.label || platformLabel(link.platform)}

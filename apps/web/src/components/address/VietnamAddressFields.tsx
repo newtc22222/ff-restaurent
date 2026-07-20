@@ -1,3 +1,4 @@
+import { MapPin } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useI18n } from '../../app/providers/i18n';
@@ -309,9 +310,12 @@ export default function VietnamAddressFields({
   };
 
   return (
-    <fieldset className="space-y-3">
+    <fieldset className="field-group">
       <div className="flex items-center justify-between gap-3">
-        <legend className="label">{text.address}</legend>
+        <legend className="field-group-title">
+          <MapPin size={13} aria-hidden="true" />
+          {text.address}
+        </legend>
         <button
           type="button"
           className="text-xs font-semibold text-slate-500 underline-offset-2 hover:text-ink hover:underline"

@@ -85,6 +85,7 @@ export default function RestaurantFeedback({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="feedback-title" className="text-lg font-bold text-ink">
+            <span className="title-mark mr-2" aria-hidden="true" />
             {t('feedback.title')}
           </h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -103,8 +104,11 @@ export default function RestaurantFeedback({
         </div>
       </div>
 
-      <div className="mt-5 rounded-xl border border-border bg-muted/30 p-4">
-        <h3 className="font-semibold text-ink">{t('feedback.yourFeedback')}</h3>
+      <div className="field-group mt-5">
+        <h3 className="field-group-title">
+          <MessageSquare size={13} aria-hidden="true" />
+          {t('feedback.yourFeedback')}
+        </h3>
         {data.eligibleBills.length === 0 ? (
           <p className="mt-2 text-sm text-slate-500">
             {t('feedback.noEligibleBills')}
@@ -219,7 +223,7 @@ export default function RestaurantFeedback({
                     }).format(new Date(feedback.createdAt))}
                   </p>
                 </div>
-                <div className="flex gap-2 text-sm font-semibold">
+                <div className="ticket-figure flex gap-2 text-sm font-semibold">
                   <span>
                     {t('feedback.food')} {feedback.foodRating.toFixed(1)}
                   </span>
@@ -257,12 +261,12 @@ function RatingSummary({
   value: number | null;
 }) {
   return (
-    <div className="rounded-lg bg-orange-50 px-3 py-2 text-center dark:bg-orange-950/50">
-      <div className="flex items-center justify-center gap-1 text-sm font-bold text-orange-700 dark:text-orange-300">
+    <div className="chip-saffron rounded-lg px-3 py-2 text-center">
+      <div className="ticket-figure flex items-center justify-center gap-1 text-sm font-bold">
         <Star size={14} fill="currentColor" aria-hidden="true" />
         {formatRating(value)}
       </div>
-      <p className="text-[11px] text-slate-500">{label}</p>
+      <p className="text-[11px] font-medium text-slate-500">{label}</p>
     </div>
   );
 }

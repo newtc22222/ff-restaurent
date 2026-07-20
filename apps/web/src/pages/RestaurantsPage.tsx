@@ -1,5 +1,13 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Store } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Images,
+  Layers,
+  Plus,
+  SlidersHorizontal,
+  Store,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
 import type { RestaurantDirectoryData } from '../lib/api';
@@ -188,7 +196,9 @@ export default function RestaurantsPage() {
         });
       }
     } catch {
-      toast.error('Restaurant was created, but an image upload failed. Retry from Edit.');
+      toast.error(
+        'Restaurant was created, but an image upload failed. Retry from Edit.',
+      );
     }
     setCreateOpen(false);
     setMedia({ logo: null, banner: null });
@@ -234,6 +244,10 @@ export default function RestaurantsPage() {
           )}
         </div>
         <section className="panel w-full space-y-3 p-3">
+          <p className="field-group-title px-1">
+            <SlidersHorizontal size={13} aria-hidden="true" />
+            {t('restaurants.filters')}
+          </p>
           <div className="grid gap-2 md:grid-cols-3">
             <input
               className="field w-full"
@@ -368,33 +382,33 @@ export default function RestaurantsPage() {
           {restaurants.map((entry) => (
             <article
               key={entry.id}
-              className="panel cursor-pointer p-4 transition-shadow hover:shadow-md"
+              className="ticket-edge panel cursor-pointer p-4 pt-5 transition-shadow hover:shadow-md"
               onClick={() => navigate(`/restaurants/${entry.id}`)}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="truncate font-bold">{entry.name}</h3>
-                  <p className="text-sm text-slate-500">
-                    {entry.type} / {entry.cuisineType}
+                  <h3 className="truncate text-[15px] font-bold text-ink">
+                    {entry.name}
+                  </h3>
+                  <p className="ticket-figure mt-0.5 text-[13px] font-medium text-slate-500">
+                    {entry.type} · {entry.cuisineType}
                   </p>
-                  <p className="mt-1 truncate text-sm">{entry.address}</p>
+                  <p className="mt-1.5 truncate text-sm">{entry.address}</p>
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {entry.isFavoritedByMe && (
-                  <span className="rounded-full bg-red-50 px-2 py-1 text-red-600 dark:bg-red-950 dark:text-red-400">
+                  <span className="chip chip-badge chip-chili">
                     ♥ {t('restaurants.favorite')}
                   </span>
                 )}
                 {entry.isRecommended && (
-                  <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                  <span className="chip chip-badge chip-basil">
                     {t('restaurants.recommended')}
                   </span>
                 )}
                 {entry.status === 'ARCHIVED' && (
-                  <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-500 dark:bg-slate-800">
-                    ARCHIVED
-                  </span>
+                  <span className="chip chip-badge chip-muted">ARCHIVED</span>
                 )}
               </div>
             </article>
@@ -451,15 +465,21 @@ export default function RestaurantsPage() {
           <p className="text-sm text-slate-500">
             {t('restaurants.addEntrySubtitle')}
           </p>
-          <label className="block space-y-1">
-            <span className="label">{locale === 'vi' ? 'Tên' : 'Name'}</span>
-            <input
-              className="field w-full"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-            />
-          </label>
+          <div className="field-group">
+            <p className="field-group-title">
+              <Store size={13} aria-hidden="true" />
+              {locale === 'vi' ? 'Tên địa điểm' : 'Identity'}
+            </p>
+            <label className="block space-y-1">
+              <span className="label">{locale === 'vi' ? 'Tên' : 'Name'}</span>
+              <input
+                className="field w-full"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
+            </label>
+          </div>
           <VietnamAddressFields
             value={form}
             onChange={(address) => setForm({ ...form, ...address })}
@@ -468,19 +488,25 @@ export default function RestaurantsPage() {
             value={form}
             onChange={(profile) => setForm({ ...form, ...profile })}
           />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ImagePicker
-              label={locale === 'vi' ? 'Logo quán' : 'Restaurant logo'}
-              maxSizeMb={5}
-              onFile={(logo) => setMedia((current) => ({ ...current, logo }))}
-            />
-            <ImagePicker
-              label={locale === 'vi' ? 'Ảnh bìa' : 'Banner image'}
-              maxSizeMb={5}
-              onFile={(banner) =>
-                setMedia((current) => ({ ...current, banner }))
-              }
-            />
+          <div className="field-group">
+            <p className="field-group-title">
+              <Images size={13} aria-hidden="true" />
+              {locale === 'vi' ? 'Hình ảnh' : 'Media'}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <ImagePicker
+                label={locale === 'vi' ? 'Logo quán' : 'Restaurant logo'}
+                maxSizeMb={5}
+                onFile={(logo) => setMedia((current) => ({ ...current, logo }))}
+              />
+              <ImagePicker
+                label={locale === 'vi' ? 'Ảnh bìa' : 'Banner image'}
+                maxSizeMb={5}
+                onFile={(banner) =>
+                  setMedia((current) => ({ ...current, banner }))
+                }
+              />
+            </div>
           </div>
           <RestaurantCatalogFields
             value={form}
@@ -489,37 +515,45 @@ export default function RestaurantsPage() {
               setForm((current) => ({ ...current, cuisineType }))
             }
           />
-          <div className="block space-y-1">
-            <span className="label">
-              {locale === 'vi' ? 'Loại hình' : 'Type'}
-            </span>
+          <div className="field-group">
+            <p className="field-group-title">
+              <Layers size={13} aria-hidden="true" />
+              {locale === 'vi'
+                ? 'Loại hình & bộ sưu tập'
+                : 'Type & collections'}
+            </p>
+            <div className="block space-y-1">
+              <span className="label">
+                {locale === 'vi' ? 'Loại hình' : 'Type'}
+              </span>
+              <Dropdown
+                fullWidth
+                label={locale === 'vi' ? 'Chọn...' : 'Choose...'}
+                ariaLabel={locale === 'vi' ? 'Loại hình' : 'Type'}
+                value={form.type}
+                onChange={(type) => setForm({ ...form, type })}
+                options={typeOptions.map((type) => ({
+                  value: type,
+                  label: type,
+                }))}
+              />
+            </div>
             <Dropdown
+              multiple
               fullWidth
-              label={locale === 'vi' ? 'Chọn...' : 'Choose...'}
-              ariaLabel={locale === 'vi' ? 'Loại hình' : 'Type'}
-              value={form.type}
-              onChange={(type) => setForm({ ...form, type })}
-              options={typeOptions.map((type) => ({
-                value: type,
-                label: type,
-              }))}
+              label={t('restaurants.collections')}
+              values={form.collectionIds}
+              onChange={(collectionIds) =>
+                setForm((current) => ({ ...current, collectionIds }))
+              }
+              options={manageableCollectionOptions}
+              searchable
+              searchPlaceholder={t('restaurants.searchCollection')}
+              emptyMessage={t('bills.noFilterResults')}
+              allowClear
+              clearLabel={t('bills.clearAll')}
             />
           </div>
-          <Dropdown
-            multiple
-            fullWidth
-            label={t('restaurants.collections')}
-            values={form.collectionIds}
-            onChange={(collectionIds) =>
-              setForm((current) => ({ ...current, collectionIds }))
-            }
-            options={manageableCollectionOptions}
-            searchable
-            searchPlaceholder={t('restaurants.searchCollection')}
-            emptyMessage={t('bills.noFilterResults')}
-            allowClear
-            clearLabel={t('bills.clearAll')}
-          />
           <button
             className="btn btn-primary w-full"
             disabled={

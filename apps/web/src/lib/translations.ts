@@ -189,6 +189,7 @@ export const translations = {
     // Restaurants
     'restaurants.title': 'Nhà hàng & quán ăn',
     'restaurants.subtitle': 'Loại hình do người dùng tự định nghĩa.',
+    'restaurants.filters': 'Bộ lọc',
     'restaurants.addEntry': 'Thêm địa điểm',
     'restaurants.addEntrySubtitle':
       'SOUS_CHEF và HEAD_CHEF có thể quản lý danh sách.',
@@ -717,6 +718,7 @@ export const translations = {
     // Restaurants
     'restaurants.title': 'Restaurants & eateries',
     'restaurants.subtitle': 'The type label is user-defined per entry.',
+    'restaurants.filters': 'Filters',
     'restaurants.addEntry': 'Add entry',
     'restaurants.addEntrySubtitle':
       'SOUS_CHEF and HEAD_CHEF can maintain the directory.',

@@ -1,3 +1,4 @@
+import { Phone } from 'lucide-react';
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 import { useI18n } from '../../app/providers/i18n';
 import type { RestaurantPlatformLink } from '../../lib/api';
@@ -32,26 +33,34 @@ export default function RestaurantProfileFields({
   const phone = parseVietnamMobilePhone(value.phone);
   return (
     <div className="space-y-3">
-      <label className="block space-y-1">
-        <span className="label">
-          {locale === 'vi' ? 'Điện thoại (không bắt buộc)' : 'Phone (optional)'}
-        </span>
-        <input
-          className="field w-full"
-          inputMode="tel"
-          value={value.phone}
-          onChange={(event) =>
-            onChange({ ...value, phone: event.target.value })
-          }
-        />
-        {!phone.success && (
-          <span className="block text-xs text-red-600 dark:text-red-400">
+      <div className="field-group">
+        <p className="field-group-title">
+          <Phone size={13} aria-hidden="true" />
+          {locale === 'vi' ? 'Liên hệ' : 'Contact'}
+        </p>
+        <label className="block space-y-1">
+          <span className="label">
             {locale === 'vi'
-              ? 'Nhập số di động Việt Nam hợp lệ.'
-              : 'Enter a valid Vietnamese mobile number.'}
+              ? 'Điện thoại (không bắt buộc)'
+              : 'Phone (optional)'}
           </span>
-        )}
-      </label>
+          <input
+            className="field w-full"
+            inputMode="tel"
+            value={value.phone}
+            onChange={(event) =>
+              onChange({ ...value, phone: event.target.value })
+            }
+          />
+          {!phone.success && (
+            <span className="block text-xs text-red-600 dark:text-red-400">
+              {locale === 'vi'
+                ? 'Nhập số di động Việt Nam hợp lệ.'
+                : 'Enter a valid Vietnamese mobile number.'}
+            </span>
+          )}
+        </label>
+      </div>
       <PlatformLinksEditor
         links={value.platformLinks}
         onChange={(platformLinks) => onChange({ ...value, platformLinks })}

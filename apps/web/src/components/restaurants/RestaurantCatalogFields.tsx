@@ -1,3 +1,4 @@
+import { ChefHat } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useI18n } from '../../app/providers/i18n';
@@ -190,8 +191,9 @@ export default function RestaurantCatalogFields({
   };
 
   return (
-    <fieldset className="space-y-3">
-      <legend className="label">
+    <fieldset className="field-group">
+      <legend className="field-group-title">
+        <ChefHat size={13} aria-hidden="true" />
         {locale === 'vi' ? 'Danh mục địa điểm' : 'Restaurant catalogs'}
       </legend>
       <div className="space-y-1">

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Link2, Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '../../app/providers/i18n';
 import type { RestaurantPlatform, RestaurantPlatformLink } from '../../lib/api';
 import Dropdown from '../ui/Dropdown';
@@ -75,9 +75,10 @@ export default function PlatformLinksEditor({
   };
 
   return (
-    <fieldset className="space-y-2">
+    <fieldset className="field-group">
       <div className="flex items-center justify-between gap-3">
-        <legend className="label">
+        <legend className="field-group-title">
+          <Link2 size={13} aria-hidden="true" />
           {locale === 'vi' ? 'Liên kết nền tảng' : 'Platform links'}
         </legend>
         <button
@@ -94,7 +95,7 @@ export default function PlatformLinksEditor({
       {links.map((link, index) => (
         <div
           key={link.id ?? index}
-          className="space-y-2 rounded-lg border border-border bg-muted/30 p-3"
+          className="space-y-2 rounded-lg border border-border bg-surface p-3"
         >
           <div className="flex gap-2">
             <Dropdown
