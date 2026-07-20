@@ -199,7 +199,7 @@ export default function LoginPage() {
                       <button
                         key={seedId}
                         type="button"
-                        className={`btn px-2 ${activeSeed === seedId ? 'border border-ink bg-ink text-white' : 'btn-soft'}`}
+                        className={`btn px-2 ${activeSeed === seedId ? 'border border-ink bg-ink text-surface' : 'btn-soft'}`}
                         onClick={() => setIdentifier(seedId)}
                       >
                         {t(labelKey)}

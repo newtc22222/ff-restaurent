@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Link2, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Link2, Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '../../app/providers/i18n';
 import type { RestaurantPlatform, RestaurantPlatformLink } from '../../lib/api';
 import Dropdown from '../../components/ui/Dropdown';
@@ -118,25 +118,25 @@ export default function PlatformLinksEditor({
               <button
                 type="button"
                 aria-label={`${locale === 'vi' ? 'Chuyển lên' : 'Move up'} ${index + 1}`}
-                className="btn btn-soft h-10 w-9 p-0"
+                className="btn btn-soft h-10 w-12 p-0"
                 disabled={index === 0}
                 onClick={() => move(index, -1)}
               >
-                <ArrowUp size={13} />
+                <ChevronUp size={13} />
               </button>
               <button
                 type="button"
                 aria-label={`${locale === 'vi' ? 'Chuyển xuống' : 'Move down'} ${index + 1}`}
-                className="btn btn-soft h-10 w-9 p-0"
+                className="btn btn-soft h-10 p-0"
                 disabled={index === links.length - 1}
                 onClick={() => move(index, 1)}
               >
-                <ArrowDown size={13} />
+                <ChevronDown size={13} />
               </button>
               <button
                 type="button"
                 aria-label={`${locale === 'vi' ? 'Xóa liên kết' : 'Remove link'} ${index + 1}`}
-                className="btn btn-soft h-10 w-9 p-0 text-red-500"
+                className="btn btn-soft h-10 p-0 text-red-500"
                 onClick={() =>
                   onChange(links.filter((_, current) => current !== index))
                 }

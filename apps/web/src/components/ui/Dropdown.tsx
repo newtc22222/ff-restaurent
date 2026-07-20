@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -33,6 +34,7 @@ interface CommonDropdownProps {
   variant?: 'header' | 'filter' | 'field';
   menuAlign?: 'left' | 'right';
   fullWidth?: boolean;
+  className?: string;
   disabled?: boolean;
   ariaLabel?: string;
   formatSelection?: (selected: DropdownOption[]) => string;
@@ -80,6 +82,7 @@ export default function Dropdown(props: DropdownProps) {
     variant = 'field',
     menuAlign = 'left',
     fullWidth = variant === 'field',
+    className = '',
     disabled = false,
     ariaLabel,
     formatSelection,
@@ -123,7 +126,7 @@ export default function Dropdown(props: DropdownProps) {
       window.requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
-  const updatePosition = () => {
+  const updatePosition = useCallback(() => {
     const trigger = triggerRef.current;
     const menu = menuRef.current;
     if (!trigger || !menu) return;
@@ -159,12 +162,12 @@ export default function Dropdown(props: DropdownProps) {
       maxWidth,
       placement,
     });
-  };
+  }, [menuAlign]);
 
   useLayoutEffect(() => {
     if (!open) return;
     updatePosition();
-  }, [open, query, visibleOptions.length]);
+  }, [open, query, updatePosition, visibleOptions.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -175,7 +178,16 @@ export default function Dropdown(props: DropdownProps) {
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
-  }, [open]);
+  }, [open, updatePosition]);
+
+  useEffect(() => {
+    if (!open || typeof ResizeObserver === 'undefined') return;
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const observer = new ResizeObserver(() => updatePosition());
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [open, updatePosition]);
 
   useEffect(() => {
     if (!open || visibleOptions.length === 0) return;
@@ -254,11 +266,13 @@ export default function Dropdown(props: DropdownProps) {
     : { top: 0, left: 0, visibility: 'hidden' };
 
   return (
-    <div className={fullWidth ? 'w-full' : ''}>
+    <div
+      className={`${fullWidth ? 'w-full' : 'inline-block'} ${className}`.trim()}
+    >
       <button
         ref={triggerRef}
         type="button"
-        className={`flex items-center gap-2 rounded-md border text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${triggerClass} ${fullWidth ? 'w-full' : ''}`}
+        className={`flex w-full items-center gap-2 rounded-md border text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${triggerClass}`}
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-haspopup="listbox"
