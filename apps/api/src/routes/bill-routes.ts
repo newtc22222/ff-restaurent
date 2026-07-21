@@ -16,21 +16,21 @@ import {
 } from '../schemas.js';
 import {
   type PublicRestaurantRecord,
-  publicRestaurantSelect,
+  buildPublicRestaurantSelect,
   serializePublicRestaurant,
 } from '../restaurant-contract.js';
 import { pageResult } from '../pagination.js';
 
 const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
 
-export const billResponseInclude = {
-  restaurant: { select: publicRestaurantSelect },
+export const buildBillResponseInclude = (userId: string) => ({
+  restaurant: { select: buildPublicRestaurantSelect(userId) },
   createdBy: { select: publicUserSelect },
   participants: {
     include: { member: { select: publicUserSelect } },
     orderBy: { member: { name: 'asc' as const } },
   },
-};
+});
 
 export const paymentResponseInclude = {
   member: { select: publicUserSelect },
@@ -407,7 +407,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             },
           ],
         },
-        include: billResponseInclude,
+        include: buildBillResponseInclude(request.currentUser.id),
         orderBy,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
         take: query.limit + 1,
@@ -426,7 +426,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const bill = await prisma.bill.findUnique({
         where: { id },
-        include: billResponseInclude,
+        include: buildBillResponseInclude(request.currentUser.id),
       });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
       if (!canViewBill(bill, request)) {
@@ -552,7 +552,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
               create: participantCreateData(computed.participants),
             },
           },
-          include: billResponseInclude,
+          include: buildBillResponseInclude(request.currentUser.id),
         });
         return { bill } as const;
       });
@@ -630,7 +630,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             ...computed.bill,
             createdById: existing.createdById,
           },
-          include: billResponseInclude,
+          include: buildBillResponseInclude(request.currentUser.id),
         });
         await tx.billAuditLog.create({
           data: {
@@ -666,7 +666,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         const updated = await tx.bill.update({
           where: { id },
           data: { status: EntryStatus.ARCHIVED },
-          include: billResponseInclude,
+          include: buildBillResponseInclude(request.currentUser.id),
         });
         await tx.billAuditLog.create({
           data: {
@@ -693,7 +693,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         const updated = await tx.bill.update({
           where: { id },
           data: { status: EntryStatus.ACTIVE },
-          include: billResponseInclude,
+          include: buildBillResponseInclude(request.currentUser.id),
         });
         await tx.billAuditLog.create({
           data: {
@@ -800,7 +800,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const bill = await prisma.bill.findUnique({
         where: { id },
-        include: billResponseInclude,
+        include: buildBillResponseInclude(request.currentUser.id),
       });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
       if (!canManageBill(bill, request)) {

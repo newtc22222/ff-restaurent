@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   type PublicRestaurantRecord,
-  publicRestaurantSelect,
+  buildPublicRestaurantSelect,
   serializePublicRestaurant,
 } from './restaurant-contract.js';
 import { restaurantSchema } from './schemas.js';
@@ -86,8 +86,22 @@ test('restaurant profiles reject unsafe URLs, missing labels, and duplicates', (
 });
 
 test('public restaurant selection never exposes legacy JSON links', () => {
-  assert.equal('links' in publicRestaurantSelect, false);
-  assert.equal(publicRestaurantSelect.platformLinks.orderBy.sortOrder, 'asc');
+  const select = buildPublicRestaurantSelect('user-1');
+  assert.equal('links' in select, false);
+  assert.equal(select.platformLinks.orderBy.sortOrder, 'asc');
+});
+
+test('public restaurant selection scopes favorite memberships to the viewer', () => {
+  const anonymous = buildPublicRestaurantSelect();
+  assert.deepEqual(anonymous.collections.where.collection.OR, [
+    { systemType: 'RECOMMENDED' },
+  ]);
+
+  const scoped = buildPublicRestaurantSelect('user-1');
+  assert.deepEqual(scoped.collections.where.collection.OR, [
+    { systemType: 'RECOMMENDED' },
+    { systemType: 'FAVORITES', ownerId: 'user-1' },
+  ]);
 });
 
 test('legacy link input is accepted but translated out of the new contract', () => {
