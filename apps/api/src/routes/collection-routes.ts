@@ -4,7 +4,7 @@ import { ensureDefaultCollections } from '../collection-service.js';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import {
-  publicRestaurantSelect,
+  buildPublicRestaurantSelect,
   serializePublicRestaurant,
 } from '../restaurant-contract.js';
 import { isHeadChef, isSousChefOrAbove } from '../roles.js';
@@ -269,7 +269,9 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
         select: {
           restaurantId: true,
           createdAt: true,
-          restaurant: { select: publicRestaurantSelect },
+          restaurant: {
+            select: buildPublicRestaurantSelect(request.currentUser.id),
+          },
         },
       });
       const hasNextPage = items.length > query.limit;
