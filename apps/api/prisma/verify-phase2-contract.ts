@@ -15,6 +15,7 @@ const run = async () => {
     legacyColumnCount,
     legacyTableCount,
     migrationCount,
+    contractMigrationCount,
   ] = await Promise.all([
     scalar(`SELECT COUNT(*) AS count FROM "RestaurantEntry" restaurant
       WHERE (SELECT COUNT(*) FROM "RestaurantCuisine" cuisine
@@ -33,18 +34,22 @@ const run = async () => {
     scalar(
       `SELECT COUNT(*) AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL`,
     ),
+    scalar(`SELECT COUNT(*) AS count FROM "_prisma_migrations"
+      WHERE migration_name = '20260720000000_contract_phase2_normalized_restaurants'
+        AND finished_at IS NOT NULL AND rolled_back_at IS NULL`),
   ]);
   const report = {
     sha: process.env.GITHUB_SHA ?? null,
     checkedAt: new Date().toISOString(),
     migrationCount,
+    contractMigrationCount,
     restaurantsWithoutOnePrimaryCuisine,
     usersWithoutOneFavoritesCollection,
     recommendedCollectionCount,
     legacyColumnCount,
     legacyTableCount,
     passed:
-      migrationCount === 14 &&
+      contractMigrationCount === 1 &&
       restaurantsWithoutOnePrimaryCuisine === 0 &&
       usersWithoutOneFavoritesCollection === 0 &&
       recommendedCollectionCount === 1 &&

@@ -56,7 +56,8 @@ Before deploying a new API build:
 Production migrations should use Prisma deploy mode:
 
 ```bash
-npx prisma migrate deploy
+npm run prisma:migrate:deploy -w @ff-restaurent/api
+npm run prisma:cuisines:seed -w @ff-restaurent/api
 ```
 
 Do not run `prisma migrate dev` against production.
@@ -153,16 +154,21 @@ docker push ff-restaurent-web:VERSION
 Run migrations once per deployment before starting the new API version:
 
 ```bash
-npx prisma migrate deploy
+npm run prisma:migrate:deploy -w @ff-restaurent/api
+npm run prisma:cuisines:seed -w @ff-restaurent/api
 ```
 
 The current `docker-compose.yml` starts the API with:
 
 ```bash
-npx prisma migrate deploy && npx tsx prisma/seed-if-empty.ts && node dist/server.js
+npx prisma migrate deploy && npm run prisma:cuisines:seed && exec node dist/server.js
 ```
 
-That is convenient for local or single-host deployment. For stricter production environments, prefer running migrations as a separate release job so failures stop the deployment before the API container is replaced.
+The local Compose command also runs the development-only demo seed before the
+catalog seed. Production never runs the demo seed. For stricter production
+environments, prefer running migrations and the idempotent catalog seed as a
+separate release job so failures stop the deployment before the API container
+is replaced.
 
 ### 6. Start or Update Services
 
@@ -287,7 +293,9 @@ Deployment job order:
 
 1. Pull the exact image tags produced by the build pipeline.
 2. Apply production secrets from the CI/CD secret store.
-3. Run `npx prisma migrate deploy` as a one-time migration step.
+3. Run `npm run prisma:migrate:deploy -w @ff-restaurent/api`, then
+   `npm run prisma:cuisines:seed -w @ff-restaurent/api`, as one-time database
+   preparation steps.
 4. Deploy or restart the API service.
 5. Deploy or restart the web service.
 6. Run smoke tests against `/health` and the frontend URL.

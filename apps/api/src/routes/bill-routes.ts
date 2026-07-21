@@ -1,7 +1,10 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { createHash } from 'node:crypto';
 import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
-import { calculateBillSplit } from '@ff-restaurent/shared';
+import {
+  AdjustmentAllocation,
+  calculateBillSplit,
+} from '@ff-restaurent/shared';
 import {
   requireAuthenticatedUser,
   requireHeadChef,
@@ -19,7 +22,7 @@ import {
   buildPublicRestaurantSelect,
   serializePublicRestaurant,
 } from '../restaurant-contract.js';
-import { pageResult } from '../pagination.js';
+import { signedQrUrl } from '../storage.js';
 
 const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
 
@@ -30,22 +33,46 @@ export const buildBillResponseInclude = (userId: string) => ({
     include: { member: { select: publicUserSelect } },
     orderBy: { member: { name: 'asc' as const } },
   },
+  paymentQrImage: {
+    select: {
+      id: true,
+      label: true,
+      storagePath: true,
+      status: true,
+    },
+  },
 });
 
-export const paymentResponseInclude = {
-  member: { select: publicUserSelect },
-  bill: true,
-};
-
-const serializeBillResponse = <
-  T extends { restaurant: PublicRestaurantRecord },
+const serializeBill = async <
+  T extends {
+    restaurant: PublicRestaurantRecord;
+    paymentQrImage?: null | {
+      id: string;
+      label: string;
+      storagePath: string;
+      status: EntryStatus;
+    };
+  },
 >(
   bill: T,
   userId: string,
 ) => ({
   ...bill,
   restaurant: serializePublicRestaurant(bill.restaurant, userId),
+  paymentQrImage: bill.paymentQrImage
+    ? {
+        id: bill.paymentQrImage.id,
+        label: bill.paymentQrImage.label,
+        status: bill.paymentQrImage.status,
+        imageUrl: await signedQrUrl(bill.paymentQrImage.storagePath),
+      }
+    : null,
 });
+
+export const paymentResponseInclude = {
+  member: { select: publicUserSelect },
+  bill: true,
+};
 
 export const billActivityActorSelect = {
   id: true,
@@ -106,10 +133,14 @@ const updatedFields = (
     changes.add('costs');
   if (
     valueChanged(before.discounts, after.discounts) ||
-    valueChanged(before.vouchers, after.vouchers)
+    valueChanged(before.vouchers, after.vouchers) ||
+    valueChanged(before.adjustmentAllocation, after.adjustmentAllocation)
   )
     changes.add('adjustments');
-  if (valueChanged(before.paymentUrl, after.paymentUrl))
+  if (
+    valueChanged(before.paymentUrl, after.paymentUrl) ||
+    valueChanged(before.paymentQrImageId, after.paymentQrImageId)
+  )
     changes.add('paymentLink');
   if (valueChanged(before.participants, after.participants))
     changes.add('participants');
@@ -208,8 +239,10 @@ type FingerprintBill = {
   vat: number;
   shippingFee: number;
   paymentUrl?: string | null;
+  paymentQrImageId?: string | null;
   discounts?: unknown[];
   vouchers?: unknown[];
+  adjustmentAllocation?: AdjustmentAllocation | 'EQUAL' | 'PROPORTIONAL';
   participants: Array<{ memberId: string; originCost?: number }>;
 };
 
@@ -220,12 +253,15 @@ export const createBillFingerprint = (bill: FingerprintBill) => {
     vat: bill.vat,
     shippingFee: bill.shippingFee,
     paymentUrl: bill.paymentUrl ?? null,
+    paymentQrImageId: bill.paymentQrImageId ?? null,
     discounts: [...(bill.discounts ?? [])].sort((left, right) =>
       JSON.stringify(left).localeCompare(JSON.stringify(right)),
     ),
     vouchers: [...(bill.vouchers ?? [])].sort((left, right) =>
       JSON.stringify(left).localeCompare(JSON.stringify(right)),
     ),
+    adjustmentAllocation:
+      bill.adjustmentAllocation ?? AdjustmentAllocation.PROPORTIONAL,
     participants: bill.participants
       .map(({ memberId, originCost }) => ({ memberId, originCost }))
       .sort((left, right) => left.memberId.localeCompare(right.memberId)),
@@ -233,9 +269,16 @@ export const createBillFingerprint = (bill: FingerprintBill) => {
   return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
 };
 
-const computeBillCreateData = (body: unknown, createdById: string) => {
+const computeBillCreateData = (
+  body: unknown,
+  createdById: string,
+  fallbackAllocation = AdjustmentAllocation.PROPORTIONAL,
+  legacyPaymentUrl: string | null = null,
+) => {
   const parsed = billSchema.parse(body);
-  const split = calculateBillSplit(parsed);
+  const adjustmentAllocation =
+    parsed.adjustmentAllocation ?? fallbackAllocation;
+  const split = calculateBillSplit({ ...parsed, adjustmentAllocation });
   return {
     allowDuplicate: parsed.allowDuplicate,
     bill: {
@@ -243,15 +286,42 @@ const computeBillCreateData = (body: unknown, createdById: string) => {
       baseCost: parsed.baseCost,
       vat: parsed.vat,
       shippingFee: parsed.shippingFee,
-      paymentUrl: parsed.paymentUrl ?? null,
+      paymentUrl: legacyPaymentUrl,
+      paymentQrImageId: parsed.paymentQrImageId ?? null,
       discounts: (parsed.discounts ?? []) as Prisma.InputJsonValue,
       vouchers: (parsed.vouchers ?? []) as Prisma.InputJsonValue,
+      adjustmentAllocation,
       totalCost: split.totalCost,
       createdById,
-      duplicateFingerprint: createBillFingerprint(parsed),
+      duplicateFingerprint: createBillFingerprint({
+        ...parsed,
+        adjustmentAllocation,
+      }),
     },
     participants: split.participants,
   };
+};
+
+const validatePaymentQr = async (
+  paymentQrImageId: string | null | undefined,
+  ownerId: string,
+  reply: FastifyReply,
+) => {
+  if (!paymentQrImageId) return true;
+  const qr = await prisma.paymentQrImage.findFirst({
+    where: {
+      id: paymentQrImageId,
+      ownerId,
+      status: EntryStatus.ACTIVE,
+    },
+    select: { id: true },
+  });
+  if (qr) return true;
+  reply.code(400).send({
+    code: 'PAYMENT_QR_INVALID',
+    message: 'Payment QR must be active and owned by the bill creator',
+  });
+  return false;
 };
 
 const participantCreateData = (
@@ -390,7 +460,8 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             : query.sort === 'total-asc'
               ? [{ totalCost: 'asc' }, { id: 'asc' }]
               : [{ createdAt: 'desc' }, { id: 'desc' }];
-      const rows = await prisma.bill.findMany({
+      const backward = query.direction === 'backward' && Boolean(query.cursor);
+      const queriedRows = await prisma.bill.findMany({
         where: {
           AND: [
             authorization,
@@ -410,12 +481,26 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         include: buildBillResponseInclude(request.currentUser.id),
         orderBy,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-        take: query.limit + 1,
+        take: backward ? -(query.limit + 1) : query.limit + 1,
       });
-      return pageResult(
-        rows.map((bill) => serializeBillResponse(bill, request.currentUser.id)),
-        query.limit,
-      );
+      const orderedRows = backward ? queriedRows.reverse() : queriedRows;
+      const hasExtra = orderedRows.length > query.limit;
+      const rows = backward
+        ? hasExtra
+          ? orderedRows.slice(1)
+          : orderedRows
+        : orderedRows.slice(0, query.limit);
+      return {
+        items: await Promise.all(
+          rows.map((bill) => serializeBill(bill, request.currentUser.id)),
+        ),
+        pageInfo: {
+          startCursor: rows.at(0)?.id ?? null,
+          endCursor: rows.at(-1)?.id ?? null,
+          hasPreviousPage: backward ? hasExtra : Boolean(query.cursor),
+          hasNextPage: backward ? true : hasExtra,
+        },
+      };
     },
   );
 
@@ -434,7 +519,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           .code(403)
           .send({ message: 'Not allowed to view this bill' });
       }
-      return serializeBillResponse(bill, request.currentUser.id);
+      return serializeBill(bill, request.currentUser.id);
     },
   );
 
@@ -486,6 +571,14 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         request.body,
         request.currentUser.id,
       );
+      if (
+        !(await validatePaymentQr(
+          computed.bill.paymentQrImageId,
+          request.currentUser.id,
+          reply,
+        ))
+      )
+        return;
       const participantIds = computed.participants.map(
         (participant) => participant.memberId,
       );
@@ -567,7 +660,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       request.log.info({ event: 'bill_created', billId: bill.id });
       return reply
         .code(201)
-        .send(serializeBillResponse(bill, request.currentUser.id));
+        .send(await serializeBill(bill, request.currentUser.id));
     },
   );
 
@@ -589,7 +682,17 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const computed = computeBillCreateData(
         request.body,
         existing.createdById,
+        existing.adjustmentAllocation as AdjustmentAllocation,
+        existing.paymentUrl,
       );
+      if (
+        !(await validatePaymentQr(
+          computed.bill.paymentQrImageId,
+          existing.createdById,
+          reply,
+        ))
+      )
+        return;
       const participantIds = computed.participants.map(
         (participant) => participant.memberId,
       );
@@ -600,7 +703,11 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       );
       if (
         hasPaidParticipant &&
-        participantAllocationsChanged(existing.participants, nextParticipants)
+        (existing.adjustmentAllocation !== computed.bill.adjustmentAllocation ||
+          participantAllocationsChanged(
+            existing.participants,
+            nextParticipants,
+          ))
       ) {
         return reply.code(409).send({
           code: 'PAID_BILL_AMENDMENT_BLOCKED',
@@ -646,7 +753,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         });
         return updated;
       });
-      return serializeBillResponse(bill, request.currentUser.id);
+      return serializeBill(bill, request.currentUser.id);
     },
   );
 
@@ -662,7 +769,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           message: 'Only the owner or HEAD_CHEF can archive this bill',
         });
       }
-      return prisma.$transaction(async (tx) => {
+      const updated = await prisma.$transaction(async (tx) => {
         const updated = await tx.bill.update({
           where: { id },
           data: { status: EntryStatus.ARCHIVED },
@@ -677,8 +784,9 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             after: { status: EntryStatus.ARCHIVED },
           },
         });
-        return serializeBillResponse(updated, request.currentUser.id);
+        return updated;
       });
+      return serializeBill(updated, request.currentUser.id);
     },
   );
 
@@ -689,7 +797,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const { id } = request.params as { id: string };
       const bill = await prisma.bill.findUnique({ where: { id } });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
-      return prisma.$transaction(async (tx) => {
+      const updated = await prisma.$transaction(async (tx) => {
         const updated = await tx.bill.update({
           where: { id },
           data: { status: EntryStatus.ACTIVE },
@@ -704,8 +812,9 @@ export const registerBillRoutes = (app: FastifyInstance) => {
             after: { status: EntryStatus.ACTIVE },
           },
         });
-        return serializeBillResponse(updated, request.currentUser.id);
+        return updated;
       });
+      return serializeBill(updated, request.currentUser.id);
     },
   );
 

@@ -1,66 +1,40 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Scrollbar } from 'react-scrollbars-custom';
+import type { CSSProperties, ReactNode } from 'react';
 
 interface ScrollAreaProps {
   children: ReactNode;
   className?: string;
   contentClassName?: string;
-  desktopOnly?: boolean;
+  axis?: 'x' | 'y' | 'both';
+  style?: CSSProperties;
 }
 
-/** Shared vertical scroll container with native mobile fallback when requested. */
+/** Shared native scroll container with consistent CSS-only styling. */
 export default function ScrollArea({
   children,
   className = '',
   contentClassName = '',
-  desktopOnly = false,
+  axis = 'y',
+  style,
 }: ScrollAreaProps) {
-  const [isDesktop, setIsDesktop] = useState(() =>
-    typeof window === 'undefined'
-      ? false
-      : window.matchMedia('(min-width: 1280px)').matches,
-  );
-
-  useEffect(() => {
-    if (!desktopOnly) return;
-    const query = window.matchMedia('(min-width: 1280px)');
-    const update = () => setIsDesktop(query.matches);
-    update();
-    query.addEventListener('change', update);
-    return () => query.removeEventListener('change', update);
-  }, [desktopOnly]);
-
-  if (desktopOnly && !isDesktop) {
-    return <div className={contentClassName}>{children}</div>;
-  }
+  const overflowClass =
+    axis === 'x'
+      ? 'overflow-x-auto overflow-y-hidden'
+      : axis === 'both'
+        ? 'overflow-auto'
+        : 'overflow-y-auto overflow-x-hidden';
 
   return (
-    <Scrollbar
-      className={className}
-      noScrollX
-      mobileNative
-      removeTrackXWhenNotUsed
-      removeTrackYWhenNotUsed
-      contentProps={{ className: contentClassName }}
-      trackYProps={{
-        style: {
-          width: 8,
-          right: 2,
-          top: 4,
-          bottom: 4,
-          background: 'transparent',
-        },
-      }}
-      thumbYProps={{
-        style: {
-          width: 4,
-          marginLeft: 2,
-          borderRadius: 999,
-          background: 'rgb(148 163 184 / 0.65)',
-        },
-      }}
+    <div
+      data-scroll-area
+      data-axis={axis}
+      className={`scroll-area ${overflowClass} ${className}`}
+      style={style}
     >
-      {children}
-    </Scrollbar>
+      {contentClassName ? (
+        <div className={contentClassName}>{children}</div>
+      ) : (
+        children
+      )}
+    </div>
   );
 }

@@ -125,7 +125,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('CreateBillPage repeat workflows', () => {
-  it('applies and saves an owner participant group', () => {
+  it('applies an owner participant group without managing it inline', () => {
     render(
       <I18nProvider>
         <CreateBillPage />
@@ -139,20 +139,10 @@ describe('CreateBillPage repeat workflows', () => {
     expect(screen.getByLabelText('Base amount for Alice')).toBeTruthy();
     expect(screen.getByLabelText('Base amount for Bob')).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText('New group name'), {
-      target: { value: 'Friday team' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Save current group' }));
-    expect(mutate).toHaveBeenCalledWith(
-      {
-        intent: 'create-participant-group',
-        payload: {
-          name: 'Friday team',
-          memberIds: ['user-1', 'user-2'],
-        },
-      },
-      expect.objectContaining({ success: 'Participant group saved.' }),
-    );
+    expect(screen.queryByLabelText('New group name')).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Save current group' }),
+    ).toBeNull();
   });
 
   it('requires explicit confirmation before overriding an exact duplicate', () => {
@@ -183,8 +173,28 @@ describe('CreateBillPage repeat workflows', () => {
     expect(mutate.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
         intent: 'create-bill',
-        payload: expect.objectContaining({ allowDuplicate: true }),
+        payload: expect.objectContaining({
+          adjustmentAllocation: 'PROPORTIONAL',
+          allowDuplicate: true,
+        }),
       }),
     );
+  });
+
+  it('resets a discount value when its type changes', () => {
+    render(
+      <I18nProvider>
+        <CreateBillPage />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add discount' }));
+    const value = screen.getByLabelText('Discount 1 value');
+    fireEvent.change(value, { target: { value: '500' } });
+    expect((value as HTMLInputElement).value).toContain('500');
+    fireEvent.change(screen.getByLabelText('Discount 1 type'), {
+      target: { value: 'PERCENTAGE' },
+    });
+    expect((value as HTMLInputElement).value).toBe('');
   });
 });

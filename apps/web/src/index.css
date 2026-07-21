@@ -8,6 +8,8 @@
   --color-ink: hsl(222 47% 11%);
   --color-surface: #ffffff;
   --color-bg: #faf8f5;
+  --scrollbar-thumb: rgb(100 116 139 / 55%);
+  --scrollbar-thumb-hover: rgb(71 85 105 / 75%);
 
   font-family:
     Inter,
@@ -27,6 +29,8 @@
   --color-ink: hsl(210 20% 92%);
   --color-surface: hsl(220 15% 13%);
   --color-bg: hsl(220 15% 9%);
+  --scrollbar-thumb: rgb(148 163 184 / 55%);
+  --scrollbar-thumb-hover: rgb(203 213 225 / 72%);
 }
 
 body {
@@ -71,4 +75,152 @@ select {
 
 .panel {
   @apply rounded-xl border border-border bg-surface shadow-sm;
+}
+
+/* Restaurants & eateries accent system — brand saffron/basil/chili tokens,
+   spent deliberately here instead of ad hoc Tailwind swatches. */
+.ticket-edge {
+  position: relative;
+}
+
+.ticket-edge::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: hsl(36 90% 48%);
+}
+
+.title-mark {
+  display: inline-block;
+  width: 26px;
+  height: 3px;
+  border-radius: 999px;
+  background: hsl(36 90% 48%);
+  vertical-align: middle;
+}
+
+.chip {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+
+/* Modifier for short, fixed system labels (Favorite/Recommended/ARCHIVED) —
+   not for arbitrary user content like collection or cuisine names. */
+.chip-badge {
+  @apply text-[11px] font-bold uppercase tracking-[0.3px];
+}
+
+.chip-saffron {
+  background: hsl(36 90% 48% / 14%);
+  color: hsl(30 75% 30%);
+}
+.dark .chip-saffron {
+  background: hsl(36 90% 55% / 20%);
+  color: hsl(36 90% 72%);
+}
+
+.chip-basil {
+  background: hsl(151 45% 32% / 14%);
+  color: hsl(151 55% 22%);
+}
+.dark .chip-basil {
+  background: hsl(151 50% 45% / 20%);
+  color: hsl(151 55% 72%);
+}
+
+.chip-chili {
+  background: hsl(6 78% 52% / 14%);
+  color: hsl(6 70% 38%);
+}
+.dark .chip-chili {
+  background: hsl(6 78% 55% / 22%);
+  color: hsl(6 90% 75%);
+}
+
+.chip-muted {
+  @apply bg-muted text-slate-600 dark:text-slate-300;
+}
+
+.field-group {
+  @apply space-y-3 rounded-xl border border-border bg-muted p-4;
+}
+
+.field-group-title {
+  @apply flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.6px];
+  color: hsl(33 80% 38%);
+}
+.dark .field-group-title {
+  color: hsl(36 90% 68%);
+}
+
+.ticket-figure {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.scroll-area {
+  overscroll-behavior: contain;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-area::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+.react-datepicker-wrapper,
+.react-datepicker__input-container {
+  width: 100%;
+}
+
+.react-datepicker {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: inherit;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 12%);
+}
+
+.react-datepicker__header {
+  border-color: var(--color-border);
+  background: var(--color-muted);
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name,
+.react-datepicker__day {
+  color: var(--color-ink);
+}
+
+.react-datepicker__day:hover {
+  background: var(--color-muted);
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+
+.react-datepicker__day--disabled {
+  color: rgb(148 163 184);
 }

@@ -1,7 +1,7 @@
-import { KeyRound, Search, Users } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
-import { Navigate } from 'react-router';
-import type { ChefRole } from '../lib/api';
+import { ChevronLeft, ChevronRight, KeyRound, Search, Users } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Navigate, useLoaderData, useSearchParams } from 'react-router';
+import type { CatalogPage, ChefRole, User } from '../lib/api';
 import { isRootAdmin, roleLabel } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
 import { useI18n } from '../app/providers/i18n';
@@ -9,6 +9,7 @@ import { useMutation } from '../hooks/useMutation';
 import SectionTitle from '../components/ui/SectionTitle';
 import EmptyState from '../components/ui/EmptyState';
 import Dropdown from '../components/ui/Dropdown';
+import Modal from '../components/ui/Modal';
 
 /**
  * AdminPage is the ROOT_ADMIN-only role governance and ownership-transfer UI.
@@ -16,13 +17,34 @@ import Dropdown from '../components/ui/Dropdown';
 export default function AdminPage() {
   const {
     user,
-    users,
+    users: allUsers,
     loading = false,
     passwordResetRequests = [],
     refresh = async () => undefined,
   } = useAppContext();
   const { t } = useI18n();
   const { mutate } = useMutation();
+  let loaderPage: CatalogPage<User> | null = null;
+  try {
+    loaderPage = useLoaderData() as CatalogPage<User>;
+  } catch {
+    // Component tests and embedded renders may not provide a data router.
+  }
+  const page = loaderPage ?? {
+    items: allUsers,
+    pageInfo: {
+      startCursor: null,
+      endCursor: null,
+      hasPreviousPage: false,
+      hasNextPage: false,
+    },
+  };
+  const users = page.items;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  }, [searchParams]);
   const [targetUsername, setTargetUsername] = useState('');
   const [confirmationUsername, setConfirmationUsername] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -30,7 +52,8 @@ export default function AdminPage() {
     username: string;
     code: string;
   } | null>(null);
-  const [memberSearch, setMemberSearch] = useState('');
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
 
   if (!isRootAdmin(user)) return <Navigate to="/bills" replace />;
 
@@ -62,9 +85,11 @@ export default function AdminPage() {
     );
   };
 
-  const transferTargets = users.filter(
+  const transferTargets = allUsers.filter(
     (member) => member.id !== user.id && member.systemRole !== 'ROOT_ADMIN',
   );
+  const memberSearch = searchParams.get('search') ?? '';
+  const limit = searchParams.get('limit') ?? '25';
   const normalizedSearch = memberSearch.trim().toLocaleLowerCase();
   const filteredUsers = normalizedSearch
     ? users.filter((member) =>
@@ -73,6 +98,22 @@ export default function AdminPage() {
         ),
       )
     : users;
+  const setQuery = (key: string, value?: string) => {
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.delete('cursor');
+    next.delete('direction');
+    if (value) next.set(key, value);
+    else next.delete(key);
+    searchParamsRef.current = next;
+    setSearchParams(next);
+  };
+  const goToPage = (cursor: string, direction: 'forward' | 'backward') => {
+    const next = new URLSearchParams(searchParamsRef.current);
+    next.set('cursor', cursor);
+    next.set('direction', direction);
+    searchParamsRef.current = next;
+    setSearchParams(next);
+  };
   const roleOptions = [
     { value: '', label: t('role.customer') },
     { value: 'SOUS_CHEF', label: t('role.souschef') },
@@ -137,7 +178,7 @@ export default function AdminPage() {
             aria-label={t('admin.searchMembers')}
             placeholder={t('admin.searchMembers')}
             value={memberSearch}
-            onChange={(event) => setMemberSearch(event.target.value)}
+            onChange={(event) => setQuery('search', event.target.value)}
           />
         </div>
         {loading && (
@@ -234,10 +275,89 @@ export default function AdminPage() {
         </>
       )}
 
-      <section className="panel p-4 sm:p-6">
-        <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
-          <KeyRound size={20} /> {t('admin.passwordResetsTitle')}
-        </h2>
+      <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="w-28">
+          <Dropdown
+            label={t('common.rows')}
+            ariaLabel={t('common.rowsPerPage')}
+            value={limit}
+            onChange={(value) => setQuery('limit', value)}
+            options={['10', '25', '50'].map((value) => ({
+              value,
+              label: `${value} ${t('common.rows')}`,
+            }))}
+          />
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="btn btn-soft"
+            disabled={!page.pageInfo.hasPreviousPage || !page.pageInfo.startCursor}
+            onClick={() =>
+              page.pageInfo.startCursor &&
+              goToPage(page.pageInfo.startCursor, 'backward')
+            }
+          >
+            <ChevronLeft size={14} /> {t('common.previousPage')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-soft"
+            disabled={!page.pageInfo.hasNextPage || !page.pageInfo.endCursor}
+            onClick={() =>
+              page.pageInfo.endCursor &&
+              goToPage(page.pageInfo.endCursor, 'forward')
+            }
+          >
+            {t('common.nextPage')} <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+
+      <section className="grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          aria-label={t('admin.passwordResetsTitle')}
+          className="panel flex items-center gap-3 p-5 text-left transition-colors hover:bg-muted"
+          onClick={() => setResetModalOpen(true)}
+        >
+          <KeyRound size={20} className="text-slate-500" />
+          <span>
+            <span className="block font-bold text-ink">
+              {t('admin.passwordResetsTitle')}
+            </span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              {passwordResetRequests.length} {t('admin.passwordResetsTitle')}
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
+          aria-label={t('admin.transferTitle')}
+          className="panel flex items-center gap-3 p-5 text-left transition-colors hover:bg-muted"
+          onClick={() => setTransferModalOpen(true)}
+        >
+          <Users size={20} className="text-slate-500" />
+          <span>
+            <span className="block font-bold text-ink">
+              {t('admin.transferTitle')}
+            </span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              {t('admin.transferDescription')}
+            </span>
+          </span>
+        </button>
+      </section>
+
+      <Modal
+        open={resetModalOpen}
+        title={t('admin.passwordResetsTitle')}
+        onClose={() => {
+          setResetModalOpen(false);
+          setIssuedCode(null);
+        }}
+        size="lg"
+      >
         <p className="mt-1 text-sm text-slate-500">
           {t('admin.passwordResetsDescription')}
         </p>
@@ -314,12 +434,13 @@ export default function AdminPage() {
             );
           })}
         </div>
-      </section>
+      </Modal>
 
-      <section className="panel p-4 sm:p-6">
-        <h2 className="text-lg font-bold text-ink">
-          {t('admin.transferTitle')}
-        </h2>
+      <Modal
+        open={transferModalOpen}
+        title={t('admin.transferTitle')}
+        onClose={() => setTransferModalOpen(false)}
+      >
         <p className="mt-1 text-sm text-slate-500">
           {t('admin.transferDescription')}
         </p>
@@ -379,7 +500,7 @@ export default function AdminPage() {
             {t('admin.transferAction')}
           </button>
         </form>
-      </section>
+      </Modal>
     </div>
   );
 }

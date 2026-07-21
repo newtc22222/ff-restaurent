@@ -1,6 +1,7 @@
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
+import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import Fastify, { FastifyInstance } from 'fastify';
@@ -14,6 +15,7 @@ import { registerCatalogRoutes } from './routes/catalog-routes.js';
 import { registerCollectionRoutes } from './routes/collection-routes.js';
 import { registerFeedbackRoutes } from './routes/feedback-routes.js';
 import { registerMemberRoutes } from './routes/member-routes.js';
+import { registerMediaRoutes } from './routes/media-routes.js';
 import { registerNotificationRoutes } from './routes/notification-routes.js';
 import { registerPasswordResetRoutes } from './routes/password-reset-routes.js';
 import { registerParticipantGroupRoutes } from './routes/participant-group-routes.js';
@@ -32,6 +34,9 @@ const registerCorePlugins = async (app: FastifyInstance) => {
   await app.register(jwt, {
     secret: config.jwtSecret,
     sign: { expiresIn: config.jwtExpiresIn },
+  });
+  await app.register(multipart, {
+    limits: { files: 1, fields: 2, fileSize: 5 * 1024 * 1024 },
   });
   if (config.isProduction) {
     await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
@@ -67,6 +72,7 @@ const registerRoutes = (app: FastifyInstance) => {
   registerParticipantGroupRoutes(app);
   registerProfileRoutes(app);
   registerMemberRoutes(app);
+  registerMediaRoutes(app);
   registerRestaurantRoutes(app);
   registerBillRoutes(app);
   registerNotificationRoutes(app);

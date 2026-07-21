@@ -60,5 +60,8 @@ describe('AppHeader notification controls', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
     expect(markAllRead).toHaveBeenCalledOnce();
+
+    fireEvent.click(screen.getByTestId('notification-backdrop'));
+    expect(screen.queryByRole('button', { name: 'Mark all read' })).toBeNull();
   });
 });

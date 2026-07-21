@@ -33,13 +33,19 @@ step before broad public distribution.
 
 1. Build immutable API and web images from the verified Git SHA.
 2. Back up the database.
-3. Run `npm run prisma:migrate:deploy -w @ff-restaurent/api` as a one-time
-   release job. Do not combine production migration or demo seeding with API
-   process startup.
+3. Run `npm run prisma:migrate:deploy -w @ff-restaurent/api`, followed by
+   `npm run prisma:cuisines:seed -w @ff-restaurent/api`, as one-time release
+   jobs when the platform supports them. The cuisine seed is idempotent and
+   never replaces the production catalog. Never run the destructive demo seed
+   in production.
 4. Deploy the API image, then verify `/health` and `/ready`.
 5. Deploy the web image built with the production `VITE_API_URL`.
 6. Run `npm run smoke` with staging URLs and a least-privileged smoke account.
 7. Promote only when smoke checks and launch telemetry are healthy.
+
+On container platforms without a pre-deploy job, the API Docker command runs
+the same migration and cuisine-seed sequence before its existing idempotent
+backfills and then uses `exec` to hand PID 1 to Node.
 
 ## Launch telemetry
 

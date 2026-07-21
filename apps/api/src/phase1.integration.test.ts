@@ -493,6 +493,16 @@ integrationTest(
     });
     assert.equal(secondBills.statusCode, 200);
     assert.equal(secondBills.json().items[0].totalCost, 20_000);
+    assert.equal(secondBills.json().pageInfo.hasPreviousPage, true);
+    const previousBills = await app.inject({
+      method: 'GET',
+      url: `/bills?participantIds=${customerAId},${customerBId}&participantId=${customerAId}&paymentStatus=WAITING&ownerId=${sousId}&from=2026-01-01&to=2030-12-31&sort=total-asc&limit=1&cursor=${secondBills.json().pageInfo.startCursor}&direction=backward`,
+      headers: auth(tokenFor(headId)),
+    });
+    assert.equal(previousBills.statusCode, 200);
+    assert.equal(previousBills.json().items[0].totalCost, 10_000);
+    assert.equal(previousBills.json().pageInfo.hasPreviousPage, false);
+    assert.equal(previousBills.json().pageInfo.hasNextPage, true);
 
     const customerPaymentScope = await app.inject({
       method: 'GET',
@@ -728,6 +738,70 @@ integrationTest(
     assert.equal(favoriteResponse.cuisineType, 'Test');
     assert.equal(favoriteResponse.isFavoritedByMe, true);
     assert.equal(favoriteResponse.isFavorite, true);
+
+    const customerCollections = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${restaurantId}/collections`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { collectionIds: [favorites.id, collectionId] },
+    });
+    assert.equal(customerCollections.statusCode, 200);
+    const restaurantDetail = await app.inject({
+      method: 'GET',
+      url: `/restaurants/${restaurantId}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(restaurantDetail.statusCode, 200);
+    assert.deepEqual(
+      new Set(
+        restaurantDetail
+          .json()
+          .collections.map((collection: { id: string }) => collection.id),
+      ),
+      new Set([favorites.id, collectionId, recommended.id]),
+    );
+
+    const forbiddenRecommended = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${restaurantId}/collections`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { collectionIds: [recommended.id] },
+    });
+    assert.equal(forbiddenRecommended.statusCode, 403);
+
+    const chefCollections = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${restaurantId}/collections`,
+      headers: auth(tokenFor(sousId)),
+      payload: { collectionIds: [recommended.id] },
+    });
+    assert.equal(chefCollections.statusCode, 200);
+    assert.equal(
+      await prisma.collectionRestaurant.count({
+        where: { collectionId, restaurantId },
+      }),
+      1,
+    );
+
+    const clearCustomerCollections = await app.inject({
+      method: 'PUT',
+      url: `/restaurants/${restaurantId}/collections`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { collectionIds: [] },
+    });
+    assert.equal(clearCustomerCollections.statusCode, 200);
+    assert.equal(
+      await prisma.collectionRestaurant.count({
+        where: { collectionId: favorites.id, restaurantId },
+      }),
+      0,
+    );
+    assert.equal(
+      await prisma.collectionRestaurant.count({
+        where: { collectionId: recommended.id, restaurantId },
+      }),
+      1,
+    );
 
     await assert.rejects(
       prisma.collection.create({

@@ -3,6 +3,7 @@ import {
   FolderHeart,
   LayoutDashboard,
   Store,
+  UserRoundCheck,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -83,6 +84,7 @@ function AppShellContent() {
     ['/bills', LayoutDashboard, t('nav.bills')],
     ['/restaurants', Store, t('nav.restaurants')],
     ['/collections', FolderHeart, t('nav.collections')],
+    ['/participant-groups', UserRoundCheck, t('nav.participantGroups')],
     ['/stats', BarChart2, t('nav.stats')],
     ...(isRootAdmin(user)
       ? ([['/admin', Users, t('nav.members')]] as [

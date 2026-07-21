@@ -1,98 +1,89 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import vietnamAddressData from './data/vietnam-wards-full.json' with { type: 'json' };
 import {
   AddressDirectory,
-  AddressDirectoryUnavailableError,
+  AddressProvinceNotFoundError,
+  buildAddressDirectoryIndex,
 } from './address-directory.js';
 
-const jsonResponse = (body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-  });
+const cloneDataset = () =>
+  JSON.parse(JSON.stringify(vietnamAddressData)) as typeof vietnamAddressData;
 
-test('normalizes provinces and wards without requesting depth=3', async () => {
-  const urls: string[] = [];
-  const directory = new AddressDirectory({
-    baseUrl: 'https://example.test/api/v2/',
-    timeoutMs: 100,
-    cacheTtlMs: 1_000,
-    fetcher: async (input) => {
-      const url = String(input);
-      urls.push(url);
-      return url.includes('/p/79')
-        ? jsonResponse({ wards: [{ code: 26734, name: 'Phường Bến Nghé' }] })
-        : jsonResponse([{ code: 79, name: 'Thành phố Hồ Chí Minh' }]);
-    },
-  });
+test('loads the complete bundled 2025 province and ward directory', () => {
+  const directory = new AddressDirectory();
+  const provinces = directory.getProvinces();
 
-  assert.deepEqual(await directory.getProvinces(), {
-    items: [{ code: '79', name: 'Thành phố Hồ Chí Minh' }],
-    stale: false,
-  });
-  assert.deepEqual(await directory.getWards('79'), {
-    items: [{ code: '26734', name: 'Phường Bến Nghé' }],
-    stale: false,
-  });
-  assert.deepEqual(urls, [
-    'https://example.test/api/v2/',
-    'https://example.test/api/v2/p/79?depth=2',
-  ]);
+  assert.equal(provinces.stale, false);
+  assert.equal(provinces.items.length, 34);
   assert.equal(
-    urls.some((url) => url.includes('depth=3')),
-    false,
+    provinces.items.reduce(
+      (total, province) =>
+        total + directory.getWards(province.code).items.length,
+      0,
+    ),
+    3_321,
   );
 });
 
-test('uses fresh cache and serves stale cache after an upstream failure', async () => {
-  let now = 1_000;
-  let calls = 0;
-  const directory = new AddressDirectory({
-    baseUrl: 'https://example.test/',
-    timeoutMs: 100,
-    cacheTtlMs: 50,
-    now: () => now,
-    fetcher: async () => {
-      calls += 1;
-      if (calls > 1) throw new Error('offline');
-      return jsonResponse([{ code: 1, name: 'Hà Nội' }]);
-    },
+test('uses stable local codes, merged aliases, and full administrative labels', () => {
+  const first = new AddressDirectory();
+  const second = new AddressDirectory();
+  assert.deepEqual(first.getProvinces(), second.getProvinces());
+
+  const hoChiMinh = first
+    .getProvinces()
+    .items.find((province) => province.name === 'Thành phố Hồ Chí Minh');
+  assert.deepEqual(hoChiMinh, {
+    code: 'p-thanh-pho-ho-chi-minh',
+    name: 'Thành phố Hồ Chí Minh',
+    aliases: ['Bình Dương', 'Bà Rịa - Vũng Tàu'],
   });
 
-  const first = await directory.getProvinces();
-  now += 20;
-  const cached = await directory.getProvinces();
-  now += 50;
-  const stale = await directory.getProvinces();
-
-  assert.deepEqual(first, cached);
-  assert.equal(calls, 2);
-  assert.deepEqual(stale, { ...first, stale: true });
+  const wards = first.getWards(hoChiMinh!.code).items;
+  assert.equal(wards.length, 168);
+  assert.equal(
+    wards.some((ward) => ward.name === 'Phường Sài Gòn'),
+    true,
+  );
+  assert.equal(
+    wards.some((ward) => ward.name === 'Đặc khu Côn Đảo'),
+    true,
+  );
+  assert.equal(new Set(wards.map((ward) => ward.code)).size, wards.length);
 });
 
-test('returns a stable unavailable error when timeout occurs without cache', async () => {
-  const directory = new AddressDirectory({
-    baseUrl: 'https://example.test/',
-    timeoutMs: 5,
-    cacheTtlMs: 50,
-    fetcher: async (_input, init) =>
-      new Promise<Response>((_resolve, reject) => {
-        const guard = setTimeout(
-          () => reject(new Error('Abort signal did not fire')),
-          100,
-        );
-        init?.signal?.addEventListener('abort', () => {
-          clearTimeout(guard);
-          reject(init.signal?.reason);
-        });
-      }),
-  });
-
-  await assert.rejects(
-    directory.getProvinces(),
+test('rejects an unknown local province with a stable not-found error', () => {
+  const directory = new AddressDirectory();
+  assert.throws(
+    () => directory.getWards('p-not-a-province'),
     (error: unknown) =>
-      error instanceof AddressDirectoryUnavailableError &&
-      error.code === 'ADDRESS_DIRECTORY_UNAVAILABLE' &&
-      error.statusCode === 503,
+      error instanceof AddressProvinceNotFoundError &&
+      error.code === 'ADDRESS_PROVINCE_NOT_FOUND' &&
+      error.statusCode === 404,
+  );
+});
+
+test('rejects incomplete or internally inconsistent bundled datasets', () => {
+  const incomplete = cloneDataset();
+  (incomplete.incomplete_provinces as unknown[]).push('Missing province');
+  assert.throws(
+    () => buildAddressDirectoryIndex(incomplete),
+    /incomplete_provinces must be empty/,
+  );
+
+  const badWardCount = cloneDataset();
+  badWardCount.provinces[0]!.ward_count += 1;
+  assert.throws(
+    () => buildAddressDirectoryIndex(badWardCount),
+    /ward count mismatch/,
+  );
+
+  const duplicateProvince = cloneDataset();
+  duplicateProvince.provinces[1]!.province_name =
+    duplicateProvince.provinces[0]!.province_name;
+  assert.throws(
+    () => buildAddressDirectoryIndex(duplicateProvince),
+    /duplicate province name/,
   );
 });

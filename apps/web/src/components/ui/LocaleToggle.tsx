@@ -22,6 +22,7 @@ export default function LocaleToggle({
     <Dropdown
       label={label}
       value={locale}
+      className="w-32"
       icon={<Globe size={14} />}
       variant="header"
       menuAlign="right"

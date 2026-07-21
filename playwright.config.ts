@@ -18,6 +18,7 @@ export default defineConfig({
       command: 'npm run dev -w @ff-restaurent/api',
       url: `http://127.0.0.1:${apiPort}/health`,
       env: { ...process.env, API_PORT: String(apiPort) },
+      stdout: 'pipe',
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },

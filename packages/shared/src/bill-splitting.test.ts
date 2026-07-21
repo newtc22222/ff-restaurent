@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AdjustmentType } from './types.js';
+import { AdjustmentAllocation, AdjustmentType } from './types.js';
 import { calculateBillSplit } from './bill-splitting.js';
 
 describe('calculateBillSplit', () => {
@@ -10,6 +10,7 @@ describe('calculateBillSplit', () => {
       shippingFee: 50,
       discounts: [{ type: AdjustmentType.FIXED, value: 100 }],
       vouchers: [{ code: 'LUNCH', value: 20 }],
+      adjustmentAllocation: AdjustmentAllocation.EQUAL,
       participants: [{ memberId: 'c' }, { memberId: 'a' }, { memberId: 'b' }],
     });
 
@@ -54,6 +55,38 @@ describe('calculateBillSplit', () => {
 
     expect(result.totalDiscount).toBe(100);
     expect(result.totalCost).toBe(899);
+  });
+
+  it('allocates adjustments proportionally with deterministic remainder ties', () => {
+    const result = calculateBillSplit({
+      baseCost: 1000,
+      vat: 0,
+      shippingFee: 0,
+      discounts: [{ type: AdjustmentType.FIXED, value: 101 }],
+      adjustmentAllocation: AdjustmentAllocation.PROPORTIONAL,
+      participants: [
+        { memberId: 'charlie', originCost: 200 },
+        { memberId: 'alice', originCost: 400 },
+        { memberId: 'bob', originCost: 400 },
+      ],
+    });
+
+    expect(
+      result.participants.map(({ memberId, discountApplied }) => ({
+        memberId,
+        discountApplied,
+      })),
+    ).toEqual([
+      { memberId: 'alice', discountApplied: 41 },
+      { memberId: 'bob', discountApplied: 40 },
+      { memberId: 'charlie', discountApplied: 20 },
+    ]);
+    expect(
+      result.participants.reduce(
+        (sum, participant) => sum + participant.finalPrice,
+        0,
+      ),
+    ).toBe(result.totalCost);
   });
 
   it('rejects origin costs that drift from the bill base cost', () => {

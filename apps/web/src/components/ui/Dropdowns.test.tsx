@@ -1,8 +1,15 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import Dropdown, { type DropdownOption } from './Dropdown';
 
 const options: DropdownOption[] = [
@@ -10,6 +17,12 @@ const options: DropdownOption[] = [
   { value: 'pho', label: 'Pho House' },
   { value: 'rice', label: 'Rice Corner' },
 ];
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function SelectHarness() {
   const [value, setValue] = useState('');
@@ -54,6 +67,206 @@ function MultiSelectHarness() {
 }
 
 describe('searchable dropdowns', () => {
+  it('accepts a custom responsive width on its container', () => {
+    render(
+      <Dropdown
+        className="w-40 sm:w-48"
+        label="Rows"
+        ariaLabel="Rows"
+        value="25"
+        onChange={() => undefined}
+        options={[{ value: '25', label: '25 rows' }]}
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Rows' });
+    expect(trigger.parentElement?.className).toContain('w-40 sm:w-48');
+    expect(trigger.className).toContain('w-full');
+  });
+
+  it('updates an open menu when its trigger width changes', async () => {
+    let triggerWidth = 120;
+    let resize: ResizeObserverCallback | undefined;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resize = callback;
+        }
+
+        observe() {}
+        disconnect() {}
+      },
+    );
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        if (
+          this instanceof HTMLButtonElement &&
+          this.getAttribute('aria-haspopup')
+        ) {
+          return {
+            top: 20,
+            left: 100,
+            right: 100 + triggerWidth,
+            bottom: 52,
+            width: triggerWidth,
+            height: 32,
+            x: 100,
+            y: 20,
+            toJSON: () => ({}),
+          } as DOMRect;
+        }
+        return {
+          top: 0,
+          left: 0,
+          right: 2,
+          bottom: 146,
+          width: 2,
+          height: 146,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      },
+    );
+
+    render(
+      <Dropdown
+        label="Language"
+        ariaLabel="Language: English"
+        value="en"
+        variant="header"
+        onChange={() => undefined}
+        options={[{ value: 'en', label: 'English' }]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Language: English' }));
+    const menu = screen
+      .getByRole('listbox')
+      .closest('[data-placement]') as HTMLElement;
+    await waitFor(() => expect(menu.style.width).toBe('120px'));
+
+    triggerWidth = 180;
+    act(() => resize?.([], {} as ResizeObserver));
+
+    await waitFor(() => expect(menu.style.width).toBe('180px'));
+  });
+
+  it('sizes a header menu to its trigger without a minimum-width floor', async () => {
+    const rect = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: Element) {
+        if (
+          this instanceof HTMLButtonElement &&
+          this.getAttribute('aria-haspopup')
+        ) {
+          return {
+            top: 20,
+            left: 100,
+            right: 220,
+            bottom: 52,
+            width: 120,
+            height: 32,
+            x: 100,
+            y: 20,
+            toJSON: () => ({}),
+          } as DOMRect;
+        }
+        return {
+          top: 0,
+          left: 0,
+          right: 2,
+          bottom: 146,
+          width: 2,
+          height: 146,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+
+    render(
+      <Dropdown
+        label="Language"
+        ariaLabel="Language: English"
+        value="en"
+        variant="header"
+        onChange={() => undefined}
+        options={[
+          { value: 'en', label: 'English' },
+          { value: 'vi', label: 'Vietnamese' },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Language: English' }));
+    await waitFor(() => {
+      const menu = screen
+        .getByRole('listbox')
+        .closest('[data-placement]') as HTMLElement;
+      expect(menu.style.width).toBe('120px');
+      expect(menu.className).not.toContain('min-w-');
+    });
+    rect.mockRestore();
+  });
+
+  it('flips above the trigger when the viewport bottom cannot fit the menu', async () => {
+    const rect = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: Element) {
+        if (
+          this instanceof HTMLButtonElement &&
+          this.getAttribute('aria-haspopup')
+        ) {
+          return {
+            top: 560,
+            left: 20,
+            right: 220,
+            bottom: 600,
+            width: 200,
+            height: 40,
+            x: 20,
+            y: 560,
+            toJSON: () => ({}),
+          } as DOMRect;
+        }
+        return {
+          top: 0,
+          left: 20,
+          right: 220,
+          bottom: 180,
+          width: 200,
+          height: 180,
+          x: 20,
+          y: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+    Object.defineProperty(window, 'innerHeight', {
+      value: 640,
+      configurable: true,
+    });
+    render(
+      <Dropdown
+        label="Rows"
+        ariaLabel="Rows"
+        value="25"
+        onChange={() => undefined}
+        options={[{ value: '25', label: '25 rows' }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Rows' }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole('listbox')
+          .closest('[data-placement]')
+          ?.getAttribute('data-placement'),
+      ).toBe('top'),
+    );
+    rect.mockRestore();
+  });
   it('filters case-insensitively, reports empty results, and clears a selection', () => {
     render(<SelectHarness />);
 

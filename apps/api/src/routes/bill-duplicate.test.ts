@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { AdjustmentAllocation } from '@ff-restaurent/shared';
 import { createBillFingerprint } from './bill-routes.js';
 
 test('bill fingerprints ignore participant and adjustment ordering', () => {
@@ -35,5 +36,15 @@ test('bill fingerprints ignore participant and adjustment ordering', () => {
   assert.notEqual(
     createBillFingerprint(bill),
     createBillFingerprint({ ...bill, shippingFee: 201 }),
+  );
+  assert.notEqual(
+    createBillFingerprint({
+      ...bill,
+      adjustmentAllocation: AdjustmentAllocation.EQUAL,
+    }),
+    createBillFingerprint({
+      ...bill,
+      adjustmentAllocation: AdjustmentAllocation.PROPORTIONAL,
+    }),
   );
 });

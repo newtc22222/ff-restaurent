@@ -28,18 +28,12 @@ function Harness() {
 }
 
 describe('restaurant profile fields', () => {
-  it('validates phone/banner and supports ordered removable platform links', () => {
+  it('validates phone and supports ordered removable platform links', () => {
     render(<Harness />);
     const fields = screen.getAllByRole('textbox');
     fireEvent.change(fields[0]!, { target: { value: 'not-a-phone' } });
     expect(screen.getByText(/valid Vietnamese mobile/)).toBeTruthy();
     fireEvent.change(fields[0]!, { target: { value: '0901234567' } });
-    fireEvent.change(fields[1]!, { target: { value: 'http://image.test' } });
-    expect(screen.getByText(/banner must use an HTTPS/)).toBeTruthy();
-    fireEvent.change(fields[1]!, {
-      target: { value: 'https://image.test/banner.jpg' },
-    });
-
     fireEvent.click(screen.getByRole('button', { name: 'Add link' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Link URL 1' }), {
       target: { value: 'https://example.test/menu' },

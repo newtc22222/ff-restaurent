@@ -56,7 +56,6 @@ export default function Sidebar({
         <ScrollArea
           className="min-h-0 w-full flex-1"
           contentClassName="flex flex-col gap-1 p-2"
-          desktopOnly
         >
           {nav.map(([path, Icon, label]) => (
             <NavLink

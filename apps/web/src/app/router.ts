@@ -28,6 +28,7 @@ import {
   type ParticipantGroup,
   type PasswordResetRequest,
   type RestaurantEntry,
+  type RestaurantDetailData,
   type RestaurantFeedbackPage,
   type RestaurantDirectoryData,
   type Stats,
@@ -171,6 +172,7 @@ export async function billsLoader({ request }: LoaderFunctionArgs) {
     request,
     new Set([
       'cursor',
+      'direction',
       'limit',
       'sort',
       'restaurantId',
@@ -192,6 +194,7 @@ export async function restaurantsLoader({ request }: LoaderFunctionArgs) {
     request,
     new Set([
       'cursor',
+      'direction',
       'limit',
       'sort',
       'search',
@@ -223,6 +226,15 @@ export async function collectionsLoader({ request }: LoaderFunctionArgs) {
   return session
     .api()
     .request<CatalogPage<Collection>>(`/collections?${query}`);
+}
+
+export async function membersLoader(args: LoaderFunctionArgs) {
+  await roleGuard(isRootAdmin, args);
+  const query = forwardListQuery(
+    args.request,
+    new Set(['cursor', 'direction', 'limit', 'sort', 'search']),
+  );
+  return session.api().request<CatalogPage<User>>(`/users?${query}`);
 }
 
 export async function collectionDetailLoader({
@@ -298,11 +310,17 @@ export async function restaurantFeedbackLoader({
   const cursor = url.searchParams.get('cursor');
   if (cursor) query.set('cursor', cursor);
   try {
-    return await session
-      .api()
-      .request<RestaurantFeedbackPage>(
+    const api = session.api();
+    const [restaurant, feedback, collections] = await Promise.all([
+      api.request<RestaurantDetailData['restaurant']>(
+        `/restaurants/${params.restaurantId}`,
+      ),
+      api.request<RestaurantFeedbackPage>(
         `/restaurants/${params.restaurantId}/feedback?${query}`,
-      );
+      ),
+      fetchAllPages<Collection>('/collections?limit=100'),
+    ]);
+    return { restaurant, feedback, collections } satisfies RestaurantDetailData;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       session.clear();
@@ -433,6 +451,14 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
           method: 'PUT',
           body: JSON.stringify(body.payload),
         });
+      case 'update-restaurant-collections':
+        return await api.request(
+          `/restaurants/${params.restaurantId}/collections`,
+          {
+            method: 'PUT',
+            body: JSON.stringify({ collectionIds: body.collectionIds }),
+          },
+        );
       case 'restaurant-favorite':
         return await api.request(
           `/restaurants/${body.restaurantId ?? params.restaurantId}/favorite`,
@@ -639,7 +665,7 @@ export const routes = [
             path: 'restaurants',
             loader: restaurantsLoader,
             action: mutationAction,
-            lazy: page(() => import('../pages/RestaurantsPage')),
+            lazy: page(() => import('../features/restaurants/RestaurantsPage')),
           },
           {
             path: 'collections',
@@ -648,13 +674,18 @@ export const routes = [
             lazy: page(() => import('../pages/CollectionsPage')),
           },
           {
+            path: 'participant-groups',
+            action: mutationAction,
+            lazy: page(() => import('../pages/ParticipantGroupsPage')),
+          },
+          {
             path: 'stats',
             loader: statsLoader,
             lazy: page(() => import('../pages/StatsPage')),
           },
           {
             path: 'admin',
-            loader: (args) => roleGuard(isRootAdmin, args),
+            loader: membersLoader,
             action: mutationAction,
             lazy: page(() => import('../pages/AdminPage')),
           },
@@ -680,7 +711,9 @@ export const routes = [
             path: 'restaurants/:restaurantId',
             loader: restaurantFeedbackLoader,
             action: mutationAction,
-            lazy: page(() => import('../pages/RestaurantDetailPage')),
+            lazy: page(
+              () => import('../features/restaurants/RestaurantDetailPage'),
+            ),
           },
           {
             path: 'collections/:collectionId',

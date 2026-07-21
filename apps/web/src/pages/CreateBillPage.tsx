@@ -1,9 +1,14 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Plus, X } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
 import { Navigate, useNavigate, useParams } from 'react-router';
-import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
-import { money } from '../lib/api';
+import {
+  AdjustmentAllocation,
+  AdjustmentType,
+  calculateBillSplit,
+} from '@ff-restaurent/shared';
+import { money, type PaymentQrImage } from '../lib/api';
+import { session } from '../lib/session';
 import { canChef, uniqueUsers } from '../lib/helpers';
 import { useAppContext } from '../app/providers/app-context';
 import { useI18n } from '../app/providers/i18n';
@@ -64,7 +69,15 @@ export default function CreateBillPage() {
   const [vouchers, setVouchers] = useState<VoucherDraft[]>(
     editBill?.vouchers ?? [],
   );
-  const [paymentUrl, setPaymentUrl] = useState(editBill?.paymentUrl ?? '');
+  const [adjustmentAllocation, setAdjustmentAllocation] =
+    useState<AdjustmentAllocation>(
+      (editBill?.adjustmentAllocation as AdjustmentAllocation | undefined) ??
+        AdjustmentAllocation.PROPORTIONAL,
+    );
+  const [paymentQrImageId, setPaymentQrImageId] = useState(
+    editBill?.paymentQrImageId ?? editBill?.paymentQrImage?.id ?? '',
+  );
+  const [paymentQrImages, setPaymentQrImages] = useState<PaymentQrImage[]>([]);
   const [participants, setParticipants] = useState<ParticipantDraft[]>(
     editBill?.participants?.map((p) => ({
       memberId: p.memberId,
@@ -73,9 +86,19 @@ export default function CreateBillPage() {
   );
   const [localError, setLocalError] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState('');
-  const [groupName, setGroupName] = useState('');
   const [duplicateDetected, setDuplicateDetected] = useState(false);
   const { mutate } = useMutation();
+  useEffect(() => {
+    void session
+      .api()
+      .request<PaymentQrImage[]>(
+        isEditing && editBill
+          ? `/bills/${editBill.id}/payment-qr-options`
+          : '/me/payment-qr-images',
+      )
+      .then(setPaymentQrImages)
+      .catch(() => setPaymentQrImages([]));
+  }, [editBill?.id, isEditing]);
   const activeRestaurants = restaurants.filter(
     (entry) => entry.status === 'ACTIVE' || entry.id === restaurantId,
   );
@@ -91,12 +114,21 @@ export default function CreateBillPage() {
         shippingFee,
         discounts,
         vouchers,
+        adjustmentAllocation,
         participants,
       });
     } catch (error) {
       return error instanceof Error ? error : null;
     }
-  }, [discounts, participants, shippingFee, totalBase, vat, vouchers]);
+  }, [
+    adjustmentAllocation,
+    discounts,
+    participants,
+    shippingFee,
+    totalBase,
+    vat,
+    vouchers,
+  ]);
   const calculationError = preview instanceof Error ? preview.message : null;
   const calculatedPreview = preview instanceof Error ? null : preview;
   const grandTotal =
@@ -137,7 +169,8 @@ export default function CreateBillPage() {
       shippingFee,
       discounts,
       vouchers,
-      ...(paymentUrl ? { paymentUrl } : {}),
+      adjustmentAllocation,
+      paymentQrImageId: paymentQrImageId || null,
       participants: participants.map((p) => ({
         memberId: p.memberId,
         originCost: p.originCost,
@@ -196,36 +229,6 @@ export default function CreateBillPage() {
           ? { ...current.find(({ memberId }) => memberId === userId)! }
           : { memberId: userId, originCost: 0 },
       ),
-    );
-  };
-
-  const saveGroup = () => {
-    if (!groupName.trim() || participants.length < 2) return;
-    void mutate(
-      {
-        intent: 'create-participant-group',
-        payload: {
-          name: groupName.trim(),
-          memberIds: participants.map(({ memberId }) => memberId),
-        },
-      },
-      {
-        fallback: t('toast.participantGroupSaveFailed'),
-        success: t('toast.participantGroupSaved'),
-        onSuccess: () => setGroupName(''),
-      },
-    );
-  };
-
-  const deleteGroup = () => {
-    if (!selectedGroupId) return;
-    void mutate(
-      { intent: 'delete-participant-group', groupId: selectedGroupId },
-      {
-        fallback: t('toast.participantGroupDeleteFailed'),
-        success: t('toast.participantGroupDeleted'),
-        onSuccess: () => setSelectedGroupId(''),
-      },
     );
   };
 
@@ -294,6 +297,33 @@ export default function CreateBillPage() {
             </div>
 
             <div className="mb-6 space-y-3">
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <span className="label">
+                  {t('createBill.adjustmentAllocation')}
+                </span>
+                <div className="mt-2">
+                  <Dropdown
+                    label={t('createBill.adjustmentAllocation')}
+                    ariaLabel={t('createBill.adjustmentAllocation')}
+                    value={adjustmentAllocation}
+                    onChange={(value) =>
+                      setAdjustmentAllocation(value as AdjustmentAllocation)
+                    }
+                    options={[
+                      {
+                        value: AdjustmentAllocation.PROPORTIONAL,
+                        label: t('createBill.allocationProportional'),
+                        description: t('createBill.allocationProportionalHint'),
+                      },
+                      {
+                        value: AdjustmentAllocation.EQUAL,
+                        label: t('createBill.allocationEqual'),
+                        description: t('createBill.allocationEqualHint'),
+                      },
+                    ]}
+                  />
+                </div>
+              </div>
               <div className="flex items-center justify-between">
                 <span className="label">Discounts</span>
                 <button
@@ -314,25 +344,28 @@ export default function CreateBillPage() {
                   key={index}
                   className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[9rem_minmax(0,1fr)_10rem_2.5rem] sm:items-end"
                 >
-                  <select
-                    className="field w-full"
+                  <Dropdown
+                    label="Discount type"
+                    ariaLabel={`Discount ${index + 1} type`}
                     value={discount.type}
-                    onChange={(event) =>
+                    onChange={(value) =>
                       setDiscounts((current) =>
                         current.map((item, itemIndex) =>
                           itemIndex === index
                             ? {
                                 ...item,
-                                type: event.target.value as AdjustmentType,
+                                type: value as AdjustmentType,
+                                value: 0,
                               }
                             : item,
                         ),
                       )
                     }
-                  >
-                    <option value={AdjustmentType.FIXED}>Fixed</option>
-                    <option value={AdjustmentType.PERCENTAGE}>Percent</option>
-                  </select>
+                    options={[
+                      { value: AdjustmentType.FIXED, label: 'Fixed' },
+                      { value: AdjustmentType.PERCENTAGE, label: 'Percent' },
+                    ]}
+                  />
                   <input
                     className="field w-full"
                     value={discount.label}
@@ -349,6 +382,7 @@ export default function CreateBillPage() {
                   />
                   <CurrencyInput
                     className="field w-full text-right"
+                    aria-label={`Discount ${index + 1} value`}
                     value={discount.value === 0 ? '' : discount.value}
                     allowDecimals={discount.type === AdjustmentType.PERCENTAGE}
                     decimalsLimit={2}
@@ -474,35 +508,63 @@ export default function CreateBillPage() {
               </p>
             </div>
 
-            <label className="mb-6 block space-y-1.5">
-              <span className="label">Payment link (HTTPS)</span>
-              <input
-                className="field w-full"
-                type="url"
-                value={paymentUrl}
-                onChange={(event) => setPaymentUrl(event.target.value)}
-                placeholder="https://pay.example.com/..."
-                pattern="https://.*"
+            <div className="mb-6 space-y-2">
+              <span className="label">{t('bills.paymentQr')}</span>
+              <Dropdown
+                label="No payment QR"
+                ariaLabel={t('bills.paymentQr')}
+                value={paymentQrImageId}
+                onChange={setPaymentQrImageId}
+                options={paymentQrImages.map((qr) => ({
+                  value: qr.id,
+                  label: qr.label,
+                  icon: (
+                    <img
+                      src={qr.imageUrl}
+                      alt=""
+                      className="h-4 w-4 rounded-sm object-contain"
+                    />
+                  ),
+                }))}
+                allowClear
               />
-            </label>
+              {paymentQrImageId && (
+                <img
+                  src={
+                    paymentQrImages.find((qr) => qr.id === paymentQrImageId)
+                      ?.imageUrl ?? editBill?.paymentQrImage?.imageUrl
+                  }
+                  alt="Selected payment QR"
+                  className="h-32 w-32 rounded-lg border border-border bg-white object-contain p-2"
+                />
+              )}
+              {!paymentQrImageId && editBill?.paymentUrl && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  This bill keeps its legacy payment link as read-only until a QR image is selected.
+                </p>
+              )}
+            </div>
 
             <div className="mb-6">
               <div className="mb-5 rounded-lg border border-border bg-muted/30 p-3">
                 <span className="label">{t('groups.title')}</span>
-                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-                  <select
-                    className="field w-full"
-                    aria-label={t('groups.choose')}
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <Dropdown
+                    label={t('groups.choose')}
+                    ariaLabel={t('groups.choose')}
                     value={selectedGroupId}
-                    onChange={(event) => setSelectedGroupId(event.target.value)}
-                  >
-                    <option value="">{t('groups.choose')}</option>
-                    {participantGroups.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name} ({group.members.length})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setSelectedGroupId}
+                    options={participantGroups.map((group) => ({
+                      value: group.id,
+                      label: group.name,
+                      description: `${group.members.length} ${t('groups.members')}`,
+                    }))}
+                    searchable
+                    searchPlaceholder={t('groups.search')}
+                    emptyMessage={t('groups.empty')}
+                    allowClear
+                    clearLabel={t('bills.clearAll')}
+                  />
                   <button
                     type="button"
                     className="btn btn-soft"
@@ -510,32 +572,6 @@ export default function CreateBillPage() {
                     onClick={applyGroup}
                   >
                     {t('groups.apply')}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-soft text-red-600"
-                    disabled={!selectedGroupId}
-                    onClick={deleteGroup}
-                  >
-                    {t('common.remove')}
-                  </button>
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <input
-                    className="field min-w-0 flex-1"
-                    value={groupName}
-                    maxLength={80}
-                    aria-label={t('groups.name')}
-                    placeholder={t('groups.name')}
-                    onChange={(event) => setGroupName(event.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-soft"
-                    disabled={!groupName.trim() || participants.length < 2}
-                    onClick={saveGroup}
-                  >
-                    {t('groups.save')}
                   </button>
                 </div>
               </div>

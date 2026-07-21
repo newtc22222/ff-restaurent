@@ -16,6 +16,7 @@ import BrandIcon from '../ui/BrandIcon';
 import ThemeToggle from '../ui/ThemeToggle';
 import LocaleToggle from '../ui/LocaleToggle';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import ScrollArea from '../ui/ScrollArea';
 
 interface AppHeaderProps {
   onProfile?: () => void;
@@ -264,59 +265,72 @@ export default function AppHeader({
       <div className="h-14 shrink-0" aria-hidden="true" />
 
       {showNotifications && onOpenNotification && (
-        <div className="fixed left-3 right-3 top-16 z-[60] overflow-hidden rounded-xl border border-border bg-surface shadow-panel sm:left-auto sm:right-4 sm:w-[22rem]">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <span className="text-sm font-bold">{t('nav.notifications')}</span>
-            <div className="flex items-center gap-3">
-              {unreadCount > 0 && onMarkAllNotificationsRead && (
+        <>
+          <div
+            className="fixed inset-0 z-[55]"
+            aria-hidden="true"
+            data-testid="notification-backdrop"
+            onClick={() => setShowNotifications(false)}
+          />
+          <div
+            className="fixed left-3 right-3 top-16 z-[60] overflow-hidden rounded-xl border border-border bg-surface shadow-panel sm:left-auto sm:right-4 sm:w-[22rem]"
+            role="menu"
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <span className="text-sm font-bold">
+                {t('nav.notifications')}
+              </span>
+              <div className="flex items-center gap-3">
+                {unreadCount > 0 && onMarkAllNotificationsRead && (
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-orange-700 hover:text-orange-900 dark:text-orange-300"
+                    onClick={onMarkAllNotificationsRead}
+                  >
+                    {t('notifications.markAllRead')}
+                  </button>
+                )}
                 <button
                   type="button"
-                  className="text-xs font-semibold text-orange-700 hover:text-orange-900 dark:text-orange-300"
-                  onClick={onMarkAllNotificationsRead}
+                  className="text-xs font-semibold text-slate-500 hover:text-ink"
+                  onClick={() => setShowNotifications(false)}
                 >
-                  {t('notifications.markAllRead')}
+                  {t('auth.cancel')}
                 </button>
-              )}
-              <button
-                type="button"
-                className="text-xs font-semibold text-slate-500 hover:text-ink"
-                onClick={() => setShowNotifications(false)}
-              >
-                {t('auth.cancel')}
-              </button>
+              </div>
             </div>
+            <ScrollArea className="h-80">
+              {notifications.length === 0 ? (
+                <p className="px-4 py-6 text-center text-sm text-slate-500">
+                  {t('notifications.empty')}
+                </p>
+              ) : (
+                notifications.map((notification) => (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    className={`block w-full border-b border-border px-4 py-3 text-left text-sm last:border-0 hover:bg-muted ${
+                      !notification.readAt
+                        ? 'bg-amber-50/60 dark:bg-amber-950/20'
+                        : ''
+                    }`}
+                    onClick={() => {
+                      setShowNotifications(false);
+                      onOpenNotification(notification);
+                    }}
+                  >
+                    <span className="block font-medium text-ink">
+                      {notification.message}
+                    </span>
+                    <span className="mt-1 block text-xs text-slate-500">
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </span>
+                  </button>
+                ))
+              )}
+            </ScrollArea>
           </div>
-          <div className="max-h-80 overflow-y-auto">
-            {notifications.length === 0 ? (
-              <p className="px-4 py-6 text-center text-sm text-slate-500">
-                {t('notifications.empty')}
-              </p>
-            ) : (
-              notifications.map((notification) => (
-                <button
-                  key={notification.id}
-                  type="button"
-                  className={`block w-full border-b border-border px-4 py-3 text-left text-sm last:border-0 hover:bg-muted ${
-                    !notification.readAt
-                      ? 'bg-amber-50/60 dark:bg-amber-950/20'
-                      : ''
-                  }`}
-                  onClick={() => {
-                    setShowNotifications(false);
-                    onOpenNotification(notification);
-                  }}
-                >
-                  <span className="block font-medium text-ink">
-                    {notification.message}
-                  </span>
-                  <span className="mt-1 block text-xs text-slate-500">
-                    {new Date(notification.createdAt).toLocaleString()}
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
+        </>
       )}
 
       {showConfirm && (

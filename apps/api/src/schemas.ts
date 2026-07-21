@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { AdjustmentType, parseVietnamMobilePhone } from '@ff-restaurent/shared';
+import {
+  AdjustmentAllocation,
+  AdjustmentType,
+  parseVietnamMobilePhone,
+} from '@ff-restaurent/shared';
 
 export const vietnamMobilePhoneSchema = z
   .union([z.string().max(40), z.null()])
@@ -123,9 +127,18 @@ const httpsUrlSchema = z
   .string()
   .trim()
   .url()
-  .refine((value) => new URL(value).protocol === 'https:', {
-    message: 'URL must use HTTPS',
-  })
+  .refine(
+    (value) => {
+      try {
+        return new URL(value).protocol === 'https:';
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: 'URL must use HTTPS',
+    },
+  )
   .transform(normalizePlatformUrl);
 
 const optionalHttpsUrlSchema = z
@@ -249,6 +262,13 @@ const restaurantObjectSchema = z.object({
     .optional(),
   isRecommended: z.boolean().optional(),
   isFavorite: z.boolean().optional(),
+  collectionIds: z
+    .array(z.string().min(1))
+    .max(100)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Collection selections must be unique',
+    })
+    .optional(),
 });
 
 type RestaurantCatalogInput = {
@@ -334,7 +354,7 @@ export const catalogQuerySchema = z.object({
     .enum(['name-asc', 'name-desc', 'created-desc', 'created-asc'])
     .default('name-asc'),
   type: z.string().trim().max(80).optional(),
-  provinceCode: z.string().trim().max(20).optional(),
+  provinceCode: z.string().trim().max(64).optional(),
   visibility: z.enum(['all', 'owned', 'public', 'shared']).default('all'),
   systemType: z.enum(['FAVORITES', 'RECOMMENDED', 'custom']).optional(),
 });
@@ -342,12 +362,14 @@ export const catalogQuerySchema = z.object({
 export const memberQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   cursor: z.string().min(1).optional(),
+  direction: z.enum(['forward', 'backward']).default('forward'),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   sort: z.enum(['name-asc', 'name-desc', 'created-desc']).default('name-asc'),
 });
 
 export const billListQuerySchema = z.object({
   cursor: z.string().min(1).optional(),
+  direction: z.enum(['forward', 'backward']).default('forward'),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   sort: z
     .enum(['created-desc', 'created-asc', 'total-desc', 'total-asc'])
@@ -365,6 +387,7 @@ export const billListQuerySchema = z.object({
 export const restaurantListQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   cursor: z.string().min(1).optional(),
+  direction: z.enum(['forward', 'backward']).default('forward'),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   sort: z
     .enum(['name-asc', 'name-desc', 'created-desc', 'created-asc'])
@@ -399,6 +422,15 @@ export const collectionUpdateSchema = collectionSchema.partial();
 
 export const collectionShareSchema = z.object({
   userId: z.string().min(1),
+});
+
+export const restaurantCollectionsSchema = z.object({
+  collectionIds: z
+    .array(z.string().min(1))
+    .max(100)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Collection selections must be unique',
+    }),
 });
 
 export const participantGroupSchema = z
@@ -467,8 +499,10 @@ export const billSchema = z.object({
       message: 'Payment URL must use HTTPS',
     })
     .optional(),
+  paymentQrImageId: z.string().min(1).nullable().optional(),
   discounts: z.array(discountSchema).optional(),
   vouchers: z.array(voucherSchema).optional(),
+  adjustmentAllocation: z.nativeEnum(AdjustmentAllocation).optional(),
   participants: z.array(participantSchema).min(2),
   allowDuplicate: z.boolean().default(false),
 });

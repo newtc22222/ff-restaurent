@@ -36,6 +36,7 @@ export default function ThemeToggle({
     <Dropdown
       label={label}
       value={theme}
+      className="w-36"
       icon={<Icon size={14} />}
       options={options}
       variant="header"

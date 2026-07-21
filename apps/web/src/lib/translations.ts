@@ -15,6 +15,7 @@ export const translations = {
     'nav.bills': 'Hóa đơn',
     'nav.restaurants': 'Nhà hàng',
     'nav.collections': 'Bộ sưu tập',
+    'nav.participantGroups': 'Nhóm thành viên',
     'nav.stats': 'Thống kê',
     'nav.notifications': 'Thông báo',
     'nav.menu': 'Tùy chọn',
@@ -105,6 +106,20 @@ export const translations = {
     'bills.qrCode': 'Mã QR thanh toán',
     'bills.uploadQr': 'Tải lên mã QR',
 
+    'bills.layoutCard': 'Dạng thẻ',
+    'bills.layoutList': 'Dạng danh sách',
+    'bills.layoutTable': 'Dạng bảng',
+    'bills.status': 'Trạng thái',
+    'bills.advancedFilters': 'Bộ lọc nâng cao',
+    'bills.chooseDate': 'Chọn ngày',
+    'bills.rowsPerPage': 'Số dòng mỗi trang',
+    'bills.rows': 'dòng',
+    'bills.restaurant': 'Nhà hàng / Quán ăn',
+    'bills.date': 'Ngày',
+    'bills.createdBy': 'Người tạo',
+    'bills.paymentProgress': 'Tiến độ thanh toán',
+    'bills.total': 'Tổng cộng',
+
     // Bill activity
     'activity.title': 'Lịch sử hoạt động',
     'activity.subtitle': 'Các thay đổi và hành động liên quan đến hóa đơn này.',
@@ -146,6 +161,27 @@ export const translations = {
     'groups.apply': 'Áp dụng nhóm',
     'groups.name': 'Tên nhóm mới',
     'groups.save': 'Lưu nhóm hiện tại',
+    'groups.subtitle': 'Lưu các nhóm thường dùng để tạo hóa đơn nhanh hơn.',
+    'groups.create': 'Thêm nhóm',
+    'groups.edit': 'Sửa nhóm',
+    'groups.formHint': 'Mỗi nhóm cần ít nhất hai thành viên.',
+    'groups.members': 'thành viên',
+    'groups.chooseMembers': 'Chọn thành viên',
+    'groups.membersSelected': 'thành viên đã chọn',
+    'groups.search': 'Tìm nhóm...',
+    'groups.empty': 'Chưa có nhóm thành viên',
+    'groups.emptyHint': 'Tạo nhóm để áp dụng nhanh khi lập hóa đơn.',
+    'groups.updated': 'Đã cập nhật nhóm thành viên.',
+    'groups.delete': 'Xóa nhóm thành viên',
+    'groups.confirmDelete':
+      'Xóa nhóm này? Hành động này không ảnh hưởng các hóa đơn hiện có.',
+    'createBill.adjustmentAllocation': 'Phân bổ giảm giá và voucher',
+    'createBill.allocationProportional': 'Theo tỷ lệ hóa đơn',
+    'createBill.allocationProportionalHint':
+      'Theo tỷ lệ chi phí gốc của từng thành viên.',
+    'createBill.allocationEqual': 'Chia đều',
+    'createBill.allocationEqualHint':
+      'Mỗi thành viên nhận phần giảm giá bằng nhau.',
     'duplicate.title': 'Phát hiện hóa đơn trùng',
     'duplicate.message':
       'Một hóa đơn đang hoạt động có cùng địa điểm, chi phí, điều chỉnh và thành viên. Bạn vẫn muốn tạo bản trùng?',
@@ -153,6 +189,7 @@ export const translations = {
     // Restaurants
     'restaurants.title': 'Nhà hàng & quán ăn',
     'restaurants.subtitle': 'Loại hình do người dùng tự định nghĩa.',
+    'restaurants.filters': 'Bộ lọc',
     'restaurants.addEntry': 'Thêm địa điểm',
     'restaurants.addEntrySubtitle':
       'SOUS_CHEF và HEAD_CHEF có thể quản lý danh sách.',
@@ -173,6 +210,7 @@ export const translations = {
     'restaurants.filterDiningArea': 'Khu vực ăn uống',
     'restaurants.searchDiningArea': 'Tìm khu vực...',
     'restaurants.filterCollection': 'Bộ sưu tập',
+    'restaurants.collections': 'Bộ sưu tập',
     'restaurants.searchCollection': 'Tìm bộ sưu tập...',
     'restaurants.filterPlatform': 'Nền tảng',
 
@@ -453,6 +491,22 @@ export const translations = {
     'profile.notificationPreferencesDescription':
       'Kiểm soát những lời nhắc thanh toán bạn nhận được.',
     'profile.paymentReminders': 'Nhận lời nhắc thanh toán',
+    'profile.avatar': 'Ảnh đại diện',
+    'profile.qrTitle': 'Ảnh QR thanh toán',
+    'profile.qrDescription': 'Quản lý tối đa năm ảnh QR để gắn vào hóa đơn.',
+    'profile.qrAdd': 'Thêm QR',
+    'profile.qrEmpty': 'Chưa có ảnh QR thanh toán.',
+    'profile.qrEdit': 'Sửa QR thanh toán',
+    'profile.qrAddTitle': 'Thêm QR thanh toán',
+    'profile.qrLabel': 'Nhãn',
+    'profile.qrImage': 'Ảnh QR',
+    'profile.qrRemove': 'Xóa QR thanh toán',
+    'profile.qrRemoveHint': 'Hóa đơn cũ vẫn giữ ảnh QR đã đính kèm.',
+    'media.choose': 'Chọn ảnh',
+    'media.replace': 'Thay ảnh',
+    'media.remove': 'Xóa',
+    'media.formats': 'JPEG, PNG hoặc WebP',
+    'bills.paymentQr': 'Ảnh QR thanh toán',
 
     // Theme
     'theme.light': 'Sáng',
@@ -470,6 +524,9 @@ export const translations = {
     'common.yes': 'Có',
     'common.no': 'Không',
     'common.nextPage': 'Trang tiếp theo',
+    'common.previousPage': 'Trang trước',
+    'common.rows': 'dòng',
+    'common.rowsPerPage': 'Số dòng mỗi trang',
   },
   en: {
     'language.english': 'English',
@@ -486,6 +543,7 @@ export const translations = {
     'nav.bills': 'Bills',
     'nav.restaurants': 'Restaurants',
     'nav.collections': 'Collections',
+    'nav.participantGroups': 'Participant groups',
     'nav.stats': 'Stats',
     'nav.notifications': 'Notifications',
     'nav.menu': 'Options',
@@ -576,6 +634,20 @@ export const translations = {
     'bills.qrCode': 'Payment QR Code',
     'bills.uploadQr': 'Upload QR',
 
+    'bills.layoutCard': 'Card view',
+    'bills.layoutList': 'List view',
+    'bills.layoutTable': 'Table view',
+    'bills.status': 'Status',
+    'bills.advancedFilters': 'Advanced filters',
+    'bills.chooseDate': 'Choose a date',
+    'bills.rowsPerPage': 'Rows per page',
+    'bills.rows': 'rows',
+    'bills.restaurant': 'Restaurant / Eatery',
+    'bills.date': 'Date',
+    'bills.createdBy': 'Created by',
+    'bills.paymentProgress': 'Payment progress',
+    'bills.total': 'Total',
+
     // Bill activity
     'activity.title': 'Activity history',
     'activity.subtitle': 'Changes and actions related to this bill.',
@@ -617,6 +689,28 @@ export const translations = {
     'groups.apply': 'Apply group',
     'groups.name': 'New group name',
     'groups.save': 'Save current group',
+    'groups.subtitle': 'Save frequently used groups to create bills faster.',
+    'groups.create': 'Add group',
+    'groups.edit': 'Edit group',
+    'groups.formHint': 'Each group requires at least two members.',
+    'groups.members': 'members',
+    'groups.chooseMembers': 'Choose members',
+    'groups.membersSelected': 'members selected',
+    'groups.search': 'Search groups...',
+    'groups.empty': 'No participant groups yet',
+    'groups.emptyHint':
+      'Create a group to apply it quickly while making a bill.',
+    'groups.updated': 'Participant group updated.',
+    'groups.delete': 'Delete participant group',
+    'groups.confirmDelete':
+      'Delete this group? Existing bills will not be affected.',
+    'createBill.adjustmentAllocation': 'Discount and voucher allocation',
+    'createBill.allocationProportional': 'By bill share',
+    'createBill.allocationProportionalHint':
+      'Use each member’s percentage of the base cost.',
+    'createBill.allocationEqual': 'Split equally',
+    'createBill.allocationEqualHint':
+      'Give every member an equal adjustment share.',
     'duplicate.title': 'Duplicate bill detected',
     'duplicate.message':
       'An active bill has the same restaurant, costs, adjustments, and participants. Create the duplicate anyway?',
@@ -624,6 +718,7 @@ export const translations = {
     // Restaurants
     'restaurants.title': 'Restaurants & eateries',
     'restaurants.subtitle': 'The type label is user-defined per entry.',
+    'restaurants.filters': 'Filters',
     'restaurants.addEntry': 'Add entry',
     'restaurants.addEntrySubtitle':
       'SOUS_CHEF and HEAD_CHEF can maintain the directory.',
@@ -644,6 +739,7 @@ export const translations = {
     'restaurants.filterDiningArea': 'Dining Area',
     'restaurants.searchDiningArea': 'Search Dining Areas...',
     'restaurants.filterCollection': 'Collection',
+    'restaurants.collections': 'Collections',
     'restaurants.searchCollection': 'Search Collections...',
     'restaurants.filterPlatform': 'Platform',
 
@@ -793,6 +889,22 @@ export const translations = {
     'profile.notificationPreferencesDescription':
       'Control the payment reminders you receive.',
     'profile.paymentReminders': 'Receive payment reminders',
+    'profile.avatar': 'Avatar',
+    'profile.qrTitle': 'Payment QR images',
+    'profile.qrDescription': 'Manage up to five QR images for bills.',
+    'profile.qrAdd': 'Add QR',
+    'profile.qrEmpty': 'No payment QR images yet.',
+    'profile.qrEdit': 'Edit payment QR',
+    'profile.qrAddTitle': 'Add payment QR',
+    'profile.qrLabel': 'Label',
+    'profile.qrImage': 'QR image',
+    'profile.qrRemove': 'Remove payment QR',
+    'profile.qrRemoveHint': 'Historical bills keep their attached QR image.',
+    'media.choose': 'Choose image',
+    'media.replace': 'Replace',
+    'media.remove': 'Remove',
+    'media.formats': 'JPEG, PNG or WebP',
+    'bills.paymentQr': 'Payment QR image',
 
     // Validation
     'validation.vietnamMobilePhone':
@@ -948,6 +1060,9 @@ export const translations = {
     'common.yes': 'Yes',
     'common.no': 'No',
     'common.nextPage': 'Next page',
+    'common.previousPage': 'Previous page',
+    'common.rows': 'rows',
+    'common.rowsPerPage': 'Rows per page',
   },
 } as const;
 

@@ -15,6 +15,8 @@ import { useAppContext } from '../app/providers/app-context';
 import { useMutation } from '../hooks/useMutation';
 import EmptyState from '../components/ui/EmptyState';
 import SectionTitle from '../components/ui/SectionTitle';
+import Dropdown from '../components/ui/Dropdown';
+import Modal from '../components/ui/Modal';
 
 const collectionIcon = (collection: Collection) =>
   collection.systemType === 'FAVORITES'
@@ -36,6 +38,7 @@ export default function CollectionsPage() {
     description: '',
     isPublic: false,
   });
+  const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     searchParamsRef.current = searchParams;
@@ -57,8 +60,10 @@ export default function CollectionsPage() {
       {
         fallback: t('toast.collectionCreateFailed'),
         success: t('toast.collectionCreated'),
-        onSuccess: () =>
-          setForm({ name: '', description: '', isPublic: false }),
+        onSuccess: () => {
+          setCreateOpen(false);
+          setForm({ name: '', description: '', isPublic: false });
+        },
       },
     );
   };
@@ -67,12 +72,21 @@ export default function CollectionsPage() {
   const search = searchParams.get('search') ?? '';
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
+    <div className="space-y-4">
       <section className="space-y-4">
-        <SectionTitle
-          title={t('collections.title')}
-          subtitle={t('collections.subtitle')}
-        />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionTitle
+            title={t('collections.title')}
+            subtitle={t('collections.subtitle')}
+          />
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus size={14} /> {t('collections.create')}
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           <input
             className="field h-9 min-w-56 flex-1 py-0 text-sm"
@@ -82,17 +96,19 @@ export default function CollectionsPage() {
             placeholder={t('collections.search')}
             aria-label={t('collections.search')}
           />
-          <select
-            className="field h-9 py-0 text-sm"
+          <Dropdown
+            label={t('collections.visibility')}
             value={visibility}
-            onChange={(event) => setQuery('visibility', event.target.value)}
-            aria-label={t('collections.visibility')}
-          >
-            <option value="all">{t('collections.all')}</option>
-            <option value="owned">{t('collections.owned')}</option>
-            <option value="shared">{t('collections.shared')}</option>
-            <option value="public">{t('collections.public')}</option>
-          </select>
+            onChange={(value) => setQuery('visibility', value)}
+            ariaLabel={t('collections.visibility')}
+            options={[
+              { value: 'all', label: t('collections.all') },
+              { value: 'owned', label: t('collections.owned') },
+              { value: 'shared', label: t('collections.shared') },
+              { value: 'public', label: t('collections.public') },
+            ]}
+            fullWidth={false}
+          />
         </div>
 
         {page.items.length === 0 && (
@@ -159,54 +175,62 @@ export default function CollectionsPage() {
         )}
       </section>
 
-      <form className="panel h-fit space-y-4 p-4" onSubmit={submit}>
-        <SectionTitle
-          title={t('collections.create')}
-          subtitle={t('collections.createHint')}
-        />
-        <label className="block space-y-1">
-          <span className="label">{t('collections.name')}</span>
-          <input
-            className="field w-full"
-            value={form.name}
-            maxLength={100}
-            required
-            onChange={(event) =>
-              setForm((current) => ({ ...current, name: event.target.value }))
-            }
-          />
-        </label>
-        <label className="block space-y-1">
-          <span className="label">{t('collections.description')}</span>
-          <textarea
-            className="field min-h-24 w-full resize-y py-2"
-            value={form.description}
-            maxLength={500}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                description: event.target.value,
-              }))
-            }
-          />
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.isPublic}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                isPublic: event.target.checked,
-              }))
-            }
-          />
-          {t('collections.makePublic')}
-        </label>
-        <button className="btn btn-primary w-full" disabled={!form.name.trim()}>
-          <Plus size={14} /> {t('collections.create')}
-        </button>
-      </form>
+      <Modal
+        open={createOpen}
+        title={t('collections.create')}
+        onClose={() => setCreateOpen(false)}
+      >
+        <form className="space-y-4" onSubmit={submit}>
+          <p className="text-sm text-slate-500">
+            {t('collections.createHint')}
+          </p>
+          <label className="block space-y-1">
+            <span className="label">{t('collections.name')}</span>
+            <input
+              className="field w-full"
+              value={form.name}
+              maxLength={100}
+              required
+              onChange={(event) =>
+                setForm((current) => ({ ...current, name: event.target.value }))
+              }
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="label">{t('collections.description')}</span>
+            <textarea
+              className="field min-h-24 w-full resize-y py-2"
+              value={form.description}
+              maxLength={500}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.isPublic}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  isPublic: event.target.checked,
+                }))
+              }
+            />
+            {t('collections.makePublic')}
+          </label>
+          <button
+            className="btn btn-primary w-full"
+            disabled={!form.name.trim()}
+          >
+            <Plus size={14} /> {t('collections.create')}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

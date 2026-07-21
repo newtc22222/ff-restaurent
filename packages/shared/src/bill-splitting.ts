@@ -1,4 +1,9 @@
-import { AdjustmentType, BillSplitInput, BillSplitResult } from './types.js';
+import {
+  AdjustmentAllocation,
+  AdjustmentType,
+  BillSplitInput,
+  BillSplitResult,
+} from './types.js';
 
 const assertAmount = (label: string, value: number) => {
   if (!Number.isInteger(value) || value < 0) {
@@ -13,6 +18,40 @@ const splitAmount = (amount: number, count: number): number[] => {
     { length: count },
     (_, index) => base + (index < remainder ? 1 : 0),
   );
+};
+
+const splitProportionally = (
+  amount: number,
+  weights: number[],
+  memberIds: string[],
+): number[] => {
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  if (totalWeight <= 0) return splitAmount(amount, weights.length);
+
+  const amountBigInt = BigInt(amount);
+  const totalWeightBigInt = BigInt(totalWeight);
+  const portions = weights.map((weight, index) => {
+    const numerator = amountBigInt * BigInt(weight);
+    return {
+      index,
+      memberId: memberIds[index] ?? '',
+      value: Number(numerator / totalWeightBigInt),
+      remainder: numerator % totalWeightBigInt,
+    };
+  });
+  let remaining =
+    amount - portions.reduce((sum, portion) => sum + portion.value, 0);
+  const remainderOrder = [...portions].sort((left, right) => {
+    if (left.remainder !== right.remainder)
+      return left.remainder > right.remainder ? -1 : 1;
+    return left.memberId.localeCompare(right.memberId);
+  });
+  for (const portion of remainderOrder) {
+    if (remaining <= 0) break;
+    portions[portion.index]!.value += 1;
+    remaining -= 1;
+  }
+  return portions.map(({ value }) => value);
 };
 
 const normalizeParticipants = (input: BillSplitInput): string[] => {
@@ -78,7 +117,11 @@ export const calculateBillSplit = (input: BillSplitInput): BillSplitResult => {
     return sum + voucher.value;
   }, 0);
   const totalAdjustment = totalDiscount + totalVoucher;
-  const adjustmentShares = splitAmount(totalAdjustment, count);
+  const adjustmentShares =
+    (input.adjustmentAllocation ?? AdjustmentAllocation.PROPORTIONAL) ===
+    AdjustmentAllocation.EQUAL
+      ? splitAmount(totalAdjustment, count)
+      : splitProportionally(totalAdjustment, originShares, orderedIds);
   const grossTotal = input.baseCost + input.vat + input.shippingFee;
   const totalCost = Math.max(0, grossTotal - totalAdjustment);
 

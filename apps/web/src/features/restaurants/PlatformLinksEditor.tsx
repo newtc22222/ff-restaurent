@@ -1,7 +1,7 @@
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Link2, Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '../../app/providers/i18n';
 import type { RestaurantPlatform, RestaurantPlatformLink } from '../../lib/api';
-import Dropdown from '../ui/Dropdown';
+import Dropdown from '../../components/ui/Dropdown';
 
 const platforms: RestaurantPlatform[] = [
   'GRAB',
@@ -75,9 +75,10 @@ export default function PlatformLinksEditor({
   };
 
   return (
-    <fieldset className="space-y-2">
+    <fieldset className="field-group">
       <div className="flex items-center justify-between gap-3">
-        <legend className="label">
+        <legend className="field-group-title">
+          <Link2 size={13} aria-hidden="true" />
           {locale === 'vi' ? 'Liên kết nền tảng' : 'Platform links'}
         </legend>
         <button
@@ -94,7 +95,7 @@ export default function PlatformLinksEditor({
       {links.map((link, index) => (
         <div
           key={link.id ?? index}
-          className="space-y-2 rounded-lg border border-border bg-muted/30 p-3"
+          className="space-y-2 rounded-lg border border-border bg-surface p-3"
         >
           <div className="flex gap-2">
             <Dropdown
@@ -117,25 +118,25 @@ export default function PlatformLinksEditor({
               <button
                 type="button"
                 aria-label={`${locale === 'vi' ? 'Chuyển lên' : 'Move up'} ${index + 1}`}
-                className="btn btn-soft h-10 w-9 p-0"
+                className="btn btn-soft h-10 w-12 p-0"
                 disabled={index === 0}
                 onClick={() => move(index, -1)}
               >
-                <ArrowUp size={13} />
+                <ChevronUp size={13} />
               </button>
               <button
                 type="button"
                 aria-label={`${locale === 'vi' ? 'Chuyển xuống' : 'Move down'} ${index + 1}`}
-                className="btn btn-soft h-10 w-9 p-0"
+                className="btn btn-soft h-10 p-0"
                 disabled={index === links.length - 1}
                 onClick={() => move(index, 1)}
               >
-                <ArrowDown size={13} />
+                <ChevronDown size={13} />
               </button>
               <button
                 type="button"
                 aria-label={`${locale === 'vi' ? 'Xóa liên kết' : 'Remove link'} ${index + 1}`}
-                className="btn btn-soft h-10 w-9 p-0 text-red-500"
+                className="btn btn-soft h-10 p-0 text-red-500"
                 onClick={() =>
                   onChange(links.filter((_, current) => current !== index))
                 }

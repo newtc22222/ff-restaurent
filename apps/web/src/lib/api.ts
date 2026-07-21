@@ -40,7 +40,22 @@ export type DiningArea = {
 
 export type CatalogPage<T> = {
   items: T[];
-  pageInfo: { endCursor: string | null; hasNextPage: boolean };
+  pageInfo: {
+    startCursor?: string | null;
+    endCursor: string | null;
+    hasPreviousPage?: boolean;
+    hasNextPage: boolean;
+  };
+};
+
+export type BillPage = {
+  items: Bill[];
+  pageInfo: {
+    startCursor: string | null;
+    endCursor: string | null;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+  };
 };
 
 export type CollectionSystemType = 'FAVORITES' | 'RECOMMENDED' | null;
@@ -74,15 +89,38 @@ export type RestaurantDirectoryData = CatalogPage<RestaurantEntry> & {
   collections: Collection[];
 };
 
+export type RestaurantCollectionSummary = Pick<
+  Collection,
+  'id' | 'name' | 'description' | 'isPublic' | 'systemType' | 'ownerId'
+>;
+
+export type RestaurantDetailData = {
+  restaurant: RestaurantEntry & { collections: RestaurantCollectionSummary[] };
+  feedback: RestaurantFeedbackPage;
+  collections: Collection[];
+};
+
 export type User = {
   id: string;
   username: string;
   phone?: string | null;
   name: string;
+  avatarUrl?: string | null;
   chefRole: ChefRole;
   systemRole: SystemRole;
   roles: string[];
   paymentRemindersEnabled?: boolean;
+};
+
+export type PaymentQrImage = {
+  id: string;
+  label: string;
+  mimeType: string;
+  sizeBytes: number;
+  status: EntryStatus;
+  imageUrl: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ParticipantGroup = {
@@ -160,7 +198,7 @@ export type VietnamAddress = Pick<
 >;
 
 export type AddressDirectoryResult = {
-  items: { code: string; name: string }[];
+  items: { code: string; name: string; aliases?: string[] }[];
   stale: boolean;
 };
 
@@ -187,8 +225,14 @@ export type Bill = {
   totalCost: number;
   discounts: { type: 'FIXED' | 'PERCENTAGE'; value: number; label?: string }[];
   vouchers: { code: string; value: number }[];
+  adjustmentAllocation: 'EQUAL' | 'PROPORTIONAL';
   qrCodePath?: string | null;
   paymentUrl?: string | null;
+  paymentQrImageId?: string | null;
+  paymentQrImage?: Pick<
+    PaymentQrImage,
+    'id' | 'label' | 'status' | 'imageUrl'
+  > | null;
   status: EntryStatus;
   createdAt: string;
   updatedAt: string;
@@ -272,10 +316,14 @@ export class ApiClient {
   }
 
   async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const isFormData =
+      typeof FormData !== 'undefined' && init.body instanceof FormData;
     const response = await fetch(`${API_URL}${path}`, {
       ...init,
       headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(init.body && !isFormData
+          ? { 'Content-Type': 'application/json' }
+          : {}),
         ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
         ...init.headers,
       },

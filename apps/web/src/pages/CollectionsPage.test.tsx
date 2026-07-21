@@ -144,12 +144,16 @@ describe('Collection discovery', () => {
     );
 
     expect(await screen.findByText('Team lunches')).toBeTruthy();
+    expect(screen.getByLabelText('Visibility')).toBeTruthy();
     expect(screen.getByText('Shared by me')).toBeTruthy();
     expect(screen.getByText('3 places')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Create Collection' }));
     fireEvent.change(screen.getByLabelText('Name'), {
       target: { value: 'Client dinner' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Create Collection' }));
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Create Collection' }).at(-1)!,
+    );
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({ intent: 'create-collection' }),
       expect.objectContaining({ success: 'Collection created.' }),
@@ -171,11 +175,26 @@ describe('Collection discovery', () => {
 
     currentUser = owner;
     renderPage({ ...sharedData, shares: emptyPage }, CollectionDetailPage);
-    expect(await screen.findByRole('button', { name: 'Edit' })).toBeTruthy();
+    const edit = await screen.findByRole('button', { name: 'Edit' });
     expect(screen.getByText('Sharing')).toBeTruthy();
     expect(
       (screen.getByRole('button', { name: 'Add' }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
+    fireEvent.click(edit);
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+    cleanup();
+
+    renderPage(
+      {
+        ...sharedData,
+        collection: { ...collection, isPublic: true },
+        shares: emptyPage,
+      },
+      CollectionDetailPage,
+    );
+    expect(await screen.findByText('Bếp Việt')).toBeTruthy();
+    expect(screen.queryByText('Sharing')).toBeNull();
   });
 });

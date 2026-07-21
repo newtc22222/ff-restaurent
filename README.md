@@ -58,9 +58,25 @@ VITE_API_URL=http://localhost:4000
 ```bash
 npm install
 npm run build -w @ff-restaurent/shared
+
+# Reset local database
+npx prisma migrate reset --schema apps/api/prisma/schema.prisma --force
+
+# Run migrate database
 npm run prisma:migrate -w @ff-restaurent/api
 npm run prisma:seed -w @ff-restaurent/api
 ```
+
+The demo seed also loads the popular Vietnamese cuisine catalog. To add only
+that catalog without resetting application data, run:
+
+```bash
+npm run prisma:cuisines:seed -w @ff-restaurent/api
+```
+
+This command is idempotent: it inserts missing normalized cuisine names and
+does not update or delete existing catalog entries. API container deployments
+run it automatically after Prisma migrations and before the API starts.
 
 Run the API and web app in separate terminals:
 
@@ -73,6 +89,33 @@ npm run dev -w @ff-restaurent/web
 ```
 
 Open the same local URLs listed above.
+
+### Supabase Storage setup
+
+Image uploads are mediated by the API; the Supabase service-role key must never
+be exposed through a `VITE_*` variable or committed to Git.
+
+Create these buckets in the Supabase dashboard:
+
+- `ff-public-images`: public, allowed MIME types `image/jpeg`, `image/png`, and
+  `image/webp`, maximum file size 5 MiB. It stores user avatars and restaurant
+  logos/banners.
+- `ff-payment-qr`: private, the same MIME allowlist, maximum file size 2 MiB.
+  The API serves these objects through short-lived signed URLs.
+
+Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PUBLIC_BUCKET`,
+`SUPABASE_QR_BUCKET`, and optionally `SUPABASE_SIGNED_URL_TTL_SECONDS` (default
+`900`). The backend validates file signatures in addition to the bucket rules.
+Without these variables the rest of the app remains available, while media
+endpoints return `STORAGE_NOT_CONFIGURED`.
+
+### Vietnam address directory
+
+The API bundles the complete 34-province, 3,321-ward directory effective July
+1, 2025. Address pickers use the authenticated `/address/provinces` and
+`/address/provinces/:provinceCode/wards` endpoints without contacting an
+external province service. Existing numeric address snapshots are preserved
+and remapped by province and ward name when edited.
 
 ## Verification
 

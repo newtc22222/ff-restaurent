@@ -166,13 +166,11 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
 }) => {
   await login(page, 'e2e-sous');
   await page.getByRole('link', { name: 'Restaurants' }).click();
+  await page.getByRole('button', { name: 'Add entry', exact: true }).click();
   await page.getByLabel('Name').fill('Created E2E Restaurant');
   await page.getByRole('button', { name: 'Enter address manually' }).click();
   await page.getByLabel('Address').fill('2 Browser Street');
   await page.getByLabel('Phone (optional)').fill('0901234567');
-  await page
-    .getByLabel('Banner image URL')
-    .fill('https://images.example.test/e2e-banner.jpg');
   await page.getByRole('button', { name: 'Add link' }).click();
   await page
     .getByRole('textbox', { name: 'Link URL 1' })
@@ -182,7 +180,9 @@ test('Sous Chef creates a restaurant and reconciled bill and is denied admin', a
     .getByRole('searchbox', { name: 'Search cuisines...' })
     .fill('Vietnamese');
   await page.getByRole('option', { name: /Vietnamese/ }).click();
-  await page.keyboard.press('Escape');
+  await page
+    .getByTestId('dropdown-backdrop')
+    .click({ position: { x: 1, y: 1 } });
   const restaurantResponsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith('/restaurants') &&
@@ -246,7 +246,8 @@ test('server-backed directory filters survive direct links and reloads', async (
   await page
     .getByRole('searchbox', { name: 'Search restaurants without accents...' })
     .fill('existing e2e');
-  await page.getByLabel('Sort restaurants').selectOption('name-desc');
+  await page.getByRole('button', { name: 'Sort restaurants' }).click();
+  await page.getByRole('option', { name: 'Name Z–A' }).click();
   await expect(page).toHaveURL(/search=existing(?:\+|%20)e2e/);
   await expect(page).toHaveURL(/sort=name-desc/);
   await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
@@ -257,16 +258,23 @@ test('server-backed directory filters survive direct links and reloads', async (
       name: 'Search restaurants without accents...',
     }),
   ).toHaveValue('existing e2e');
-  await expect(page.getByLabel('Sort restaurants')).toHaveValue('name-desc');
+  await expect(
+    page.getByRole('button', { name: 'Sort restaurants' }),
+  ).toContainText('Name Z–A');
 
   await page.getByRole('link', { name: 'Bills' }).click();
-  await page.getByLabel('Sort bills').selectOption('total-desc');
-  await page.getByLabel('From').fill('2026-01-01');
+  await page.getByRole('button', { name: 'Sort bills' }).click();
+  await page.getByRole('option', { name: 'Highest total' }).click();
+  await page.getByRole('button', { name: 'Advanced filters' }).click();
+  await page.getByLabel('From').fill('01/01/2026');
+  await page.getByLabel('From').press('Tab');
   await expect(page).toHaveURL(/sort=total-desc/);
   await expect(page).toHaveURL(/from=2026-01-01/);
   await page.reload();
-  await expect(page.getByLabel('Sort bills')).toHaveValue('total-desc');
-  await expect(page.getByLabel('From')).toHaveValue('2026-01-01');
+  await expect(page.getByRole('button', { name: 'Sort bills' })).toContainText(
+    'Highest total',
+  );
+  await expect(page.getByLabel('From')).toHaveValue('01/01/2026');
 });
 
 test('member discovers, manages, shares, and reviews Collection places', async ({
@@ -368,13 +376,11 @@ test('member discovers, manages, shares, and reviews Collection places', async (
   await expect(
     feedback.getByRole('article').getByText('Reliable team lunch.'),
   ).toBeVisible();
-  const favoriteResponse = page.waitForResponse(
-    (response) =>
-      response.url().endsWith('/favorite') &&
-      response.request().method() === 'POST',
+  const favoriteResponse = await page.request.post(
+    `${apiUrl}/restaurants/${restaurant.id}/favorite`,
+    { headers: { authorization: `Bearer ${customerToken}` } },
   );
-  await page.getByRole('button', { name: 'Favorite', exact: true }).click();
-  expect((await favoriteResponse).status()).toBe(200);
+  expect(favoriteResponse.status()).toBe(200);
 
   await page.getByRole('link', { name: 'Collections' }).click();
   await expect(page).toHaveURL(/\/collections$/);
@@ -383,6 +389,9 @@ test('member discovers, manages, shares, and reviews Collection places', async (
   ).toBeVisible();
   await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
   await expect(page.getByText('Recommended', { exact: true })).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Create Collection', exact: true })
+    .click();
   await page.getByLabel('Name').fill('E2E Team Spots');
   await page.getByLabel('Description').fill('Shared browser journey');
   const createResponse = page.waitForResponse(
@@ -390,7 +399,10 @@ test('member discovers, manages, shares, and reviews Collection places', async (
       response.url().endsWith('/collections') &&
       response.request().method() === 'POST',
   );
-  await page.getByRole('button', { name: 'Create Collection' }).click();
+  await page
+    .getByRole('dialog', { name: 'Create Collection' })
+    .getByRole('button', { name: 'Create Collection' })
+    .click();
   expect((await createResponse).status()).toBe(201);
   await page.getByRole('button', { name: /E2E Team Spots/ }).click();
 
@@ -422,7 +434,8 @@ test('member discovers, manages, shares, and reviews Collection places', async (
   await expect(
     page.getByRole('heading', { name: 'Collections', exact: true }),
   ).toBeVisible();
-  await page.getByLabel('Visibility').selectOption('shared');
+  await page.getByLabel('Visibility').click();
+  await page.getByRole('option', { name: 'Shared with me' }).click();
   await expect(page).toHaveURL(/visibility=shared/);
   await page.getByRole('button', { name: /E2E Team Spots/ }).click();
   await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();
