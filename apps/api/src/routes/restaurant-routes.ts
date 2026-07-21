@@ -8,7 +8,7 @@ import {
 import { prisma } from '../prisma.js';
 import { isHeadChef } from '../roles.js';
 import {
-  publicRestaurantSelect,
+  buildPublicRestaurantSelect,
   serializePublicRestaurant,
 } from '../restaurant-contract.js';
 import {
@@ -205,7 +205,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
         orderBy,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
         take: backward ? -(query.limit + 1) : query.limit + 1,
-        select: publicRestaurantSelect,
+        select: buildPublicRestaurantSelect(request.currentUser.id),
       });
       const page = cursorPageResult(
         restaurants,
@@ -257,7 +257,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
             ? undefined
             : EntryStatus.ACTIVE,
         },
-        select: publicRestaurantSelect,
+        select: buildPublicRestaurantSelect(request.currentUser.id),
       });
       if (!restaurant) {
         throw Object.assign(new Error('Restaurant not found'), {
@@ -325,7 +325,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
         );
         return tx.restaurantEntry.findUniqueOrThrow({
           where: { id: entry.id },
-          select: publicRestaurantSelect,
+          select: buildPublicRestaurantSelect(request.currentUser.id),
         });
       });
       return reply
@@ -387,7 +387,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
                 }
               : {}),
           },
-          select: publicRestaurantSelect,
+          select: buildPublicRestaurantSelect(request.currentUser.id),
         });
         if (collectionIds !== undefined && defaults) {
           const selected = new Set(collectionIds);
@@ -422,7 +422,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
         }
         const current = await tx.restaurantEntry.findUniqueOrThrow({
           where: { id },
-          select: publicRestaurantSelect,
+          select: buildPublicRestaurantSelect(request.currentUser.id),
         });
         return serializePublicRestaurant(current, request.currentUser.id);
       });
@@ -476,7 +476,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       const restaurant = await prisma.restaurantEntry.update({
         where: { id },
         data: { status: EntryStatus.ARCHIVED },
-        select: publicRestaurantSelect,
+        select: buildPublicRestaurantSelect(request.currentUser.id),
       });
       return serializePublicRestaurant(restaurant, request.currentUser.id);
     },
@@ -490,7 +490,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       const restaurant = await prisma.restaurantEntry.update({
         where: { id },
         data: { status: EntryStatus.ACTIVE },
-        select: publicRestaurantSelect,
+        select: buildPublicRestaurantSelect(request.currentUser.id),
       });
       return serializePublicRestaurant(restaurant, request.currentUser.id);
     },
@@ -516,7 +516,7 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
       return prisma.restaurantEntry
         .findUniqueOrThrow({
           where: { id },
-          select: publicRestaurantSelect,
+          select: buildPublicRestaurantSelect(request.currentUser.id),
         })
         .then((entry) => ({
           ...serializePublicRestaurant(entry, request.currentUser.id),

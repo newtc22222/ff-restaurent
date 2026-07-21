@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   billActivityActorSelect,
-  billResponseInclude,
+  buildBillResponseInclude,
   paymentResponseInclude,
 } from './bill-routes.js';
 import { publicUserSelect } from '../roles.js';
@@ -25,6 +25,7 @@ const assertPublicUserContract = (select: typeof publicUserSelect) => {
 };
 
 test('bill list, detail, create, edit, archive, and restore responses select only public users', () => {
+  const billResponseInclude = buildBillResponseInclude('user-1');
   assert.strictEqual(billResponseInclude.createdBy.select, publicUserSelect);
   assert.strictEqual(
     billResponseInclude.participants.include.member.select,
