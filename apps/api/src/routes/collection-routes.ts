@@ -3,7 +3,10 @@ import type { FastifyInstance } from 'fastify';
 import { ensureDefaultCollections } from '../collection-service.js';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
-import { publicRestaurantSelect } from '../restaurant-contract.js';
+import {
+  publicRestaurantSelect,
+  serializePublicRestaurant,
+} from '../restaurant-contract.js';
 import { isHeadChef, isSousChefOrAbove } from '../roles.js';
 import {
   catalogQuerySchema,
@@ -228,8 +231,25 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
             status: isHeadChef(request.currentUser)
               ? undefined
               : EntryStatus.ACTIVE,
-            searchText: query.search
-              ? { contains: normalizeSearchQuery(query.search) }
+            OR: query.search
+              ? [
+                  {
+                    searchText: {
+                      contains: normalizeSearchQuery(query.search),
+                    },
+                  },
+                  {
+                    cuisines: {
+                      some: {
+                        cuisine: {
+                          searchText: {
+                            contains: normalizeSearchQuery(query.search),
+                          },
+                        },
+                      },
+                    },
+                  },
+                ]
               : undefined,
           },
         },
@@ -256,7 +276,7 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
       const page = items.slice(0, query.limit);
       return {
         items: page.map(({ restaurant, createdAt }) => ({
-          ...restaurant,
+          ...serializePublicRestaurant(restaurant, request.currentUser.id),
           addedAt: createdAt,
         })),
         pageInfo: {
@@ -275,10 +295,7 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
         id: string;
         restaurantId: string;
       };
-      const collection = await requireMembershipManager(
-        id,
-        request.currentUser,
-      );
+      await requireMembershipManager(id, request.currentUser);
       await prisma.$transaction(async (tx) => {
         await tx.restaurantEntry.findUniqueOrThrow({
           where: { id: restaurantId },
@@ -291,24 +308,6 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
           update: {},
           create: { collectionId: id, restaurantId },
         });
-        if (
-          collection.systemType === CollectionSystemType.FAVORITES &&
-          collection.ownerId
-        ) {
-          await tx.userFavorite.upsert({
-            where: {
-              userId_restaurantId: { userId: collection.ownerId, restaurantId },
-            },
-            update: {},
-            create: { userId: collection.ownerId, restaurantId },
-          });
-        }
-        if (collection.systemType === CollectionSystemType.RECOMMENDED) {
-          await tx.restaurantEntry.update({
-            where: { id: restaurantId },
-            data: { isRecommended: true },
-          });
-        }
       });
       return reply.code(201).send({ added: true });
     },
@@ -322,28 +321,11 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
         id: string;
         restaurantId: string;
       };
-      const collection = await requireMembershipManager(
-        id,
-        request.currentUser,
-      );
+      await requireMembershipManager(id, request.currentUser);
       await prisma.$transaction(async (tx) => {
         await tx.collectionRestaurant.deleteMany({
           where: { collectionId: id, restaurantId },
         });
-        if (
-          collection.systemType === CollectionSystemType.FAVORITES &&
-          collection.ownerId
-        ) {
-          await tx.userFavorite.deleteMany({
-            where: { userId: collection.ownerId, restaurantId },
-          });
-        }
-        if (collection.systemType === CollectionSystemType.RECOMMENDED) {
-          await tx.restaurantEntry.update({
-            where: { id: restaurantId },
-            data: { isRecommended: false },
-          });
-        }
       });
       return reply.code(204).send();
     },

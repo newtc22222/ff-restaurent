@@ -1,47 +1,23 @@
-name: Phase 2 production data
+name: Phase 2 contract verification
 
 on:
   workflow_dispatch:
-    inputs:
-      operation:
-        description: Production-safe Phase 2 data operation
-        required: true
-        type: choice
-        options:
-          - dry-run
-          - apply
-          - repeat
 
 permissions:
   contents: read
 
 concurrency:
-  group: phase-2-production-data
+  group: phase-2-contract-verification
   cancel-in-progress: false
 
 jobs:
-  operate:
+  verify:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
-    services:
-      restore-db:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: ff_restore_drill
-          POSTGRES_USER: ff
-          POSTGRES_PASSWORD: ff
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U ff -d ff_restore_drill"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
     env:
       DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-      RESTORE_DATABASE_URL: postgresql://ff:ff@localhost:5432/ff_restore_drill
-      PHASE2_BACKFILL_BATCH_SIZE: '100'
+      PHASE2_CONTRACT_REPORT_PATH: ${{ github.workspace }}/artifacts/phase2-contract.json
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -49,53 +25,21 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build -w @ff-restaurent/shared
       - run: npm run prisma:generate -w @ff-restaurent/api
+      - name: Verify normalized contract and removed schema
+        run: npm run prisma:phase2:contract:verify -w @ff-restaurent/api
       - name: Capture release boundary
         shell: bash
         run: |
-          mkdir -p artifacts
-          migration_count="$(psql "$DATABASE_URL" --no-psqlrc --tuples-only --no-align --command='SELECT COUNT(*) FROM "_prisma_migrations";')"
           {
             echo "sha=${GITHUB_SHA}"
-            echo "operation=${{ inputs.operation }}"
-            echo "startedAt=$(date --utc --iso-8601=seconds)"
-            echo "migrationCount=${migration_count}"
-          } > artifacts/phase2-production-metadata.txt
-      - name: Dry-run Phase 2 backfill
-        if: inputs.operation == 'dry-run'
-        run: npm run prisma:phase2:backfill -w @ff-restaurent/api
-        env:
-          PHASE2_BACKFILL_DRY_RUN: '1'
-          PHASE2_BACKFILL_REPORT_PATH: ${{ github.workspace }}/artifacts/phase2-backfill-dry-run.json
-      - name: Snapshot-consistent recovery rehearsal
-        if: inputs.operation == 'apply'
-        shell: bash
-        run: bash scripts/backup-restore-drill.sh | tee artifacts/pre-backfill-recovery.log
-      - name: Apply Phase 2 backfill
-        if: inputs.operation == 'apply'
-        run: npm run prisma:phase2:backfill -w @ff-restaurent/api
-        env:
-          PHASE2_BACKFILL_REPORT_PATH: ${{ github.workspace }}/artifacts/phase2-backfill-applied.json
-      - name: Prove immediate idempotency
-        if: inputs.operation == 'apply'
-        run: npm run prisma:phase2:backfill -w @ff-restaurent/api
-        env:
-          PHASE2_BACKFILL_REPORT_PATH: ${{ github.workspace }}/artifacts/phase2-backfill-repeat.json
-      - name: Repeat Phase 2 backfill verification
-        if: inputs.operation == 'repeat'
-        run: npm run prisma:phase2:backfill -w @ff-restaurent/api
-        env:
-          PHASE2_BACKFILL_REPORT_PATH: ${{ github.workspace }}/artifacts/phase2-backfill-repeat.json
-      - name: Complete release metadata
-        if: always()
-        shell: bash
-        run: echo "completedAt=$(date --utc --iso-8601=seconds)" >> artifacts/phase2-production-metadata.txt
+            echo "completedAt=$(date --utc --iso-8601=seconds)"
+          } > artifacts/phase2-contract-metadata.txt
       - name: Upload release evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: phase2-${{ inputs.operation }}-${{ github.run_id }}
+          name: phase2-contract-${{ github.run_id }}
           path: artifacts
           if-no-files-found: error
           retention-days: 30
