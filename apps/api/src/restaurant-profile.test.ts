@@ -49,6 +49,11 @@ test('restaurant profiles normalize optional phone and ordered platform input', 
   ]);
 });
 
+test('restaurant profiles accept a blank optional banner image url', () => {
+  const parsed = restaurantSchema.parse({ ...base, bannerImageUrl: '' });
+  assert.equal(parsed.bannerImageUrl, null);
+});
+
 test('restaurant profiles reject unsafe URLs, missing labels, and duplicates', () => {
   const rejected = [
     { ...base, bannerImageUrl: 'http://images.example.test/banner.jpg' },

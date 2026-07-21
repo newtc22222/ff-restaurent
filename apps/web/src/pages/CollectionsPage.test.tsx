@@ -144,6 +144,7 @@ describe('Collection discovery', () => {
     );
 
     expect(await screen.findByText('Team lunches')).toBeTruthy();
+    expect(screen.getByLabelText('Visibility')).toBeTruthy();
     expect(screen.getByText('Shared by me')).toBeTruthy();
     expect(screen.getByText('3 places')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Create Collection' }));

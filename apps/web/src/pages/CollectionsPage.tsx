@@ -100,7 +100,7 @@ export default function CollectionsPage() {
             label={t('collections.visibility')}
             value={visibility}
             onChange={(value) => setQuery('visibility', value)}
-            aria-label={t('collections.visibility')}
+            ariaLabel={t('collections.visibility')}
             options={[
               { value: 'all', label: t('collections.all') },
               { value: 'owned', label: t('collections.owned') },

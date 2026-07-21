@@ -434,7 +434,8 @@ test('member discovers, manages, shares, and reviews Collection places', async (
   await expect(
     page.getByRole('heading', { name: 'Collections', exact: true }),
   ).toBeVisible();
-  await page.getByLabel('Visibility').selectOption('shared');
+  await page.getByLabel('Visibility').click();
+  await page.getByRole('option', { name: 'Shared with me' }).click();
   await expect(page).toHaveURL(/visibility=shared/);
   await page.getByRole('button', { name: /E2E Team Spots/ }).click();
   await expect(page.getByText('Existing E2E Restaurant')).toBeVisible();

@@ -127,9 +127,18 @@ const httpsUrlSchema = z
   .string()
   .trim()
   .url()
-  .refine((value) => new URL(value).protocol === 'https:', {
-    message: 'URL must use HTTPS',
-  })
+  .refine(
+    (value) => {
+      try {
+        return new URL(value).protocol === 'https:';
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: 'URL must use HTTPS',
+    },
+  )
   .transform(normalizePlatformUrl);
 
 const optionalHttpsUrlSchema = z
