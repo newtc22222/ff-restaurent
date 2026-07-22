@@ -1,187 +1,180 @@
 # Backend Development Guide
 
-This guide explains how to develop the FF RESTaurent backend in `apps/api`. It focuses on simple component boundaries, direct data flow, descriptive naming, and the minimum structure needed to keep the API maintainable.
-
----
+This guide explains how to work on the FF RESTaurent API in `apps/api`. It
+reflects the current Fastify/Prisma backend shipped with v1.1.0.
 
 ## Technology Stack
 
-- **Runtime**: Node.js with TypeScript
-- **HTTP Framework**: Fastify
-- **Authentication**: JWT bearer tokens with `@fastify/jwt`
-- **Database**: PostgreSQL
-- **ORM**: Prisma
-- **Validation**: Zod schemas
-- **API Docs**: Swagger UI at `http://localhost:4000/api/docs`
-- **Shared Logic**: `@ff-restaurent/shared` for bill-splitting calculations and shared enums
+- Node.js with TypeScript and native ESM
+- Fastify 5
+- `@fastify/jwt` for bearer-token authentication
+- `@fastify/cors`, `@fastify/rate-limit`, `@fastify/multipart`
+- Prisma 6 with PostgreSQL
+- Zod request validation
+- Swagger UI at `/api/docs`
+- Supabase storage for restaurant media and payment QR images
+- `@ff-restaurent/shared` for shared enums, phone parsing, and bill-splitting
+  math
 
----
-
-## Folder Structure
-
-The backend follows the KISS principle: keep files grouped by responsibility, avoid unnecessary layers, and keep route behavior easy to trace.
+## Source Layout
 
 ```text
 apps/api/
-├── prisma/
-│   ├── schema.prisma              # Database models, enums, and relations
-│   ├── seed.ts                    # Demo data seeding
-│   ├── seed-if-empty.ts           # Docker startup seeding helper
-│   └── migrations/                # Prisma migration history
-│
-└── src/
-    ├── app.ts                     # Fastify plugin setup and route registration
-    ├── server.ts                  # Runtime entry point and graceful shutdown
-    ├── prisma.ts                  # Shared Prisma client instance
-    ├── roles.ts                   # Role helpers and safe user response shaping
-    ├── schemas.ts                 # Zod request validation schemas
-    ├── types.d.ts                 # Fastify request type augmentation
-    │
-    ├── http/
-    │   └── auth-guards.ts         # Authentication and role pre-handlers
-    │
-    └── routes/
-        ├── auth-routes.ts         # Login and registration
-        ├── profile-routes.ts      # Current user profile read/update
-        ├── member-routes.ts       # Members and HEAD_CHEF role administration
-        ├── restaurant-routes.ts   # Restaurant directory, favorites, archive state
-        ├── bill-routes.ts         # Bills, participants, payment state, reminders
-        ├── notification-routes.ts # User-scoped notification endpoints
-        └── stats-routes.ts        # Current user spending summaries
+|-- prisma/
+|   |-- schema.prisma
+|   |-- migrations/
+|   |-- seed.ts
+|   |-- seed-if-empty.ts
+|   |-- seed-popular-cuisines.ts
+|   |-- backfill-user-phones.ts
+|   |-- bootstrap-root-admin.ts
+|   |-- recover-root-admin.ts
+|   |-- verify-final-query-indexes.ts
+|   `-- verify-phase2-contract.ts
+`-- src/
+    |-- app.ts
+    |-- server.ts
+    |-- config.ts
+    |-- prisma.ts
+    |-- roles.ts
+    |-- schemas.ts
+    |-- types.d.ts
+    |-- collection-service.ts
+    |-- restaurant-contract.ts
+    |-- root-admin-service.ts
+    |-- storage.ts
+    |-- phone-backfill.ts
+    |-- popular-cuisine-seed.ts
+    |-- pagination.ts
+    |-- search-normalization.ts
+    |-- catalog-normalization.ts
+    |-- address-directory.ts
+    |-- http/
+    |   |-- auth-guards.ts
+    |   `-- error-handler.ts
+    |-- routes/
+    |   |-- auth-routes.ts
+    |   |-- profile-routes.ts
+    |   |-- member-routes.ts
+    |   |-- restaurant-routes.ts
+    |   |-- catalog-routes.ts
+    |   |-- collection-routes.ts
+    |   |-- feedback-routes.ts
+    |   |-- media-routes.ts
+    |   |-- bill-routes.ts
+    |   |-- notification-routes.ts
+    |   |-- participant-group-routes.ts
+    |   |-- stats-routes.ts
+    |   `-- address-routes.ts
+    `-- data/
+        `-- vietnam-wards-full.json
 ```
 
----
+Tests are colocated with source files as `*.test.ts`.
 
-## Component Responsibilities
-
-### `src/app.ts`
-
-`app.ts` should stay composition-only. It creates the Fastify instance, registers core plugins, exposes `/health`, and attaches route modules.
-
-Do not put business logic here. If a new endpoint is needed, add it to the route module that owns that resource.
-
-### `src/server.ts`
-
-`server.ts` is the production/dev process entry point. It builds the app, starts listening, and disconnects Prisma during shutdown.
-
-Keep runtime concerns here instead of mixing them into route modules.
-
-### `src/http/auth-guards.ts`
-
-Auth guards are Fastify `preHandler` functions:
-
-- `requireAuthenticatedUser` verifies JWTs and populates `request.currentUser`.
-- `requireSousChefOrHeadChef` protects manager actions.
-- `requireHeadChef` protects administrative actions.
-
-These guards should only answer the question "can this request continue?" Route-specific ownership checks, such as "can this user edit this bill?", should stay in the route module that has the needed data.
-
-### `src/routes/*`
-
-Each route file owns one API area. Route modules may contain small local helper functions when those helpers are only useful for that resource.
-
-Examples:
-
-- Bill include shapes and bill ownership checks stay in `bill-routes.ts`.
-- Restaurant query filters stay in `restaurant-routes.ts`.
-- Spending bucket aggregation stays in `stats-routes.ts`.
-
-Avoid creating a service layer until logic is reused by multiple route modules or becomes difficult to test in place.
-
-### `src/schemas.ts`
-
-All request body validation belongs in Zod schemas here. Route handlers should parse inputs through these schemas instead of manually validating fields.
-
-When adding or changing request fields:
-
-1. Update the Zod schema.
-2. Update the route handler.
-3. Update frontend API types in `apps/web/src/api.ts` if the response contract changes.
-4. Update Swagger expectations if explicit schemas are added later.
-
-### `src/roles.ts`
-
-Role helpers define the permission hierarchy:
-
-- `CUSTOMER`: represented by `chefRole: null`
-- `SOUS_CHEF`: manager-level permissions
-- `HEAD_CHEF`: administrative permissions
-
-Use `sanitizeUser()` for API responses so password hashes and internal fields are never returned.
-
-### `src/prisma.ts`
-
-Use the shared Prisma client from this file. Do not instantiate additional Prisma clients inside route modules.
-
----
-
-## Request Data Flow
+## Request Flow
 
 The backend request flow should remain direct:
 
 ```text
 HTTP request
   -> Fastify route
-  -> auth/role preHandler when required
-  -> Zod schema parse for request body
+  -> auth or role preHandler when required
+  -> Zod schema parse for request data
   -> Prisma query or shared package calculation
-  -> response object
+  -> serializer or response object
+  -> global error mapper when needed
 ```
 
-Keep data transformations close to the route when they are route-specific. Move logic to `packages/shared` only when both API and web need the same business rule, or when it is domain logic that must be tested independently.
+`src/app.ts` is composition-only. It registers core plugins, Swagger, health
+routes, the global error handler, and route modules. Do not move domain logic
+back into `app.ts`.
 
----
+`src/server.ts` owns process startup and graceful shutdown. Keep runtime
+concerns there.
 
-## Permissions
+## Route Modules
 
-Permissions cascade upward:
+Route files under `src/routes` own one API area each. Keep request parsing,
+resource ownership checks, Prisma query shape, and response shaping close to the
+route when that logic is route-specific.
 
-- `CUSTOMER` can view their own bill shares, mark their own shares as paid, view restaurants, view their own notifications, and view their own stats.
-- `SOUS_CHEF` can create restaurants, edit restaurants, create bills, edit bills they own, and send payment reminders.
-- `HEAD_CHEF` can view all bills, include archived data, archive or restore bills/restaurants, and change member roles.
+Use shared services only when logic is reused or has an independent domain
+contract:
 
-Use route pre-handlers for broad role checks. Use local route checks for ownership rules.
+- `collection-service.ts` owns collection/favorite/recommended behavior.
+- `restaurant-contract.ts` derives backward-compatible restaurant response
+  aliases from normalized persistence.
+- `root-admin-service.ts` owns root transfer behavior.
+- `storage.ts` owns Supabase-backed media access.
+- `phone-backfill.ts` and `popular-cuisine-seed.ts` support idempotent startup
+  operations.
 
-Example:
+## Validation and Errors
 
-```ts
-const canManageBill = (
-  bill: { createdById: string },
-  request: FastifyRequest,
-) =>
-  isHeadChef(request.currentUser) ||
-  bill.createdById === request.currentUser.id;
+All request validation belongs in `src/schemas.ts` unless the schema has already
+been moved into a more focused module. Route handlers should parse with Zod
+instead of manually validating request bodies.
+
+When changing request or response fields:
+
+1. Update the Zod schema.
+2. Update the route handler and Prisma select/include shape.
+3. Update serializers such as `restaurant-contract.ts` when relevant.
+4. Update web API types in `apps/web/src/lib/api.ts`.
+5. Add or update focused tests.
+
+The global error mapper in `src/http/error-handler.ts` should remain the place
+where common API errors become consistent HTTP responses.
+
+## Roles and Authorization
+
+Effective permissions ascend as:
+
+```text
+CUSTOMER < SOUS_CHEF < HEAD_CHEF < ROOT_ADMIN
 ```
 
----
+- CUSTOMER is represented by `chefRole: null`.
+- SOUS_CHEF can create restaurants and bills and manage owned work.
+- HEAD_CHEF adds global bill visibility and archive/restore capabilities.
+- ROOT_ADMIN is the singleton `systemRole`, inherits Head Chef capabilities, and
+  exclusively manages member roles, root transfer, password-recovery
+  administration, and other system controls.
+
+`chefRole` and `systemRole` are independent. HEAD_CHEF must never change member
+roles or ROOT_ADMIN ownership.
+
+Use auth pre-handlers from `src/http/auth-guards.ts` for broad route access.
+Use route-local checks for ownership rules that require loading the target
+record, such as bill creator checks or participant payment checks.
+
+Always sanitize users through the role/public-user helpers before returning user
+objects. Never serialize password hashes, reset-code hashes, or session-version
+internals.
 
 ## Money and Bill Splitting
 
-All money values are stored as integer cents. Never use floats for persisted money or bill-splitting logic.
+All persisted and API monetary values are integer cents. Never use float math
+for bill totals, participant shares, discounts, VAT, shipping, or vouchers.
 
-Bill splitting is calculated in:
+Core calculation logic lives in:
 
 ```text
 packages/shared/src/bill-splitting.ts
 ```
 
-The API should call `calculateBillSplit()` and persist the returned integer-cent values. If bill math changes, update shared package tests first or alongside the change:
+The API should call `calculateBillSplit()` and persist the returned integer-cent
+values. Do not duplicate allocation logic inside route handlers. If bill math
+changes, update shared tests at the same time:
 
 ```powershell
 npm test --workspace @ff-restaurent/shared
 ```
 
-After changing the shared package, rebuild it before API or web verification:
+## Database and Phase 2 Contracts
 
-```powershell
-npm run build --workspace @ff-restaurent/shared
-```
-
----
-
-## Database Changes
-
-Database models and enums live in:
+Database models, enums, constraints, and relations live in:
 
 ```text
 apps/api/prisma/schema.prisma
@@ -190,21 +183,54 @@ apps/api/prisma/schema.prisma
 For schema changes:
 
 1. Update `schema.prisma`.
-2. Create and apply a Prisma migration.
+2. Create a Prisma migration.
 3. Regenerate the Prisma client.
-4. Update route include/select shapes.
-5. Update frontend API response types if any response changes.
-6. Update seed data when demo coverage should include the new field or relation.
+4. Update route query shapes and serializers.
+5. Update web API types.
+6. Update seed/backfill scripts when production or demo data needs coverage.
+7. Add focused API tests or migration verification as needed.
 
-Common commands:
+Use deploy mode for production:
 
 ```powershell
-npm run prisma:migrate --workspace @ff-restaurent/api
-npm run prisma:generate --workspace @ff-restaurent/api
-npm run prisma:seed --workspace @ff-restaurent/api
+npm run prisma:migrate:deploy --workspace @ff-restaurent/api
 ```
 
----
+Do not run `prisma migrate dev` against production.
+
+The v1.1.0 Phase 2 contract is complete:
+
+- Collections are the sole persistence authority for Favorites and Recommended
+  restaurants.
+- `Cuisine` and `RestaurantCuisine` are the cuisine authority.
+- `RestaurantPlatformLink` rows are the platform-link authority.
+- Legacy restaurant response aliases are derived by `restaurant-contract.ts`.
+- The deprecated `links` write input is still accepted and translated to
+  normalized platform links.
+
+Verify the normalized restaurant contract against a live database with:
+
+```powershell
+npm run prisma:phase2:contract:verify --workspace @ff-restaurent/api
+```
+
+## Phone, Password, and Root Operations
+
+Vietnamese phone parsing is shared, but the API is authoritative. Optional phone
+numbers persist as canonical E.164 values. Startup runs the idempotent phone
+backfill after migrations.
+
+JWTs carry `sessionVersion`. Password changes, assisted password resets, and
+root transfers invalidate affected older sessions.
+
+Production root bootstrap uses `ROOT_ADMIN_USERNAME` only when no root exists.
+Emergency root recovery is interactive and operator-only:
+
+```powershell
+npm run prisma:root:recover --workspace @ff-restaurent/api
+```
+
+Do not expose root recovery through HTTP or web UI.
 
 ## Local Development
 
@@ -214,66 +240,72 @@ Run the full stack with Docker:
 docker compose up --build
 ```
 
+Expected local endpoints:
+
+```text
+API:      http://localhost:4000
+Health:   http://localhost:4000/health
+Ready:    http://localhost:4000/ready
+Swagger:  http://localhost:4000/api/docs
+Web:      http://localhost:5173
+```
+
 Run only the API:
 
 ```powershell
 npm run dev --workspace @ff-restaurent/api
 ```
 
-Expected local endpoints:
-
-- API health: `http://localhost:4000/health`
-- Swagger UI: `http://localhost:4000/api/docs`
-
-Required environment variables when running outside Docker:
-
-```env
-DATABASE_URL=postgresql://ff:ff@localhost:5432/ff_restaurent?schema=public
-JWT_SECRET=replace-with-a-long-random-secret
-API_PORT=4000
-```
-
----
+API typecheck, build, and Prisma commands load `apps/api/prisma.config.ts` and
+therefore require `DATABASE_URL`, even when they do not query the database.
+State clearly when database-backed verification was skipped.
 
 ## Verification
 
-Run backend-focused checks after API changes:
+For API-only changes:
 
 ```powershell
 npm run typecheck --workspace @ff-restaurent/api
 npm run lint --workspace @ff-restaurent/api
+npm test --workspace @ff-restaurent/api
 npm run build --workspace @ff-restaurent/api
 ```
 
-Run shared tests when bill math or shared types change:
+For Prisma or contract changes:
+
+```powershell
+npm run prisma:generate --workspace @ff-restaurent/api
+npm run prisma:indexes:verify --workspace @ff-restaurent/api
+npm run prisma:phase2:contract:verify --workspace @ff-restaurent/api
+```
+
+For shared bill math or shared types:
 
 ```powershell
 npm test --workspace @ff-restaurent/shared
+npm run build --workspace @ff-restaurent/shared
 ```
 
-Run broader workspace checks before large changes are submitted:
+For broad changes before review:
 
 ```powershell
 npm run typecheck
 npm run lint
-npm run build
 npm test
+npm run build
 ```
-
----
 
 ## Backend Change Checklist
 
-Use this checklist to keep backend changes small and consistent:
-
-- Add request validation in `src/schemas.ts`.
-- Put the endpoint in the route module that owns the resource.
+- Put endpoints in the route module that owns the resource.
 - Use `requireAuthenticatedUser` before reading `request.currentUser`.
-- Use `requireSousChefOrHeadChef` or `requireHeadChef` for role-gated actions.
-- Keep ownership checks local to the route that loads the record.
-- Store money as integer cents.
-- Use Prisma for database reads and writes.
-- Return sanitized users with `sanitizeUser()`.
-- Update Prisma migrations for schema changes.
-- Update frontend API types when response contracts change.
-- Run the narrowest useful verification command, then broaden when shared behavior changes.
+- Use role pre-handlers for broad access gates and route-local checks for
+  ownership.
+- Parse request data with Zod schemas.
+- Use Prisma for persistence.
+- Keep money as integer cents and delegate split math to `packages/shared`.
+- Return sanitized users only.
+- Preserve ROOT_ADMIN-only governance.
+- Preserve Phase 2 normalized restaurant persistence contracts.
+- Update web API types when API response contracts change.
+- Add focused tests before broad verification.

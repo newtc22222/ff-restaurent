@@ -8,8 +8,8 @@ Build a web app (mobile to follow later) that helps a single group manage shared
 
 Every user always has the **CUSTOMER** role as a baseline, and may additionally hold **exactly one** of the two "chef" roles:
 
-| Combination                      | Valid?                  |
-| -------------------------------- | ----------------------- |
+| Combination                      | Valid?                 |
+| ----------------------------------| ------------------------|
 | CUSTOMER only                    | ✅                      |
 | CUSTOMER + SOUS_CHEF             | ✅                      |
 | CUSTOMER + HEAD_CHEF             | ✅                      |
@@ -42,7 +42,7 @@ Permission hierarchy: `HEAD_CHEF ⊃ SOUS_CHEF ⊃ CUSTOMER`
 ### Bill
 
 | Field                         | Description                                                                  |
-| ----------------------------- | ---------------------------------------------------------------------------- |
+| -------------------------------| ------------------------------------------------------------------------------|
 | `id`                          | Unique identifier                                                            |
 | `restaurant_id` / `eatery_id` | Where the order was placed                                                   |
 | `base_cost`                   | Sum of item costs before adjustments                                         |
@@ -58,7 +58,7 @@ Permission hierarchy: `HEAD_CHEF ⊃ SOUS_CHEF ⊃ CUSTOMER`
 ### BillParticipant (per member, per bill)
 
 | Field                | Description                                                                                         |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
+| ----------------------| -----------------------------------------------------------------------------------------------------|
 | `member_id`          | Reference to user                                                                                   |
 | `origin_cost`        | This member's share of `base_cost` (even split across participants)                                 |
 | `allocated_vat`      | This member's even share of the bill's total VAT                                                    |
