@@ -248,6 +248,8 @@ Current CI steps:
 
 This is the required minimum gate before deployment. Keep it passing before merging release branches.
 
+> **Prisma tooling scope.** This project uses only the standard Prisma CLI (`prisma generate` and `prisma migrate deploy`) against a self-managed PostgreSQL database (`DATABASE_URL`), with the web app deployed via Render (`render.yaml`). The hosted **Prisma Postgres / Prisma Compute deploy integration** (the "Prisma / Prisma Compute Deploy" GitHub App check, which fails on this monorepo with `Entrypoint is required. Pass --entrypoint or define package.json main`) is **intentionally not used and must not be re-enabled**. If that check reappears, remove the Prisma GitHub App's access to this repo and drop it from the branch protection required-checks list — it is not defined by any workflow in this repository.
+
 ### Recommended PR Pipeline
 
 Run on every pull request:
