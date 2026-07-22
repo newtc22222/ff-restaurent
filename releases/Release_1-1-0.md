@@ -145,4 +145,6 @@ recovery drill.
 The Linear Phase 2 milestone remains complete. With PR #34 the previously
 out-of-scope post-candidate `develop` work (media storage, payment QR, bundled
 address data, and the later migrations) is now part of v1.1.0. The overall FF
-RESTaurent roadmap remains In Progress because later phases are still ahead.
+RESTaurent roadmap remains In Progress. The immediate next milestone is Phase
+2.5 - GCP Migration & Architecture Foundations; Phase 3 follows that
+stabilization boundary.
