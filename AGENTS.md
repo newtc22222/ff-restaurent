@@ -4,9 +4,18 @@ This document provides guidance for AI coding agents working in this repository.
 
 ## Current Project State
 
-Read `.codex/PHASE_1_HANDOFF.md` before starting release, production-promotion,
-or Phase 2 work. It records the published Phase 1 commit boundary, verification
-evidence, remaining release operation, and post-release uncommitted changes.
+Phase 2 is complete and FF RESTaurent `v1.1.0` is published. Read
+`.codex/PHASE_2_HANDOFF.md` and `releases/Release_1-1-0.md` before release,
+production, migration, or roadmap work. They record the shipped schema
+contracts, production verification and recovery evidence, and the branch
+boundary for later development.
+
+The active milestone is **Phase 2.5 - GCP Migration & Architecture
+Foundations**. Before starting new work, refresh Git and Linear, select the next
+unblocked Phase 2.5 issue, and branch from the latest `origin/develop`. Do not
+reopen Phase 2 or restore its removed legacy restaurant/favorites storage unless
+a production regression is demonstrated. Phase 3 begins only after the Phase
+2.5 foundation milestone is complete.
 
 ## Project Overview
 
