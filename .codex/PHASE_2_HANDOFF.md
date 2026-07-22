@@ -13,8 +13,9 @@ and GitHub Latest release. The authoritative scope and detailed evidence are in
 - Final verification source: `main` at
   `21fdd3997ffa640eba4835e1676ba4371bbd4b30`.
 - Shipped database lineage: 17 migrations.
-- Overall roadmap: In Progress; new product work begins from the Phase 3
-  boundary on current `origin/develop`.
+- Overall roadmap: In Progress; the immediate next milestone is Phase 2.5 - GCP
+  Migration & Architecture Foundations. Phase 3 follows that stabilization
+  boundary.
 
 ## Final production evidence
 
@@ -55,5 +56,7 @@ named-migration check and passed.
 ## Resume here
 
 For new work, verify current Git and Linear state, select the next unblocked
-Phase 3 ticket, and branch from the latest `origin/develop`. Do not reopen Phase
-2 or restore its removed schema unless a production regression is demonstrated.
+Phase 2.5 ticket, and branch from the latest `origin/develop`. Do not reopen
+Phase 2 or restore its removed schema unless a production regression is
+demonstrated. Phase 3 work starts only after the Phase 2.5 migration and
+architecture foundations are complete.
