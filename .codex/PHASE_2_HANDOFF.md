@@ -1,76 +1,59 @@
 # Phase 2 Handoff
 
-Last updated: 2026-07-20
+Last updated: 2026-07-22
+
+## Current boundary
+
+Phase 2 is complete. FF RESTaurent v1.1.0 is published as an annotated Git tag
+and GitHub Latest release. The authoritative scope and detailed evidence are in
+`releases/Release_1-1-0.md`.
+
+- Release tag: `v1.1.0` at `7b3a315`.
+- GitHub release: https://github.com/newtc22222/ff-restaurent/releases/tag/v1.1.0
+- Final verification source: `main` at
+  `21fdd3997ffa640eba4835e1676ba4371bbd4b30`.
+- Shipped database lineage: 17 migrations.
+- Overall roadmap: In Progress; new product work begins from the Phase 3
+  boundary on current `origin/develop`.
+
+## Final production evidence
+
+- Contract verification: run 29937704702, passed.
+  - 17 completed migrations.
+  - Phase 2 contract migration applied exactly once.
+  - 0 restaurants without exactly one primary Cuisine.
+  - 0 users without exactly one Favorites collection.
+  - 1 Recommended collection.
+  - 0 legacy restaurant columns and 0 `UserFavorite` tables.
+- Authenticated deployment smoke: run 29937775099, passed after bounded
+  cold-start retries.
+- Snapshot-consistent recovery: run 29937777276, passed with exact dump/restore
+  count equality:
+  - Bill 3; BillAuditLog 12; BillParticipant 11.
+  - Collection 9; CollectionRestaurant 14; CollectionShare 0.
+  - Cuisine 22; RestaurantCuisine 13; RestaurantEntry 10;
+    RestaurantPlatformLink 8.
+  - RoleAuditLog 4; User 7; `_prisma_migrations` 17.
+
+The first July 22 verification used the obsolete `a93b72ef` verifier, which
+hard-coded `migrationCount === 14`. It failed only that metadata predicate after
+the database had correctly advanced to 17 migrations; every normalized data and
+schema-removal invariant was already valid. Run 29937704702 used the corrected
+named-migration check and passed.
+
+## Contracts to preserve
+
+- Collections are the sole Favorites and Recommended persistence authority.
+- `RestaurantCuisine` relations are the sole cuisine authority; each restaurant
+  has exactly one primary Cuisine.
+- Compatibility fields (`cuisineType`, `isRecommended`, `isFavoritedByMe`, and
+  `isFavorite`) are derived at the API boundary, not restored as legacy storage.
+- Production startup remains migrate -> phone normalize -> ROOT_ADMIN bootstrap
+  -> `exec node dist/server.js`.
+- Recovery counts must come from the same exported snapshot as the dump.
 
 ## Resume here
 
-Phase 2 implementation and the `v1.1.0-rc.1` observation window are complete.
-The final v1.1.0 release is being cut from the immutable RC production lineage,
-not from later `develop` commits. The release implementation PR contains only
-migration 14, contract cleanup, smoke hardening, version 1.1.0, and release
-evidence scaffolding.
-
-Authoritative release record: `releases/Release_1-1-0.md`.
-
-## Immutable boundaries
-
-- RC tag: `v1.1.0-rc.1`.
-- RC production SHA: `4e63ddc7b28206e16cc024eb912dd0a40e19e64d`.
-- Final release branch: `release/v1.1.0`, created directly from that `main`
-  boundary as an explicit exception because `develop` contains future scope.
-- Out of scope: every later `develop` commit, including Supabase media/payment
-  QR support and all newer migrations.
-
-## Accepted pre-contract evidence
-
-- Repeat/idempotency: run 29760632288, passed, no exceptions, zero creations,
-  13 migrations.
-- Authenticated smoke: run 29760727991, passed.
-- Snapshot-consistent recovery: run 29760730272, passed with exact counts for
-  the dump snapshot and isolated restore.
-- Observation: more than 24 hours of successful scheduled smoke evidence.
-- July 20 failure disposition: run 29715958940 hit a Render cold-start headers
-  timeout; later deployment run 29721550710 and scheduled smokes passed. Smoke
-  now retries bounded 20-second attempts.
-
-## Contract boundary
-
-- Migration 14:
-  `20260720000000_contract_phase2_normalized_restaurants`.
-- Collections are the only favorites/recommendations authority.
-- RestaurantCuisine primary relations are the only cuisine authority.
-- Compatibility responses still derive `cuisineType`, `isRecommended`,
-  `isFavoritedByMe`, and the `isFavorite` alias.
-- The former Phase 2 backfill command is retired. Use
-  `npm run prisma:phase2:contract:verify -w @ff-restaurent/api` after deploy.
-
-## Local release verification
-
-- Representative 13-migration RC upgrade and all seven fail-closed conditions:
-  passed.
-- Clean database migration through all 14 migrations: passed.
-- Post-contract schema/invariant verifier: passed with migrationCount 14 and
-  zero invariant/schema-removal violations.
-- Prisma schema validation and FF-27 index plans (4/4): passed.
-- Changed-file Prettier check, workspace lint, typecheck, and production builds:
-  passed.
-- Database-enabled API suite: 46/46 passed.
-- Default suites: API 30 passed/16 integration skipped, web 60/60, shared
-  12/12, and smoke retry tests 2/2.
-- Playwright: 7/7 passed on isolated API/web ports. The first local attempt
-  reused user-owned servers from the dirty checkout; no processes were stopped,
-  and configurable E2E ports now prevent that conflict.
-
-## Production completion checklist
-
-1. Merge the reviewed release PR into `main` after green CI.
-2. Wait for migrate -> phone normalize -> root bootstrap -> `exec node`.
-3. Run Phase 2 contract verification, authenticated smoke, and recovery drill.
-4. Merge an evidence-only PR with exact production SHA/run IDs/counts.
-5. Require CI and smoke on the evidence SHA.
-6. Create annotated `v1.1.0`, publish it as Latest, and retain rc.1 as a
-   prerelease.
-7. Port contract/version/docs to current `develop` without restoring legacy
-   schema or including it in the release tag.
-8. Record final evidence on FF-38 and the Phase 2 Linear milestone. Keep the
-   overall roadmap In Progress.
+For new work, verify current Git and Linear state, select the next unblocked
+Phase 3 ticket, and branch from the latest `origin/develop`. Do not reopen Phase
+2 or restore its removed schema unless a production regression is demonstrated.

@@ -99,22 +99,46 @@ and retries, and the temporary four-hour observation schedule is removed.
 - Annotated tag `v1.1.0` created on `7b3a315`; GitHub release published at
   https://github.com/newtc22222/ff-restaurent/releases/tag/v1.1.0.
 
-The following production-deployment evidence is recorded once the release is
-deployed and verified against production:
+## Final deployment evidence
 
-- Contract verification run on the deployed `main` SHA and normalized counts: pending.
-- Authenticated deployment smoke run: pending.
-- Snapshot-consistent 17-migration recovery run and matching counts: pending.
+The final verification workflows ran from `main` at
+`21fdd3997ffa640eba4835e1676ba4371bbd4b30` on July 22:
 
-Any migration, CI, deployment, smoke, contract, or recovery failure blocks the
-production sign-off.
+- Production contract verification
+  [29937704702](https://github.com/newtc22222/ff-restaurent/actions/runs/29937704702)
+  passed with 17 completed migrations, the named Phase 2 contract migration
+  applied exactly once, zero restaurants without one primary Cuisine, zero
+  users without one Favorites collection, exactly one Recommended collection,
+  and zero legacy columns or tables.
+- Authenticated deployment smoke
+  [29937775099](https://github.com/newtc22222/ff-restaurent/actions/runs/29937775099)
+  passed against the configured deployment URLs. The first two health attempts
+  encountered cold starts; bounded retries recovered on the third attempt and
+  the complete authenticated journey passed.
+- Snapshot-consistent production recovery
+  [29937777276](https://github.com/newtc22222/ff-restaurent/actions/runs/29937777276)
+  passed. Dump-snapshot and isolated-restore counts matched exactly: Bill 3,
+  BillAuditLog 12, BillParticipant 11, Collection 9, CollectionRestaurant 14,
+  CollectionShare 0, Cuisine 22, RestaurantCuisine 13, RestaurantEntry 10,
+  RestaurantPlatformLink 8, RoleAuditLog 4, User 7, and
+  `_prisma_migrations` 17.
+
+An earlier contract attempt ran the obsolete verifier from `a93b72ef` and
+reported `passed=false` solely because it required exactly 14 migrations while
+the upgraded production database correctly contained 17. All data invariants
+in that report were already valid. The successful run above used the released
+verifier, which checks the named contract migration instead of rejecting later
+additive migrations.
+
+These results complete the Phase 2 production sign-off.
 
 ## Required production sequence
 
 The API container remains ordered as Prisma migrate deploy, phone
 normalization, ROOT_ADMIN bootstrap, then `exec node dist/server.js`, preserving
-Node as PID 1. After deployment, run the contract verifier, authenticated smoke,
-and snapshot-consistent recovery drill.
+Node as PID 1. Future production releases must continue to run the contract or
+successor invariant verifier, authenticated smoke, and snapshot-consistent
+recovery drill.
 
 ## Roadmap boundary
 
