@@ -89,6 +89,7 @@ export default function CreateBillPage() {
   const [duplicateDetected, setDuplicateDetected] = useState(false);
   const { mutate } = useMutation();
   useEffect(() => {
+    let cancelled = false;
     void session
       .api()
       .request<PaymentQrImage[]>(
@@ -96,8 +97,15 @@ export default function CreateBillPage() {
           ? `/bills/${editBill.id}/payment-qr-options`
           : '/me/payment-qr-images',
       )
-      .then(setPaymentQrImages)
-      .catch(() => setPaymentQrImages([]));
+      .then((images) => {
+        if (!cancelled) setPaymentQrImages(images);
+      })
+      .catch(() => {
+        if (!cancelled) setPaymentQrImages([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [editBill?.id, isEditing]);
   const activeRestaurants = restaurants.filter(
     (entry) => entry.status === 'ACTIVE' || entry.id === restaurantId,
