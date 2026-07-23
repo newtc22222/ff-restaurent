@@ -44,6 +44,11 @@ jobs:
         shell: bash
         run: bash scripts/verify-phase2-contract-migration.sh
       - run: npm run prisma:migrate:deploy -w @ff-restaurent/api
+      - name: Verify production baseline capture and failure handling
+        shell: bash
+        env:
+          RUN_BASELINE_DB_TESTS: '1'
+        run: bash scripts/capture-production-baseline.test.sh
       - run: npm run prisma:phase2:contract:verify -w @ff-restaurent/api
       - run: npm run prisma:indexes:verify -w @ff-restaurent/api
       - run: npm test
