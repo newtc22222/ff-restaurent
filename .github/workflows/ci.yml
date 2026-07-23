@@ -51,6 +51,12 @@ jobs:
         run: bash scripts/capture-production-baseline.test.sh
       - run: npm run prisma:phase2:contract:verify -w @ff-restaurent/api
       - run: npm run prisma:indexes:verify -w @ff-restaurent/api
+      - name: Verify one-shot release ordering and failure handling
+        shell: bash
+        run: bash scripts/run-release-job.test.sh
+      - name: Verify Cloud Run container boundaries
+        shell: bash
+        run: bash scripts/verify-cloud-run-containers.sh
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium

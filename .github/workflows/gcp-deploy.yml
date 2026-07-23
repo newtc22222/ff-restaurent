@@ -1,0 +1,302 @@
+name: GCP deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deploy to temporary verification resources or the permanent private foundation
+        required: true
+        default: verification
+        type: choice
+        options:
+          - verification
+          - production
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: gcp-deploy-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.target }}
+    env:
+      ARTIFACT_REPOSITORY: ff-restaurent
+      CLOUD_SQL_CONNECTION: ff-restaurent:asia-east1:ff-restaurent-db
+      RUNTIME_SERVICE_ACCOUNT: ff-runtime@ff-restaurent.iam.gserviceaccount.com
+    steps:
+      - uses: actions/checkout@v6
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Select the fixed deployment target
+        shell: bash
+        env:
+          DEPLOY_TARGET: ${{ inputs.target }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          test "$GCP_PROJECT_ID" = ff-restaurent
+          test "$GCP_REGION" = asia-east1
+
+          if [[ "$DEPLOY_TARGET" == production ]]; then
+            test "$GITHUB_REF" = refs/heads/main || {
+              echo 'Production deployment is permitted only from main.' >&2
+              exit 1
+            }
+            api_service=ff-restaurent-api
+            web_service=ff-restaurent-web
+            release_job=ff-restaurent-release
+            database_secret=ff-database-url
+            cors_secret=ff-cors-origins
+          else
+            api_service=ff-restaurent-api-verify
+            web_service=ff-restaurent-web-verify
+            release_job=ff-restaurent-release-verify
+            database_secret=ff-release-verify-database-url
+            cors_secret=ff-release-verify-cors-origins
+          fi
+
+          web_url="$(
+            gcloud run services describe "$web_service" \
+              --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" \
+              --format='value(status.url)'
+          )"
+          test -n "$web_url"
+
+          {
+            echo "API_SERVICE=$api_service"
+            echo "WEB_SERVICE=$web_service"
+            echo "RELEASE_JOB=$release_job"
+            echo "DATABASE_SECRET=$database_secret"
+            echo "CORS_SECRET=$cors_secret"
+            echo "WEB_URL=$web_url"
+            echo "IMAGE_ROOT=${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}"
+          } >>"$GITHUB_ENV"
+
+      - name: Configure Artifact Registry authentication
+        shell: bash
+        env:
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push the API image
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          api_tag="${IMAGE_ROOT}/api:${GITHUB_SHA}"
+          docker buildx build \
+            --platform linux/amd64 \
+            --file apps/api/Dockerfile \
+            --target cloud-run \
+            --tag "$api_tag" \
+            --push \
+            .
+          api_digest="$(
+            gcloud artifacts docker images describe "$api_tag" \
+              --project "$GCP_PROJECT_ID" \
+              --location "$GCP_REGION" \
+              --format='value(image_summary.digest)'
+          )"
+          [[ "$api_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          {
+            echo "API_TAG=$api_tag"
+            echo "API_DIGEST=$api_digest"
+            echo "API_IMAGE=${api_tag%:*}@${api_digest}"
+          } >>"$GITHUB_ENV"
+
+      - name: Deploy the blocking release job
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          gcloud run jobs deploy "$RELEASE_JOB" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --image "$API_IMAGE" \
+            --command npm \
+            --args run,release:run \
+            --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+            --set-cloudsql-instances "$CLOUD_SQL_CONNECTION" \
+            --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest,ROOT_ADMIN_USERNAME=ff-root-admin-username:latest" \
+            --set-env-vars NODE_ENV=production \
+            --tasks 1 \
+            --max-retries 0 \
+            --task-timeout 30m \
+            --quiet
+
+      - name: Execute and await the release job
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          execution="$(
+            gcloud run jobs execute "$RELEASE_JOB" \
+              --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" \
+              --wait \
+              --format='value(metadata.name)'
+          )"
+          test -n "$execution"
+          echo "RELEASE_EXECUTION=$execution" >>"$GITHUB_ENV"
+
+      - name: Deploy the private API service
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          gcloud run deploy "$API_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --image "$API_IMAGE" \
+            --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+            --set-cloudsql-instances "$CLOUD_SQL_CONNECTION" \
+            --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest,JWT_SECRET=ff-jwt-secret:latest,REGISTRATION_INVITE_CODE=ff-registration-invite-code:latest,CORS_ORIGINS=${CORS_SECRET}:latest,SUPABASE_URL=ff-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=ff-supabase-service-role-key:latest" \
+            --set-env-vars "NODE_ENV=production,JWT_EXPIRES_IN=8h,SUPABASE_PUBLIC_BUCKET=ff-public-images,SUPABASE_QR_BUCKET=ff-payment-qr,SUPABASE_SIGNED_URL_TTL_SECONDS=900" \
+            --port 8080 \
+            --min 0 \
+            --max 3 \
+            --no-allow-unauthenticated \
+            --quiet
+          api_url="$(
+            gcloud run services describe "$API_SERVICE" \
+              --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" \
+              --format='value(status.url)'
+          )"
+          test -n "$api_url"
+          echo "API_URL=$api_url" >>"$GITHUB_ENV"
+
+      - name: Verify private API health and readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          identity_token="$(gcloud auth print-identity-token --audiences="$API_URL")"
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 \
+            -H "Authorization: Bearer ${identity_token}" \
+            "${API_URL}/health" >/dev/null
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 \
+            -H "Authorization: Bearer ${identity_token}" \
+            "${API_URL}/ready" >/dev/null
+
+      - name: Build and push the web image
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          web_tag="${IMAGE_ROOT}/web:${GITHUB_SHA}"
+          docker buildx build \
+            --platform linux/amd64 \
+            --file apps/web/Dockerfile \
+            --build-arg "VITE_API_URL=${API_URL}" \
+            --tag "$web_tag" \
+            --push \
+            .
+          web_digest="$(
+            gcloud artifacts docker images describe "$web_tag" \
+              --project "$GCP_PROJECT_ID" \
+              --location "$GCP_REGION" \
+              --format='value(image_summary.digest)'
+          )"
+          [[ "$web_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          {
+            echo "WEB_TAG=$web_tag"
+            echo "WEB_DIGEST=$web_digest"
+            echo "WEB_IMAGE=${web_tag%:*}@${web_digest}"
+          } >>"$GITHUB_ENV"
+
+      - name: Deploy the private web service
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          gcloud run deploy "$WEB_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --image "$WEB_IMAGE" \
+            --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+            --port 80 \
+            --min 0 \
+            --max 3 \
+            --no-allow-unauthenticated \
+            --quiet
+
+      - name: Verify the private web service
+        shell: bash
+        run: |
+          set -euo pipefail
+          identity_token="$(gcloud auth print-identity-token --audiences="$WEB_URL")"
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 \
+            -H "Authorization: Bearer ${identity_token}" \
+            "$WEB_URL" >/dev/null
+
+      - name: Record sanitized deployment evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="${RUNNER_TEMP}/ff57-deployment-evidence.json"
+          jq -n \
+            --arg target "${{ inputs.target }}" \
+            --arg commit "$GITHUB_SHA" \
+            --arg releaseJob "$RELEASE_JOB" \
+            --arg releaseExecution "$RELEASE_EXECUTION" \
+            --arg apiImage "$API_IMAGE" \
+            --arg apiUrl "$API_URL" \
+            --arg webImage "$WEB_IMAGE" \
+            --arg webUrl "$WEB_URL" \
+            '{
+              target: $target,
+              commit: $commit,
+              releaseJob: $releaseJob,
+              releaseExecution: $releaseExecution,
+              apiImage: $apiImage,
+              apiUrl: $apiUrl,
+              webImage: $webImage,
+              webUrl: $webUrl
+            }' >"$evidence"
+          sha256sum "$evidence" | tee "${evidence}.sha256"
+          {
+            echo '## FF-57 deployment evidence'
+            echo
+            echo "- Target: \`${{ inputs.target }}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Release execution: \`${RELEASE_EXECUTION}\`"
+            echo "- API image: \`${API_IMAGE}\`"
+            echo "- Web image: \`${WEB_IMAGE}\`"
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Upload sanitized deployment evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ff57-${{ inputs.target }}-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/ff57-deployment-evidence.json
+            ${{ runner.temp }}/ff57-deployment-evidence.json.sha256
+          retention-days: 14
+          if-no-files-found: error
