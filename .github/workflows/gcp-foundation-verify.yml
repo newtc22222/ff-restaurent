@@ -1,0 +1,47 @@
+name: GCP foundation verify
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  verify-foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Verify short-lived identity and foundation inventory
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          test "$(gcloud config get-value account)" = "github-deployer@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          read -r database_version database_region database_tier < <(
+            gcloud sql instances describe ff-restaurent-db \
+              --project "$GCP_PROJECT_ID" \
+              --format='value(databaseVersion,region,settings.tier)'
+          )
+          test "$database_version" = POSTGRES_16
+          test "$database_region" = asia-east1
+          test "$database_tier" = db-custom-1-3840
+          gcloud artifacts repositories describe ff-restaurent \
+            --project "$GCP_PROJECT_ID" \
+            --location "$GCP_REGION" \
+            --format='value(format)' \
+            | grep -Fx DOCKER
+          for service in ff-restaurent-api ff-restaurent-web; do
+            gcloud run services describe "$service" \
+              --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" \
+              --format='value(metadata.name)' \
+              | grep -Fx "$service"
+          done
