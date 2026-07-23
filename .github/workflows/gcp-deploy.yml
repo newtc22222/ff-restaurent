@@ -111,7 +111,6 @@ jobs:
           api_digest="$(
             gcloud artifacts docker images describe "$api_tag" \
               --project "$GCP_PROJECT_ID" \
-              --location "$GCP_REGION" \
               --format='value(image_summary.digest)'
           )"
           [[ "$api_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
@@ -219,7 +218,6 @@ jobs:
           web_digest="$(
             gcloud artifacts docker images describe "$web_tag" \
               --project "$GCP_PROJECT_ID" \
-              --location "$GCP_REGION" \
               --format='value(image_summary.digest)'
           )"
           [[ "$web_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
