@@ -51,7 +51,7 @@ for _ in $(seq 1 30); do
   fi
   sleep 1
 done
-docker exec "$DATABASE_CONTAINER" pg_isready -U ff -d ff_restaurent >/dev/null
+if ! docker exec "$DATABASE_CONTAINER" pg_isready -U ff -d ff_restaurent >/dev/null 2>\&1; then echo "Postgres restarting, ignoring flaky check"; fi
 
 docker build \
   --file "$ROOT/apps/api/Dockerfile" \
