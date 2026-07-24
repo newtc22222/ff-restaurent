@@ -804,7 +804,10 @@ apply_rehearsal() {
   SCRATCH_DIR="$(mktemp -d)"
   chmod 700 "$SCRATCH_DIR"
   APPLY_STARTED="true"
-  trap cleanup_trap EXIT HUP INT TERM
+  trap cleanup_trap EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
   PERMANENT_STATE_BEFORE="$(permanent_state)"
   WIF_STATE_BEFORE="$(wif_state)"
   ORIGINAL_RUNTIME_POLICY="$(runtime_policy_state)"
