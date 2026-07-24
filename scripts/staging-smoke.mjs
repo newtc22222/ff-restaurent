@@ -58,20 +58,37 @@ export const runSmoke = async () => {
   const webUrl = process.env.WEB_URL?.replace(/\/$/, '');
   if (!apiUrl) throw new Error('API_URL is required');
 
-  await expectOk(`${apiUrl}/health`);
-  await expectOk(`${apiUrl}/ready`);
-  if (webUrl) await expectOk(webUrl);
+  const apiIdentityHeaders = process.env.API_CLOUD_RUN_IDENTITY_TOKEN
+    ? {
+        'x-serverless-authorization': `Bearer ${process.env.API_CLOUD_RUN_IDENTITY_TOKEN}`,
+      }
+    : undefined;
+  const webIdentityHeaders = process.env.WEB_CLOUD_RUN_IDENTITY_TOKEN
+    ? {
+        'x-serverless-authorization': `Bearer ${process.env.WEB_CLOUD_RUN_IDENTITY_TOKEN}`,
+      }
+    : undefined;
+
+  await expectOk(`${apiUrl}/health`, { headers: apiIdentityHeaders });
+  await expectOk(`${apiUrl}/ready`, { headers: apiIdentityHeaders });
+  if (webUrl) await expectOk(webUrl, { headers: webIdentityHeaders });
 
   if (process.env.SMOKE_USERNAME && process.env.SMOKE_PASSWORD) {
     const session = await expectOk(`${apiUrl}/auth/login`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...apiIdentityHeaders,
+      },
       body: JSON.stringify({
         identifier: process.env.SMOKE_USERNAME,
         password: process.env.SMOKE_PASSWORD,
       }),
     });
-    const headers = { authorization: `Bearer ${session.token}` };
+    const headers = {
+      authorization: `Bearer ${session.token}`,
+      ...apiIdentityHeaders,
+    };
     await expectOk(`${apiUrl}/me`, { headers });
     await expectOk(`${apiUrl}/bills`, { headers });
     await expectOk(`${apiUrl}/notifications`, { headers });
