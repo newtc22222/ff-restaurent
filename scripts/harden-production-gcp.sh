@@ -163,16 +163,25 @@ apply_lb() {
       --project "$PROJECT_ID" --quiet >/dev/null
   fi
   # Add host rule for API
-  gcloud_cmd compute url-maps add-path-matcher ff-restaurent-url-map \
+  local map_err
+  if ! map_err="$(gcloud_cmd compute url-maps add-path-matcher ff-restaurent-url-map \
     --default-service ff-restaurent-api-backend \
     --path-matcher-name ff-api-matcher \
     --new-hosts="$API_DOMAIN" \
-    --project "$PROJECT_ID" --quiet >/dev/null 2>&1 || true
+    --project "$PROJECT_ID" --quiet 2>&1)"; then
+    if [[ "$map_err" != *"already exists"* && "$map_err" != *"already has a pathMatcher"* ]]; then
+      die "Failed to add API path matcher: $map_err"
+    fi
+  fi
 
   # Add host rule for Web
-  gcloud_cmd compute url-maps add-host-rule ff-restaurent-url-map \
+  if ! map_err="$(gcloud_cmd compute url-maps add-host-rule ff-restaurent-url-map \
     --hosts="$WEB_DOMAIN" --path-matcher-name=path-matcher-1 \
-    --project "$PROJECT_ID" --quiet >/dev/null 2>&1 || true
+    --project "$PROJECT_ID" --quiet 2>&1)"; then
+    if [[ "$map_err" != *"already exists"* ]]; then
+      die "Failed to add Web host rule: $map_err"
+    fi
+  fi
 
   log "Reconciling Managed SSL Certificates..."
   if ! resource_exists compute ssl-certificates describe ff-restaurent-cert --project "$PROJECT_ID" --quiet; then
@@ -200,17 +209,57 @@ apply_lb() {
       --project "$PROJECT_ID" --quiet >/dev/null
   fi
 
+  log "Updating API CORS configuration..."
+  printf '%s' "https://${WEB_DOMAIN}" | \
+    gcloud_cmd secrets versions add ff-cors-origins --project "$PROJECT_ID" --data-file=- --quiet >/dev/null
+
+  log "Triggering API deployment to apply custom domain..."
+  gcloud_cmd run deploy "$API_SERVICE" --project "$PROJECT_ID" --region "$REGION" \
+    --quiet >/dev/null
+
+  log "Rebuilding and deploying Web image with updated VITE_API_URL..."
+  local web_tag="${REGION}-docker.pkg.dev/${PROJECT_ID}/ff-restaurent/web:production"
+  gcloud_cmd builds submit --project "$PROJECT_ID" --region "$REGION" \
+    --tag "$web_tag" \
+    --substitutions="_API_DOMAIN=${API_DOMAIN}" \
+    --config /dev/stdin --quiet . >/dev/null <<'EOF'
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['buildx', 'build', '--platform', 'linux/amd64', '--file', 'apps/web/Dockerfile', '--build-arg', 'VITE_API_URL=https://${_API_DOMAIN}', '--tag', '${_IMAGE_NAME}', '--push', '.']
+images: ['${_IMAGE_NAME}']
+EOF
+
+  gcloud_cmd run deploy "$WEB_SERVICE" --project "$PROJECT_ID" --region "$REGION" \
+    --image "$web_tag" --quiet >/dev/null
+
   log "Load Balancer successfully configured! Point your DNS A records to ${ip_address}"
 }
 
 apply_monitoring() {
   log "Configuring Monitoring Alerts..."
-  # To keep this script brief, we expect alert configurations to be managed via terraform or gcloud monitoring channels
-  # We will just verify the API is enabled here.
   if ! resource_exists services list --enabled --project "$PROJECT_ID" --quiet | grep -q "monitoring.googleapis.com"; then
     gcloud_cmd services enable monitoring.googleapis.com --project "$PROJECT_ID" --quiet >/dev/null
   fi
-  log "Monitoring API enabled. Please configure exact alert thresholds via GCP Console or Terraform."
+
+  log "Creating Uptime Checks..."
+  gcloud_cmd monitoring uptime create "ff-web-uptime" \
+    --display-name="Web Uptime" \
+    --resource-type="uptime_url" \
+    --resource-labels="host=${WEB_DOMAIN}" \
+    --path="/" \
+    --project "$PROJECT_ID" --quiet >/dev/null 2>&1 || true
+
+  log "Creating Alert Policies..."
+  gcloud_cmd monitoring policies create \
+    --display-name="High 5xx Error Rate on API" \
+    --condition-display-name="API 5xx Errors > 5%" \
+    --condition-filter="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${API_SERVICE}\" AND metric.type=\"run.googleapis.com/request_count\" AND metric.labels.response_code_class=\"5xx\"" \
+    --duration="120s" \
+    --if="> 5" \
+    --combiner="OR" \
+    --project "$PROJECT_ID" --quiet >/dev/null 2>&1 || true
+
+  log "Monitoring resources provisioned."
 }
 
 main() {
