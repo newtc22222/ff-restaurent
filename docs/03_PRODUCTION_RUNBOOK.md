@@ -31,21 +31,43 @@ step before broad public distribution.
 
 ## Deployment
 
-1. Build immutable API and web images from the verified Git SHA.
+1. Build immutable API and web images from the verified Git SHA. Resolve and
+   record their registry digests; deploy by digest rather than by a mutable tag.
 2. Back up the database.
-3. Run `npm run prisma:migrate:deploy -w @ff-restaurent/api`, followed by
-   `npm run prisma:cuisines:seed -w @ff-restaurent/api`, as one-time release
-   jobs when the platform supports them. The cuisine seed is idempotent and
-   never replaces the production catalog. Never run the destructive demo seed
-   in production.
+3. Run `npm run release:run -w @ff-restaurent/api` as one blocking release job.
+   It performs Prisma migration deployment, the idempotent popular-Cuisine
+   seed, phone normalization/backfill, and singleton ROOT_ADMIN bootstrap in
+   that order. Never run the destructive demo seed in production.
 4. Deploy the API image, then verify `/health` and `/ready`.
 5. Deploy the web image built with the production `VITE_API_URL`.
 6. Run `npm run smoke` with staging URLs and a least-privileged smoke account.
 7. Promote only when smoke checks and launch telemetry are healthy.
 
-On container platforms without a pre-deploy job, the API Docker command runs
-the same migration and cuisine-seed sequence before its existing idempotent
-backfills and then uses `exec` to hand PID 1 to Node.
+The API Dockerfile has separate runtime targets:
+
+- `cloud-run` starts only `node dist/server.js` in exec form. Cloud Run injects
+  `PORT`; the API listens on that port at `0.0.0.0`. Database release work must
+  complete successfully before a service revision is deployed.
+- `render` remains the final/default target while Render is the recovery
+  boundary. It preserves the shipped Phase 2 startup sequence and hands PID 1
+  to Node with `exec`.
+
+The manual `GCP deploy` workflow authenticates with Workload Identity
+Federation, builds Git-SHA-tagged images, records immutable digests, waits for
+the release job, deploys the private API, verifies health/readiness, then builds
+and deploys the private web service. A failed release job stops the workflow
+before either service deployment. The `production` target is accepted only
+from `main`; public access and traffic cutover remain later migration work.
+
+The workflow's `verification` target uses fixed disposable resources:
+`ff_release_verify`, `ff-release-verify-database-url`,
+`ff-release-verify-cors-origins`, `ff-restaurent-release-verify`,
+`ff-restaurent-api-verify`, and `ff-restaurent-web-verify`. An operator must
+create the temporary database, candidate ROOT_ADMIN user, secrets, and private
+service placeholders before dispatch, grant the runtime identity access only
+to the two temporary secrets, and delete all verification resources after
+capturing the sanitized workflow artifact. The permanent `ff_restaurent`
+database and FF-56 placeholders are not verification targets.
 
 ## Launch telemetry
 

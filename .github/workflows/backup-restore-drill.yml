@@ -2,11 +2,28 @@ name: Backup restore drill
 
 on:
   workflow_dispatch:
+    inputs:
+      operation:
+        description: Backup operation to run
+        required: true
+        default: restore-drill
+        type: choice
+        options:
+          - restore-drill
+          - capture-production-baseline
+      deployed_git_sha:
+        description: Exact Git SHA currently deployed on Render (required for baseline capture)
+        required: false
+        type: string
   schedule:
     - cron: '0 3 * * 1'
 
+permissions:
+  contents: read
+
 jobs:
   restore-drill:
+    if: github.event_name == 'schedule' || inputs.operation == 'restore-drill'
     runs-on: ubuntu-latest
     environment: production
     services:
@@ -29,3 +46,47 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
           RESTORE_DATABASE_URL: postgresql://ff:ff@localhost:5432/ff_restore_drill
+
+  capture-production-baseline:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'capture-production-baseline'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+      - name: Capture and encrypt the Render production baseline
+        id: capture
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.PRODUCTION_BACKUP_PASSPHRASE }}
+          DEPLOYED_GIT_SHA: ${{ inputs.deployed_git_sha }}
+          SOURCE_DATABASE_ID: dpg-d9aced58nd3s73aqvhu0-a
+          BASELINE_OUTPUT_DIR: ${{ runner.temp }}/ff-55-production-baseline
+        run: CAPTURE_OUTPUT_FILE="$GITHUB_OUTPUT" bash scripts/capture-production-baseline.sh
+      - name: Upload encrypted production baseline
+        id: upload
+        uses: actions/upload-artifact@v6
+        with:
+          name: ff-55-render-baseline-${{ github.run_id }}
+          path: |
+            ${{ steps.capture.outputs.artifact_path }}
+            ${{ steps.capture.outputs.checksum_path }}
+          if-no-files-found: error
+          retention-days: 14
+      - name: Record sanitized baseline evidence
+        shell: bash
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          CAPTURED_AT_UTC: ${{ steps.capture.outputs.captured_at_utc }}
+          DEPLOYED_GIT_SHA: ${{ steps.capture.outputs.deployed_git_sha }}
+          ENCRYPTED_SHA256: ${{ steps.capture.outputs.encrypted_sha256 }}
+        run: |
+          {
+            echo '### FF-55 Render production baseline'
+            echo
+            echo "- Captured at: ${CAPTURED_AT_UTC}"
+            echo "- Deployed Git SHA: \`${DEPLOYED_GIT_SHA}\`"
+            echo "- Encrypted SHA-256: \`${ENCRYPTED_SHA256}\`"
+            echo "- Artifact: ${ARTIFACT_URL}"
+            echo '- Retention: 14 days'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,8 +1,8 @@
 import { buildApp } from './app.js';
 import { prisma } from './prisma.js';
+import { resolveServerAddress } from './server-config.js';
 
-const port = Number(process.env.API_PORT ?? 4000);
-const host = process.env.API_HOST ?? '0.0.0.0';
+const { port, host } = resolveServerAddress();
 
 const app = await buildApp();
 
@@ -16,4 +16,3 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 await app.listen({ port, host });
-// Trigger reload after env update
