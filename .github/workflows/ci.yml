@@ -49,6 +49,14 @@ jobs:
         env:
           RUN_BASELINE_DB_TESTS: '1'
         run: bash scripts/capture-production-baseline.test.sh
+      - name: Verify FF-58 rehearsal failure handling
+        shell: bash
+        run: bash scripts/rehearse-gcp-migration.test.sh
+      - name: Verify FF-58 PostgreSQL 16 two-pass rehearsal
+        shell: bash
+        env:
+          RUN_FF58_DB_TESTS: '1'
+        run: bash scripts/rehearse-gcp-migration.integration.test.sh
       - run: npm run prisma:phase2:contract:verify -w @ff-restaurent/api
       - run: npm run prisma:indexes:verify -w @ff-restaurent/api
       - name: Verify one-shot release ordering and failure handling

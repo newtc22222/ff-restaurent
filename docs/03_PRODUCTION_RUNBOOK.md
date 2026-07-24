@@ -88,6 +88,56 @@ environment and secret to approved operators.
 Record each successful drill date, source snapshot, restored migration count,
 duration, and operator in the release record. A failed drill blocks promotion.
 
+### Render-to-Cloud SQL migration rehearsal
+
+FF-58 uses `scripts/rehearse-gcp-migration.sh` from WSL. It is separate from
+the scheduled restore drill and reuses the snapshot-consistent FF-55 capture
+primitive.
+
+```bash
+bash scripts/rehearse-gcp-migration.sh --plan
+bash scripts/rehearse-gcp-migration.sh --apply
+bash scripts/rehearse-gcp-migration.sh --cleanup
+```
+
+The passphrase file defaults to
+`~/.config/ff-restaurent/ff-55-passphrase`; its parent directory must be mode
+`700` and the file mode `600`. Encrypted capture and sanitized evidence are
+written to `~/.local/state/ff-restaurent/ff-58`, which is outside every Git
+worktree. Plaintext exists only in a mode-`700` temporary directory removed by
+the exit trap.
+
+The apply operation captures one exported, repeatable-read Render snapshot and
+restores that exact artifact twice. Each pass recreates `ff_release_verify`,
+restores in one transaction, compares source-snapshot counts, awaits the
+immutable FF-57 release job, requires zero post-release count drift, and checks
+migrations, indexes, normalized restaurant contracts, ROOT_ADMIN, all foreign
+keys, monetary allocations, and canonical phones. The database is discarded
+and recreated between passes. The FF-55 encrypted artifact remains an
+independent fallback.
+
+Only these disposable resources may be created or deleted:
+
+- Database: `ff_release_verify`
+- Secrets: `ff-release-verify-database-url` and
+  `ff-release-verify-cors-origins`
+- Job: `ff-restaurent-release-verify`
+- Services: `ff-restaurent-api-verify` and
+  `ff-restaurent-web-verify`
+
+The operator command verifies the permanent `ff_restaurent` database, both
+FF-56 placeholder revisions, and main-only WIF trust before and after the
+rehearsal. It removes temporary secret access, invoker and impersonation
+bindings, proxy credentials, services, job, secrets, and database on success or
+failure. Run `--cleanup` explicitly after an interrupted operator session; it
+refuses names outside the fixed disposable set.
+
+Projected cutover is capture plus the slower restore/release/verification pass
+plus deploy/smoke. More than 900 seconds, any row-count drift, an invariant
+failure, smoke failure, or incomplete cleanup blocks cutover. Preserve the
+encrypted artifact, evidence JSON and their SHA-256 files for review. Never
+record the passphrase, database URL, access tokens, or secret values.
+
 ## Rollback rehearsal
 
 Before promotion, record the current API/web image digests and database backup.
