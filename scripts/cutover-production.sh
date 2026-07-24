@@ -23,8 +23,8 @@ PERMANENT_DATABASE="ff_restaurent"
 PERMANENT_API_SERVICE="ff-restaurent-api"
 PERMANENT_WEB_SERVICE="ff-restaurent-web"
 CLOUD_SQL_CONNECTION="${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
-API_IMAGE="${API_IMAGE:-asia-east1-docker.pkg.dev/ff-restaurent/ff-restaurent/api@sha256:61a911a332092fcf6d038ac68af5275978346da5e9e0091db08c4e33697ddbeb}"
-WEB_IMAGE="${WEB_IMAGE:-asia-east1-docker.pkg.dev/ff-restaurent/ff-restaurent/web@sha256:3b8941e878a7a784fb502f0d55bc02998d5a47b8859661b9f2bcae0039fece8d}"
+API_IMAGE="${API_IMAGE:-}"
+WEB_IMAGE="${WEB_IMAGE:-}"
 PASSPHRASE_FILE="${FF58_PASSPHRASE_FILE:-$HOME/.config/ff-restaurent/ff-55-passphrase}"
 OUTPUT_DIR="${FF58_OUTPUT_DIR:-$HOME/.local/state/ff-restaurent/ff-58}"
 PROXY_BIN="${CLOUD_SQL_PROXY_BIN:-$HOME/.local/bin/cloud-sql-proxy}"
@@ -49,6 +49,7 @@ RELEASE_EXECUTION_TWO=""
 ARTIFACT_PATH=""
 ARTIFACT_SHA256=""
 SOURCE_DEPLOYED_SHA=""
+IMPERSONATION_GRANTED="false"
 
 usage() {
   cat <<'EOF'
@@ -179,6 +180,8 @@ require_tools() {
     die "pg_restore major version must be 16"
   [[ "$(psql --version)" == *" 16."* ]] ||
     die "psql major version must be 16"
+  [[ -n "$API_IMAGE" ]] || die "API_IMAGE must be explicitly specified for production cutover"
+  [[ -n "$WEB_IMAGE" ]] || die "WEB_IMAGE must be explicitly specified for production cutover"
 }
 
 validate_context() {
@@ -189,6 +192,8 @@ validate_context() {
   project="$(gcloud_cmd config get-value project --quiet 2>/dev/null)"
   [[ "$project" == "$PROJECT_ID" ]] ||
     die "active gcloud project does not match ${PROJECT_ID}"
+  [[ -n "${SMOKE_USERNAME:-}" && -n "${SMOKE_PASSWORD:-}" ]] ||
+    die "SMOKE_USERNAME and SMOKE_PASSWORD must be provided for authenticated smoke tests"
   project_number="$(
     gcloud_cmd projects describe "$PROJECT_ID" \
       --format='value(projectNumber)' --quiet
@@ -317,6 +322,13 @@ print_plan() {
 
 cleanup_trap() {
   local status=$?
+  if [[ "$IMPERSONATION_GRANTED" == "true" ]]; then
+    gcloud_cmd iam service-accounts remove-iam-policy-binding \
+      "$RUNTIME_SERVICE_ACCOUNT" --project "$PROJECT_ID" \
+      --member "user:${EXPECTED_ACCOUNT}" \
+      --role roles/iam.serviceAccountTokenCreator \
+      --quiet >/dev/null 2>&1 || true
+  fi
   if [[ -n "$PROXY_PID" ]]; then
     kill "$PROXY_PID" >/dev/null 2>&1
     wait "$PROXY_PID" >/dev/null 2>&1
@@ -330,8 +342,10 @@ cleanup_trap() {
 create_secret() {
   local name="$1"
   local value="$2"
-  gcloud_cmd secrets create "$name" --project "$PROJECT_ID" \
-    --replication-policy=automatic --quiet >/dev/null
+  if ! gcloud_cmd secrets describe "$name" --project "$PROJECT_ID" >/dev/null 2>&1; then
+    gcloud_cmd secrets create "$name" --project "$PROJECT_ID" \
+      --replication-policy=automatic --quiet >/dev/null
+  fi
   printf '%s' "$value" |
     gcloud_cmd secrets versions add "$name" --project "$PROJECT_ID" \
       --data-file=- --quiet >/dev/null
@@ -595,6 +609,7 @@ deploy_and_smoke() {
     --member "user:${EXPECTED_ACCOUNT}" \
     --role roles/iam.serviceAccountTokenCreator \
     --quiet >/dev/null
+  IMPERSONATION_GRANTED="true"
   wait_for_runtime_impersonation ||
     die "runtime impersonation did not propagate within 60 seconds"
   local api_token web_token
