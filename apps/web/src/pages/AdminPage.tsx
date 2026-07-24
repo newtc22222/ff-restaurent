@@ -1,4 +1,10 @@
-import { ChevronLeft, ChevronRight, KeyRound, Search, Users } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  KeyRound,
+  Search,
+  Users,
+} from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Navigate, useLoaderData, useSearchParams } from 'react-router';
 import type { CatalogPage, ChefRole, User } from '../lib/api';
@@ -292,7 +298,9 @@ export default function AdminPage() {
           <button
             type="button"
             className="btn btn-soft"
-            disabled={!page.pageInfo.hasPreviousPage || !page.pageInfo.startCursor}
+            disabled={
+              !page.pageInfo.hasPreviousPage || !page.pageInfo.startCursor
+            }
             onClick={() =>
               page.pageInfo.startCursor &&
               goToPage(page.pageInfo.startCursor, 'backward')

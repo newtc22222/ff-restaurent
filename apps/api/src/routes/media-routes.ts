@@ -26,7 +26,10 @@ const multipartFile = async (request: FastifyRequest) => {
   return part;
 };
 
-const fieldValue = (part: Awaited<ReturnType<typeof multipartFile>>, key: string) => {
+const fieldValue = (
+  part: Awaited<ReturnType<typeof multipartFile>>,
+  key: string,
+) => {
   const field = part.fields[key];
   if (!field || Array.isArray(field) || field.type !== 'field') return '';
   return String(field.value ?? '').trim();
@@ -129,7 +132,8 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
           where: { id },
           select: { avatarUrl: true, bannerImageUrl: true },
         });
-        if (!restaurant) return reply.code(404).send({ message: 'Restaurant not found' });
+        if (!restaurant)
+          return reply.code(404).send({ message: 'Restaurant not found' });
         const part = await multipartFile(request);
         const uploaded = await uploadImage({
           part,
@@ -144,9 +148,10 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
             data: { [field]: imageUrl },
           });
         } catch (error) {
-          await removeObject(storageBuckets().publicBucket, uploaded.path).catch(
-            () => undefined,
-          );
+          await removeObject(
+            storageBuckets().publicBucket,
+            uploaded.path,
+          ).catch(() => undefined);
           throw error;
         }
         await removeManagedPublicImage(request, restaurant[field]);
@@ -165,7 +170,8 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
           where: { id },
           select: { avatarUrl: true, bannerImageUrl: true },
         });
-        if (!restaurant) return reply.code(404).send({ message: 'Restaurant not found' });
+        if (!restaurant)
+          return reply.code(404).send({ message: 'Restaurant not found' });
         await prisma.restaurantEntry.update({
           where: { id },
           data: { [field]: null },
@@ -194,7 +200,8 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
     async (request, reply) => {
       const part = await multipartFile(request);
       const label = fieldValue(part, 'label');
-      if (!label || label.length > 80) throw badRequest('QR label must be 1 to 80 characters');
+      if (!label || label.length > 80)
+        throw badRequest('QR label must be 1 to 80 characters');
       const uploaded = await uploadImage({
         part,
         bucket: storageBuckets().qrBucket,
@@ -205,13 +212,19 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
         const qr = await prisma.$transaction(async (tx) => {
           await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${request.currentUser.id}))::text AS lock`;
           const active = await tx.paymentQrImage.count({
-            where: { ownerId: request.currentUser.id, status: EntryStatus.ACTIVE },
+            where: {
+              ownerId: request.currentUser.id,
+              status: EntryStatus.ACTIVE,
+            },
           });
           if (active >= 5) {
-            throw Object.assign(new Error('At most five active payment QR images are allowed'), {
-              statusCode: 409,
-              code: 'QR_LIMIT_REACHED',
-            });
+            throw Object.assign(
+              new Error('At most five active payment QR images are allowed'),
+              {
+                statusCode: 409,
+                code: 'QR_LIMIT_REACHED',
+              },
+            );
           }
           return tx.paymentQrImage.create({
             data: {
@@ -225,7 +238,9 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
         });
         return reply.code(201).send(await serializeQr(qr));
       } catch (error) {
-        await removeObject(storageBuckets().qrBucket, uploaded.path).catch(() => undefined);
+        await removeObject(storageBuckets().qrBucket, uploaded.path).catch(
+          () => undefined,
+        );
         throw error;
       }
     },
@@ -236,14 +251,24 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
     { preHandler: [requireAuthenticatedUser, requireSousChefOrHeadChef] },
     async (request, reply) => {
       const { id } = request.params as { id: string };
-      const label = String((request.body as { label?: unknown })?.label ?? '').trim();
-      if (!label || label.length > 80) throw badRequest('QR label must be 1 to 80 characters');
+      const label = String(
+        (request.body as { label?: unknown })?.label ?? '',
+      ).trim();
+      if (!label || label.length > 80)
+        throw badRequest('QR label must be 1 to 80 characters');
       const result = await prisma.paymentQrImage.updateMany({
-        where: { id, ownerId: request.currentUser.id, status: EntryStatus.ACTIVE },
+        where: {
+          id,
+          ownerId: request.currentUser.id,
+          status: EntryStatus.ACTIVE,
+        },
         data: { label },
       });
-      if (result.count !== 1) return reply.code(404).send({ message: 'Payment QR image not found' });
-      const qr = await prisma.paymentQrImage.findUniqueOrThrow({ where: { id } });
+      if (result.count !== 1)
+        return reply.code(404).send({ message: 'Payment QR image not found' });
+      const qr = await prisma.paymentQrImage.findUniqueOrThrow({
+        where: { id },
+      });
       return serializeQr(qr);
     },
   );
@@ -254,12 +279,18 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
     async (request, reply) => {
       const { id } = request.params as { id: string };
       const current = await prisma.paymentQrImage.findFirst({
-        where: { id, ownerId: request.currentUser.id, status: EntryStatus.ACTIVE },
+        where: {
+          id,
+          ownerId: request.currentUser.id,
+          status: EntryStatus.ACTIVE,
+        },
       });
-      if (!current) return reply.code(404).send({ message: 'Payment QR image not found' });
+      if (!current)
+        return reply.code(404).send({ message: 'Payment QR image not found' });
       const part = await multipartFile(request);
       const label = fieldValue(part, 'label') || current.label;
-      if (label.length > 80) throw badRequest('QR label must be at most 80 characters');
+      if (label.length > 80)
+        throw badRequest('QR label must be at most 80 characters');
       const uploaded = await uploadImage({
         part,
         bucket: storageBuckets().qrBucket,
@@ -285,7 +316,9 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
         });
         return reply.code(201).send(await serializeQr(replacement));
       } catch (error) {
-        await removeObject(storageBuckets().qrBucket, uploaded.path).catch(() => undefined);
+        await removeObject(storageBuckets().qrBucket, uploaded.path).catch(
+          () => undefined,
+        );
         throw error;
       }
     },
@@ -297,10 +330,15 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
     async (request, reply) => {
       const { id } = request.params as { id: string };
       const qr = await prisma.paymentQrImage.findFirst({
-        where: { id, ownerId: request.currentUser.id, status: EntryStatus.ACTIVE },
+        where: {
+          id,
+          ownerId: request.currentUser.id,
+          status: EntryStatus.ACTIVE,
+        },
         include: { _count: { select: { bills: true } } },
       });
-      if (!qr) return reply.code(404).send({ message: 'Payment QR image not found' });
+      if (!qr)
+        return reply.code(404).send({ message: 'Payment QR image not found' });
       if (qr._count.bills > 0) {
         await prisma.paymentQrImage.update({
           where: { id },
@@ -324,8 +362,13 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
         select: { createdById: true },
       });
       if (!bill) return reply.code(404).send({ message: 'Bill not found' });
-      if (bill.createdById !== request.currentUser.id && !isHeadChef(request.currentUser)) {
-        return reply.code(403).send({ message: 'Not allowed to edit this bill' });
+      if (
+        bill.createdById !== request.currentUser.id &&
+        !isHeadChef(request.currentUser)
+      ) {
+        return reply
+          .code(403)
+          .send({ message: 'Not allowed to edit this bill' });
       }
       const rows = await prisma.paymentQrImage.findMany({
         where: { ownerId: bill.createdById, status: EntryStatus.ACTIVE },

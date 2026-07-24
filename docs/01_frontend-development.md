@@ -7,6 +7,7 @@ Welcome to the FF RESTaurent Frontend Development Guide. This document provides 
 ## Technology Stack
 
 The frontend application is built using the following modern web technologies:
+
 - **Core Library**: React 19
 - **Build Tool**: Vite 7
 - **Styling**: Tailwind CSS 3 (utility-first CSS frameworks) & Vanilla CSS overrides
@@ -67,6 +68,7 @@ apps/web/src/
 ## State Management & Routing
 
 To keep the application simple and direct:
+
 1. **No External Router**: Navigation is controlled entirely by React state `tab` (for sidebar sections) and `screen` (for specific page views like `'create-bill'`, `'bill-detail'`).
 2. **State Location**: The central application state (e.g. current user, list of bills, restaurants, loading indicators) resides in `App.tsx` and is passed down to components via standard React props.
 3. **Uni-directional Data Flow**: Actions (e.g. paying a share, archiving a bill) are initiated in subcomponents and pass up through callbacks to trigger `App.tsx` to update states and invoke refetching.
@@ -76,15 +78,18 @@ To keep the application simple and direct:
 ## Development Guidelines
 
 ### 1. Integer Cents (Money Representation)
+
 - All monetary values are handled and stored as **integer cents** (represented in VND currency).
 - Never use floats for monetary calculations to avoid rounding discrepancies.
 - Reuse `money()` formatting helper from `api.ts` to convert integers into readable VND symbols.
 
 ### 2. Multi-language (i18n) & Themes
+
 - The application supports English (`en`) and Vietnamese (`vi`, default). Use the `useI18n()` hook to retrieve the current locale, translation helper `t()`, and setter `setLocale()`.
 - Use the `useTheme()` hook to manage `theme` ('light' | 'dark' | 'system'). Tailor styles for dark mode using Tailwind's `dark:` modifier.
 
 ### 3. Shared Package Consumption
+
 - Shared logic (e.g. calculations, shared validation types) is imported from `@ff-restaurent/shared`.
 - **Note**: TypeScript compiles the shared workspace package to `dist/`. If you modify anything under `packages/shared`, you must rebuild it so the frontend can resolve the new imports:
   ```bash
@@ -92,6 +97,7 @@ To keep the application simple and direct:
   ```
 
 ### 4. Code Standards & Naming
+
 - Use highly descriptive and clear names. Avoid cryptic abbreviations (e.g., use `onSelectRestaurant` instead of `selRes`).
 - Write brief JSDoc comments for components, documenting props and explaining any non-obvious logic.
 
@@ -102,12 +108,14 @@ To keep the application simple and direct:
 Run these commands from the root directory of the monorepo:
 
 ### Local Development
+
 ```bash
 # Run the Vite web development server (available at http://localhost:5173)
 npm run dev -w @ff-restaurent/web
 ```
 
 ### Build & Verification
+
 ```bash
 # Typecheck TypeScript files
 npm run typecheck

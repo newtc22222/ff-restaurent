@@ -3,11 +3,8 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "noEmit": true,
-    "types": ["vite/client"],
-    "baseUrl": ".",
-    "paths": {
-      "@ff-restaurent/shared": ["../../packages/shared/src/index.ts"]
-    }
+    "types": ["vite/client"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{ "path": "../../packages/shared" }]
 }

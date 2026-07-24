@@ -3,11 +3,8 @@
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "types": ["node"],
-    "baseUrl": ".",
-    "paths": {
-      "@ff-restaurent/shared": ["../../packages/shared/src/index.ts"]
-    }
+    "types": ["node"]
   },
-  "include": ["src", "prisma", "prisma.config.ts"]
+  "include": ["src", "prisma", "prisma.config.ts"],
+  "references": [{ "path": "../../packages/shared" }]
 }

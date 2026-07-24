@@ -74,11 +74,13 @@ export const uploadImage = async ({
   const image = await validateImage(part, limit);
   const path = `${folder}/${randomUUID()}.${image.extension}`;
   const { client: supabase } = storage();
-  const { error } = await supabase.storage.from(bucket).upload(path, image.buffer, {
-    contentType: image.mimeType,
-    cacheControl: '31536000',
-    upsert: false,
-  });
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(path, image.buffer, {
+      contentType: image.mimeType,
+      cacheControl: '31536000',
+      upsert: false,
+    });
   if (error) throw storageError(`Image upload failed: ${error.message}`);
   return {
     path,

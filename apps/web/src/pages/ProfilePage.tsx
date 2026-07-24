@@ -157,12 +157,14 @@ export default function ProfilePage() {
         const body = new FormData();
         body.append('label', qrLabel.trim());
         body.append('file', qrFile);
-        await session.api().request(
-          editingQr
-            ? `/me/payment-qr-images/${editingQr.id}/replacement`
-            : '/me/payment-qr-images',
-          { method: 'POST', body },
-        );
+        await session
+          .api()
+          .request(
+            editingQr
+              ? `/me/payment-qr-images/${editingQr.id}/replacement`
+              : '/me/payment-qr-images',
+            { method: 'POST', body },
+          );
       } else if (editingQr) {
         await session.api().request(`/me/payment-qr-images/${editingQr.id}`, {
           method: 'PATCH',
@@ -198,24 +200,35 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl py-2">
-      <BackButton onClick={() => navigate('/bills')} label={t('bills.backToBills')} />
+      <BackButton
+        onClick={() => navigate('/bills')}
+        label={t('bills.backToBills')}
+      />
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
         <div className="space-y-4">
           <section className="panel p-6">
             <div className="mb-6 flex items-center gap-4">
               <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#e9900c] text-[24px] font-bold text-white">
                 {user.avatarUrl ? (
-                  <img className="h-full w-full object-cover" src={user.avatarUrl} alt="" />
+                  <img
+                    className="h-full w-full object-cover"
+                    src={user.avatarUrl}
+                    alt=""
+                  />
                 ) : (
                   initials(user.name)
                 )}
               </div>
               <div className="min-w-0">
-                <h2 className="truncate text-[20px] font-bold text-ink">{user.name}</h2>
+                <h2 className="truncate text-[20px] font-bold text-ink">
+                  {user.name}
+                </h2>
                 <p className="text-[13px] text-slate-500">
                   @{user.username} / {roleLabel(user, t)}
                 </p>
-                {user.phone && <p className="text-[13px] text-slate-500">{user.phone}</p>}
+                {user.phone && (
+                  <p className="text-[13px] text-slate-500">{user.phone}</p>
+                )}
               </div>
             </div>
             <ImagePicker
@@ -226,44 +239,98 @@ export default function ProfilePage() {
               onRemove={() => void removeAvatar()}
             />
             {!editing ? (
-              <button className="btn btn-soft mt-4 w-full" onClick={() => setEditing(true)}>
+              <button
+                className="btn btn-soft mt-4 w-full"
+                onClick={() => setEditing(true)}
+              >
                 <Edit3 size={14} /> {t('profile.edit')}
               </button>
             ) : (
               <form onSubmit={submit} className="mt-4 space-y-4">
                 <label className="block space-y-1">
                   <span className="label">{t('auth.name')}</span>
-                  <input className="field w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                  <input
+                    className="field w-full"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
+                  />
                 </label>
                 <label className="block space-y-1">
                   <span className="label">{t('auth.username')}</span>
-                  <input className="field w-full" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+                  <input
+                    className="field w-full"
+                    value={form.username}
+                    onChange={(e) =>
+                      setForm({ ...form, username: e.target.value })
+                    }
+                    required
+                  />
                 </label>
                 <label className="block space-y-1">
                   <span className="label">{t('auth.phone')}</span>
-                  <input className="field w-full" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} aria-invalid={!!phoneError} />
-                  {phoneError && <span className="text-xs text-red-600" role="alert">{phoneError}</span>}
+                  <input
+                    className="field w-full"
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm({ ...form, phone: e.target.value })
+                    }
+                    aria-invalid={!!phoneError}
+                  />
+                  {phoneError && (
+                    <span className="text-xs text-red-600" role="alert">
+                      {phoneError}
+                    </span>
+                  )}
                 </label>
                 <div className="flex gap-3">
-                  <button type="button" className="btn btn-soft flex-1" onClick={() => setEditing(false)}>{t('auth.cancel')}</button>
-                  <button className="btn btn-primary flex-1" disabled={!!phoneError}>{t('profile.save')}</button>
+                  <button
+                    type="button"
+                    className="btn btn-soft flex-1"
+                    onClick={() => setEditing(false)}
+                  >
+                    {t('auth.cancel')}
+                  </button>
+                  <button
+                    className="btn btn-primary flex-1"
+                    disabled={!!phoneError}
+                  >
+                    {t('profile.save')}
+                  </button>
                 </div>
               </form>
             )}
           </section>
 
           <section className="panel p-6">
-            <h2 className="text-lg font-bold text-ink">{t('profile.notificationPreferences')}</h2>
-            <p className="mt-1 text-sm text-slate-500">{t('profile.notificationPreferencesDescription')}</p>
+            <h2 className="text-lg font-bold text-ink">
+              {t('profile.notificationPreferences')}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {t('profile.notificationPreferencesDescription')}
+            </p>
             <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-4">
-              <span className="text-sm font-semibold text-ink">{t('profile.paymentReminders')}</span>
+              <span className="text-sm font-semibold text-ink">
+                {t('profile.paymentReminders')}
+              </span>
               <input
                 type="checkbox"
                 checked={user.paymentRemindersEnabled !== false}
-                onChange={(event) => void mutate(
-                  { intent: 'notification-preferences', payload: { paymentRemindersEnabled: event.target.checked } },
-                  { fallback: t('toast.notificationPreferencesFailed'), success: t('toast.notificationPreferencesUpdated') },
-                )}
+                onChange={(event) =>
+                  void mutate(
+                    {
+                      intent: 'notification-preferences',
+                      payload: {
+                        paymentRemindersEnabled: event.target.checked,
+                      },
+                    },
+                    {
+                      fallback: t('toast.notificationPreferencesFailed'),
+                      success: t('toast.notificationPreferencesUpdated'),
+                    },
+                  )
+                }
               />
             </label>
           </section>
@@ -274,59 +341,174 @@ export default function ProfilePage() {
             <section className="panel p-6">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="flex items-center gap-2 text-lg font-bold text-ink"><QrCode size={19} /> {t('profile.qrTitle')}</h2>
-                  <p className="mt-1 text-sm text-slate-500">{t('profile.qrDescription')}</p>
+                  <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
+                    <QrCode size={19} /> {t('profile.qrTitle')}
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {t('profile.qrDescription')}
+                  </p>
                 </div>
-                <button className="btn btn-primary" disabled={qrImages.length >= 5} onClick={() => openQrModal()}><Plus size={14} /> {t('profile.qrAdd')}</button>
+                <button
+                  className="btn btn-primary"
+                  disabled={qrImages.length >= 5}
+                  onClick={() => openQrModal()}
+                >
+                  <Plus size={14} /> {t('profile.qrAdd')}
+                </button>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {qrImages.map((qr) => (
-                  <article key={qr.id} className="rounded-lg border border-border p-3">
-                    <img src={qr.imageUrl} alt={qr.label} className="aspect-square w-full rounded-md bg-white object-contain" />
-                    <p className="mt-2 truncate text-sm font-semibold text-ink">{qr.label}</p>
+                  <article
+                    key={qr.id}
+                    className="rounded-lg border border-border p-3"
+                  >
+                    <img
+                      src={qr.imageUrl}
+                      alt={qr.label}
+                      className="aspect-square w-full rounded-md bg-white object-contain"
+                    />
+                    <p className="mt-2 truncate text-sm font-semibold text-ink">
+                      {qr.label}
+                    </p>
                     <div className="mt-2 flex gap-2">
-                      <button className="btn btn-soft flex-1 text-xs" onClick={() => openQrModal(qr)}><Edit3 size={12} /> {t('profile.edit')}</button>
-                      <button className="btn btn-soft text-xs text-red-600" onClick={() => setDeletingQr(qr)}><Trash2 size={12} /></button>
+                      <button
+                        className="btn btn-soft flex-1 text-xs"
+                        onClick={() => openQrModal(qr)}
+                      >
+                        <Edit3 size={12} /> {t('profile.edit')}
+                      </button>
+                      <button
+                        className="btn btn-soft text-xs text-red-600"
+                        onClick={() => setDeletingQr(qr)}
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </article>
                 ))}
-                {qrImages.length === 0 && <p className="text-sm text-slate-500">{t('profile.qrEmpty')}</p>}
+                {qrImages.length === 0 && (
+                  <p className="text-sm text-slate-500">
+                    {t('profile.qrEmpty')}
+                  </p>
+                )}
               </div>
             </section>
           )}
 
           <section className="panel p-6">
-            <h2 className="text-lg font-bold text-ink">{t('profile.changePassword')}</h2>
-            <p className="mt-1 text-sm text-slate-500">{t('profile.changePasswordDescription')}</p>
+            <h2 className="text-lg font-bold text-ink">
+              {t('profile.changePassword')}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {t('profile.changePasswordDescription')}
+            </p>
             <form className="mt-5 space-y-4" onSubmit={changePassword}>
               <label className="block space-y-1">
                 <span className="label">{t('profile.currentPassword')}</span>
-                <input className="field w-full" type="password" autoComplete="current-password" value={passwordForm.currentPassword} onChange={(event) => setPasswordForm({ ...passwordForm, currentPassword: event.target.value })} required />
+                <input
+                  className="field w-full"
+                  type="password"
+                  autoComplete="current-password"
+                  value={passwordForm.currentPassword}
+                  onChange={(event) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      currentPassword: event.target.value,
+                    })
+                  }
+                  required
+                />
               </label>
               <label className="block space-y-1">
                 <span className="label">{t('profile.newPassword')}</span>
-                <input className="field w-full" type="password" autoComplete="new-password" value={passwordForm.newPassword} onChange={(event) => setPasswordForm({ ...passwordForm, newPassword: event.target.value })} aria-invalid={!!passwordLengthError || !!passwordReuseError} required />
-                {(passwordLengthError || passwordReuseError) && <span className="text-xs text-red-600" role="alert">{passwordLengthError || passwordReuseError}</span>}
+                <input
+                  className="field w-full"
+                  type="password"
+                  autoComplete="new-password"
+                  value={passwordForm.newPassword}
+                  onChange={(event) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      newPassword: event.target.value,
+                    })
+                  }
+                  aria-invalid={!!passwordLengthError || !!passwordReuseError}
+                  required
+                />
+                {(passwordLengthError || passwordReuseError) && (
+                  <span className="text-xs text-red-600" role="alert">
+                    {passwordLengthError || passwordReuseError}
+                  </span>
+                )}
               </label>
               <label className="block space-y-1">
                 <span className="label">{t('profile.confirmPassword')}</span>
-                <input className="field w-full" type="password" autoComplete="new-password" value={passwordForm.confirmation} onChange={(event) => setPasswordForm({ ...passwordForm, confirmation: event.target.value })} aria-invalid={!!passwordConfirmationError} required />
-                {passwordConfirmationError && <span className="text-xs text-red-600" role="alert">{passwordConfirmationError}</span>}
+                <input
+                  className="field w-full"
+                  type="password"
+                  autoComplete="new-password"
+                  value={passwordForm.confirmation}
+                  onChange={(event) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      confirmation: event.target.value,
+                    })
+                  }
+                  aria-invalid={!!passwordConfirmationError}
+                  required
+                />
+                {passwordConfirmationError && (
+                  <span className="text-xs text-red-600" role="alert">
+                    {passwordConfirmationError}
+                  </span>
+                )}
               </label>
-              <button className="btn btn-primary w-full" disabled={!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmation || !!passwordLengthError || !!passwordReuseError || !!passwordConfirmationError}>{t('profile.changePasswordAction')}</button>
+              <button
+                className="btn btn-primary w-full"
+                disabled={
+                  !passwordForm.currentPassword ||
+                  !passwordForm.newPassword ||
+                  !passwordForm.confirmation ||
+                  !!passwordLengthError ||
+                  !!passwordReuseError ||
+                  !!passwordConfirmationError
+                }
+              >
+                {t('profile.changePasswordAction')}
+              </button>
             </form>
           </section>
         </div>
       </div>
 
-      <Modal open={qrModalOpen} title={t(editingQr ? 'profile.qrEdit' : 'profile.qrAddTitle')} onClose={() => setQrModalOpen(false)}>
+      <Modal
+        open={qrModalOpen}
+        title={t(editingQr ? 'profile.qrEdit' : 'profile.qrAddTitle')}
+        onClose={() => setQrModalOpen(false)}
+      >
         <div className="space-y-4">
           <label className="block space-y-1">
             <span className="label">{t('profile.qrLabel')}</span>
-            <input className="field w-full" maxLength={80} value={qrLabel} onChange={(event) => setQrLabel(event.target.value)} />
+            <input
+              className="field w-full"
+              maxLength={80}
+              value={qrLabel}
+              onChange={(event) => setQrLabel(event.target.value)}
+            />
           </label>
-          <ImagePicker label={t('profile.qrImage')} currentUrl={editingQr?.imageUrl} maxSizeMb={2} onFile={setQrFile} />
-          <button className="btn btn-primary w-full" disabled={mediaBusy || !qrLabel.trim() || (!editingQr && !qrFile)} onClick={() => void saveQr()}>{mediaBusy ? t('common.loading') : t('common.save')}</button>
+          <ImagePicker
+            label={t('profile.qrImage')}
+            currentUrl={editingQr?.imageUrl}
+            maxSizeMb={2}
+            onFile={setQrFile}
+          />
+          <button
+            className="btn btn-primary w-full"
+            disabled={mediaBusy || !qrLabel.trim() || (!editingQr && !qrFile)}
+            onClick={() => void saveQr()}
+          >
+            {mediaBusy ? t('common.loading') : t('common.save')}
+          </button>
         </div>
       </Modal>
 

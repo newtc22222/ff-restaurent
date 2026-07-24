@@ -87,6 +87,8 @@ Shared package tests:
 npm test -w @ff-restaurent/shared
 ```
 
+Note on testing frameworks: The API intentionally uses `node:test` for its test runner, while the web and shared packages use Vitest. These frameworks are explicitly chosen and should not be unified. Tests for a feature are colocated with the feature.
+
 ### Formatting
 
 ```bash
@@ -212,7 +214,7 @@ Always rebuild the shared package after modifying it:
 npm run build -w @ff-restaurent/shared
 ```
 
-The API development server (`tsx`) can often consume fresh builds automatically, but the Vite frontend expects the compiled output.
+The API/root production build requires compiled shared output, but Vite resolves `@ff-restaurent/shared` to source during web development.
 
 ---
 
@@ -263,36 +265,11 @@ npm run prisma:migrate -w @ff-restaurent/api
 
 ## Web Structure
 
-The frontend is intentionally simple.
+The web application uses **React Router 7**.
 
-Most application logic resides in:
-
-```
-apps/web/src/App.tsx
-```
-
-There is currently:
-
-- no router
-- one primary application component
-
-Navigation is controlled by state:
-
-```ts
-tab;
-```
-
-and
-
-```ts
-screen;
-```
-
-where `screen` is one of:
-
-- `dashboard`
-- `create-bill`
-- `bill-detail`
+- Route components, loaders, and actions: `apps/web/src/app/router.ts` and `apps/web/src/pages/`
+- Application shell: `apps/web/src/App.tsx`
+- Feature-specific UI: `apps/web/src/features/`
 
 All HTTP requests are made through:
 

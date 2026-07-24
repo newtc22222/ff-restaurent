@@ -43,6 +43,7 @@ npm run measure:web    # Web bundle size report (scripts/measure-web-bundle.mjs)
 npm test -w @ff-restaurent/shared
 
 # Lint and format
+npm run prettier:check
 npm run lint
 npm run format
 ```
@@ -69,7 +70,7 @@ Helpers `isRootAdmin`, `isSousChefOrAbove`, `isHeadChef` live in `apps/api/src/r
 
 All money values are **integer cents** throughout the stack. The core math is in `packages/shared/src/bill-splitting.ts` (tested in `bill-splitting.test.ts`). `calculateBillSplit` distributes VAT, shipping, discounts, and vouchers across participants; `Bill.adjustmentAllocation` selects `EQUAL` or `PROPORTIONAL` allocation.
 
-The shared package **must be built before the API or web can import from it** — it compiles TypeScript to `dist/` and the other packages import that output. In dev the `tsx` runner handles this for the API, but the web Vite dev server needs the built output.
+The API/root production build requires compiled shared output, but Vite resolves `@ff-restaurent/shared` to source during web development.
 
 ### API Structure
 
@@ -94,7 +95,7 @@ The schema is in an **expand + dual-read/dual-write** state. Legacy fields `Rest
 - `lib/` — `api.ts` (`ApiClient` class, all API calls, local response types), `session.ts`, `translations.ts`, `pwa.ts`
 - `hooks/` — e.g. `useMutation`
 
-There is no router library — navigation is driven by `router.ts` state. `VITE_API_URL` controls the API base URL. Web tests are colocated `*.test.tsx` files.
+The web application uses React Router 7. `VITE_API_URL` controls the API base URL. Web tests are colocated `*.test.tsx` files. The API intentionally uses `node:test` for its test runner, while the web and shared packages use Vitest. These frameworks are explicitly chosen and should not be unified.
 
 ### Shared Package Exports
 

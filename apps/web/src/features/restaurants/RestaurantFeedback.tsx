@@ -127,7 +127,9 @@ export default function RestaurantFeedback({
                     value: bill.billId,
                     label: `${new Intl.DateTimeFormat(locale, {
                       dateStyle: 'medium',
-                    }).format(new Date(bill.billCreatedAt))}${bill.feedback ? ' · ✓' : ''}`,
+                    }).format(
+                      new Date(bill.billCreatedAt),
+                    )}${bill.feedback ? ' · ✓' : ''}`,
                   }))}
                   searchable
                 />
