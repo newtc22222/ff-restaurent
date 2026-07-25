@@ -1,12 +1,70 @@
+# Practice environment blueprint (FF-70).
+#
+# This file is specific to the `env/practice` branch. It is NOT merged back into
+# `develop` or `main` — changes flow one way, develop -> env/practice.
+#
+# Both services are named `-practice` so this blueprint instance cannot collide
+# with or adopt the production `ff-restaurent` service.
+#
+# The database is Prisma Postgres (Render Postgres is being retired); the API
+# reaches it through a direct TCP connection string in DATABASE_URL.
+# See docs/practice-environment.md for the full runbook.
 services:
   - type: web
-    name: ff-restaurent
+    name: ff-restaurent-practice-api
+    runtime: docker
+    branch: env/practice
+    plan: free
+    # The final stage of apps/api/Dockerfile is `render`, so a plain build
+    # selects it. Blueprints have no build-target key — do not reorder the
+    # Dockerfile stages without revisiting this.
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      # Prisma Postgres direct TCP string:
+      #   postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require
+      # Not the pooled or prisma+postgres:// string — `prisma migrate deploy`
+      # runs on boot and PrismaClient is unextended.
+      - key: DATABASE_URL
+        sync: false
+      # The runtime image sets NODE_ENV=production, so apps/api/src/config.ts
+      # rejects startup unless JWT_SECRET >= 32 chars, CORS_ORIGINS is non-empty
+      # and REGISTRATION_INVITE_CODE >= 12 chars.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      # https://ff-restaurent-practice-web.onrender.com (scheme required)
+      - key: CORS_ORIGINS
+        sync: false
+      - key: REGISTRATION_INVITE_CODE
+        sync: false
+      # `head` is created by prisma:seed and already carries ROOT_ADMIN.
+      - key: ROOT_ADMIN_USERNAME
+        value: head
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_PUBLIC_BUCKET
+        value: ff-public-images
+      - key: SUPABASE_QR_BUCKET
+        value: ff-payment-qr
+      - key: SUPABASE_SIGNED_URL_TTL_SECONDS
+        value: '900'
+
+  - type: web
+    name: ff-restaurent-practice-web
     runtime: static
-    branch: main
+    branch: env/practice
     buildCommand: npm ci && npm run build -w @ff-restaurent/shared && npm run build -w @ff-restaurent/web
     staticPublishPath: apps/web/dist
     autoDeployTrigger: commit
     envVars:
+      # https://ff-restaurent-practice-api.onrender.com
+      # Consumed at BUILD time — changing it needs a rebuild, not a restart.
       - key: VITE_API_URL
         sync: false
     headers:

@@ -85,7 +85,7 @@ Key domain models beyond users/bills: `Cuisine` + `RestaurantCuisine` (every res
 
 The normalized-restaurant contract shipped in v1.1.0. Migration `20260720000000_contract_phase2_normalized_restaurants` fails closed on the invariants (every restaurant has exactly one primary Cuisine; every user has exactly one FAVORITES collection; exactly one RECOMMENDED collection exists; all legacy favorites/recommendations/platform links have normalized equivalents) and then **drops** `UserFavorite` and the legacy `RestaurantEntry.cuisineType`, `links`, `isFavorite`, and `isRecommended` columns. Collections and normalized `Cuisine`/`RestaurantPlatformLink` relations are now the sole persistence authority — the dual-write phase is over.
 
-**Backward-compat surface still in place (don't break):** the API boundary continues to *serve* the legacy response aliases (`cuisineType`, `isFavorite`, `isRecommended`, plus `isFavoritedByMe`) derived in `restaurant-contract.ts`, and continues to *accept* the deprecated `links` write input (translated into `platformLinks`). These are contract guarantees for existing clients, not persisted state.
+**Backward-compat surface still in place (don't break):** the API boundary continues to _serve_ the legacy response aliases (`cuisineType`, `isFavorite`, `isRecommended`, plus `isFavoritedByMe`) derived in `restaurant-contract.ts`, and continues to _accept_ the deprecated `links` write input (translated into `platformLinks`). These are contract guarantees for existing clients, not persisted state.
 
 Verify the contract against a live DB with `npm run prisma:phase2:contract:verify -w @ff-restaurent/api` (`prisma/verify-phase2-contract.ts`); it checks the migration by name so it stays compatible with later migrations layered on top. See `wiki/Phase-2-Migration-Runbook`.
 
@@ -136,3 +136,17 @@ The address directory uses the validated Vietnam province and ward dataset bundl
 - `wiki/` — numbered operator guides (deployment, production runbook, phone contract, root-admin operations, password sessions/recovery)
 - `wiki/` — release evidence and the Phase 2 migration runbook
 - `.github/workflows/` — `ci`, `staging-smoke` (also scheduled during observation windows), `backup-restore-drill`, and `phase2-production-data` (manual dry-run/apply dispatch on `main`)
+
+### Practice environment (`env/practice`)
+
+A throwaway-safe environment on Render, backed by **Prisma Postgres** rather than Render's
+retiring managed PostgreSQL. It lives on the long-lived `env/practice` branch (branched from
+`develop`), where `render.yaml` defines both services — `ff-restaurent-practice-api` (Docker,
+the `render` stage of `apps/api/Dockerfile`) and `ff-restaurent-practice-web` (static).
+
+Changes flow one way, `develop` → `env/practice`; never merge the branch back, since its
+`render.yaml` is environment-specific. It is independent of the GCP/Cloud Run track — don't
+point `scripts/retire-render.sh` at the `-practice` services.
+
+A fresh Prisma database must be migrated **and seeded** before the API first deploys, or
+`prisma:root:bootstrap` crash-loops the container. Full runbook: `docs/practice-environment.md`.
