@@ -65,7 +65,7 @@ Two independent role fields on `User`:
   - **HEAD_CHEF**: + archive/restore bills and restaurants, change member roles, view all bills, manage the Recommended collection
 - `systemRole` (`null | 'ROOT_ADMIN'`) — exactly one holder (unique constraint). Passes every chef check and additionally handles root-admin transfer (audited) and password-reset approval. Bootstrap/recovery scripts live in `apps/api/prisma/`.
 
-Helpers `isRootAdmin`, `isSousChefOrAbove`, `isHeadChef` live in `apps/api/src/roles.ts`; auth guards in `apps/api/src/http/auth-guards.ts`. Login accepts username or phone; `sessionVersion` on `User` invalidates old JWTs. Registration requires `REGISTRATION_INVITE_CODE`. Password recovery is operator-approved (see `docs/07_PASSWORD_RECOVERY.md`).
+Helpers `isRootAdmin`, `isSousChefOrAbove`, `isHeadChef` live in `apps/api/src/roles.ts`; auth guards in `apps/api/src/http/auth-guards.ts`. Login accepts username or phone; `sessionVersion` on `User` invalidates old JWTs. Registration requires `REGISTRATION_INVITE_CODE`. Password recovery is operator-approved (see `wiki/Password-Recovery-Operations`).
 
 ### Bill Splitting
 
@@ -87,7 +87,7 @@ The normalized-restaurant contract shipped in v1.1.0. Migration `20260720000000_
 
 **Backward-compat surface still in place (don't break):** the API boundary continues to *serve* the legacy response aliases (`cuisineType`, `isFavorite`, `isRecommended`, plus `isFavoritedByMe`) derived in `restaurant-contract.ts`, and continues to *accept* the deprecated `links` write input (translated into `platformLinks`). These are contract guarantees for existing clients, not persisted state.
 
-Verify the contract against a live DB with `npm run prisma:phase2:contract:verify -w @ff-restaurent/api` (`prisma/verify-phase2-contract.ts`); it checks the migration by name so it stays compatible with later migrations layered on top. See `releases/Phase_2_Migration_Runbook.md`.
+Verify the contract against a live DB with `npm run prisma:phase2:contract:verify -w @ff-restaurent/api` (`prisma/verify-phase2-contract.ts`); it checks the migration by name so it stays compatible with later migrations layered on top. See `wiki/Phase-2-Migration-Runbook`.
 
 ### Web Structure
 
@@ -133,6 +133,6 @@ The address directory uses the validated Vietnam province and ward dataset bundl
 
 ## Operations & Releases
 
-- `docs/` — numbered operator guides (deployment, production runbook, phone contract, root-admin operations, password sessions/recovery)
-- `releases/` — release evidence and the Phase 2 migration runbook
+- `wiki/` — numbered operator guides (deployment, production runbook, phone contract, root-admin operations, password sessions/recovery)
+- `wiki/` — release evidence and the Phase 2 migration runbook
 - `.github/workflows/` — `ci`, `staging-smoke` (also scheduled during observation windows), `backup-restore-drill`, and `phase2-production-data` (manual dry-run/apply dispatch on `main`)

@@ -6,7 +6,7 @@ RESTaurent.
 ## Current project stage
 
 Phase 2 is complete and FF RESTaurent `v1.1.0` is published. Read
-`.codex/PHASE_2_HANDOFF.md` and `releases/Release_1-1-0.md` before release,
+`.codex/PHASE_2_HANDOFF.md` and `wiki/RELEASE_1-1-0` before release,
 production, migration, or roadmap work. They record the shipped schema
 contracts, production verification and recovery evidence, and the branch
 boundary for later development.
@@ -20,7 +20,7 @@ a production regression is demonstrated. Phase 3 begins only after the Phase
 
 Before release, production, migration, or recovery work, read these records:
 
-- `releases/Release_1-1-0.md` - authoritative v1.1.0 scope and evidence.
+- `wiki/RELEASE_1-1-0` - authoritative v1.1.0 scope and evidence.
 - `.codex/PHASE_2_HANDOFF.md` - Phase 2 implementation and contract-migration
   history. Treat unfinished checklist language there as historical when it
   conflicts with the final release record.
