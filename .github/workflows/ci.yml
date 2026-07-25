@@ -15,13 +15,13 @@ jobs:
           POSTGRES_DB: ff_restaurent_test
           POSTGRES_USER: ff
           POSTGRES_PASSWORD: ff
-        ports:
-          - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U ff -d ff_restaurent_test"
+          --health-cmd "pg_isready -U ff -d ff_restaurent_test -h localhost"
           --health-interval 5s
           --health-timeout 5s
-          --health-retries 20
+          --health-retries 40
+        ports:
+          - 5432:5432
     env:
       DATABASE_URL: postgresql://ff:ff@localhost:5432/ff_restaurent_test?schema=public
       JWT_SECRET: ci-only-secret-that-is-at-least-32-characters
@@ -34,6 +34,22 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Wait for Postgres service
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+          export PGPASSWORD=ff
+          echo "Waiting up to 60s for Postgres to become available..."
+          for i in $(seq 1 60); do
+            if pg_isready -h localhost -p 5432 -U ff -d ff_restaurent_test >/dev/null 2>&1; then
+              echo "Postgres is ready"
+              exit 0
+            fi
+            echo "Postgres not ready yet, retrying ($i/60)..."
+            sleep 1
+          done
+          echo "Postgres did not become ready in time" >&2
+          exit 1
       - run: npm ci
       - run: npm run build -w @ff-restaurent/shared
       - run: npm run lint
@@ -44,8 +60,27 @@ jobs:
         shell: bash
         run: bash scripts/verify-phase2-contract-migration.sh
       - run: npm run prisma:migrate:deploy -w @ff-restaurent/api
+      - name: Verify production baseline capture and failure handling
+        shell: bash
+        env:
+          RUN_BASELINE_DB_TESTS: '1'
+        run: bash scripts/capture-production-baseline.test.sh
+      - name: Verify FF-58 rehearsal failure handling
+        shell: bash
+        run: bash scripts/rehearse-gcp-migration.test.sh
+      - name: Verify FF-58 PostgreSQL 16 two-pass rehearsal
+        shell: bash
+        env:
+          RUN_FF58_DB_TESTS: '1'
+        run: bash scripts/rehearse-gcp-migration.integration.test.sh
       - run: npm run prisma:phase2:contract:verify -w @ff-restaurent/api
       - run: npm run prisma:indexes:verify -w @ff-restaurent/api
+      - name: Verify one-shot release ordering and failure handling
+        shell: bash
+        run: bash scripts/run-release-job.test.sh
+      - name: Verify Cloud Run container boundaries
+        shell: bash
+        run: bash scripts/verify-cloud-run-containers.sh
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium

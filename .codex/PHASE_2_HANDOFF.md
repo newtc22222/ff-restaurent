@@ -6,10 +6,10 @@ Last updated: 2026-07-22
 
 Phase 2 is complete. FF RESTaurent v1.1.0 is published as an annotated Git tag
 and GitHub Latest release. The authoritative scope and detailed evidence are in
-`releases/Release_1-1-0.md`.
+`wiki/RELEASE_1-1-0`.
 
 - Release tag: `v1.1.0` at `7b3a315`.
-- GitHub release: https://github.com/newtc22222/ff-restaurent/releases/tag/v1.1.0
+- GitHub release: https://github.com/newtc22222/ff-restaurent/wiki/tag/v1.1.0
 - Final verification source: `main` at
   `21fdd3997ffa640eba4835e1676ba4371bbd4b30`.
 - Shipped database lineage: 17 migrations.
