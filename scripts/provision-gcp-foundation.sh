@@ -385,6 +385,10 @@ ensure_cloud_run_service() {
         --format=json --quiet \
         | python3 -c 'import json,sys; d=json.load(sys.stdin); t=d["spec"]["template"]; a=t.get("metadata",{}).get("annotations",{}); s=t["spec"]; print("|".join((s["containers"][0]["image"],s["serviceAccountName"],a.get("autoscaling.knative.dev/maxScale",""),a.get("run.googleapis.com/cloudsql-instances",""))))'
     )
+    if [[ "$current_image" != "$PLACEHOLDER_IMAGE" ]]; then
+      log "Deployed application present, preserving: ${service}"
+      return
+    fi
     if [[ "$current_image" == "$PLACEHOLDER_IMAGE" \
       && "$current_service_account" == "$RUNTIME_SERVICE_ACCOUNT" \
       && "$current_max" == "1" \

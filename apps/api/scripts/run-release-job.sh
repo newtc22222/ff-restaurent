@@ -10,7 +10,6 @@ run_step() {
 }
 
 run_step prisma-migrate-deploy npm run prisma:migrate:deploy
-run_step popular-cuisine-seed npm run prisma:cuisines:seed
 run_step phone-backfill npm run prisma:phones:backfill
 run_step root-admin-bootstrap npm run prisma:root:bootstrap
 

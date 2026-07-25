@@ -69,6 +69,8 @@ context_case() (
       *) return 1 ;;
     esac
   }
+  export SMOKE_USERNAME="dummy"
+  export SMOKE_PASSWORD="dummy"
   validate_context
 )
 
