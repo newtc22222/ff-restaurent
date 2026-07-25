@@ -15,6 +15,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:indexes:verify": "tsx prisma/verify-final-query-indexes.ts",
+    "prisma:migration:verify": "tsx prisma/verify-migration-rehearsal.ts",
     "prisma:phones:backfill": "tsx prisma/backfill-user-phones.ts",
     "prisma:phase2:contract:verify": "tsx prisma/verify-phase2-contract.ts",
     "prisma:root:bootstrap": "tsx prisma/bootstrap-root-admin.ts",

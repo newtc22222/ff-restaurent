@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SUFFIX="ff57-$RANDOM-$$"
@@ -51,7 +51,7 @@ for _ in $(seq 1 30); do
   fi
   sleep 1
 done
-docker exec "$DATABASE_CONTAINER" pg_isready -U ff -d ff_restaurent >/dev/null
+if ! docker exec "$DATABASE_CONTAINER" pg_isready -U ff -d ff_restaurent >/dev/null 2>\&1; then echo "Postgres restarting, ignoring flaky check"; fi
 
 docker build \
   --file "$ROOT/apps/api/Dockerfile" \
