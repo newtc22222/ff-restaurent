@@ -3,7 +3,9 @@
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "types": ["node"]
+    "types": ["node"],
+    "composite": true,
+    "noEmit": true
   },
   "include": ["src", "prisma", "prisma.config.ts"],
   "references": [{ "path": "../../packages/shared" }]

@@ -4,10 +4,10 @@ Web-first group bill-splitting and restaurant tracker for a single shared group.
 
 ## Stack
 
-- React + TypeScript + Vite + Tailwind CSS
+- React + React Router 7 + TypeScript + Vite + Tailwind CSS
 - Fastify + TypeScript API with JWT auth and Swagger at `/api/docs`
 - PostgreSQL + Prisma schema, migration, and seed data
-- Shared TypeScript package for enums, DTO-shaped types, and bill-splitting math
+- Shared TypeScript package for enums, DTO-shaped types, and bill-splitting math (Vite resolves `@ff-restaurent/shared` to source during web development, but API/root production builds require compiled output)
 - Docker Compose for Postgres, API, and static web frontend
 
 ## Run locally

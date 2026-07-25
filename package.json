@@ -8,8 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @ff-restaurent/shared && npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build -w @ff-restaurent/shared && npm run build -w @ff-restaurent/api && npm run build -w @ff-restaurent/web",
+    "typecheck": "tsc -b",
     "test": "npm run test --workspaces --if-present && node --test scripts/*.test.mjs",
     "test:e2e": "playwright test",
     "smoke": "node scripts/staging-smoke.mjs",

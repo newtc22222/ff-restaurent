@@ -1,4 +1,4 @@
-node_modules
+﻿node_modules
 dist
 build
 .env
@@ -13,3 +13,6 @@ coverage
 .local
 playwright-report
 test-results
+*.tsbuildinfo
+
+

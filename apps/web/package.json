@@ -4,10 +4,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc -p tsconfig.json && vite build",
+    "build": "tsc -b tsconfig.json && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -b tsconfig.json",
     "lint": "eslint src --ext ts,tsx"
   },
   "dependencies": {
