@@ -1,15 +1,20 @@
 name: GCP deploy
 
 on:
+  push:
+    branches:
+      - main
+      - develop
   workflow_dispatch:
     inputs:
       target:
-        description: Deploy to temporary verification resources or the permanent private foundation
+        description: Deploy to temporary verification resources, staging, or production
         required: true
         default: verification
         type: choice
         options:
           - verification
+          - staging
           - production
 
 permissions:
@@ -17,14 +22,30 @@ permissions:
   id-token: write
 
 concurrency:
-  group: gcp-deploy-${{ inputs.target }}
+  group: gcp-deploy-${{ github.event_name == 'workflow_dispatch' && inputs.target || (github.ref == 'refs/heads/main' && 'production' || (github.ref == 'refs/heads/develop' && 'staging' || 'verification')) }}
   cancel-in-progress: false
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @ff-restaurent/shared
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
   deploy:
+    needs: verify
     runs-on: ubuntu-latest
     environment:
-      name: ${{ inputs.target }}
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.target || (github.ref == 'refs/heads/main' && 'production' || (github.ref == 'refs/heads/develop' && 'staging' || 'verification')) }}
     env:
       ARTIFACT_REPOSITORY: ff-restaurent
       CLOUD_SQL_CONNECTION: ff-restaurent:asia-east1:ff-restaurent-db
@@ -41,13 +62,26 @@ jobs:
       - name: Select the fixed deployment target
         shell: bash
         env:
-          DEPLOY_TARGET: ${{ inputs.target }}
+          INPUT_TARGET: ${{ inputs.target }}
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           GCP_REGION: ${{ vars.GCP_REGION }}
         run: |
           set -euo pipefail
           test "$GCP_PROJECT_ID" = ff-restaurent
           test "$GCP_REGION" = asia-east1
+
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+              DEPLOY_TARGET="production"
+            elif [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
+              DEPLOY_TARGET="staging"
+            else
+              echo "Unsupported push branch: ${GITHUB_REF}" >&2
+              exit 1
+            fi
+          else
+            DEPLOY_TARGET="${INPUT_TARGET:-verification}"
+          fi
 
           if [[ "$DEPLOY_TARGET" == production ]]; then
             test "$GITHUB_REF" = refs/heads/main || {
@@ -59,12 +93,24 @@ jobs:
             release_job=ff-restaurent-release
             database_secret=ff-database-url
             cors_secret=ff-cors-origins
+            root_admin_username_secret=ff-root-admin-username
+            root_admin_password_secret=""
+          elif [[ "$DEPLOY_TARGET" == staging ]]; then
+            api_service=ff-restaurent-api-staging
+            web_service=ff-restaurent-web-staging
+            release_job=ff-restaurent-release-staging
+            database_secret=ff-staging-database-url
+            cors_secret=ff-staging-cors-origins
+            root_admin_username_secret=ff-staging-root-admin-username
+            root_admin_password_secret=ff-staging-root-admin-password
           else
             api_service=ff-restaurent-api-verify
             web_service=ff-restaurent-web-verify
             release_job=ff-restaurent-release-verify
             database_secret=ff-release-verify-database-url
             cors_secret=ff-release-verify-cors-origins
+            root_admin_username_secret=ff-root-admin-username
+            root_admin_password_secret=""
           fi
 
           web_url="$(
@@ -81,6 +127,8 @@ jobs:
             echo "RELEASE_JOB=$release_job"
             echo "DATABASE_SECRET=$database_secret"
             echo "CORS_SECRET=$cors_secret"
+            echo "ROOT_ADMIN_USERNAME_SECRET=$root_admin_username_secret"
+            echo "ROOT_ADMIN_PASSWORD_SECRET=$root_admin_password_secret"
             echo "WEB_URL=$web_url"
             echo "IMAGE_ROOT=${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}"
           } >>"$GITHUB_ENV"
@@ -127,6 +175,10 @@ jobs:
           GCP_REGION: ${{ vars.GCP_REGION }}
         run: |
           set -euo pipefail
+          secrets_arg="DATABASE_URL=${DATABASE_SECRET}:latest,ROOT_ADMIN_USERNAME=${ROOT_ADMIN_USERNAME_SECRET}:latest"
+          if [[ -n "${ROOT_ADMIN_PASSWORD_SECRET:-}" ]]; then
+            secrets_arg="${secrets_arg},ROOT_ADMIN_PASSWORD=${ROOT_ADMIN_PASSWORD_SECRET}:latest"
+          fi
           gcloud run jobs deploy "$RELEASE_JOB" \
             --project "$GCP_PROJECT_ID" \
             --region "$GCP_REGION" \
@@ -135,7 +187,7 @@ jobs:
             --args run,release:run \
             --service-account "$RUNTIME_SERVICE_ACCOUNT" \
             --set-cloudsql-instances "$CLOUD_SQL_CONNECTION" \
-            --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest,ROOT_ADMIN_USERNAME=ff-root-admin-username:latest" \
+            --set-secrets "$secrets_arg" \
             --set-env-vars NODE_ENV=production \
             --tasks 1 \
             --max-retries 0 \
