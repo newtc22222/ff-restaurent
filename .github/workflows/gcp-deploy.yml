@@ -246,7 +246,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          identity_token="$(gcloud auth print-identity-token --audiences="$API_URL")"
+          identity_token="$(gcloud auth print-identity-token --impersonate-service-account="$RUNTIME_SERVICE_ACCOUNT" --audiences="$API_URL")"
           curl --fail --silent --show-error --retry 10 --retry-delay 3 \
             -H "Authorization: Bearer ${identity_token}" \
             "${API_URL}/health" >/dev/null
@@ -303,7 +303,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          identity_token="$(gcloud auth print-identity-token --audiences="$WEB_URL")"
+          identity_token="$(gcloud auth print-identity-token --impersonate-service-account="$RUNTIME_SERVICE_ACCOUNT" --audiences="$WEB_URL")"
           curl --fail --silent --show-error --retry 10 --retry-delay 3 \
             -H "Authorization: Bearer ${identity_token}" \
             "$WEB_URL" >/dev/null
