@@ -231,7 +231,7 @@ jobs:
             --port 8080 \
             --min 0 \
             --max 3 \
-            --no-allow-unauthenticated \
+            --allow-unauthenticated \
             --quiet
           api_url="$(
             gcloud run services describe "$API_SERVICE" \
@@ -296,7 +296,7 @@ jobs:
             --port 80 \
             --min 0 \
             --max 3 \
-            --no-allow-unauthenticated \
+            --allow-unauthenticated \
             --quiet
 
       - name: Verify the private web service
