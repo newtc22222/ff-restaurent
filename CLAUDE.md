@@ -66,7 +66,7 @@ Two independent role fields on `User`:
   - **HEAD_CHEF**: + archive/restore bills and restaurants, change member roles, view all bills, manage the Recommended collection
 - `systemRole` (`null | 'ROOT_ADMIN'`) — exactly one holder (unique constraint). Passes every chef check and additionally handles root-admin transfer (audited) and password-reset approval. Bootstrap/recovery scripts live in `apps/api/prisma/`.
 
-Helpers `isRootAdmin`, `isSousChefOrAbove`, `isHeadChef` live in `apps/api/src/roles.ts`; auth guards in `apps/api/src/http/auth-guards.ts`. Login accepts username or phone; `sessionVersion` on `User` invalidates old JWTs. Registration requires `REGISTRATION_INVITE_CODE`. Password recovery is operator-approved (see `wiki/Password-Recovery-Operations`).
+Helpers `isRootAdmin`, `isSousChefOrAbove`, `isHeadChef` are defined in `@ff-restaurent/shared` and re-exported from `apps/api/src/lib/roles.ts`; auth guards in `apps/api/src/http/auth-guards.ts`. Login accepts username or phone; `sessionVersion` on `User` invalidates old JWTs. Registration requires `REGISTRATION_INVITE_CODE`. Password recovery is operator-approved (see `wiki/Password-Recovery-Operations`).
 
 ### Bill Splitting
 
@@ -78,9 +78,9 @@ One asymmetry to keep in mind: web's `vite.config.ts` still aliases `@ff-restaur
 
 ### API Structure
 
-`apps/api/src/app.ts` is composition-only: it registers core plugins (CORS, JWT, rate limit in production, Swagger) and then one `register*Routes` function per module from `apps/api/src/routes/` (auth, address, catalog, collection, feedback, password-reset, participant-group, profile, member, media, restaurant, bill, notification, stats). `media` handles Supabase-backed image/QR upload, list, and delete endpoints. Services and helpers sit at `apps/api/src/` top level (`collection-service.ts`, `root-admin-service.ts`, `address-directory.ts`, `restaurant-contract.ts`, …). The `preHandler` chain is: `requireAuth` (populates `request.currentUser`) → optional `requireSousChef` / `requireHeadChef`.
+`apps/api/src/app.ts` is composition-only: it registers core plugins (CORS, JWT, rate limit in production, Swagger) and then one `register*Routes` function per module from `apps/api/src/routes/` (auth, address, catalog, collection, feedback, password-reset, participant-group, profile, member, media, restaurant, bill, notification, stats). `media` handles Supabase-backed image/QR upload, list, and delete endpoints. `apps/api/src/` is grouped by layer: `services/` (bill, collection, root-admin, storage, address-directory, seeds), `contracts/` (`restaurant-contract.ts`), `lib/` (`prisma.ts`, `roles.ts`, pagination, normalization), `config/`, `http/`, `routes/`, and `schemas/`. Only `app.ts` and `server.ts` sit at the root. The `preHandler` chain is: `requireAuth` (populates `request.currentUser`) → optional `requireSousChef` / `requireHeadChef`.
 
-Validation uses **Zod schemas** in `apps/api/src/schemas.ts`. Config comes from `loadConfig()` in `apps/api/src/config.ts`. After changing `apps/api/prisma/schema.prisma`, run `prisma:migrate` to generate a migration and regenerate the client.
+Validation uses **Zod schemas** in `apps/api/src/schemas/`, split by domain behind the `schemas/index.ts` barrel — import from the barrel. Config comes from `loadConfig()` in `apps/api/src/config/config.ts`. After changing `apps/api/prisma/schema.prisma`, run `prisma:migrate` to generate a migration and regenerate the client.
 
 Key domain models beyond users/bills: `Cuisine` + `RestaurantCuisine` (every restaurant has exactly one primary cuisine), `DiningArea`, `RestaurantPlatformLink` (typed Grab/ShopeeFood/BeFood/Gojek/… links), `Collection`/`CollectionShare`/`CollectionRestaurant` (per-user FAVORITES and one global RECOMMENDED system collection — favorites and recommendations flow through collections), `Feedback` (one per bill+user, decimal food/service ratings), `PaymentQrImage` (owner-scoped payment QR images stored in Supabase, referenced by `Bill.paymentQrImageId`), `ParticipantGroup`, and audit tables (`BillAuditLog`, `RoleAuditLog`, `RootAdminTransferAudit`). Denormalized `searchText` columns back list search.
 
@@ -97,10 +97,10 @@ Verify the contract against a live DB with `npm run prisma:phase2:contract:verif
 `apps/web/src/` is organized as:
 
 - `app/` — `App.tsx`, the `react-router` route tree (`router.ts`: `createBrowserRouter` with per-route loaders/actions and lazy-loaded pages), and providers (`app-context`, `i18n`, `theme`)
-- `pages/` — one component per non-feature screen (Login, Bills, BillDetail, CreateBill, Collections, CollectionDetail, ParticipantGroups, Stats, Profile, Admin)
-- `features/` — domain-owned pages, components, and colocated tests; `restaurants/` contains the restaurant directory and detail feature
+- `pages/` — one component per screen not yet promoted to a feature slice (Login, Collections, CollectionDetail, ParticipantGroups, Stats, Profile, Admin)
+- `features/` — domain-owned pages, components, loaders/actions, and colocated tests: `bills/` (list, create/edit, detail, plus `bills.routes.ts`) and `restaurants/` (directory and detail)
 - `components/` — shared `ui/` primitives, `layout/`, and `address/`
-- `lib/` — `api.ts` (`ApiClient` class, all API calls, local response types), `session.ts`, `translations.ts`, `pwa.ts`
+- `lib/` — `api.ts` (`ApiClient` class, all API calls, local response types), `session.ts`, `translations/` (JSON per locale and domain behind a typed barrel), `pwa.ts`
 - `hooks/` — e.g. `useMutation`
 
 Routing is `react-router` (v7), configured in `app/router.ts`; screens load data through per-route `loader`s and submit mutations through `action`s (`AppLoaderData` lives in `app-context`). `VITE_API_URL` controls the API base URL. Web tests are colocated `*.test.tsx` files.

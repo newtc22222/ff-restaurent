@@ -106,13 +106,20 @@ docker compose up --build
 `apps/api/src/app.ts` is composition-only. Domain routes are split under
 `apps/api/src/routes/`; do not put all endpoints back into `app.ts`.
 
-- Validation and request transforms: `apps/api/src/schemas.ts`
+`apps/api/src/` is grouped by layer. Add new code to the matching directory
+rather than the source root, which holds only `app.ts` and `server.ts`.
+
+- Validation and request transforms: `apps/api/src/schemas/` (import via the
+  `schemas/index.ts` barrel, not individual domain files)
 - Auth guards: `apps/api/src/http/auth-guards.ts`
 - Error mapping: `apps/api/src/http/error-handler.ts`
-- Role helpers and public user selection: `apps/api/src/roles.ts`
+- Role helpers and public user selection: `apps/api/src/lib/roles.ts`
+- Pure utilities and the Prisma client: `apps/api/src/lib/`
+- Environment and server configuration: `apps/api/src/config/`
+- Domain services: `apps/api/src/services/` (e.g. `bill-service.ts`,
+  `collection-service.ts`, `root-admin-service.ts`)
+- Restaurant compatibility serialization: `apps/api/src/contracts/restaurant-contract.ts`
 - Prisma schema and migrations: `apps/api/prisma/`
-- Restaurant compatibility serialization: `apps/api/src/restaurant-contract.ts`
-- Collection/favorite/recommendation rules: `apps/api/src/collection-service.ts`
 
 Use Prisma for persistence and Zod for request validation. When an API field or
 relation changes, update the Prisma migration, query select/include shape,
@@ -127,12 +134,16 @@ The web application is route-based. Do not follow the obsolete single
 - App shell and route error boundary: `apps/web/src/app/App.tsx`
 - Providers: `apps/web/src/app/providers/`
 - Pages: `apps/web/src/pages/`
-- Restaurant feature UI: `apps/web/src/features/restaurants/`
+- Feature slices (own their pages, components, loaders and actions):
+  `apps/web/src/features/` — `bills/` and `restaurants/`
+- Shared route helpers: `apps/web/src/app/route-helpers.ts`
 - API client/types: `apps/web/src/lib/api.ts`
 - Session/token handling: `apps/web/src/lib/session.ts`
 - Role helpers: `apps/web/src/lib/helpers.ts`
 - Localized result mapping: `apps/web/src/lib/result-messages.ts`
-- Translations: `apps/web/src/lib/translations.ts`
+- Translations: `apps/web/src/lib/translations/` — JSON per locale and domain
+  (`{vi,en}/<domain>.json`) behind a typed barrel; add keys to Vietnamese first,
+  which is the source of truth for the key set
 
 Use the existing router loader/action patterns and `useMutation`. Mutation
 results, API failures, and background warnings use localized
@@ -175,7 +186,7 @@ Effective permissions ascend as:
   administration, and other system controls.
 
 `chefRole` and `systemRole` are independent. HEAD_CHEF must never change member
-roles or ROOT_ADMIN ownership. Keep API checks in `apps/api/src/roles.ts` and web
+roles or ROOT_ADMIN ownership. Keep API checks in `apps/api/src/lib/roles.ts` and web
 checks in `apps/web/src/lib/helpers.ts` behaviorally aligned.
 
 JWTs carry `sessionVersion`. Password changes, assisted resets, and root

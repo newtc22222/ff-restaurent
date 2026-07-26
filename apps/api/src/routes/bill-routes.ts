@@ -28,20 +28,6 @@ import {
   validatePaymentQr,
 } from '../services/bill-service.js';
 
-/*
- * Re-exported for existing importers (app.ts, colocated tests) while the
- * modules settle. FF-50 moves these behind the services/ boundary.
- */
-export {
-  buildBillResponseInclude,
-  paymentResponseInclude,
-} from '../services/bill-serializers.js';
-export {
-  billActivityActorSelect,
-  buildBillActivityTimeline,
-} from '../services/bill-activity.js';
-export { createBillFingerprint } from '../services/bill-service.js';
-
 const canManageBill = (
   bill: { createdById: string },
   request: FastifyRequest,

@@ -64,7 +64,7 @@ Demo logins all use `password123`: `customer@ff.test`, `sous@ff.test`, `head@ff.
 ## Editing Guidance
 
 - Keep shared calculations in `packages/shared/src/bill-splitting.ts` and update its tests for math changes.
-- Keep Fastify request validation in `apps/api/src/schemas.ts`; do not duplicate validation ad hoc inside handlers.
+- Keep Fastify request validation in `apps/api/src/schemas/`, split by domain behind the `schemas/index.ts` barrel; do not duplicate validation ad hoc inside handlers.
 - Keep web API types in `apps/web/src/api.ts` aligned with API responses and Prisma-shaped includes.
 - When adding API fields, update Prisma schema, route include/select shape, web type definitions, and UI rendering together.
 - For frontend design work, also use `$ff-restaurent-ux`.
