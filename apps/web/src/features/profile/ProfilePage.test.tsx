@@ -32,10 +32,17 @@ vi.mock('@/hooks/useRouteMutation', () => ({
   useRouteMutation: () => ({ mutate }),
 }));
 
+const { requestPushToken } = vi.hoisted(() => ({
+  requestPushToken: vi.fn(),
+}));
+
+vi.mock('@/lib/push', () => ({ requestPushToken }));
+
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('ff-locale', 'en');
   mutate.mockClear();
+  requestPushToken.mockReset();
 });
 
 afterEach(cleanup);
@@ -148,5 +155,53 @@ describe('ProfilePage account forms', () => {
         success: 'Notification preferences updated.',
       }),
     );
+  });
+
+  it('subscribes to push notifications when permission and a token are granted', async () => {
+    requestPushToken.mockResolvedValue('fcm-token-abc');
+    render(
+      <QueryProvider>
+        <I18nProvider>
+          <ProfilePage />
+        </I18nProvider>
+      </QueryProvider>,
+    );
+
+    const pushToggle = screen.getByRole('checkbox', {
+      name: 'Push notifications',
+    });
+    fireEvent.click(pushToggle);
+
+    await vi.waitFor(() => {
+      expect(mutate).toHaveBeenCalledWith(
+        {
+          intent: 'push-subscribe',
+          payload: { fcmToken: 'fcm-token-abc' },
+        },
+        expect.objectContaining({
+          success: 'Push notifications enabled.',
+        }),
+      );
+    });
+  });
+
+  it('shows an error toast when push permission is denied', async () => {
+    requestPushToken.mockResolvedValue(null);
+    render(
+      <QueryProvider>
+        <I18nProvider>
+          <ProfilePage />
+        </I18nProvider>
+      </QueryProvider>,
+    );
+
+    const pushToggle = screen.getByRole('checkbox', {
+      name: 'Push notifications',
+    });
+    fireEvent.click(pushToggle);
+
+    await vi.waitFor(() => {
+      expect(mutate).not.toHaveBeenCalled();
+    });
   });
 });
