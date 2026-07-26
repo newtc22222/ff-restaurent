@@ -60,7 +60,7 @@ database that step throws — `bootstrap-root-admin.ts` raises
 and the service crash-loops. The usual escape hatch, `seed-if-empty.ts`, hard-refuses
 to run because the runtime image sets `NODE_ENV=production`.
 
-Seeding first fixes this permanently: `prisma:seed` creates `head` already carrying
+Seeding first fixes this permanently: `prisma:seed` creates `fifine` already carrying
 `SystemRole.ROOT_ADMIN`, so on boot `bootstrapRootAdmin` finds an existing root admin
 and returns early.
 
@@ -71,9 +71,14 @@ practice database, and the reason it runs before any traffic exists.
 
 | Username   | Role                   | Password      |
 | ---------- | ---------------------- | ------------- |
-| `head`     | HEAD_CHEF + ROOT_ADMIN | `password123` |
+| `fifine`   | HEAD_CHEF + ROOT_ADMIN | `111222333`   |
+| `head`     | HEAD_CHEF              | `password123` |
 | `sous`     | SOUS_CHEF              | `password123` |
 | `customer` | CUSTOMER               | `password123` |
+
+`User.systemRole` is `@unique`, so exactly one account can hold ROOT_ADMIN — `fifine`
+holds it, and `head` is a plain HEAD_CHEF. `ROOT_ADMIN_USERNAME` in `render.yaml` is
+set to `fifine` to match.
 
 These are demo credentials for a practice environment only. Never reuse this seed
 against staging or production.
@@ -156,10 +161,10 @@ Expect `{"ok":true}`. Swagger UI is at `/api/docs`.
 End to end:
 
 ```bash
-API_URL=https://ff-restaurent-practice-api.onrender.com WEB_URL=https://ff-restaurent-practice-web.onrender.com SMOKE_USERNAME=head SMOKE_PASSWORD=password123 npm run smoke
+API_URL=https://ff-restaurent-practice-api.onrender.com WEB_URL=https://ff-restaurent-practice-web.onrender.com SMOKE_USERNAME=fifine SMOKE_PASSWORD=111222333 npm run smoke
 ```
 
-Then load the web URL and log in as `head` — seeded restaurants and bills rendering
+Then load the web URL and log in as `fifine` — seeded restaurants and bills rendering
 proves web → API → Prisma Postgres end to end, and that `CORS_ORIGINS` is right.
 
 ## 5. Day-to-day operations

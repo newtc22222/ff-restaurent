@@ -41,9 +41,9 @@ services:
         sync: false
       - key: REGISTRATION_INVITE_CODE
         sync: false
-      # `head` is created by prisma:seed and already carries ROOT_ADMIN.
+      # `fifine` is created by prisma:seed and already carries ROOT_ADMIN.
       - key: ROOT_ADMIN_USERNAME
-        value: head
+        value: fifine
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY

@@ -75,7 +75,8 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
   }
 
   const passwordHash = await bcrypt.hash('password123', 12);
-  const [customer, sousChef, headChef] = await Promise.all([
+  const rootAdminPasswordHash = await bcrypt.hash('111222333', 12);
+  const [customer, sousChef, headChef, rootAdmin] = await Promise.all([
     prisma.user.create({
       data: {
         name: 'Casey Customer',
@@ -99,6 +100,17 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
         username: 'head',
         phone: '+84901000003',
         passwordHash,
+        chefRole: ChefRole.HEAD_CHEF,
+      },
+    }),
+    // `User.systemRole` is @unique, so this is the only seeded ROOT_ADMIN —
+    // `head` above is a plain HEAD_CHEF. Matches ROOT_ADMIN_USERNAME in render.yaml.
+    prisma.user.create({
+      data: {
+        name: 'Fifine Root Admin',
+        username: 'fifine',
+        phone: '+84901000004',
+        passwordHash: rootAdminPasswordHash,
         chefRole: ChefRole.HEAD_CHEF,
         systemRole: SystemRole.ROOT_ADMIN,
       },
@@ -168,7 +180,8 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
         systemType: CollectionSystemType.RECOMMENDED,
       },
     }),
-    ...[sousChef, headChef].map((user) =>
+    // Phase 2 invariant: every user owns exactly one FAVORITES collection.
+    ...[sousChef, headChef, rootAdmin].map((user) =>
       prisma.collection.create({
         data: {
           name: 'Favorites',
