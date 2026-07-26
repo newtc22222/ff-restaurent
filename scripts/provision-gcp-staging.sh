@@ -173,6 +173,20 @@ apply_staging() {
       --quiet >/dev/null 2>&1 || true
   done
 
+  # Grant Workload Identity User role for develop branch and repository to deploy service account
+  local project_number="192523226156"
+  local github_repo="newtc22222/ff-restaurent"
+  local pool="github-actions"
+  for principal in \
+    "principal://iam.googleapis.com/projects/${project_number}/locations/global/workloadIdentityPools/${pool}/subject/repo:${github_repo}:ref:refs/heads/develop" \
+    "principalSet://iam.googleapis.com/projects/${project_number}/locations/global/workloadIdentityPools/${pool}/attribute.repository/${github_repo}"; do
+    gcloud_cmd iam service-accounts add-iam-policy-binding "$deploy_service_account" \
+      --member="$principal" \
+      --role="roles/iam.workloadIdentityUser" \
+      --project "$PROJECT_ID" \
+      --quiet >/dev/null 2>&1 || true
+  done
+
   # Populate staging root admin credentials
   ensure_secret_version "$STAGING_ROOT_ADMIN_USERNAME_SECRET" "$STAGING_ROOT_ADMIN_USERNAME"
 

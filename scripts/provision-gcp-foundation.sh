@@ -367,8 +367,12 @@ ensure_wif() {
     log "GitHub OIDC provider present: ${WORKLOAD_PROVIDER}"
   fi
 
-  local principal="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WORKLOAD_POOL}/subject/repo:${GITHUB_REPOSITORY}:ref:refs/heads/main"
-  ensure_service_account_role "$DEPLOY_SERVICE_ACCOUNT" "$principal" roles/iam.workloadIdentityUser
+  local principal_main="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WORKLOAD_POOL}/subject/repo:${GITHUB_REPOSITORY}:ref:refs/heads/main"
+  local principal_develop="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WORKLOAD_POOL}/subject/repo:${GITHUB_REPOSITORY}:ref:refs/heads/develop"
+  local principal_repo="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WORKLOAD_POOL}/attribute.repository/${GITHUB_REPOSITORY}"
+  ensure_service_account_role "$DEPLOY_SERVICE_ACCOUNT" "$principal_main" roles/iam.workloadIdentityUser
+  ensure_service_account_role "$DEPLOY_SERVICE_ACCOUNT" "$principal_develop" roles/iam.workloadIdentityUser
+  ensure_service_account_role "$DEPLOY_SERVICE_ACCOUNT" "$principal_repo" roles/iam.workloadIdentityUser
 }
 
 ensure_cloud_run_service() {
