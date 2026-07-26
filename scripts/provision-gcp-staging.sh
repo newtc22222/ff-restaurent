@@ -8,6 +8,7 @@ SQL_INSTANCE="ff-restaurent-db"
 SQL_STAGING_DATABASE="ff_restaurent_staging"
 SQL_USER="ff_app"
 RUNTIME_SERVICE_ACCOUNT="ff-runtime@${PROJECT_ID}.iam.gserviceaccount.com"
+PLACEHOLDER_IMAGE="us-docker.pkg.dev/cloudrun/container/hello@sha256:65067ea5c18ca5433861c58673f1cb5d0b9ca4b0be3bf9081446359770bb81ad"
 
 STAGING_API_SERVICE="ff-restaurent-api-staging"
 STAGING_WEB_SERVICE="ff-restaurent-web-staging"
@@ -18,10 +19,10 @@ STAGING_CORS_SECRET="ff-staging-cors-origins"
 STAGING_ROOT_ADMIN_USERNAME_SECRET="ff-staging-root-admin-username"
 STAGING_ROOT_ADMIN_PASSWORD_SECRET="ff-staging-root-admin-password"
 
-STAGING_WEB_DOMAIN="staging.ff-restaurent.com"
-STAGING_API_DOMAIN="api-staging.ff-restaurent.com"
-STAGING_ROOT_ADMIN_USERNAME="f1fine"
-STAGING_ROOT_ADMIN_PASSWORD="111222333"
+STAGING_WEB_DOMAIN="${STAGING_WEB_DOMAIN:-staging.ff-restaurent.com}"
+STAGING_API_DOMAIN="${STAGING_API_DOMAIN:-api-staging.ff-restaurent.com}"
+STAGING_ROOT_ADMIN_USERNAME="${STAGING_ROOT_ADMIN_USERNAME:-f1fine}"
+STAGING_ROOT_ADMIN_PASSWORD="${STAGING_ROOT_ADMIN_PASSWORD:-}"
 
 MODE=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,7 +34,7 @@ Usage:
   bash scripts/provision-gcp-staging.sh --apply
 
 --plan is read-only.
---apply provisions the logical staging database, staging secrets, IAM grants, and staging Cloud Run services with --min-instances 0 (scale to zero).
+--apply provisions the logical staging database, staging secrets, IAM grants, and placeholder staging Cloud Run services with --min-instances 0 (scale to zero).
 EOF
 }
 
@@ -111,8 +112,25 @@ print_plan() {
   log "  Secret Manager: Ensure '${STAGING_DATABASE_SECRET}', '${STAGING_CORS_SECRET}', '${STAGING_ROOT_ADMIN_USERNAME_SECRET}', and '${STAGING_ROOT_ADMIN_PASSWORD_SECRET}' exist"
   log "  Root Admin: Configure staging root user '${STAGING_ROOT_ADMIN_USERNAME}'"
   log "  IAM: Grant '${RUNTIME_SERVICE_ACCOUNT}' secretAccessor on staging secrets"
-  log "  Cloud Run Services: Reconcile '${STAGING_API_SERVICE}' and '${STAGING_WEB_SERVICE}' with --min-instances 0 (scale to zero)"
-  log "  Cloud Run Job: Reconcile '${STAGING_RELEASE_JOB}'"
+  log "  Cloud Run Services: Reconcile placeholders '${STAGING_API_SERVICE}' and '${STAGING_WEB_SERVICE}' with --min-instances 0 (scale to zero)"
+  log "  Cloud Run Job: Reconcile placeholder '${STAGING_RELEASE_JOB}'"
+}
+
+ensure_secret_version() {
+  local secret_name="$1" value="$2"
+  local current_hash="" desired_hash=""
+  desired_hash="$(printf '%s' "$value" | sha256sum | cut -d' ' -f1)"
+  current_hash="$(
+    gcloud_cmd secrets versions access latest --secret "$secret_name" --project "$PROJECT_ID" --quiet 2>/dev/null \
+      | sha256sum \
+      | cut -d' ' -f1 || true
+  )"
+  if [[ "$current_hash" != "$desired_hash" ]]; then
+    printf '%s' "$value" | gcloud_cmd secrets versions add "$secret_name" --project "$PROJECT_ID" --data-file=- --quiet >/dev/null
+    log "Updated secret version: ${secret_name}"
+  else
+    log "Secret version current: ${secret_name}"
+  fi
 }
 
 apply_staging() {
@@ -146,16 +164,87 @@ apply_staging() {
   done
 
   # Populate staging root admin credentials
-  printf '%s' "$STAGING_ROOT_ADMIN_USERNAME" | gcloud_cmd secrets versions add "$STAGING_ROOT_ADMIN_USERNAME_SECRET" --project="$PROJECT_ID" --data-file=- --quiet >/dev/null 2>&1 || true
-  printf '%s' "$STAGING_ROOT_ADMIN_PASSWORD" | gcloud_cmd secrets versions add "$STAGING_ROOT_ADMIN_PASSWORD_SECRET" --project="$PROJECT_ID" --data-file=- --quiet >/dev/null 2>&1 || true
-  printf '%s' "https://${STAGING_WEB_DOMAIN}" | gcloud_cmd secrets versions add "$STAGING_CORS_SECRET" --project="$PROJECT_ID" --data-file=- --quiet >/dev/null 2>&1 || true
+  ensure_secret_version "$STAGING_ROOT_ADMIN_USERNAME_SECRET" "$STAGING_ROOT_ADMIN_USERNAME"
 
-  # Populate staging database URL if not set
-  local db_password
+  local root_password="$STAGING_ROOT_ADMIN_PASSWORD"
+  if [[ -z "$root_password" ]]; then
+    if resource_exists secrets versions access latest --secret="$STAGING_ROOT_ADMIN_PASSWORD_SECRET" --project="$PROJECT_ID" --quiet; then
+      root_password="$(gcloud_cmd secrets versions access latest --secret="$STAGING_ROOT_ADMIN_PASSWORD_SECRET" --project="$PROJECT_ID" --quiet)"
+    else
+      root_password="$(openssl rand -base64 24)"
+      log "Generated secure random password for staging root admin"
+    fi
+  fi
+  ensure_secret_version "$STAGING_ROOT_ADMIN_PASSWORD_SECRET" "$root_password"
+  ensure_secret_version "$STAGING_CORS_SECRET" "https://${STAGING_WEB_DOMAIN}"
+
+  # Populate staging database URL with percent-encoded password
+  local db_password connection_name encoded_password staging_db_url
   db_password="$(gcloud_cmd secrets versions access latest --secret=ff-database-password --project="$PROJECT_ID" --quiet 2>/dev/null || echo "")"
   if [[ -n "$db_password" ]]; then
-    local staging_db_url="postgresql://${SQL_USER}:${db_password}@localhost:5432/${SQL_STAGING_DATABASE}?host=/cloudsql/${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
-    printf '%s' "$staging_db_url" | gcloud_cmd secrets versions add "$STAGING_DATABASE_SECRET" --project="$PROJECT_ID" --data-file=- --quiet >/dev/null 2>&1 || true
+    connection_name="$(gcloud_cmd sql instances describe "$SQL_INSTANCE" --project "$PROJECT_ID" --format='value(connectionName)' --quiet)"
+    encoded_password="$(python3 - "$db_password" <<'PY'
+import sys
+from urllib.parse import quote
+print(quote(sys.argv[1], safe=""), end="")
+PY
+)"
+    staging_db_url="postgresql://${SQL_USER}:${encoded_password}@localhost/${SQL_STAGING_DATABASE}?host=/cloudsql/${connection_name}"
+    ensure_secret_version "$STAGING_DATABASE_SECRET" "$staging_db_url"
+  fi
+
+  # Reconcile Cloud Run staging placeholders so `gcloud run services describe` succeeds before first CI deployment
+  connection_name="$(gcloud_cmd sql instances describe "$SQL_INSTANCE" --project "$PROJECT_ID" --format='value(connectionName)' --quiet)"
+
+  if ! resource_exists run services describe "$STAGING_API_SERVICE" --project "$PROJECT_ID" --region "$REGION" --quiet; then
+    log "Reconciling private Cloud Run placeholder: ${STAGING_API_SERVICE}"
+    gcloud_cmd run deploy "$STAGING_API_SERVICE" \
+      --project "$PROJECT_ID" \
+      --region "$REGION" \
+      --platform managed \
+      --image "$PLACEHOLDER_IMAGE" \
+      --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+      --min-instances 0 \
+      --max-instances 1 \
+      --ingress all \
+      --no-allow-unauthenticated \
+      --add-cloudsql-instances "$connection_name" \
+      --quiet >/dev/null
+  else
+    log "Cloud Run service present: ${STAGING_API_SERVICE}"
+  fi
+
+  if ! resource_exists run services describe "$STAGING_WEB_SERVICE" --project "$PROJECT_ID" --region "$REGION" --quiet; then
+    log "Reconciling private Cloud Run placeholder: ${STAGING_WEB_SERVICE}"
+    gcloud_cmd run deploy "$STAGING_WEB_SERVICE" \
+      --project "$PROJECT_ID" \
+      --region "$REGION" \
+      --platform managed \
+      --image "$PLACEHOLDER_IMAGE" \
+      --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+      --min-instances 0 \
+      --max-instances 1 \
+      --ingress all \
+      --no-allow-unauthenticated \
+      --quiet >/dev/null
+  else
+    log "Cloud Run service present: ${STAGING_WEB_SERVICE}"
+  fi
+
+  if ! resource_exists run jobs describe "$STAGING_RELEASE_JOB" --project "$PROJECT_ID" --region "$REGION" --quiet; then
+    log "Reconciling Cloud Run release job placeholder: ${STAGING_RELEASE_JOB}"
+    gcloud_cmd run jobs create "$STAGING_RELEASE_JOB" \
+      --project "$PROJECT_ID" \
+      --region "$REGION" \
+      --image "$PLACEHOLDER_IMAGE" \
+      --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+      --set-cloudsql-instances "$connection_name" \
+      --tasks 1 \
+      --max-retries 0 \
+      --task-timeout 30m \
+      --quiet >/dev/null
+  else
+    log "Cloud Run job present: ${STAGING_RELEASE_JOB}"
   fi
 
   log "Staging GCP foundation resources successfully provisioned!"
