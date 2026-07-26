@@ -2431,6 +2431,39 @@ integrationTest(
       0,
     );
 
+    await prisma.pushSubscription.create({
+      data: { userId: customerAId, fcmToken: 'fcm-token-reminder-test' },
+    });
+    const secondReminderBill = await prisma.bill.create({
+      data: {
+        restaurantId,
+        createdById: sousId,
+        baseCost: 5000,
+        vat: 0,
+        shippingFee: 0,
+        totalCost: 5000,
+        participants: {
+          create: [
+            {
+              memberId: customerAId,
+              originCost: 5000,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 5000,
+            },
+          ],
+        },
+      },
+    });
+    const remindersWithPushSubscriber = await app.inject({
+      method: 'POST',
+      url: `/bills/${secondReminderBill.id}/reminders`,
+      headers: auth(sousToken),
+    });
+    assert.equal(remindersWithPushSubscriber.statusCode, 200);
+    assert.equal(remindersWithPushSubscriber.json().sent, 1);
+
     const duplicatePayload = {
       restaurantId,
       baseCost: 12345,

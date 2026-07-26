@@ -10,6 +10,7 @@ import {
 } from '../http/auth-guards.js';
 import { prisma } from '../lib/prisma.js';
 import { isHeadChef, isSousChefOrAbove } from '../lib/roles.js';
+import { sendReminderPush } from '../push-messaging.js';
 import { billListQuerySchema, paymentStatusSchema } from '../schemas/index.js';
 import {
   billActivityActorSelect,
@@ -655,6 +656,22 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           },
         });
       });
+      const subscriptions = await prisma.pushSubscription.findMany({
+        where: {
+          userId: { in: eligible.map((participant) => participant.memberId) },
+        },
+        select: { fcmToken: true },
+      });
+      if (subscriptions.length > 0) {
+        await sendReminderPush(
+          subscriptions.map((subscription) => subscription.fcmToken),
+          {
+            title: 'Payment reminder',
+            body: `Payment reminder for ${bill.restaurant.name}`,
+            url: `/bills/${bill.id}`,
+          },
+        );
+      }
       return result;
     },
   );
