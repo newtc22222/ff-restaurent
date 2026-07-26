@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { billActivityActorSelect } from '../bill-activity.js';
 import {
-  billActivityActorSelect,
   buildBillResponseInclude,
   paymentResponseInclude,
-} from './bill-routes.js';
+} from '../bill-serializers.js';
 import { publicUserSelect } from '../roles.js';
 
 const expectedPublicUserFields = [

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildBillActivityTimeline } from './bill-routes.js';
+import { buildBillActivityTimeline } from '../bill-activity.js';
 
 const actor = { id: 'user-1', username: 'member', name: 'Member One' };
 
