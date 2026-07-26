@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
-import { loadConfig } from '../config/config.js';
 import { prisma } from '../lib/prisma.js';
 import { sanitizeUser } from '../lib/roles.js';
 import { loginSchema, registerSchema } from '../schemas/index.js';
@@ -49,7 +48,7 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
     { config: { rateLimit: authRateLimit } },
     async (request, reply) => {
       const body = registerSchema.parse(request.body);
-      if (body.inviteCode !== loadConfig().registrationInviteCode) {
+      if (body.inviteCode !== app.config.registrationInviteCode) {
         return reply.code(403).send({
           code: 'REGISTRATION_NOT_AUTHORIZED',
           message: 'Registration is not authorized',

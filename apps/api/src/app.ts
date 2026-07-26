@@ -23,8 +23,17 @@ import { registerProfileRoutes } from './routes/profile-routes.js';
 import { registerRestaurantRoutes } from './routes/restaurant-routes.js';
 import { registerStatsRoutes } from './routes/stats-routes.js';
 
+/**
+ * Decorates the instance with the dependencies shared across routes, so they
+ * have one typed lifecycle instead of each module importing a singleton.
+ */
+const registerDependencies = (app: FastifyInstance) => {
+  app.decorate('config', loadConfig());
+  app.decorate('prisma', prisma);
+};
+
 const registerCorePlugins = async (app: FastifyInstance) => {
-  const config = loadConfig();
+  const { config } = app;
   await app.register(cors, {
     origin: config.corsOrigins.length > 0 ? config.corsOrigins : true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -56,7 +65,7 @@ const registerRoutes = (app: FastifyInstance) => {
   app.get('/health', async () => ({ ok: true }));
   app.get('/ready', async (_request, reply) => {
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      await app.prisma.$queryRaw`SELECT 1`;
       return { ok: true, database: 'ready' };
     } catch {
       return reply.code(503).send({ ok: false, database: 'unavailable' });
@@ -86,6 +95,8 @@ const registerRoutes = (app: FastifyInstance) => {
 export const buildApp = async (): Promise<FastifyInstance> => {
   const app = Fastify({ logger: true });
 
+  // Configuration is validated here, so a bad environment fails at boot.
+  registerDependencies(app);
   await registerCorePlugins(app);
   registerErrorHandler(app);
   registerRoutes(app);

@@ -2,7 +2,7 @@ import { readdir, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
-import { planUserPhoneBackfill } from '../src/services/phone-backfill.js';
+import { planUserPhoneBackfill } from '../../src/services/phone-backfill.js';
 
 const prisma = new PrismaClient();
 const contractMigration =
@@ -16,8 +16,15 @@ const expectedIndexes = new Map([
   ],
   ['BillAuditLog_billId_createdAt_id_idx', '("billId", "createdAt", id)'],
 ]);
+/*
+ * Resolved relative to this file, which lives in prisma/scripts/ — hence the
+ * `..` up to prisma/ before descending into migrations/. This is a filesystem
+ * path rather than an import, so it is not checked by the compiler; moving
+ * this script requires updating it by hand.
+ */
 const migrationsDirectory = join(
   dirname(fileURLToPath(import.meta.url)),
+  '..',
   'migrations',
 );
 

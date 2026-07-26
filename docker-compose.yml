@@ -50,7 +50,7 @@ services:
             exit 1;
           fi;
         else
-          npx tsx prisma/seed-if-empty.ts;
+          npx tsx prisma/seed/seed-if-empty.ts;
         fi &&
         npm run prisma:cuisines:seed &&
         npm run prisma:phones:backfill &&
