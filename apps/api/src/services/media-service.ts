@@ -140,11 +140,18 @@ export type RestaurantImageKind = 'logo' | 'banner';
 const imageField = (kind: RestaurantImageKind) =>
   kind === 'logo' ? ('avatarUrl' as const) : ('bannerImageUrl' as const);
 
-/** Returns null when the restaurant does not exist. */
+/**
+ * Returns null when the restaurant does not exist.
+ *
+ * The body is read through `readPart` *after* existence is confirmed, so a
+ * request naming an unknown restaurant is rejected with 404 without waiting on
+ * the upload — and an empty body against an unknown id still gets 404 rather
+ * than a multipart error.
+ */
 export const replaceRestaurantImage = async (
   restaurantId: string,
   kind: RestaurantImageKind,
-  part: MultipartFile,
+  readPart: () => Promise<MultipartFile>,
   logger: Logger,
 ) => {
   const field = imageField(kind);
@@ -153,6 +160,7 @@ export const replaceRestaurantImage = async (
     select: { avatarUrl: true, bannerImageUrl: true },
   });
   if (!restaurant) return null;
+  const part = await readPart();
   const uploaded = await uploadImage({
     part,
     bucket: storageBuckets().publicBucket,

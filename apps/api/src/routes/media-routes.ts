@@ -70,11 +70,14 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
       { preHandler: [requireAuthenticatedUser, requireSousChefOrHeadChef] },
       async (request, reply) => {
         const { id } = request.params as { id: string };
-        const part = await multipartFile(request);
+        /*
+         * Read the body only after the restaurant is known to exist, so an
+         * unknown id still returns 404 rather than a multipart error.
+         */
         const result = await replaceRestaurantImage(
           id,
           kind,
-          part,
+          () => multipartFile(request),
           request.log,
         );
         if (!result)
