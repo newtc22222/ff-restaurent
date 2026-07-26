@@ -163,6 +163,16 @@ apply_staging() {
       --quiet >/dev/null 2>&1 || true
   done
 
+  # Grant deploy service account impersonation and token creation rights on runtime service account
+  local deploy_service_account="github-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
+  for role in roles/iam.serviceAccountUser roles/iam.serviceAccountTokenCreator; do
+    gcloud_cmd iam service-accounts add-iam-policy-binding "$RUNTIME_SERVICE_ACCOUNT" \
+      --member="serviceAccount:${deploy_service_account}" \
+      --role="$role" \
+      --project "$PROJECT_ID" \
+      --quiet >/dev/null 2>&1 || true
+  done
+
   # Populate staging root admin credentials
   ensure_secret_version "$STAGING_ROOT_ADMIN_USERNAME_SECRET" "$STAGING_ROOT_ADMIN_USERNAME"
 

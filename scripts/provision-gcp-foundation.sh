@@ -479,6 +479,7 @@ apply_foundation() {
   ensure_project_role "$deploy_member" roles/artifactregistry.writer
   ensure_project_role "$deploy_member" roles/cloudsql.viewer
   ensure_service_account_role "$RUNTIME_SERVICE_ACCOUNT" "$deploy_member" roles/iam.serviceAccountUser
+  ensure_service_account_role "$RUNTIME_SERVICE_ACCOUNT" "$deploy_member" roles/iam.serviceAccountTokenCreator
 
   ensure_sql_instance
 
