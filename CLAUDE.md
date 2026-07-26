@@ -148,5 +148,11 @@ Changes flow one way, `develop` → `env/practice`; never merge the branch back,
 `render.yaml` is environment-specific. It is independent of the GCP/Cloud Run track — don't
 point `scripts/retire-render.sh` at the `-practice` services.
 
-A fresh Prisma database must be migrated **and seeded** before the API first deploys, or
-`prisma:root:bootstrap` crash-loops the container. Full runbook: `docs/practice-environment.md`.
+`render.yaml` overrides the `render` stage CMD with `dockerCommand: node dist/server.js`, so
+the practice container **serves only** — it does not migrate or seed on boot. That keeps
+free-plan cold starts (15-minute spin-down, ~1 minute spin-up) from also paying the ~50s
+migrate/seed/bootstrap chain. Schema changes are applied by the one-shot release job,
+`npm run release:run -w @ff-restaurent/api`, the same script the Cloud Run track uses.
+
+A fresh Prisma database must therefore be migrated **and seeded** from a workstation before
+the environment is usable. Full runbook: `docs/practice-environment.md`.

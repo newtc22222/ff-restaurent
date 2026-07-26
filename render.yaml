@@ -20,6 +20,16 @@ services:
     # Dockerfile stages without revisiting this.
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
+    # Override the `render` stage CMD, which chains migrate + seed + backfill +
+    # root bootstrap before listening (~50s measured). On the free plan the
+    # service spins down after 15 minutes idle, so that chain would be paid on
+    # every cold start. Serve only; release work runs as a separate one-shot
+    # (`npm run release:run -w @ff-restaurent/api`) — see
+    # docs/practice-environment.md. Render's preDeployCommand would automate
+    # this but is paid-plan only.
+    dockerCommand: node dist/server.js
+    # /health is static. /ready round-trips the database — deliberately not the
+    # health check, so a database blip cannot make Render cycle the service.
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:

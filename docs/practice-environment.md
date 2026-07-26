@@ -30,12 +30,14 @@ trying operations without touching staging or production.
    postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require
    ```
 
-**Use the direct string, not the pooled or `prisma+postgres://` one.** The API runs
-`prisma migrate deploy` on every boot and uses an unextended `new PrismaClient()`
-([`apps/api/src/prisma.ts`](../apps/api/src/prisma.ts)) with no `directUrl` in
-`schema.prisma`. The direct string satisfies both with zero code changes. Pooled +
-`directUrl` would require a schema change affecting every environment; Accelerate adds
-a hop a long-lived Render Node process doesn't need.
+**Use the direct string, not the pooled or `prisma+postgres://` one.** The same
+`DATABASE_URL` serves both the running API — an unextended `new PrismaClient()`
+([`apps/api/src/prisma.ts`](../apps/api/src/prisma.ts)) — and the migration/release
+commands, and `schema.prisma` has no `directUrl` to separate them. The direct string
+satisfies both with zero code changes. Pooled + `directUrl` would require a schema
+change affecting every environment; Accelerate adds a hop a long-lived Render Node
+process doesn't need. Migrations over a pooler are the usual source of hangs, which is
+the main reason to prefer direct here.
 
 Pick the Prisma region closest to whichever Render region you choose in step 3.
 
@@ -52,17 +54,15 @@ DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require" npm r
 DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require" npm run prisma:seed -w @ff-restaurent/api
 ```
 
-### Why the order is not optional
+### Why the order matters
 
-The container's boot command ends with `prisma:root:bootstrap`. On a **fresh, empty**
-database that step throws — `bootstrap-root-admin.ts` raises
-`ROOT_ADMIN_USERNAME does not identify an existing user` when no matching user exists —
-and the service crash-loops. The usual escape hatch, `seed-if-empty.ts`, hard-refuses
-to run because the runtime image sets `NODE_ENV=production`.
+The API container **serves only** — `render.yaml` sets `dockerCommand: node dist/server.js`,
+overriding the Dockerfile's `render` stage CMD (see "Release step" below). So nothing
+migrates or seeds the database on your behalf: an unmigrated database yields a running
+API that throws on the first query, and an unseeded one has no accounts to log in with.
 
-Seeding first fixes this permanently: `prisma:seed` creates `fifine` already carrying
-`SystemRole.ROOT_ADMIN`, so on boot `bootstrapRootAdmin` finds an existing root admin
-and returns early.
+`prisma:seed` creates `fifine` already carrying `SystemRole.ROOT_ADMIN`, which is also
+what makes the release job's `prisma:root:bootstrap` step a no-op rather than an error.
 
 `seed()` defaults to `reset: true` and truncates every table — correct for a fresh
 practice database, and the reason it runs before any traffic exists.
@@ -91,9 +91,13 @@ The blueprint creates both services from [`render.yaml`](../render.yaml). Both a
 named `-practice` so this blueprint instance cannot collide with or adopt the
 production `ff-restaurent` service.
 
-The API builds `apps/api/Dockerfile` with no target — its **final** stage is `render`,
-which is what supplies the migrate/seed/bootstrap-then-serve startup contract. Do not
-reorder the Dockerfile stages without revisiting this.
+The API builds `apps/api/Dockerfile` with no target — its **final** stage is `render`.
+Do not reorder the Dockerfile stages without revisiting this.
+
+That stage's CMD chains migrate + cuisine seed + phone backfill + root bootstrap before
+listening, which `render.yaml` deliberately **overrides** with
+`dockerCommand: node dist/server.js`. The Dockerfile itself is unchanged, so this branch
+does not diverge from `develop` there — only `render.yaml` does.
 
 ### Environment variables to fill in
 
@@ -127,11 +131,42 @@ the service names; confirm after creation in case a name was taken.
 These fail the boot, not individual requests — a misconfigured value looks like a
 crash-loop in the Render logs, not a 500.
 
-### Free plan
+### Release step — run after any migration-bearing deploy
 
-Both services are on `plan: free`. The API spins down after inactivity and cold-starts
-in roughly a minute. `scripts/staging-smoke.mjs` already retries six times with
-backoff, so it tolerates this; a browser hitting a cold service will just feel slow.
+Because the container serves only, schema changes are applied by a **one-shot release
+job**, the same script the Cloud Run track uses
+([`apps/api/scripts/run-release-job.sh`](../apps/api/scripts/run-release-job.sh)):
+migrate deploy → phone backfill → root-admin bootstrap, each step logged and failing
+fast.
+
+```bash
+DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require" npm run release:run -w @ff-restaurent/api
+```
+
+Run it from a workstation after deploying a commit that adds migrations. Deploys with
+no schema change need nothing. Skipping it when a migration _was_ added leaves the API
+running against an outdated schema — it starts fine and throws at query time, so watch
+for query errors rather than a boot failure.
+
+Render's `preDeployCommand` would automate this, but it is **paid-plan only**; on a
+paid instance, set it to `npm run release:run -w @ff-restaurent/api` and drop the manual
+step.
+
+### Free plan and cold starts
+
+Both services are on `plan: free`. Render spins a free service down after **15 minutes**
+without inbound traffic, and spin-up takes **about one minute**.
+
+The `dockerCommand` override matters here. The stock `render` CMD took a measured **~52
+seconds** — 29s to `prisma migrate deploy`, then ~5s, ~7s and ~5s for the seed, backfill
+and bootstrap steps — before Fastify ever listened, and a spin-down restart re-runs the
+whole chain. Serving only removes that from every cold start.
+
+Prisma Postgres itself has **no cold start and no idle suspend**, so the database is not
+a factor in any of this — only the Render container is.
+
+`scripts/staging-smoke.mjs` retries six times with backoff, so the smoke suite rides out
+a spin-up; a browser hitting a cold service just waits.
 
 `VITE_API_URL` is read at **build** time by Vite. Changing it requires a web rebuild
 ("Clear build cache & deploy"), not a restart.
@@ -158,6 +193,14 @@ curl https://ff-restaurent-practice-api.onrender.com/health
 
 Expect `{"ok":true}`. Swagger UI is at `/api/docs`.
 
+`/ready` additionally round-trips the database and returns 503 if it is unreachable —
+use it to confirm `DATABASE_URL` is right, since `/health` answers even when the
+database does not:
+
+```bash
+curl https://ff-restaurent-practice-api.onrender.com/ready
+```
+
 End to end:
 
 ```bash
@@ -175,6 +218,8 @@ Merge or cherry-pick from `develop` into `env/practice` and push. CI runs on pus
 `env/practice` ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)), and Render
 auto-deploys both services on commit.
 
+If the change adds a migration, run the release step above once the deploy is live.
+
 ### Reset the practice database
 
 Re-run the seed; `reset: true` truncates first.
@@ -185,10 +230,13 @@ DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require" npm r
 
 ### Troubleshooting
 
-| Symptom                                                                                  | Cause                                                                             |
-| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| API crash-loops immediately, logs mention `ROOT_ADMIN_USERNAME`                          | Database was never seeded — run step 2                                            |
-| API crash-loops, logs mention `JWT_SECRET` / `CORS_ORIGINS` / `REGISTRATION_INVITE_CODE` | Production config guard; see startup requirements above                           |
-| Web loads but every API call fails CORS                                                  | `CORS_ORIGINS` missing the `https://` scheme, or pointed at the wrong host        |
-| Web calls `localhost:4000`                                                               | `VITE_API_URL` was unset or changed at build time — rebuild the static site       |
-| Migrations hang or refuse to connect                                                     | Pooled or `prisma+postgres://` string in `DATABASE_URL` instead of the direct one |
+| Symptom                                                                                  | Cause                                                                                     |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| API crash-loops, logs mention `JWT_SECRET` / `CORS_ORIGINS` / `REGISTRATION_INVITE_CODE` | Production config guard; see startup requirements above                                   |
+| API crash-loops, logs mention `ROOT_ADMIN_USERNAME`                                      | `dockerCommand` override was lost, so the stock CMD ran bootstrap on an unseeded database |
+| API starts fine but queries throw about missing tables or columns                        | Migration-bearing deploy without the release step — run it                                |
+| `/health` returns ok but `/ready` returns 503                                            | `DATABASE_URL` is wrong or the database is unreachable                                    |
+| First request after idle takes ~1 minute                                                 | Free-plan spin-down after 15 minutes; expected, not a fault                               |
+| Web loads but every API call fails CORS                                                  | `CORS_ORIGINS` missing the `https://` scheme, or pointed at the wrong host                |
+| Web calls `localhost:4000`                                                               | `VITE_API_URL` was unset or changed at build time — rebuild the static site               |
+| Migrations hang or refuse to connect                                                     | Pooled or `prisma+postgres://` string in `DATABASE_URL` instead of the direct one         |
