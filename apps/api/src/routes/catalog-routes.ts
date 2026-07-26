@@ -16,7 +16,7 @@ import {
   diningAreaSchema,
   diningAreaUpdateSchema,
   normalizeVietnamAddressSnapshot,
-} from '../schemas.js';
+} from '../schemas/index.js';
 import { normalizeSearchQuery } from '../search-normalization.js';
 import { pageResult } from '../pagination.js';
 

@@ -7,7 +7,7 @@ import { registerAddressRoutes } from './routes/address-routes.js';
 import {
   normalizeVietnamAddressSnapshot,
   restaurantSchema,
-} from './schemas.js';
+} from './schemas/index.js';
 
 test('address directory endpoints require authentication', async () => {
   const app = await buildApp();

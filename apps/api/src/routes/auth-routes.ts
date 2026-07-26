@@ -4,7 +4,7 @@ import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 import { loadConfig } from '../config.js';
 import { prisma } from '../prisma.js';
 import { sanitizeUser } from '../roles.js';
-import { loginSchema, registerSchema } from '../schemas.js';
+import { loginSchema, registerSchema } from '../schemas/index.js';
 import { ensureDefaultCollections } from '../collection-service.js';
 
 /**

@@ -3,7 +3,7 @@ import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import { isHeadChef } from '../roles.js';
-import { feedbackQuerySchema, feedbackSchema } from '../schemas.js';
+import { feedbackQuerySchema, feedbackSchema } from '../schemas/index.js';
 
 const feedbackSelect = {
   id: true,

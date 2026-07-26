@@ -5,7 +5,7 @@ import {
   calculateBillSplit,
 } from '@ff-restaurent/shared';
 import { prisma } from './prisma.js';
-import { billSchema } from './schemas.js';
+import { billSchema } from './schemas/index.js';
 
 /**
  * Bill domain logic: duplicate fingerprinting, split computation, and the

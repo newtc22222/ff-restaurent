@@ -21,7 +21,7 @@ import {
   restaurantListQuerySchema,
   restaurantSchema,
   restaurantUpdateSchema,
-} from '../schemas.js';
+} from '../schemas/index.js';
 import {
   ensureDefaultCollections,
   getVisibleRestaurantCollections,

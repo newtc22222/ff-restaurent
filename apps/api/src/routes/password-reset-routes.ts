@@ -11,7 +11,7 @@ import { prisma } from '../prisma.js';
 import {
   passwordResetConsumeSchema,
   passwordResetRequestSchema,
-} from '../schemas.js';
+} from '../schemas/index.js';
 
 const RESET_CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;

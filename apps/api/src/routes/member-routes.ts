@@ -7,8 +7,8 @@ import {
 import { prisma } from '../prisma.js';
 import { transferRootAdmin } from '../root-admin-service.js';
 import { sanitizeUser } from '../roles.js';
-import { chefRoleSchema, rootAdminTransferSchema } from '../schemas.js';
-import { memberQuerySchema } from '../schemas.js';
+import { chefRoleSchema, rootAdminTransferSchema } from '../schemas/index.js';
+import { memberQuerySchema } from '../schemas/index.js';
 import { normalizeSearchQuery } from '../search-normalization.js';
 import { cursorPageResult } from '../pagination.js';
 

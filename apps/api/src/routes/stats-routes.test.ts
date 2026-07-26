@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { statsQuerySchema } from '../schemas.js';
+import { statsQuerySchema } from '../schemas/index.js';
 import { resolveStatsDateRange } from './stats-routes.js';
 
 test('statistics queries default to a rolling monthly range', () => {

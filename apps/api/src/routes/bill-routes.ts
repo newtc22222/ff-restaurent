@@ -8,7 +8,7 @@ import {
 } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import { isHeadChef, isSousChefOrAbove } from '../roles.js';
-import { billListQuerySchema, paymentStatusSchema } from '../schemas.js';
+import { billListQuerySchema, paymentStatusSchema } from '../schemas/index.js';
 import {
   buildBillResponseInclude,
   paymentResponseInclude,

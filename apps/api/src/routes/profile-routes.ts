@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import { sanitizeUser } from '../roles.js';
-import { passwordChangeSchema, profileUpdateSchema } from '../schemas.js';
+import { passwordChangeSchema, profileUpdateSchema } from '../schemas/index.js';
 
 /**
  * Profile routes expose and update the current authenticated user's account.

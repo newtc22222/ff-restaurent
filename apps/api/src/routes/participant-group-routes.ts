@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
 import { publicUserSelect } from '../roles.js';
-import { participantGroupSchema } from '../schemas.js';
+import { participantGroupSchema } from '../schemas/index.js';
 
 const groupInclude = {
   members: {

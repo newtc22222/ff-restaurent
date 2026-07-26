@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../prisma.js';
-import { notificationPreferenceSchema } from '../schemas.js';
+import { notificationPreferenceSchema } from '../schemas/index.js';
 
 /**
  * Notification routes are user-scoped: each user only reads their own reminders.
