@@ -85,4 +85,3 @@ test('root bootstrap creates a new root admin user if configured with password a
   assert.equal(result.user.username, 'f1fine');
   assert.equal(createdData.length, 1);
 });
-

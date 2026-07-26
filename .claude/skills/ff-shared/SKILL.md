@@ -76,6 +76,6 @@ Consequences:
 3. **This is a contract-duplication hotspot.** The same enums/DTO shapes are also
    redeclared in `apps/api/prisma/schema.prisma`, `apps/api/src/schemas.ts` (Zod),
    and `apps/web/src/lib/api.ts` (response types). `packages/shared` is only a
-   *partial* source of truth today, so a change here usually needs matching edits
+   _partial_ source of truth today, so a change here usually needs matching edits
    in those places — see [[ff-api]] (`schemas.ts`, Prisma) and [[ff-web]]
    (`lib/api.ts`). Check them before assuming a type change is self-contained.

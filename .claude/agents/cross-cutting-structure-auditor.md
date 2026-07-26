@@ -70,14 +70,15 @@ Return your findings as:
 ```
 
 repo-root/
-  web/
-  api/
-  packages/
-    shared-types/
-    ...
-  .github/workflows/
+web/
+api/
+packages/
+shared-types/
+...
+.github/workflows/
 
 ```
+
 ```
 
 ## Constraints

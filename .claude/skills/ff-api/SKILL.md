@@ -88,9 +88,9 @@ Prisma/PostgreSQL data layer, and Supabase-backed file storage. It serves
    `RestaurantEntry.cuisineType` / `links` / `isFavorite` / `isRecommended`
    columns are **dropped**; Collections + normalized `Cuisine`/
    `RestaurantPlatformLink` relations are the sole persistence authority.
-   **However**, the API boundary still *serves* the legacy response aliases
+   **However**, the API boundary still _serves_ the legacy response aliases
    (`cuisineType`, `isFavorite`, `isRecommended`, `isFavoritedByMe`, derived in
-   `restaurant-contract.ts`) and still *accepts* the deprecated `links` write
+   `restaurant-contract.ts`) and still _accepts_ the deprecated `links` write
    input (translated to `platformLinks`) for client compatibility. Don't remove
    that compat surface, and don't try to write the dropped columns.
 3. **Global error handling.** `src/http/error-handler.ts` maps `ZodError` → 400
