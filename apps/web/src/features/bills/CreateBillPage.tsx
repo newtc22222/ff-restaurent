@@ -7,17 +7,17 @@ import {
   AdjustmentType,
   calculateBillSplit,
 } from '@ff-restaurent/shared';
-import { money, type PaymentQrImage } from '../lib/api';
-import { session } from '../lib/session';
-import { canChef, uniqueUsers } from '../lib/helpers';
-import { useAppContext } from '../app/providers/app-context';
-import { useI18n } from '../app/providers/i18n';
-import { useMutation } from '../hooks/useMutation';
-import BackButton from '../components/ui/BackButton';
-import AmountInput from '../components/ui/AmountInput';
-import SummaryLine from '../components/ui/SummaryLine';
-import Dropdown from '../components/ui/Dropdown';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { money, type PaymentQrImage } from '../../lib/api';
+import { session } from '../../lib/session';
+import { canChef, uniqueUsers } from '../../lib/helpers';
+import { useAppContext } from '../../app/providers/app-context';
+import { useI18n } from '../../app/providers/i18n';
+import { useMutation } from '../../hooks/useMutation';
+import BackButton from '../../components/ui/BackButton';
+import AmountInput from '../../components/ui/AmountInput';
+import SummaryLine from '../../components/ui/SummaryLine';
+import Dropdown from '../../components/ui/Dropdown';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface ParticipantDraft {
   memberId: string;
