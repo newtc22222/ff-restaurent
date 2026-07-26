@@ -4,8 +4,8 @@ import {
   AdjustmentAllocation,
   calculateBillSplit,
 } from '@ff-restaurent/shared';
-import { prisma } from './prisma.js';
-import { billSchema } from './schemas.js';
+import { prisma } from '../lib/prisma.js';
+import { billSchema } from '../schemas/index.js';
 
 /**
  * Bill domain logic: duplicate fingerprinting, split computation, and the

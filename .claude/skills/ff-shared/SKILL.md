@@ -74,7 +74,7 @@ Consequences:
 2. **Money is integer cents everywhere.** Every amount in the split types and math
    is an integer number of cents — never floats/decimals. Preserve this invariant.
 3. **This is a contract-duplication hotspot.** The same enums/DTO shapes are also
-   redeclared in `apps/api/prisma/schema.prisma`, `apps/api/src/schemas.ts` (Zod),
+   redeclared in `apps/api/prisma/schema.prisma`, `apps/api/src/schemas/` (Zod),
    and `apps/web/src/lib/api.ts` (response types). `packages/shared` is only a
    _partial_ source of truth today, so a change here usually needs matching edits
    in those places — see [[ff-api]] (`schemas.ts`, Prisma) and [[ff-web]]

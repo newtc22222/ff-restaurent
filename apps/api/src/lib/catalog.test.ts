@@ -5,7 +5,7 @@ import {
   normalizeCatalogKey,
   normalizeDisplayText,
 } from './catalog-normalization.js';
-import { restaurantSchema } from './schemas.js';
+import { restaurantSchema } from '../schemas/index.js';
 
 test('catalog keys normalize casing and surrounding/internal whitespace', () => {
   assert.equal(normalizeDisplayText('  South   East  '), 'South East');

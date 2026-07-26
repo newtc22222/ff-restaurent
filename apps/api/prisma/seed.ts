@@ -7,7 +7,7 @@ import {
   SystemRole,
 } from '@prisma/client';
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
-import { seedPopularVietnamCuisines } from '../src/popular-cuisine-seed.js';
+import { seedPopularVietnamCuisines } from '../src/services/popular-cuisine-seed.js';
 
 const prisma = new PrismaClient();
 

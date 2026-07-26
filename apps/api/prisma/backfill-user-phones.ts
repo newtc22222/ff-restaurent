@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import { PrismaClient } from '@prisma/client';
-import { planUserPhoneBackfill } from '../src/phone-backfill.js';
+import { planUserPhoneBackfill } from '../src/services/phone-backfill.js';
 
 const prisma = new PrismaClient();
 

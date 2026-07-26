@@ -32,8 +32,8 @@ types/enums/math from `@ff-restaurent/shared` (see [[ff-shared]]).
   restaurant directory + detail feature.
 - `components/` — shared `ui/` primitives, `layout/`, and `address/`.
 - `lib/` — `api.ts` (the `ApiClient` class: all API calls + local response
-  types), `session.ts`, `translations.ts`, `helpers.ts`, `result-messages.ts`,
-  `pwa.ts`.
+  types), `session.ts`, `translations/` (JSON per locale and domain behind a
+  typed barrel), `helpers.ts`, `result-messages.ts`, `pwa.ts`.
 - `hooks/` — reusable hooks (e.g. `useMutation`).
 - Tests are colocated `*.test.tsx` (vitest + jsdom).
 
@@ -49,7 +49,7 @@ types/enums/math from `@ff-restaurent/shared` (see [[ff-shared]]).
 - **Server calls** → always go through the `ApiClient` in `lib/api.ts`. Don't
   `fetch` directly from components; add a method to `ApiClient` and call it from a
   loader/action or `useMutation`.
-- **Copy / labels** → EN/VI strings live in `lib/translations.ts`; use the i18n
+- **Copy / labels** → EN/VI strings live in `lib/translations/{vi,en}/<domain>.json`; use the i18n
   provider rather than hardcoding text. User-facing result toasts go through
   `result-messages.ts` + `react-hot-toast`.
 - **Shared UI** → `components/ui/` primitives; check there before building a new

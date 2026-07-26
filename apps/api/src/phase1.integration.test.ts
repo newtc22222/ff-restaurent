@@ -11,12 +11,12 @@ import {
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
-import { prisma } from './prisma.js';
-import { ensureDefaultCollections } from './collection-service.js';
+import { prisma } from './lib/prisma.js';
+import { ensureDefaultCollections } from './services/collection-service.js';
 import {
   RootAdminTransferError,
   transferRootAdmin,
-} from './root-admin-service.js';
+} from './services/root-admin-service.js';
 
 const integrationTest =
   process.env.RUN_INTEGRATION_TESTS === '1' ? test : test.skip;

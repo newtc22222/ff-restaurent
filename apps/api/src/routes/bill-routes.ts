@@ -6,18 +6,18 @@ import {
   requireHeadChef,
   requireSousChefOrHeadChef,
 } from '../http/auth-guards.js';
-import { prisma } from '../prisma.js';
-import { isHeadChef, isSousChefOrAbove } from '../roles.js';
-import { billListQuerySchema, paymentStatusSchema } from '../schemas.js';
+import { prisma } from '../lib/prisma.js';
+import { isHeadChef, isSousChefOrAbove } from '../lib/roles.js';
+import { billListQuerySchema, paymentStatusSchema } from '../schemas/index.js';
 import {
   buildBillResponseInclude,
   paymentResponseInclude,
   serializeBill,
-} from '../bill-serializers.js';
+} from '../services/bill-serializers.js';
 import {
   billActivityActorSelect,
   buildBillActivityTimeline,
-} from '../bill-activity.js';
+} from '../services/bill-activity.js';
 import {
   REMINDER_COOLDOWN_MS,
   computeBillCreateData,
@@ -26,21 +26,7 @@ import {
   participantCreateData,
   validateParticipantIds,
   validatePaymentQr,
-} from '../bill-service.js';
-
-/*
- * Re-exported for existing importers (app.ts, colocated tests) while the
- * modules settle. FF-50 moves these behind the services/ boundary.
- */
-export {
-  buildBillResponseInclude,
-  paymentResponseInclude,
-} from '../bill-serializers.js';
-export {
-  billActivityActorSelect,
-  buildBillActivityTimeline,
-} from '../bill-activity.js';
-export { createBillFingerprint } from '../bill-service.js';
+} from '../services/bill-service.js';
 
 const canManageBill = (
   bill: { createdById: string },

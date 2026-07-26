@@ -1,5 +1,5 @@
 import 'fastify';
-import { CurrentUser } from './roles.js';
+import { CurrentUser } from '../lib/roles.js';
 
 declare module 'fastify' {
   interface FastifyRequest {

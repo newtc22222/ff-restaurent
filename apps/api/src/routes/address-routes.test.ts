@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import Fastify from 'fastify';
-import { buildApp } from './app.js';
-import { registerErrorHandler } from './http/error-handler.js';
-import { registerAddressRoutes } from './routes/address-routes.js';
+import { buildApp } from '../app.js';
+import { registerErrorHandler } from '../http/error-handler.js';
+import { registerAddressRoutes } from './address-routes.js';
 import {
   normalizeVietnamAddressSnapshot,
   restaurantSchema,
-} from './schemas.js';
+} from '../schemas/index.js';
 
 test('address directory endpoints require authentication', async () => {
   const app = await buildApp();
