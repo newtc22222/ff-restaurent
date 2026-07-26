@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 
-import { cacheStrategyFor } from '../../public/sw.js';
+import { cacheStrategyFor, parsePushPayload } from '../../public/sw.js';
 
 const origin = 'https://ff.example.test';
 const request = (overrides = {}) => ({
@@ -43,5 +43,41 @@ describe('service worker cache policy', () => {
         origin,
       ),
     ).toBe('network-only');
+  });
+});
+
+describe('push payload parsing', () => {
+  it('extracts title, body, and target url from a JSON push payload', () => {
+    const event = {
+      data: {
+        json: () => ({
+          title: 'Payment reminder',
+          body: 'You owe 50,000 VND',
+          url: '/bills/abc',
+        }),
+      },
+    };
+    expect(parsePushPayload(event)).toEqual({
+      title: 'Payment reminder',
+      body: 'You owe 50,000 VND',
+      url: '/bills/abc',
+    });
+  });
+
+  it('falls back to defaults when the payload is missing or malformed', () => {
+    expect(parsePushPayload({ data: null })).toEqual({
+      title: 'FF RESTaurent',
+      body: '',
+      url: '/',
+    });
+    expect(
+      parsePushPayload({
+        data: {
+          json: () => {
+            throw new Error('bad json');
+          },
+        },
+      }),
+    ).toEqual({ title: 'FF RESTaurent', body: '', url: '/' });
   });
 });

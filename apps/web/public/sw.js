@@ -72,3 +72,39 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(staticResponse(event.request));
   }
 });
+
+export const parsePushPayload = (event) => {
+  const fallback = { title: 'FF RESTaurent', body: '', url: '/' };
+  if (!event.data) return fallback;
+  try {
+    const data = event.data.json();
+    return {
+      title: data.title ?? fallback.title,
+      body: data.body ?? fallback.body,
+      url: data.url ?? fallback.url,
+    };
+  } catch {
+    return fallback;
+  }
+};
+
+self.addEventListener('push', (event) => {
+  const { title, body, url } = parsePushPayload(event);
+  event.waitUntil(
+    self.registration.showNotification(title, { body, data: { url } }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url ?? '/';
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clients) => {
+        const existing = clients.find((client) => client.url.includes(url));
+        if (existing) return existing.focus();
+        return self.clients.openWindow(url);
+      }),
+  );
+});
