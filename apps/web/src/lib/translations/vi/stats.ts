@@ -1,0 +1,30 @@
+/** Vietnamese strings for the stats namespace. Source of truth for this namespace's key set. */
+
+export const stats = {
+  'stats.title': 'Thống kê cá nhân',
+  'stats.subtitle': 'Chi tiêu theo thanh toán, ẩm thực, địa điểm và thời gian.',
+  'stats.range': 'Khoảng thời gian',
+  'stats.custom': 'Tùy chọn ngày',
+  'stats.from': 'Từ ngày',
+  'stats.to': 'Đến ngày',
+  'stats.applyRange': 'Áp dụng',
+  'stats.invalidRange': 'Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.',
+  'stats.paid': 'Đã thanh toán',
+  'stats.waiting': 'Đang chờ',
+  'stats.totalObligation': 'Tổng nghĩa vụ',
+  'stats.totalPeriod': 'Tổng trong kỳ',
+  'stats.paymentStatus': 'Tình trạng thanh toán',
+  'stats.cuisineType': 'Loại ẩm thực',
+  'stats.restaurant': 'Nhà hàng / Quán ăn',
+  'stats.monthlyTrend': 'Xu hướng tháng',
+  'stats.spendingTrend': 'Xu hướng chi tiêu',
+  'stats.noStats': 'Chưa có thống kê',
+  'stats.noStatsDesc':
+    'Chưa có nghĩa vụ thanh toán trong khoảng thời gian đã chọn.',
+  'stats.weekly': 'Tuần',
+  'stats.monthly': 'Tháng',
+  'stats.yearly': 'Năm',
+  'stats.frequency': 'Tần suất',
+  'stats.frequencyRestaurant': 'Tần suất nhà hàng',
+  'stats.frequencyCuisine': 'Tần suất ẩm thực',
+} as const;

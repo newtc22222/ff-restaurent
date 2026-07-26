@@ -1,0 +1,67 @@
+import type { errors as viErrors } from '../vi/errors';
+
+/**
+ * English strings for the errors namespace.
+ *
+ * `satisfies` against the Vietnamese module makes a missing or misspelled
+ * key a compile error, so the two locales cannot drift apart.
+ */
+
+export const errors = {
+  'validation.vietnamMobilePhone':
+    'Enter a valid Vietnamese mobile number, such as 0901234567 or +84901234567.',
+  'validation.passwordLength':
+    'The new password must be between 8 and 128 characters.',
+  'validation.passwordReuse':
+    'The new password must differ from your current password.',
+  'validation.passwordConfirmation':
+    'The password confirmation does not match.',
+  'error.invalidCredentials':
+    'The username, phone number, or password is incorrect.',
+  'error.registrationNotAuthorized': 'The group invite code is not valid.',
+  'error.identifierTaken': 'That username or phone number is already in use.',
+  'error.validation': 'Check the submitted information and try again.',
+  'error.uniqueConflict': 'That value already exists.',
+  'error.relationConflict':
+    'An item that is currently in use cannot be changed.',
+  'error.notFound': 'The requested item was not found.',
+  'error.internal': 'A server error occurred. Please try again.',
+  'error.invalidParticipants': 'The bill participant list is invalid.',
+  'error.billDuplicateDetected': 'An identical active bill was detected.',
+  'error.participantGroupNameTaken': 'That group name is already in use.',
+  'error.participantGroupNotFound': 'Participant group was not found.',
+  'error.feedbackPaymentRequired':
+    'You must pay your bill share before leaving feedback.',
+  'error.feedbackAlreadyExists': 'You already reviewed this bill.',
+  'error.feedbackNotFound': 'Feedback was not found.',
+  'error.feedbackCursorInvalid': 'That feedback page is no longer valid.',
+  'error.paidBillAmendmentBlocked':
+    'Financial details cannot change after payment has started.',
+  'error.paymentStatusConflict':
+    'The payment status changed. Refresh and try again.',
+  'error.paymentStatusUnchanged': 'The payment status is already selected.',
+  'error.finalHeadChefRequired':
+    'The group must retain at least one Head Chef.',
+  'error.selfRoleChangeForbidden': 'You cannot change your own role.',
+  'error.rootAdminRequired': 'Only the Root Admin can perform this action.',
+  'error.rootAdminRoleChangeForbidden':
+    'The Root Admin role cannot be changed here.',
+  'error.rootTransferConfirmationMismatch':
+    'The target username confirmation does not match.',
+  'error.rootTransferConflict':
+    'Root ownership changed. Sign in again before retrying.',
+  'error.rootTransferPasswordInvalid': 'Your current password is incorrect.',
+  'error.rootTransferTargetInvalid': 'Choose another existing member.',
+  'error.sessionInvalidated': 'Your session is no longer valid. Sign in again.',
+  'error.currentPasswordInvalid': 'Your current password is incorrect.',
+  'error.passwordConfirmationMismatch':
+    'The password confirmation does not match.',
+  'error.passwordLengthInvalid':
+    'The new password must be between 8 and 128 characters.',
+  'error.passwordReuseForbidden':
+    'The new password must differ from your current password.',
+  'error.passwordResetInvalid': 'The reset code is invalid or expired.',
+  'error.passwordResetConflict': 'The request changed. Refresh and try again.',
+  'error.rootResetRequiresOperator':
+    'Root Admin recovery requires the operator command.',
+} as const satisfies Record<keyof typeof viErrors, string>;

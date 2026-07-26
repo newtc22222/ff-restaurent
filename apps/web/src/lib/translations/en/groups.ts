@@ -1,0 +1,30 @@
+import type { groups as viGroups } from '../vi/groups';
+
+/**
+ * English strings for the groups namespace.
+ *
+ * `satisfies` against the Vietnamese module makes a missing or misspelled
+ * key a compile error, so the two locales cannot drift apart.
+ */
+
+export const groups = {
+  'groups.title': 'Reusable participant groups',
+  'groups.choose': 'Choose a group',
+  'groups.apply': 'Apply group',
+  'groups.name': 'New group name',
+  'groups.save': 'Save current group',
+  'groups.subtitle': 'Save frequently used groups to create bills faster.',
+  'groups.create': 'Add group',
+  'groups.edit': 'Edit group',
+  'groups.formHint': 'Each group requires at least two members.',
+  'groups.members': 'members',
+  'groups.chooseMembers': 'Choose members',
+  'groups.membersSelected': 'members selected',
+  'groups.search': 'Search groups...',
+  'groups.empty': 'No participant groups yet',
+  'groups.emptyHint': 'Create a group to apply it quickly while making a bill.',
+  'groups.updated': 'Participant group updated.',
+  'groups.delete': 'Delete participant group',
+  'groups.confirmDelete':
+    'Delete this group? Existing bills will not be affected.',
+} as const satisfies Record<keyof typeof viGroups, string>;

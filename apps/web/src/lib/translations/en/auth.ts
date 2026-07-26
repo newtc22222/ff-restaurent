@@ -1,0 +1,62 @@
+import type { auth as viAuth } from '../vi/auth';
+
+/**
+ * English strings for the auth namespace.
+ *
+ * `satisfies` against the Vietnamese module makes a missing or misspelled
+ * key a compile error, so the two locales cannot drift apart.
+ */
+
+export const auth = {
+  'auth.signIn': 'Sign in',
+  'auth.signOut': 'Sign out',
+  'auth.signingIn': 'Signing in...',
+  'auth.register': 'Register',
+  'auth.registering': 'Registering...',
+  'auth.identifier': 'Phone / Username',
+  'auth.password': 'Password',
+  'auth.name': 'Full name',
+  'auth.username': 'Username',
+  'auth.phone': 'Phone number',
+  'auth.inviteCode': 'Group invite code',
+  'auth.role': 'Role',
+  'auth.confirmSignOut': 'Are you sure you want to sign out?',
+  'auth.confirmSignOutTitle': 'Confirm sign out',
+  'auth.cancel': 'Cancel',
+  'auth.haveAccount': 'Already have an account?',
+  'auth.noAccount': "Don't have an account?",
+  'auth.forgotPassword': 'Forgot password?',
+  'auth.resetPassword': 'Reset password',
+  'auth.resetHelp':
+    'Request help or enter the code provided by the Root Admin.',
+  'auth.requestReset': 'Request password reset',
+  'auth.haveResetCode': 'I have a reset code',
+  'auth.backToSignIn': 'Back to sign in',
+  'auth.resetCode': '8-character reset code',
+  'profile.title': 'Profile',
+  'profile.edit': 'Edit profile',
+  'profile.save': 'Save',
+  'profile.saved': 'Saved!',
+  'profile.changePassword': 'Change password',
+  'profile.changePasswordDescription':
+    'This session stays signed in; every other session will be invalidated.',
+  'profile.currentPassword': 'Current password',
+  'profile.newPassword': 'New password',
+  'profile.confirmPassword': 'Confirm new password',
+  'profile.changePasswordAction': 'Change password',
+  'profile.notificationPreferences': 'Notification preferences',
+  'profile.notificationPreferencesDescription':
+    'Control the payment reminders you receive.',
+  'profile.paymentReminders': 'Receive payment reminders',
+  'profile.avatar': 'Avatar',
+  'profile.qrTitle': 'Payment QR images',
+  'profile.qrDescription': 'Manage up to five QR images for bills.',
+  'profile.qrAdd': 'Add QR',
+  'profile.qrEmpty': 'No payment QR images yet.',
+  'profile.qrEdit': 'Edit payment QR',
+  'profile.qrAddTitle': 'Add payment QR',
+  'profile.qrLabel': 'Label',
+  'profile.qrImage': 'QR image',
+  'profile.qrRemove': 'Remove payment QR',
+  'profile.qrRemoveHint': 'Historical bills keep their attached QR image.',
+} as const satisfies Record<keyof typeof viAuth, string>;
