@@ -16,8 +16,15 @@ const expectedIndexes = new Map([
   ],
   ['BillAuditLog_billId_createdAt_id_idx', '("billId", "createdAt", id)'],
 ]);
+/*
+ * Resolved relative to this file, which lives in prisma/scripts/ — hence the
+ * `..` up to prisma/ before descending into migrations/. This is a filesystem
+ * path rather than an import, so it is not checked by the compiler; moving
+ * this script requires updating it by hand.
+ */
 const migrationsDirectory = join(
   dirname(fileURLToPath(import.meta.url)),
+  '..',
   'migrations',
 );
 
