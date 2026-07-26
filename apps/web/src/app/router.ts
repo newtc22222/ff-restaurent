@@ -18,7 +18,6 @@ import type { AppLoaderData } from './providers/app-context';
 import {
   ApiError,
   type Bill,
-  type BillActivityEvent,
   type CatalogPage,
   type Collection,
   type CollectionDetailData,
@@ -36,6 +35,15 @@ import {
 } from '../lib/api';
 import { session } from '../lib/session';
 import { canChef, isRootAdmin } from '../lib/helpers';
+import { forwardListQuery } from './route-helpers';
+import {
+  billActivityLoader,
+  billIntents,
+  billsLoader,
+} from '../features/bills/bills.routes';
+
+/* Bills own their loaders and mutations; re-exported for existing importers. */
+export { billsLoader, billActivityLoader };
 
 const fetchAllPages = async <T>(path: string): Promise<T[]> => {
   const items: T[] = [];
@@ -157,37 +165,6 @@ export async function statsLoader({ request }: LoaderFunctionArgs) {
   }
 }
 
-const forwardListQuery = (request: Request, allowed: Set<string>) => {
-  const source = new URL(request.url).searchParams;
-  const query = new URLSearchParams();
-  for (const [key, value] of source) {
-    if (allowed.has(key) && value) query.append(key, value);
-  }
-  return query;
-};
-
-export async function billsLoader({ request }: LoaderFunctionArgs) {
-  if (!session.getToken()) throw redirect('/login');
-  const query = forwardListQuery(
-    request,
-    new Set([
-      'cursor',
-      'direction',
-      'limit',
-      'sort',
-      'restaurantId',
-      'participantId',
-      'participantIds',
-      'paymentStatus',
-      'archive',
-      'ownerId',
-      'from',
-      'to',
-    ]),
-  );
-  return session.api().request<CatalogPage<Bill>>(`/bills?${query}`);
-}
-
 export async function restaurantsLoader({ request }: LoaderFunctionArgs) {
   if (!session.getToken()) throw redirect('/login');
   const query = forwardListQuery(
@@ -279,23 +256,6 @@ export async function loginLoader() {
     .request('/health')
     .catch(() => undefined);
   return null;
-}
-
-export async function billActivityLoader({ params }: LoaderFunctionArgs) {
-  if (!session.getToken()) throw redirect('/login');
-  if (!params.billId)
-    throw new Response('Bill id is required', { status: 400 });
-  try {
-    return await session
-      .api()
-      .request<BillActivityEvent[]>(`/bills/${params.billId}/activity`);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 401) {
-      session.clear();
-      throw redirect('/login');
-    }
-    throw error;
-  }
 }
 
 export async function restaurantFeedbackLoader({
@@ -402,45 +362,15 @@ export async function mutationAction({ request, params }: ActionFunctionArgs) {
   const body = await request.json();
   const api = session.api();
   try {
+    /*
+     * Feature-owned intents are dispatched first. Error handling and the 401
+     * redirect below stay shared, so behavior is identical to the switch.
+     */
+    const featureIntent =
+      billIntents[body.intent as keyof typeof billIntents];
+    if (featureIntent) return await featureIntent({ api, body, params });
+
     switch (body.intent) {
-      case 'create-bill': {
-        const bill = await api.request<Bill>('/bills', {
-          method: 'POST',
-          body: JSON.stringify(body.payload),
-        });
-        if (typeof body.toastSuccess === 'string')
-          toast.success(body.toastSuccess);
-        return redirect(`/bills/${bill.id}`);
-      }
-      case 'update-bill':
-        await api.request(`/bills/${params.billId}`, {
-          method: 'PUT',
-          body: JSON.stringify(body.payload),
-        });
-        if (typeof body.toastSuccess === 'string')
-          toast.success(body.toastSuccess);
-        return redirect(`/bills/${params.billId}`);
-      case 'bill-status':
-        return await api.request(
-          `/bills/${body.billId ?? params.billId}/${body.status}`,
-          { method: 'PATCH' },
-        );
-      case 'bill-reminders':
-        return await api.request(
-          `/bills/${body.billId ?? params.billId}/reminders`,
-          { method: 'POST' },
-        );
-      case 'payment':
-        return await api.request(
-          `/bills/${params.billId}/participants/${body.memberId}/payment`,
-          {
-            method: 'PATCH',
-            body: JSON.stringify({
-              status: body.status,
-              expectedStatus: body.expectedStatus,
-            }),
-          },
-        );
       case 'create-restaurant':
         return await api.request('/restaurants', {
           method: 'POST',
@@ -659,7 +589,7 @@ export const routes = [
             path: 'bills',
             loader: billsLoader,
             action: mutationAction,
-            lazy: page(() => import('../pages/BillsPage')),
+            lazy: page(() => import('../features/bills/BillsPage')),
           },
           {
             path: 'restaurants',
@@ -693,19 +623,19 @@ export const routes = [
             path: 'bills/new',
             loader: (args) => roleGuard(canChef, args),
             action: mutationAction,
-            lazy: page(() => import('../pages/CreateBillPage')),
+            lazy: page(() => import('../features/bills/CreateBillPage')),
           },
           {
             path: 'bills/:billId/edit',
             loader: (args) => roleGuard(canChef, args),
             action: mutationAction,
-            lazy: page(() => import('../pages/CreateBillPage')),
+            lazy: page(() => import('../features/bills/CreateBillPage')),
           },
           {
             path: 'bills/:billId',
             loader: billActivityLoader,
             action: mutationAction,
-            lazy: page(() => import('../pages/BillDetailPage')),
+            lazy: page(() => import('../features/bills/BillDetailPage')),
           },
           {
             path: 'restaurants/:restaurantId',
