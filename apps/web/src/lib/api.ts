@@ -1,15 +1,22 @@
-export type ChefRole = 'SOUS_CHEF' | 'HEAD_CHEF' | null;
-export type SystemRole = 'ROOT_ADMIN' | null;
-export type PaymentStatus = 'PAID' | 'WAITING';
-export type EntryStatus = 'ACTIVE' | 'ARCHIVED';
-export type RestaurantPlatform =
-  | 'GRAB'
-  | 'SHOPEE_FOOD'
-  | 'BE_FOOD'
-  | 'GOJEK'
-  | 'WEBSITE'
-  | 'FACEBOOK'
-  | 'OTHER';
+import type {
+  ChefRoleValue,
+  CollectionSystemTypeValue,
+  EntryStatusValue,
+  PaymentStatusValue,
+  RestaurantPlatformValue,
+  SystemRoleValue,
+} from '@ff-restaurent/shared';
+
+/*
+ * Domain enums are owned by @ff-restaurent/shared, which mirrors the Prisma
+ * schema. These aliases only add the nullability the wire format uses; they
+ * never restate the member lists, so a change in shared propagates here.
+ */
+export type ChefRole = ChefRoleValue | null;
+export type SystemRole = SystemRoleValue | null;
+export type PaymentStatus = PaymentStatusValue;
+export type EntryStatus = EntryStatusValue;
+export type RestaurantPlatform = RestaurantPlatformValue;
 
 export type RestaurantPlatformLink = {
   id?: string;
@@ -58,7 +65,7 @@ export type BillPage = {
   };
 };
 
-export type CollectionSystemType = 'FAVORITES' | 'RECOMMENDED' | null;
+export type CollectionSystemType = CollectionSystemTypeValue | null;
 
 export type Collection = {
   id: string;

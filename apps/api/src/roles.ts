@@ -1,4 +1,9 @@
-import { ChefRole, Prisma, SystemRole, User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
+import {
+  isHeadChef as isHeadChefShared,
+  isRootAdmin as isRootAdminShared,
+  isSousChefOrAbove as isSousChefOrAboveShared,
+} from '@ff-restaurent/shared';
 
 export const publicUserSelect = {
   id: true,
@@ -16,16 +21,17 @@ export type CurrentUser = Pick<
   'id' | 'username' | 'name' | 'chefRole' | 'systemRole'
 >;
 
-export const isRootAdmin = (user: CurrentUser) =>
-  user.systemRole === SystemRole.ROOT_ADMIN;
+/*
+ * The hierarchy is defined once in @ff-restaurent/shared and re-exported here
+ * so the web cannot drift from the API's permission semantics. This module
+ * keeps the Prisma-specific selects and contracts below.
+ */
+export const isRootAdmin = (user: CurrentUser) => isRootAdminShared(user);
 
 export const isSousChefOrAbove = (user: CurrentUser) =>
-  isRootAdmin(user) ||
-  user.chefRole === ChefRole.SOUS_CHEF ||
-  user.chefRole === ChefRole.HEAD_CHEF;
+  isSousChefOrAboveShared(user);
 
-export const isHeadChef = (user: CurrentUser) =>
-  isRootAdmin(user) || user.chefRole === ChefRole.HEAD_CHEF;
+export const isHeadChef = (user: CurrentUser) => isHeadChefShared(user);
 
 export const sanitizeUser = (user: User) => ({
   id: user.id,

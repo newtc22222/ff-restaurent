@@ -2,6 +2,10 @@ import { z } from 'zod';
 import {
   AdjustmentAllocation,
   AdjustmentType,
+  CHEF_ROLE_VALUES,
+  COLLECTION_SYSTEM_TYPE_VALUES,
+  PAYMENT_STATUS_VALUES,
+  RESTAURANT_PLATFORM_VALUES,
   parseVietnamMobilePhone,
 } from '@ff-restaurent/shared';
 
@@ -149,15 +153,7 @@ const legacyUrlSchema = z.string().trim().url().transform(normalizePlatformUrl);
 
 export const restaurantPlatformLinkSchema = z
   .object({
-    platform: z.enum([
-      'GRAB',
-      'SHOPEE_FOOD',
-      'BE_FOOD',
-      'GOJEK',
-      'WEBSITE',
-      'FACEBOOK',
-      'OTHER',
-    ]),
+    platform: z.enum(RESTAURANT_PLATFORM_VALUES),
     label: z.string().trim().max(60).nullable().optional(),
     url: httpsUrlSchema,
   })
@@ -356,7 +352,7 @@ export const catalogQuerySchema = z.object({
   type: z.string().trim().max(80).optional(),
   provinceCode: z.string().trim().max(64).optional(),
   visibility: z.enum(['all', 'owned', 'public', 'shared']).default('all'),
-  systemType: z.enum(['FAVORITES', 'RECOMMENDED', 'custom']).optional(),
+  systemType: z.enum([...COLLECTION_SYSTEM_TYPE_VALUES, 'custom']).optional(),
 });
 
 export const memberQuerySchema = z.object({
@@ -377,7 +373,7 @@ export const billListQuerySchema = z.object({
   restaurantId: z.string().min(1).optional(),
   participantId: z.string().min(1).optional(),
   participantIds: z.string().max(4000).optional(),
-  paymentStatus: z.enum(['PAID', 'WAITING']).optional(),
+  paymentStatus: z.enum(PAYMENT_STATUS_VALUES).optional(),
   archive: z.enum(['active', 'archived', 'all']).default('active'),
   ownerId: z.string().min(1).optional(),
   from: z.coerce.date().optional(),
@@ -508,7 +504,7 @@ export const billSchema = z.object({
 });
 
 export const chefRoleSchema = z.object({
-  chefRole: z.enum(['SOUS_CHEF', 'HEAD_CHEF']).nullable(),
+  chefRole: z.enum(CHEF_ROLE_VALUES).nullable(),
 });
 
 export const rootAdminTransferSchema = z.object({
@@ -518,8 +514,8 @@ export const rootAdminTransferSchema = z.object({
 });
 
 export const paymentStatusSchema = z.object({
-  status: z.enum(['PAID', 'WAITING']),
-  expectedStatus: z.enum(['PAID', 'WAITING']),
+  status: z.enum(PAYMENT_STATUS_VALUES),
+  expectedStatus: z.enum(PAYMENT_STATUS_VALUES),
 });
 
 const dateOnlySchema = z

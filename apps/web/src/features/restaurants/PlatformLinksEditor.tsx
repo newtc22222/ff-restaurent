@@ -1,28 +1,28 @@
 import { ChevronDown, ChevronUp, Link2, Plus, Trash2 } from 'lucide-react';
+import { RESTAURANT_PLATFORM_VALUES } from '@ff-restaurent/shared';
 import { useI18n } from '../../app/providers/i18n';
 import type { RestaurantPlatform, RestaurantPlatformLink } from '../../lib/api';
 import Dropdown from '../../components/ui/Dropdown';
 
-const platforms: RestaurantPlatform[] = [
-  'GRAB',
-  'SHOPEE_FOOD',
-  'BE_FOOD',
-  'GOJEK',
-  'WEBSITE',
-  'FACEBOOK',
-  'OTHER',
-];
+const platforms: readonly RestaurantPlatform[] = RESTAURANT_PLATFORM_VALUES;
+
+/**
+ * Brand-cased display names. Typing this as a total Record means adding a
+ * platform in @ff-restaurent/shared fails the build here until it has a label,
+ * rather than silently rendering undefined.
+ */
+const PLATFORM_LABELS: Record<RestaurantPlatform, string> = {
+  GRAB: 'Grab',
+  SHOPEE_FOOD: 'ShopeeFood',
+  BE_FOOD: 'beFood',
+  GOJEK: 'Gojek',
+  WEBSITE: 'Website',
+  FACEBOOK: 'Facebook',
+  OTHER: 'Other',
+};
 
 export const platformLabel = (platform: RestaurantPlatform) =>
-  ({
-    GRAB: 'Grab',
-    SHOPEE_FOOD: 'ShopeeFood',
-    BE_FOOD: 'beFood',
-    GOJEK: 'Gojek',
-    WEBSITE: 'Website',
-    FACEBOOK: 'Facebook',
-    OTHER: 'Other',
-  })[platform];
+  PLATFORM_LABELS[platform];
 
 const normalizedUrl = (value: string) => {
   try {

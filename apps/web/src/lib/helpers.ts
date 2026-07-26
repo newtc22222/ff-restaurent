@@ -1,3 +1,8 @@
+import {
+  isHeadChef,
+  isRootAdmin as isRootAdminShared,
+  isSousChefOrAbove,
+} from '@ff-restaurent/shared';
 import { User, Bill } from './api';
 
 /**
@@ -93,23 +98,25 @@ export const roleLabel = (
   return t?.('role.customer') ?? 'Customer';
 };
 
+/*
+ * The role hierarchy itself lives in @ff-restaurent/shared so the web and the
+ * API cannot disagree about who may do what. These are thin, named wrappers
+ * that keep the existing call sites unchanged.
+ */
+
 /**
  * Check if the user is a SOUS_CHEF or HEAD_CHEF.
  */
-export const canChef = (user: User | null): boolean =>
-  user?.systemRole === 'ROOT_ADMIN' ||
-  user?.chefRole === 'SOUS_CHEF' ||
-  user?.chefRole === 'HEAD_CHEF';
+export const canChef = (user: User | null): boolean => isSousChefOrAbove(user);
 
 /**
  * Check if the user is a HEAD_CHEF.
  */
-export const isHead = (user: User | null): boolean =>
-  user?.systemRole === 'ROOT_ADMIN' || user?.chefRole === 'HEAD_CHEF';
+export const isHead = (user: User | null): boolean => isHeadChef(user);
 
 /** Check if the user holds the singleton system-administration role. */
 export const isRootAdmin = (user: User | null): boolean =>
-  user?.systemRole === 'ROOT_ADMIN';
+  isRootAdminShared(user);
 
 /**
  * Check if the user has permission to edit or manage a bill.
