@@ -2,7 +2,10 @@ import type { FastifyInstance } from 'fastify';
 
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../lib/prisma.js';
-import { notificationPreferenceSchema } from '../schemas/index.js';
+import {
+  notificationPreferenceSchema,
+  pushSubscriptionSchema,
+} from '../schemas/index.js';
 
 /**
  * Notification routes are user-scoped: each user only reads their own reminders.
@@ -74,6 +77,39 @@ export const registerNotificationRoutes = (app: FastifyInstance) => {
         where: { id: notification.id },
         data: { readAt: new Date() },
       });
+    },
+  );
+
+  app.post(
+    '/me/push-subscriptions',
+    { preHandler: requireAuthenticatedUser },
+    async (request) => {
+      const body = pushSubscriptionSchema.parse(request.body);
+      return prisma.pushSubscription.upsert({
+        where: { fcmToken: body.fcmToken },
+        create: { userId: request.currentUser.id, fcmToken: body.fcmToken },
+        update: { userId: request.currentUser.id, lastSeenAt: new Date() },
+        select: { id: true },
+      });
+    },
+  );
+
+  app.delete(
+    '/me/push-subscriptions/:id',
+    { preHandler: requireAuthenticatedUser },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const subscription = await prisma.pushSubscription.findFirst({
+        where: { id, userId: request.currentUser.id },
+      });
+      if (!subscription) {
+        return reply.code(404).send({
+          code: 'NOT_FOUND',
+          message: 'Push subscription not found',
+        });
+      }
+      await prisma.pushSubscription.delete({ where: { id: subscription.id } });
+      return reply.code(204).send();
     },
   );
 };
