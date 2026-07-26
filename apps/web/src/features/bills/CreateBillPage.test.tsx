@@ -8,7 +8,7 @@ import {
   screen,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { I18nProvider } from '../app/providers/i18n';
+import { I18nProvider } from '../../app/providers/i18n';
 import CreateBillPage from './CreateBillPage';
 
 const mutate = vi.fn();
@@ -22,7 +22,7 @@ vi.mock('react-router', async (importOriginal) => {
   };
 });
 
-vi.mock('../components/ui/Dropdown', () => ({
+vi.mock('../../components/ui/Dropdown', () => ({
   default: ({
     ariaLabel,
     value = '',
@@ -55,11 +55,11 @@ vi.mock('../components/ui/Dropdown', () => ({
   ),
 }));
 
-vi.mock('../hooks/useMutation', () => ({
+vi.mock('../../hooks/useMutation', () => ({
   useMutation: () => ({ mutate }),
 }));
 
-vi.mock('../app/providers/app-context', () => ({
+vi.mock('../../app/providers/app-context', () => ({
   useAppContext: () => ({
     user: {
       id: 'sous-1',

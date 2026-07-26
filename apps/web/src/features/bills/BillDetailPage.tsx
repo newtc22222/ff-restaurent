@@ -18,19 +18,19 @@ import {
   money,
   type BillActivityAction,
   type BillActivityEvent,
-} from '../lib/api';
+} from '../../lib/api';
 import {
   PIE_COLORS,
   canChef,
   isHead,
   canManageBill,
   initials,
-} from '../lib/helpers';
-import { useAppContext } from '../app/providers/app-context';
-import { useI18n } from '../app/providers/i18n';
-import { useMutation } from '../hooks/useMutation';
-import BackButton from '../components/ui/BackButton';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
+} from '../../lib/helpers';
+import { useAppContext } from '../../app/providers/app-context';
+import { useI18n } from '../../app/providers/i18n';
+import { useMutation } from '../../hooks/useMutation';
+import BackButton from '../../components/ui/BackButton';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 const activityIcon = (action: BillActivityAction) => {
   switch (action) {
