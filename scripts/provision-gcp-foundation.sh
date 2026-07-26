@@ -479,7 +479,9 @@ apply_foundation() {
   ensure_service_account "$RUNTIME_SERVICE_ACCOUNT" 'FF RESTaurent runtime'
   ensure_service_account "$DEPLOY_SERVICE_ACCOUNT" 'FF RESTaurent GitHub deployer'
   ensure_project_role "$runtime_member" roles/cloudsql.client
+  ensure_project_role "$runtime_member" roles/run.invoker
   ensure_project_role "$deploy_member" roles/run.admin
+  ensure_project_role "$deploy_member" roles/run.invoker
   ensure_project_role "$deploy_member" roles/artifactregistry.writer
   ensure_project_role "$deploy_member" roles/cloudsql.viewer
   ensure_service_account_role "$RUNTIME_SERVICE_ACCOUNT" "$deploy_member" roles/iam.serviceAccountUser

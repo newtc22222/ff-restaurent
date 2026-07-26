@@ -173,6 +173,14 @@ apply_staging() {
       --quiet >/dev/null 2>&1 || true
   done
 
+  # Grant run.invoker role to runtime and deployer service accounts
+  for member in "serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" "serviceAccount:${deploy_service_account}"; do
+    gcloud_cmd projects add-iam-policy-binding "$PROJECT_ID" \
+      --member="$member" \
+      --role="roles/run.invoker" \
+      --quiet >/dev/null 2>&1 || true
+  done
+
   # Grant Workload Identity User role for develop branch and repository to deploy service account
   local project_number="192523226156"
   local github_repo="newtc22222/ff-restaurent"
