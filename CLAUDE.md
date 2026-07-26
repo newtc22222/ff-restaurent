@@ -90,7 +90,7 @@ The normalized-restaurant contract shipped in v1.1.0. Migration `20260720000000_
 
 **Backward-compat surface still in place (don't break):** the API boundary continues to _serve_ the legacy response aliases (`cuisineType`, `isFavorite`, `isRecommended`, plus `isFavoritedByMe`) derived in `restaurant-contract.ts`, and continues to _accept_ the deprecated `links` write input (translated into `platformLinks`). These are contract guarantees for existing clients, not persisted state.
 
-Verify the contract against a live DB with `npm run prisma:phase2:contract:verify -w @ff-restaurent/api` (`prisma/verify-phase2-contract.ts`); it checks the migration by name so it stays compatible with later migrations layered on top. See `wiki/Phase-2-Migration-Runbook`.
+Verify the contract against a live DB with `npm run prisma:phase2:contract:verify -w @ff-restaurent/api` (`prisma/scripts/verify-phase2-contract.ts`); it checks the migration by name so it stays compatible with later migrations layered on top. See `wiki/Phase-2-Migration-Runbook`.
 
 ### Web Structure
 
