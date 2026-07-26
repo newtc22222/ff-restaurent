@@ -5,7 +5,7 @@ import {
   buildPublicRestaurantSelect,
   serializePublicRestaurant,
 } from './restaurant-contract.js';
-import { restaurantSchema } from './schemas/index.js';
+import { restaurantSchema } from '../schemas/index.js';
 
 const base = {
   name: 'Profile Restaurant',

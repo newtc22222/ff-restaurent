@@ -4,8 +4,8 @@ import {
   requireAuthenticatedUser,
   requireSousChefOrHeadChef,
 } from '../http/auth-guards.js';
-import { prisma } from '../prisma.js';
-import { isHeadChef } from '../roles.js';
+import { prisma } from '../lib/prisma.js';
+import { isHeadChef } from '../lib/roles.js';
 import {
   managedPublicPath,
   PUBLIC_IMAGE_LIMIT,
@@ -15,7 +15,7 @@ import {
   signedQrUrl,
   storageBuckets,
   uploadImage,
-} from '../storage.js';
+} from '../services/storage.js';
 
 const badRequest = (message: string, code = 'VALIDATION_ERROR') =>
   Object.assign(new Error(message), { statusCode: 400, code });

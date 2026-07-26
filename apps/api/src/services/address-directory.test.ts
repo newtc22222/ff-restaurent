@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import vietnamAddressData from './data/vietnam-wards-full.json' with { type: 'json' };
+import vietnamAddressData from '../data/vietnam-wards-full.json' with { type: 'json' };
 import {
   AddressDirectory,
   AddressProvinceNotFoundError,

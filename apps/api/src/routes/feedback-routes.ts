@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
-import { prisma } from '../prisma.js';
-import { isHeadChef } from '../roles.js';
+import { prisma } from '../lib/prisma.js';
+import { isHeadChef } from '../lib/roles.js';
 import { feedbackQuerySchema, feedbackSchema } from '../schemas/index.js';
 
 const feedbackSelect = {

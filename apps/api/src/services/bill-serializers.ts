@@ -1,10 +1,10 @@
 import { EntryStatus } from '@prisma/client';
-import { publicUserSelect } from './roles.js';
+import { publicUserSelect } from '../lib/roles.js';
 import {
   type PublicRestaurantRecord,
   buildPublicRestaurantSelect,
   serializePublicRestaurant,
-} from './restaurant-contract.js';
+} from '../contracts/restaurant-contract.js';
 import { signedQrUrl } from './storage.js';
 
 /**

@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
-import { normalizeCatalogKey } from './catalog-normalization.js';
+import { normalizeCatalogKey } from '../lib/catalog-normalization.js';
 
 export const POPULAR_VIETNAM_CUISINE_SOURCE = 'https://vietnam.travel/node/195';
 

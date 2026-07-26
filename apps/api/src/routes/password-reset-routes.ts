@@ -7,7 +7,7 @@ import {
   requireAuthenticatedUser,
   requireRootAdmin,
 } from '../http/auth-guards.js';
-import { prisma } from '../prisma.js';
+import { prisma } from '../lib/prisma.js';
 import {
   passwordResetConsumeSchema,
   passwordResetRequestSchema,

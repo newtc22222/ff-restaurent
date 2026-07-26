@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { seedPopularVietnamCuisines } from '../src/popular-cuisine-seed.js';
+import { seedPopularVietnamCuisines } from '../src/services/popular-cuisine-seed.js';
 
 const prisma = new PrismaClient();
 

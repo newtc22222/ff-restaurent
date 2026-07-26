@@ -4,12 +4,12 @@ import {
   diningAreaKey,
   normalizeCatalogKey,
   normalizeDisplayText,
-} from '../catalog-normalization.js';
+} from '../lib/catalog-normalization.js';
 import {
   requireAuthenticatedUser,
   requireSousChefOrHeadChef,
 } from '../http/auth-guards.js';
-import { prisma } from '../prisma.js';
+import { prisma } from '../lib/prisma.js';
 import {
   catalogQuerySchema,
   cuisineSchema,
@@ -17,8 +17,8 @@ import {
   diningAreaUpdateSchema,
   normalizeVietnamAddressSnapshot,
 } from '../schemas/index.js';
-import { normalizeSearchQuery } from '../search-normalization.js';
-import { pageResult } from '../pagination.js';
+import { normalizeSearchQuery } from '../lib/search-normalization.js';
+import { pageResult } from '../lib/pagination.js';
 
 const conflict = (code: string, message: string) =>
   Object.assign(new Error(message), { statusCode: 409, code });

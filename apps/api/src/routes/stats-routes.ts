@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { EntryStatus, PaymentStatus } from '@prisma/client';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
-import { prisma } from '../prisma.js';
+import { prisma } from '../lib/prisma.js';
 import { statsQuerySchema } from '../schemas/index.js';
 
 type StatsQuery = ReturnType<typeof statsQuerySchema.parse>;

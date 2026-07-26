@@ -1,11 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
-import { loadConfig } from '../config.js';
-import { prisma } from '../prisma.js';
-import { sanitizeUser } from '../roles.js';
+import { loadConfig } from '../config/config.js';
+import { prisma } from '../lib/prisma.js';
+import { sanitizeUser } from '../lib/roles.js';
 import { loginSchema, registerSchema } from '../schemas/index.js';
-import { ensureDefaultCollections } from '../collection-service.js';
+import { ensureDefaultCollections } from '../services/collection-service.js';
 
 /**
  * Authentication routes issue JWTs and return sanitized user profiles.

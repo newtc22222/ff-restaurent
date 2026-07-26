@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { normalizeCatalogKey } from './catalog-normalization.js';
+import { normalizeCatalogKey } from '../lib/catalog-normalization.js';
 import {
   POPULAR_VIETNAM_CUISINE_SOURCE,
   popularVietnamCuisines,

@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { prisma } from '../prisma.js';
-import { isHeadChef, isRootAdmin, isSousChefOrAbove } from '../roles.js';
+import { prisma } from '../lib/prisma.js';
+import { isHeadChef, isRootAdmin, isSousChefOrAbove } from '../lib/roles.js';
 
 type JwtPayload = { sub: string; ver?: number };
 

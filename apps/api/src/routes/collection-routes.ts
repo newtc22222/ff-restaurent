@@ -1,21 +1,21 @@
 import { CollectionSystemType, EntryStatus, Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
-import { ensureDefaultCollections } from '../collection-service.js';
+import { ensureDefaultCollections } from '../services/collection-service.js';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
-import { prisma } from '../prisma.js';
+import { prisma } from '../lib/prisma.js';
 import {
   buildPublicRestaurantSelect,
   serializePublicRestaurant,
-} from '../restaurant-contract.js';
-import { isHeadChef, isSousChefOrAbove } from '../roles.js';
+} from '../contracts/restaurant-contract.js';
+import { isHeadChef, isSousChefOrAbove } from '../lib/roles.js';
 import {
   catalogQuerySchema,
   collectionSchema,
   collectionShareSchema,
   collectionUpdateSchema,
 } from '../schemas/index.js';
-import { normalizeSearchQuery } from '../search-normalization.js';
-import { pageResult } from '../pagination.js';
+import { normalizeSearchQuery } from '../lib/search-normalization.js';
+import { pageResult } from '../lib/pagination.js';
 
 const collectionSelect = {
   id: true,

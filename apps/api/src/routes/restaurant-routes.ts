@@ -5,16 +5,16 @@ import {
   requireHeadChef,
   requireSousChefOrHeadChef,
 } from '../http/auth-guards.js';
-import { prisma } from '../prisma.js';
-import { isHeadChef } from '../roles.js';
+import { prisma } from '../lib/prisma.js';
+import { isHeadChef } from '../lib/roles.js';
 import {
   buildPublicRestaurantSelect,
   serializePublicRestaurant,
-} from '../restaurant-contract.js';
+} from '../contracts/restaurant-contract.js';
 import {
   normalizeCatalogKey,
   normalizeDisplayText,
-} from '../catalog-normalization.js';
+} from '../lib/catalog-normalization.js';
 import {
   normalizeVietnamAddressSnapshot,
   restaurantCollectionsSchema,
@@ -28,9 +28,9 @@ import {
   reconcileRestaurantCollections,
   toggleFavoriteShortcut,
   toggleRecommendedShortcut,
-} from '../collection-service.js';
-import { normalizeSearchQuery } from '../search-normalization.js';
-import { cursorPageResult } from '../pagination.js';
+} from '../services/collection-service.js';
+import { normalizeSearchQuery } from '../lib/search-normalization.js';
+import { cursorPageResult } from '../lib/pagination.js';
 
 type RestaurantCuisineInput = {
   cuisineType?: string;

@@ -1,6 +1,6 @@
 import { CollectionSystemType, Prisma } from '@prisma/client';
-import { prisma } from './prisma.js';
-import { isSousChefOrAbove, type CurrentUser } from './roles.js';
+import { prisma } from '../lib/prisma.js';
+import { isSousChefOrAbove, type CurrentUser } from '../lib/roles.js';
 
 export const restaurantCollectionSelect = {
   id: true,

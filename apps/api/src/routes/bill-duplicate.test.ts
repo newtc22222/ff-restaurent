@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { AdjustmentAllocation } from '@ff-restaurent/shared';
-import { createBillFingerprint } from '../bill-service.js';
+import { createBillFingerprint } from '../services/bill-service.js';
 
 test('bill fingerprints ignore participant and adjustment ordering', () => {
   const bill = {
