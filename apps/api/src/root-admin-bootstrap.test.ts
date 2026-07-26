@@ -48,7 +48,10 @@ test('root bootstrap promotes the configured existing username once', async () =
 
 test('root bootstrap fails closed without a valid configured account', async () => {
   await assert.rejects(
-    bootstrapRootAdmin(client({ findFirst: async () => null }), undefined),
+    bootstrapRootAdmin(
+      client({ findFirst: async () => null, findUnique: async () => null }),
+      '',
+    ),
     /ROOT_ADMIN_USERNAME is required/,
   );
   await assert.rejects(
@@ -62,3 +65,24 @@ test('root bootstrap fails closed without a valid configured account', async () 
     /does not identify an existing user/,
   );
 });
+
+test('root bootstrap creates a new root admin user if configured with password and missing from db', async () => {
+  const createdData: unknown[] = [];
+  const result = await bootstrapRootAdmin(
+    client({
+      findFirst: async () => null,
+      findUnique: async () => null,
+      create: async (args: unknown) => {
+        createdData.push(args);
+        return { id: 'new-root', username: 'f1fine' };
+      },
+    }),
+    'f1fine',
+    '111222333',
+  );
+
+  assert.equal(result.status, 'created');
+  assert.equal(result.user.username, 'f1fine');
+  assert.equal(createdData.length, 1);
+});
+

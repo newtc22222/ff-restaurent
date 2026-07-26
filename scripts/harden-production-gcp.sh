@@ -221,7 +221,7 @@ apply_lb() {
   local web_tag="${REGION}-docker.pkg.dev/${PROJECT_ID}/ff-restaurent/web:production"
   gcloud_cmd builds submit --project "$PROJECT_ID" --region "$REGION" \
     --tag "$web_tag" \
-    --substitutions="_API_DOMAIN=${API_DOMAIN}" \
+    --substitutions="_API_DOMAIN=${API_DOMAIN},_IMAGE_NAME=${web_tag}" \
     --config /dev/stdin --quiet . >/dev/null <<'EOF'
 steps:
 - name: 'gcr.io/cloud-builders/docker'

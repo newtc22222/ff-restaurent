@@ -35,7 +35,6 @@ PATH="$TMP:$PATH" \
   sh "$SUBJECT" >"$TMP/success.out" 2>"$TMP/success.err"
 cat >"$TMP/expected.log" <<'EOF'
 run prisma:migrate:deploy
-run prisma:cuisines:seed
 run prisma:phones:backfill
 run prisma:root:bootstrap
 EOF
@@ -48,18 +47,17 @@ fi
 pass 'ordered release without secret output'
 
 export FF57_MOCK_LOG="$TMP/failure.log"
-export FF57_FAIL_COMMAND='run prisma:cuisines:seed'
+export FF57_FAIL_COMMAND='run prisma:phones:backfill'
 if PATH="$TMP:$PATH" sh "$SUBJECT" >"$TMP/failure.out" 2>"$TMP/failure.err"; then
   fail 'release failure propagated'
 fi
 cat >"$TMP/failure-expected.log" <<'EOF'
 run prisma:migrate:deploy
-run prisma:cuisines:seed
+run prisma:phones:backfill
 EOF
 cmp "$TMP/failure-expected.log" "$FF57_MOCK_LOG" ||
   fail 'release stopped after failing step'
-if grep -Fq 'phone-backfill' "$TMP/failure.out" ||
-  grep -Fq 'root-admin-bootstrap' "$TMP/failure.out"; then
+if grep -Fq 'root-admin-bootstrap' "$TMP/failure.out"; then
   fail 'release continued after failure'
 fi
 pass 'release failure stops subsequent steps'

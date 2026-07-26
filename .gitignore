@@ -1,4 +1,4 @@
-﻿node_modules
+node_modules
 dist
 build
 .env
@@ -13,19 +13,15 @@ coverage
 .local
 playwright-report
 test-results
+
+# Generated TypeScript build metadata
 *.tsbuildinfo
 
-
-
-# Ignore generated tsbuildinfo
-*.tsbuildinfo
-
-# Ignore generated prisma output
+# Generated Prisma output
 apps/api/prisma/**/*.js
 apps/api/prisma/**/*.d.ts
 apps/api/prisma.config.js
 apps/api/prisma.config.d.ts
 
-# Ignore accidental gcloud folders
+# Accidental gcloud folders
 gcloud/
-C:/

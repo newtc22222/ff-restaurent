@@ -10,15 +10,15 @@ passed, and Linear issue `FF-21` is Done.
 
 Phase 2 implementation and the `v1.1.0-rc.1` observation window are complete.
 Resume all Phase 2 release work from `.codex/PHASE_2_HANDOFF.md` and
-`releases/Release_1-1-0.md`. The overall roadmap remains In Progress for later
+`wiki/RELEASE_1-1-0`. The overall roadmap remains In Progress for later
 phases.
 
 Read these files before starting Phase 2 or another production operation:
 
-- `releases/Release_1-0-0.md` — shipped scope, API changes, configuration, and
+- `wiki/RELEASE_1-0-0` — shipped scope, API changes, configuration, and
   the release verification record.
-- `releases/PRE_RELEASE.md` — release-readiness checklist.
-- `docs/03_PRODUCTION_RUNBOOK.md` — deployment, rollback, smoke, and recovery
+- `wiki/PRE_RELEASE` — release-readiness checklist.
+- `wiki/Production-Runbook` — deployment, rollback, smoke, and recovery
   procedures.
 - `AGENTS.md` and `.codex/skills/ff-restaurent-app/SKILL.md` — repository rules
   and commands.
@@ -134,7 +134,7 @@ cold-start delay after idle periods.
 ## Phase 2 delivery workflow
 
 The ticket workflow below is complete through FF-27. Do not start another
-Phase 2 feature ticket; resume from `releases/Phase_2_Migration_Runbook.md` and
+Phase 2 feature ticket; resume from `wiki/Phase-2-Migration-Runbook` and
 the `v1.1.0-rc.1` release boundary.
 
 Before starting a Phase 2 ticket:
