@@ -1,11 +1,12 @@
 import { pathToFileURL } from 'node:url';
-import { Prisma, PrismaClient, SystemRole } from '@prisma/client';
+import { ChefRole, Prisma, PrismaClient, SystemRole } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 export const bootstrapRootAdmin = async (
   client: PrismaClient,
   configuredUsername = process.env.ROOT_ADMIN_USERNAME?.trim(),
+  configuredPassword = process.env.ROOT_ADMIN_PASSWORD?.trim(),
 ) => {
   const existingRoot = await client.user.findFirst({
     where: { systemRole: SystemRole.ROOT_ADMIN },
@@ -24,7 +25,23 @@ export const bootstrapRootAdmin = async (
     where: { username: configuredUsername },
     select: { id: true, username: true },
   });
+
   if (!candidate) {
+    if (configuredPassword) {
+      const bcrypt = await import('bcryptjs');
+      const passwordHash = await bcrypt.default.hash(configuredPassword, 12);
+      const created = await client.user.create({
+        data: {
+          name: configuredUsername,
+          username: configuredUsername,
+          passwordHash,
+          chefRole: ChefRole.HEAD_CHEF,
+          systemRole: SystemRole.ROOT_ADMIN,
+        },
+        select: { id: true, username: true },
+      });
+      return { status: 'created' as const, user: created };
+    }
     throw new Error(
       `ROOT_ADMIN_USERNAME does not identify an existing user: ${configuredUsername}`,
     );
