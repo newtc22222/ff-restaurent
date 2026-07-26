@@ -99,7 +99,11 @@ afterEach(cleanup);
 describe('AdminPage ROOT_ADMIN governance', () => {
   it('shows friendly roles and requires exact transfer confirmation', () => {
     render(
-      <MemoryRouter><I18nProvider><AdminPage /></I18nProvider></MemoryRouter>,
+      <MemoryRouter>
+        <I18nProvider>
+          <AdminPage />
+        </I18nProvider>
+      </MemoryRouter>,
     );
 
     const table = screen.getByRole('table');
@@ -144,7 +148,9 @@ describe('AdminPage ROOT_ADMIN governance', () => {
       },
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Transfer Root Admin ownership' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Transfer Root Admin ownership' }),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'New Root Admin' }));
     fireEvent.click(screen.getByRole('option', { name: /Member One/ }));
     const transfer = screen.getByRole('button', {
@@ -180,7 +186,11 @@ describe('AdminPage ROOT_ADMIN governance', () => {
 
   it('searches the authenticated member snapshot by name, username, and phone', () => {
     render(
-      <MemoryRouter><I18nProvider><AdminPage /></I18nProvider></MemoryRouter>,
+      <MemoryRouter>
+        <I18nProvider>
+          <AdminPage />
+        </I18nProvider>
+      </MemoryRouter>,
     );
     const search = screen.getByRole('searchbox', {
       name: 'Search name, username, or phone',
@@ -212,7 +222,11 @@ describe('AdminPage ROOT_ADMIN governance', () => {
   it('redirects a Head Chef without rendering administration controls', () => {
     currentUser = member;
     render(
-      <MemoryRouter><I18nProvider><AdminPage /></I18nProvider></MemoryRouter>,
+      <MemoryRouter>
+        <I18nProvider>
+          <AdminPage />
+        </I18nProvider>
+      </MemoryRouter>,
     );
 
     expect(screen.getByTestId('redirect').textContent).toBe('/bills');
@@ -221,10 +235,16 @@ describe('AdminPage ROOT_ADMIN governance', () => {
 
   it('issues and rejects pending password reset requests', () => {
     render(
-      <MemoryRouter><I18nProvider><AdminPage /></I18nProvider></MemoryRouter>,
+      <MemoryRouter>
+        <I18nProvider>
+          <AdminPage />
+        </I18nProvider>
+      </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Password reset requests' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Password reset requests' }),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Issue code' }));
     expect(mutate).toHaveBeenCalledWith(
       { intent: 'issue-password-reset', requestId: 'reset-1' },

@@ -56,13 +56,19 @@ Run commands from the repository root.
 
 ```bash
 npm install
-npm run build -w @ff-restaurent/shared
+npm run prettier:check
 npm run lint
 npm run typecheck
 npm test
 npm run build
 npm run test:e2e
 ```
+
+`npm run typecheck` is `tsc -b` and `npm run build` compiles
+`@ff-restaurent/shared` first, so neither needs a manual shared pre-build after
+a clean `npm ci`. `npm run prettier:check` is the non-mutating counterpart to
+`npm run format` and is what CI enforces; the husky/lint-staged hook only covers
+staged files.
 
 Useful focused commands:
 
@@ -143,8 +149,14 @@ overflow wrapper where scrolling is needed; do not add
 
 All persisted and API monetary values are integer cents. Core allocation logic
 is in `packages/shared/src/bill-splitting.ts`; never duplicate it in the API or
-web application. Rebuild the shared package after changes because consumers use
-its compiled output.
+web application.
+
+`apps/api` and `apps/web` consume `@ff-restaurent/shared` through TypeScript
+project references, so `npm run typecheck` (`tsc -b`) rebuilds
+`packages/shared/dist/` before checking the apps — no manual pre-build is
+needed. The one asymmetry to know about: web's `vite.config.ts` still aliases
+the package to its **source**, so the Vite dev server and Vitest pick up shared
+edits immediately, while `tsc` validates against the regenerated declarations.
 
 Vietnamese phone parsing is in `packages/shared/src/phone.ts`. The API is the
 authoritative validator and stores valid optional phones in E.164 form.

@@ -66,10 +66,11 @@ Return your findings as:
 ```
 
 api/
-  src/
-    ...
+src/
+...
 
 ```
+
 ```
 
 ## Constraints

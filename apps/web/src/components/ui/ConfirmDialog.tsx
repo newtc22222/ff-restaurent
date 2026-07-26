@@ -45,10 +45,18 @@ export default function ConfirmDialog({
         <h3 className="mb-2 text-[16px] font-bold text-ink">{title}</h3>
         <p className="mb-5 text-[14px] text-slate-500">{message}</p>
         <div className="flex gap-3">
-          <button className="btn btn-soft flex-1" disabled={pending} onClick={onCancel}>
+          <button
+            className="btn btn-soft flex-1"
+            disabled={pending}
+            onClick={onCancel}
+          >
             {t('auth.cancel')}
           </button>
-          <button className="btn btn-primary flex-1" disabled={pending} onClick={onConfirm}>
+          <button
+            className="btn btn-primary flex-1"
+            disabled={pending}
+            onClick={onConfirm}
+          >
             {pending ? t('common.loading') : t('common.confirm')}
           </button>
         </div>

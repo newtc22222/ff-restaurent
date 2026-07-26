@@ -75,4 +75,3 @@ test('deployment workflow supports staging deployment target for develop branch'
   assert.match(workflow, /ff-staging-database-url/);
   assert.match(workflow, /ff-staging-cors-origins/);
 });
-

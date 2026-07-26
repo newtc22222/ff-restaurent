@@ -8,8 +8,8 @@ import {
 import { publicUserSelect } from '../roles.js';
 
 const expectedPublicUserFields = [
-    'avatarUrl',
-    'chefRole',
+  'avatarUrl',
+  'chefRole',
   'createdAt',
   'id',
   'name',

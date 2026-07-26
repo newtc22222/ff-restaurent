@@ -19,9 +19,9 @@ docker compose up --build
 # Install all workspace dependencies
 npm install
 
-# Build shared to dist/ — required for `npm run build` and the packaged API.
-# (Dev servers and typecheck alias @ff-restaurent/shared to its source, so this
-#  is not strictly needed just to start the dev servers.)
+# Build shared to dist/ — required before `npm run dev -w @ff-restaurent/api`
+# (tsx resolves the package to dist/). `npm run typecheck` and `npm run build`
+# rebuild it for you; the Vite dev server aliases straight to source.
 npm run build -w @ff-restaurent/shared
 
 # Run dev servers
@@ -47,6 +47,7 @@ npm test -w @ff-restaurent/shared
 # Lint and format
 npm run lint
 npm run format
+npm run prettier:check   # non-mutating; this is what CI enforces
 ```
 
 API docs (Swagger UI): `http://localhost:4000/api/docs`
@@ -71,7 +72,9 @@ Helpers `isRootAdmin`, `isSousChefOrAbove`, `isHeadChef` live in `apps/api/src/r
 
 All money values are **integer cents** throughout the stack. The core math is in `packages/shared/src/bill-splitting.ts` (tested in `bill-splitting.test.ts`). `calculateBillSplit` distributes VAT, shipping, discounts, and vouchers across participants; `Bill.adjustmentAllocation` selects `EQUAL` or `PROPORTIONAL` allocation.
 
-The shared package compiles TypeScript to `dist/`. Both apps alias `@ff-restaurent/shared` to the package **source** (`packages/shared/src/index.ts`) — via the API/web tsconfigs and web's `vite.config.ts` — so the dev servers (`tsx watch`, Vite) and `typecheck` resolve source directly with no prior build. The `dist/` output is what the root `npm run build` and the API's esbuild bundle consume (the bundle marks the package `external` and resolves it at runtime), so build shared before those.
+The shared package compiles TypeScript to `dist/`. `apps/api` and `apps/web` consume it through **TypeScript project references** (`composite: true` on shared; `references` in each app tsconfig), so `npm run typecheck` is `tsc -b` — it rebuilds `packages/shared/dist/` before checking the apps, and `npm run build` compiles shared first. Neither needs a manual pre-build after a clean `npm ci`.
+
+One asymmetry to keep in mind: web's `vite.config.ts` still aliases `@ff-restaurent/shared` to the package **source**, so the Vite dev server and Vitest see shared edits immediately, while `tsc` validates against the regenerated declarations. The API's esbuild bundle marks the package `external` and resolves `dist/` at runtime, so `tsx` dev and the packaged API both need shared built.
 
 ### API Structure
 
@@ -85,7 +88,7 @@ Key domain models beyond users/bills: `Cuisine` + `RestaurantCuisine` (every res
 
 The normalized-restaurant contract shipped in v1.1.0. Migration `20260720000000_contract_phase2_normalized_restaurants` fails closed on the invariants (every restaurant has exactly one primary Cuisine; every user has exactly one FAVORITES collection; exactly one RECOMMENDED collection exists; all legacy favorites/recommendations/platform links have normalized equivalents) and then **drops** `UserFavorite` and the legacy `RestaurantEntry.cuisineType`, `links`, `isFavorite`, and `isRecommended` columns. Collections and normalized `Cuisine`/`RestaurantPlatformLink` relations are now the sole persistence authority — the dual-write phase is over.
 
-**Backward-compat surface still in place (don't break):** the API boundary continues to *serve* the legacy response aliases (`cuisineType`, `isFavorite`, `isRecommended`, plus `isFavoritedByMe`) derived in `restaurant-contract.ts`, and continues to *accept* the deprecated `links` write input (translated into `platformLinks`). These are contract guarantees for existing clients, not persisted state.
+**Backward-compat surface still in place (don't break):** the API boundary continues to _serve_ the legacy response aliases (`cuisineType`, `isFavorite`, `isRecommended`, plus `isFavoritedByMe`) derived in `restaurant-contract.ts`, and continues to _accept_ the deprecated `links` write input (translated into `platformLinks`). These are contract guarantees for existing clients, not persisted state.
 
 Verify the contract against a live DB with `npm run prisma:phase2:contract:verify -w @ff-restaurent/api` (`prisma/verify-phase2-contract.ts`); it checks the migration by name so it stays compatible with later migrations layered on top. See `wiki/Phase-2-Migration-Runbook`.
 
