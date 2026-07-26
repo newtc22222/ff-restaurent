@@ -80,6 +80,7 @@ model User {
   restaurants                  RestaurantEntry[]        @relation("RestaurantCreator")
   participants                 BillParticipant[]
   notifications                Notification[]
+  pushSubscriptions            PushSubscription[]
   roleChangesMade              RoleAuditLog[]           @relation("RoleChangedBy")
   roleChangesReceived          RoleAuditLog[]           @relation("RoleChangedUser")
   billAuditLogs                BillAuditLog[]
@@ -365,6 +366,17 @@ model Notification {
   @@index([userId, createdAt, id])
   @@index([userId, readAt])
   @@index([billId, userId, createdAt])
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fcmToken   String   @unique
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model RoleAuditLog {
