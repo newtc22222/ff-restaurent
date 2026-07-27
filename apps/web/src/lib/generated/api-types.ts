@@ -966,7 +966,19 @@ export interface components {
       baseCost: number;
       /** Format: date-time */
       createdAt: string;
-      createdBy: components['schemas']['User'];
+      createdBy: {
+        avatarUrl?: string | null;
+        chefRole: components['schemas']['ChefRole'] | null;
+        /** Format: date-time */
+        createdAt?: string;
+        id: string;
+        name: string;
+        phone?: string | null;
+        systemRole: components['schemas']['SystemRole'] | null;
+        username: string;
+      } & {
+        [key: string]: unknown;
+      };
       createdById: string;
       discounts: ({
         label?: string;
@@ -981,7 +993,19 @@ export interface components {
         allocatedVat: number;
         discountApplied: number;
         finalPrice: number;
-        member: components['schemas']['User'];
+        member: {
+          avatarUrl?: string | null;
+          chefRole: components['schemas']['ChefRole'] | null;
+          /** Format: date-time */
+          createdAt?: string;
+          id: string;
+          name: string;
+          phone?: string | null;
+          systemRole: components['schemas']['SystemRole'] | null;
+          username: string;
+        } & {
+          [key: string]: unknown;
+        };
         memberId: string;
         originCost: number;
         /** Format: date-time */

@@ -169,17 +169,7 @@ export type AddressDirectoryResult = {
   stale: boolean;
 };
 
-export type BillParticipant = {
-  memberId: string;
-  member: User;
-  originCost: number;
-  allocatedVat: number;
-  allocatedShipping: number;
-  discountApplied: number;
-  finalPrice: number;
-  paymentStatus: PaymentStatus;
-  paidAt?: string | null;
-};
+export type BillParticipant = Bill['participants'][number];
 
 export type Bill = GeneratedSchemas['Bill'];
 

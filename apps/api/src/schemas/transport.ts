@@ -51,15 +51,20 @@ export const publicUserSummaryResponseSchema = z
   })
   .passthrough();
 
-export const userResponseSchema = publicUserSummaryResponseSchema
+export const publicUserResponseSchema = publicUserSummaryResponseSchema
   .extend({
     phone: nullableStringSchema.optional(),
     avatarUrl: nullableStringSchema.optional(),
     chefRole: chefRoleResponseSchema.nullable(),
     systemRole: systemRoleResponseSchema.nullable(),
+    createdAt: serializedDateSchema.optional(),
+  })
+  .passthrough();
+
+export const userResponseSchema = publicUserResponseSchema
+  .extend({
     roles: z.array(z.string()),
     paymentRemindersEnabled: z.boolean().optional(),
-    createdAt: serializedDateSchema.optional(),
   })
   .passthrough();
 
@@ -175,7 +180,7 @@ export const collectionResponseSchema = z
 export const billParticipantResponseSchema = z
   .object({
     memberId: z.string(),
-    member: userResponseSchema,
+    member: publicUserResponseSchema,
     originCost: z.number().int(),
     allocatedVat: z.number().int(),
     allocatedShipping: z.number().int(),
@@ -200,7 +205,7 @@ export const billResponseSchema = z
     id: z.string(),
     restaurant: restaurantEntryResponseSchema,
     createdById: z.string(),
-    createdBy: userResponseSchema,
+    createdBy: publicUserResponseSchema,
     baseCost: z.number().int(),
     vat: z.number().int(),
     shippingFee: z.number().int(),

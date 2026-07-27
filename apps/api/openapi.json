@@ -19,7 +19,27 @@
           },
           "baseCost": { "type": "integer" },
           "createdAt": { "format": "date-time", "type": "string" },
-          "createdBy": { "$ref": "#/components/schemas/User" },
+          "createdBy": {
+            "additionalProperties": true,
+            "properties": {
+              "avatarUrl": { "nullable": true, "type": "string" },
+              "chefRole": {
+                "anyOf": [{ "$ref": "#/components/schemas/ChefRole" }],
+                "nullable": true
+              },
+              "createdAt": { "format": "date-time", "type": "string" },
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "phone": { "nullable": true, "type": "string" },
+              "systemRole": {
+                "anyOf": [{ "$ref": "#/components/schemas/SystemRole" }],
+                "nullable": true
+              },
+              "username": { "type": "string" }
+            },
+            "required": ["id", "username", "name", "chefRole", "systemRole"],
+            "type": "object"
+          },
           "createdById": { "type": "string" },
           "discounts": {
             "items": {
@@ -43,7 +63,33 @@
                 "allocatedVat": { "type": "integer" },
                 "discountApplied": { "type": "integer" },
                 "finalPrice": { "type": "integer" },
-                "member": { "$ref": "#/components/schemas/User" },
+                "member": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "avatarUrl": { "nullable": true, "type": "string" },
+                    "chefRole": {
+                      "anyOf": [{ "$ref": "#/components/schemas/ChefRole" }],
+                      "nullable": true
+                    },
+                    "createdAt": { "format": "date-time", "type": "string" },
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "phone": { "nullable": true, "type": "string" },
+                    "systemRole": {
+                      "anyOf": [{ "$ref": "#/components/schemas/SystemRole" }],
+                      "nullable": true
+                    },
+                    "username": { "type": "string" }
+                  },
+                  "required": [
+                    "id",
+                    "username",
+                    "name",
+                    "chefRole",
+                    "systemRole"
+                  ],
+                  "type": "object"
+                },
                 "memberId": { "type": "string" },
                 "originCost": { "type": "integer" },
                 "paidAt": {

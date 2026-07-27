@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildApp } from '../app.js';
+import {
+  publicUserResponseSchema,
+  userResponseSchema,
+} from '../schemas/index.js';
 
 test('every application operation exposes runtime responses and a stable operation id', async () => {
   const app = await buildApp();
@@ -64,4 +68,21 @@ test('runtime request validation uses the OpenAPI Zod schema', async () => {
     ],
   });
   await app.close();
+});
+
+test('nested public users omit derived roles while full users require them', () => {
+  const publicUser = {
+    id: 'user-1',
+    username: 'member',
+    name: 'Member',
+    chefRole: null,
+    systemRole: null,
+  };
+
+  assert.equal(publicUserResponseSchema.parse(publicUser).id, 'user-1');
+  assert.throws(() => userResponseSchema.parse(publicUser));
+  assert.equal(
+    userResponseSchema.parse({ ...publicUser, roles: ['CUSTOMER'] }).id,
+    'user-1',
+  );
 });
