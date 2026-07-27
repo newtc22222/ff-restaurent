@@ -11,12 +11,7 @@ import {
 import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
 import type { RestaurantDirectoryData } from '../../lib/api';
-import {
-  TYPE_OPTIONS_VI,
-  TYPE_OPTIONS_EN,
-  canChef,
-  isHead,
-} from '../../lib/helpers';
+import { canChef, isHead } from '../../lib/helpers';
 import { useAppContext } from '../../app/providers/app-context';
 import { useI18n } from '../../app/providers/i18n';
 import { useMutation } from '../../hooks/useMutation';
@@ -52,9 +47,15 @@ export default function RestaurantsPage() {
   useEffect(() => {
     searchParamsRef.current = searchParams;
   }, [searchParams]);
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const { mutate } = useMutation();
-  const typeOptions = locale === 'vi' ? TYPE_OPTIONS_VI : TYPE_OPTIONS_EN;
+  const typeOptions = [
+    t('restaurants.typeRestaurant'),
+    t('restaurants.typeEatery'),
+    t('restaurants.typeCafe'),
+    t('restaurants.typeDrinkShop'),
+    t('restaurants.typeBakery'),
+  ];
   const search = searchParams.get('search') ?? '';
   const sort = searchParams.get('sort') ?? 'name-asc';
   const filterCuisine =
@@ -468,10 +469,10 @@ export default function RestaurantsPage() {
           <div className="field-group">
             <p className="field-group-title">
               <Store size={13} aria-hidden="true" />
-              {locale === 'vi' ? 'Tên địa điểm' : 'Identity'}
+              {t('restaurants.identity')}
             </p>
             <label className="block space-y-1">
-              <span className="label">{locale === 'vi' ? 'Tên' : 'Name'}</span>
+              <span className="label">{t('restaurants.name')}</span>
               <input
                 className="field w-full"
                 value={form.name}
@@ -491,16 +492,16 @@ export default function RestaurantsPage() {
           <div className="field-group">
             <p className="field-group-title">
               <Images size={13} aria-hidden="true" />
-              {locale === 'vi' ? 'Hình ảnh' : 'Media'}
+              {t('restaurants.media')}
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <ImagePicker
-                label={locale === 'vi' ? 'Logo quán' : 'Restaurant logo'}
+                label={t('restaurants.restaurantLogo')}
                 maxSizeMb={5}
                 onFile={(logo) => setMedia((current) => ({ ...current, logo }))}
               />
               <ImagePicker
-                label={locale === 'vi' ? 'Ảnh bìa' : 'Banner image'}
+                label={t('restaurants.bannerImage')}
                 maxSizeMb={5}
                 onFile={(banner) =>
                   setMedia((current) => ({ ...current, banner }))
@@ -518,18 +519,14 @@ export default function RestaurantsPage() {
           <div className="field-group">
             <p className="field-group-title">
               <Layers size={13} aria-hidden="true" />
-              {locale === 'vi'
-                ? 'Loại hình & bộ sưu tập'
-                : 'Type & collections'}
+              {t('restaurants.typeAndCollections')}
             </p>
             <div className="block space-y-1">
-              <span className="label">
-                {locale === 'vi' ? 'Loại hình' : 'Type'}
-              </span>
+              <span className="label">{t('restaurants.type')}</span>
               <Dropdown
                 fullWidth
-                label={locale === 'vi' ? 'Chọn...' : 'Choose...'}
-                ariaLabel={locale === 'vi' ? 'Loại hình' : 'Type'}
+                label={t('restaurants.chooseType')}
+                ariaLabel={t('restaurants.type')}
                 value={form.type}
                 onChange={(type) => setForm({ ...form, type })}
                 options={typeOptions.map((type) => ({

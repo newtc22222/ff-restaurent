@@ -34,7 +34,7 @@ export default function RestaurantDetailPage() {
   const navigate = useNavigate();
   const revalidator = useRevalidator();
   const { user } = useAppContext();
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const { fetcher, mutate } = useMutation();
   const { restaurant, feedback, collections } =
     useLoaderData() as RestaurantDetailData;
@@ -147,14 +147,8 @@ export default function RestaurantDetailPage() {
         },
       },
       {
-        fallback:
-          locale === 'vi'
-            ? 'Không thể cập nhật hồ sơ địa điểm.'
-            : 'Could not update the restaurant profile.',
-        success:
-          locale === 'vi'
-            ? 'Đã cập nhật hồ sơ địa điểm.'
-            : 'Restaurant profile updated.',
+        fallback: t('restaurants.profileUpdateFailed'),
+        success: t('restaurants.profileUpdated'),
         onSuccess: () => void finishProfileSave(),
       },
     );
@@ -203,7 +197,7 @@ export default function RestaurantDetailPage() {
               onClick={() => setEditingProfile(true)}
             >
               <Pencil size={13} />
-              {locale === 'vi' ? 'Sửa hồ sơ' : 'Edit profile'}
+              {t('restaurants.editProfile')}
             </button>
           )}
 
@@ -214,11 +208,11 @@ export default function RestaurantDetailPage() {
               <div className="field-group">
                 <p className="field-group-title">
                   <Images size={13} aria-hidden="true" />
-                  {locale === 'vi' ? 'Hình ảnh' : 'Media'}
+                  {t('restaurants.media')}
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <ImagePicker
-                    label={locale === 'vi' ? 'Logo quán' : 'Restaurant logo'}
+                    label={t('restaurants.restaurantLogo')}
                     currentUrl={restaurant.avatarUrl}
                     maxSizeMb={5}
                     onFile={(logo) =>
@@ -227,7 +221,7 @@ export default function RestaurantDetailPage() {
                     onRemove={() => void removeMedia('logo')}
                   />
                   <ImagePicker
-                    label={locale === 'vi' ? 'Ảnh bìa' : 'Banner image'}
+                    label={t('restaurants.bannerImage')}
                     currentUrl={restaurant.bannerImageUrl}
                     maxSizeMb={5}
                     onFile={(banner) =>
@@ -273,7 +267,7 @@ export default function RestaurantDetailPage() {
                   className="btn btn-soft"
                   onClick={() => setEditingProfile(false)}
                 >
-                  {locale === 'vi' ? 'Hủy' : 'Cancel'}
+                  {t('common.cancel')}
                 </button>
                 <button
                   className="btn btn-primary"
@@ -285,7 +279,7 @@ export default function RestaurantDetailPage() {
                   }
                   onClick={() => void saveProfile()}
                 >
-                  {locale === 'vi' ? 'Lưu hồ sơ' : 'Save profile'}
+                  {t('restaurants.saveProfile')}
                 </button>
               </div>
             </div>
@@ -325,9 +319,7 @@ export default function RestaurantDetailPage() {
                   className={`chip ${item.isPrimary ? 'chip-saffron' : 'chip-muted'}`}
                 >
                   {item.cuisine.name}
-                  {item.isPrimary
-                    ? ` · ${locale === 'vi' ? 'Chính' : 'Primary'}`
-                    : ''}
+                  {item.isPrimary ? ` · ${t('restaurants.primaryLabel')}` : ''}
                 </span>
               ))}
             </div>

@@ -40,7 +40,7 @@ export default function RestaurantCatalogFields({
   initialDiningArea?: DiningArea | null;
   loadCatalog?: CatalogLoader;
 }) {
-  const { locale } = useI18n();
+  const { t } = useI18n();
   const [cuisineQuery, setCuisineQuery] = useState('');
   const [areaQuery, setAreaQuery] = useState('');
   const [cuisines, setCuisines] = useState<Cuisine[]>(initialCuisines);
@@ -91,12 +91,9 @@ export default function RestaurantCatalogFields({
         setCuisinePage(result.pageInfo);
       } catch {
         setCatalogError(true);
-        toast.error(
-          locale === 'vi'
-            ? 'Không thể tải danh mục địa điểm.'
-            : 'Could not load restaurant catalogs.',
-          { id: 'restaurant-catalog-error' },
-        );
+        toast.error(t('restaurants.catalogLoadError'), {
+          id: 'restaurant-catalog-error',
+        });
       } finally {
         setLoadingCuisines(false);
       }
@@ -106,7 +103,7 @@ export default function RestaurantCatalogFields({
       cuisineQuery,
       initialCuisines,
       loadCatalog,
-      locale,
+      t,
       value.cuisineIds,
     ],
   );
@@ -194,38 +191,30 @@ export default function RestaurantCatalogFields({
     <fieldset className="field-group">
       <legend className="field-group-title">
         <ChefHat size={13} aria-hidden="true" />
-        {locale === 'vi' ? 'Danh mục địa điểm' : 'Restaurant catalogs'}
+        {t('restaurants.catalogs')}
       </legend>
       <div className="space-y-1">
-        <span className="label">
-          {locale === 'vi' ? 'Loại ẩm thực' : 'Cuisines'}
-        </span>
+        <span className="label">{t('restaurants.cuisines')}</span>
         <Dropdown
           multiple
           fullWidth
           searchable
           label={
             loadingCuisines
-              ? locale === 'vi'
-                ? 'Đang tải...'
-                : 'Loading...'
-              : locale === 'vi'
-                ? 'Chọn loại ẩm thực...'
-                : 'Choose cuisines...'
+              ? t('restaurants.loading')
+              : t('restaurants.chooseCuisines')
           }
-          ariaLabel={locale === 'vi' ? 'Loại ẩm thực' : 'Cuisines'}
+          ariaLabel={t('restaurants.cuisines')}
           values={value.cuisineIds}
           onChange={selectCuisines}
           onSearchChange={setCuisineQuery}
           options={cuisineOptions}
-          searchPlaceholder={
-            locale === 'vi' ? 'Tìm loại ẩm thực...' : 'Search cuisines...'
-          }
-          emptyMessage={locale === 'vi' ? 'Không có kết quả' : 'No results'}
+          searchPlaceholder={t('restaurants.searchCuisine')}
+          emptyMessage={t('restaurants.noResults')}
           formatSelection={(selected) =>
             selected.length === 1
               ? (selected[0]?.label ?? '')
-              : `${selected.length} ${locale === 'vi' ? 'đã chọn' : 'selected'}`
+              : `${selected.length} ${t('restaurants.selected')}`
           }
         />
         {cuisinePage.hasNextPage && (
@@ -234,53 +223,39 @@ export default function RestaurantCatalogFields({
             className="text-xs font-semibold text-slate-500 hover:underline"
             onClick={() => void loadCuisines(true)}
           >
-            {locale === 'vi' ? 'Tải thêm loại ẩm thực' : 'Load more cuisines'}
+            {t('restaurants.loadMoreCuisines')}
           </button>
         )}
         {value.cuisineIds.length === 0 && (
           <p className="text-xs text-red-600 dark:text-red-400">
-            {locale === 'vi'
-              ? 'Chọn ít nhất một loại ẩm thực.'
-              : 'Choose at least one cuisine.'}
+            {t('restaurants.cuisineRequired')}
           </p>
         )}
       </div>
       <div className="space-y-1">
-        <span className="label">
-          {locale === 'vi' ? 'Ẩm thực chính' : 'Primary cuisine'}
-        </span>
+        <span className="label">{t('restaurants.primaryCuisine')}</span>
         <Dropdown
           fullWidth
           disabled={selectedCuisineOptions.length === 0}
-          label={
-            locale === 'vi' ? 'Chọn ẩm thực chính' : 'Choose primary cuisine'
-          }
-          ariaLabel={locale === 'vi' ? 'Ẩm thực chính' : 'Primary cuisine'}
+          label={t('restaurants.choosePrimaryCuisine')}
+          ariaLabel={t('restaurants.primaryCuisine')}
           value={value.primaryCuisineId}
           onChange={selectPrimary}
           options={selectedCuisineOptions}
         />
       </div>
       <div className="space-y-1">
-        <span className="label">
-          {locale === 'vi'
-            ? 'Khu ăn uống (không bắt buộc)'
-            : 'Dining Area (optional)'}
-        </span>
+        <span className="label">{t('restaurants.diningAreaOptional')}</span>
         <Dropdown
           fullWidth
           searchable
           allowClear
           label={
             loadingAreas
-              ? locale === 'vi'
-                ? 'Đang tải...'
-                : 'Loading...'
-              : locale === 'vi'
-                ? 'Chọn khu ăn uống...'
-                : 'Choose a Dining Area...'
+              ? t('restaurants.loading')
+              : t('restaurants.chooseDiningArea')
           }
-          ariaLabel={locale === 'vi' ? 'Khu ăn uống' : 'Dining Area'}
+          ariaLabel={t('restaurants.diningArea')}
           value={value.diningAreaId ?? ''}
           onChange={(diningAreaId) =>
             onChange({ ...value, diningAreaId: diningAreaId || null })
@@ -292,10 +267,8 @@ export default function RestaurantCatalogFields({
             description: area.address,
             searchText: `${area.name} ${area.address}`,
           }))}
-          searchPlaceholder={
-            locale === 'vi' ? 'Tìm khu ăn uống...' : 'Search Dining Areas...'
-          }
-          emptyMessage={locale === 'vi' ? 'Không có kết quả' : 'No results'}
+          searchPlaceholder={t('restaurants.catalogSearchDiningArea')}
+          emptyMessage={t('restaurants.noResults')}
         />
         {areaPage.hasNextPage && (
           <button
@@ -303,9 +276,7 @@ export default function RestaurantCatalogFields({
             className="text-xs font-semibold text-slate-500 hover:underline"
             onClick={() => void loadAreas(true)}
           >
-            {locale === 'vi'
-              ? 'Tải thêm khu ăn uống'
-              : 'Load more Dining Areas'}
+            {t('restaurants.loadMoreDiningAreas')}
           </button>
         )}
       </div>
@@ -318,7 +289,7 @@ export default function RestaurantCatalogFields({
             void loadAreas(false);
           }}
         >
-          {locale === 'vi' ? 'Thử tải lại danh mục' : 'Retry catalog loading'}
+          {t('restaurants.retryCatalogLoading')}
         </button>
       )}
     </fieldset>
