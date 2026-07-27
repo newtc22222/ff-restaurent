@@ -11,6 +11,10 @@ SQL_DATABASE="ff_restaurent"
 SQL_USER="ff_app"
 SQL_TIER="db-custom-1-3840"
 ARTIFACT_REPOSITORY="ff-restaurent"
+PUBLIC_BUCKET="${PROJECT_ID}-ff-public-images"
+QR_BUCKET="${PROJECT_ID}-ff-payment-qr"
+VERIFY_PUBLIC_BUCKET="${PROJECT_ID}-ff-verify-public-images"
+VERIFY_QR_BUCKET="${PROJECT_ID}-ff-verify-payment-qr"
 RUNTIME_SERVICE_ACCOUNT="ff-runtime@${PROJECT_ID}.iam.gserviceaccount.com"
 DEPLOY_SERVICE_ACCOUNT="github-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
 WORKLOAD_POOL="github-actions"
@@ -30,6 +34,7 @@ readonly REQUIRED_APIS=(
   sqladmin.googleapis.com
   artifactregistry.googleapis.com
   secretmanager.googleapis.com
+  storage.googleapis.com
   iamcredentials.googleapis.com
   sts.googleapis.com
   billingbudgets.googleapis.com
@@ -158,8 +163,6 @@ expected = {
     "JWT_SECRET",
     "REGISTRATION_INVITE_CODE",
     "ROOT_ADMIN_USERNAME",
-    "SUPABASE_URL",
-    "SUPABASE_SERVICE_ROLE_KEY",
 }
 try:
     with open(path, encoding="utf-8") as stream:
@@ -273,6 +276,51 @@ ensure_secret_access() {
     log "Granting runtime access to secret: ${secret_name}"
     gcloud_cmd secrets add-iam-policy-binding "$secret_name" --project "$PROJECT_ID" --member "$member" --role roles/secretmanager.secretAccessor --quiet >/dev/null
   fi
+}
+
+ensure_bucket_role() {
+  local bucket="$1" member="$2" role="$3"
+  if gcloud_cmd storage buckets get-iam-policy "gs://${bucket}" \
+      --flatten='bindings[].members' \
+      --filter="bindings.role=${role} AND bindings.members=${member}" \
+      --format='value(bindings.role)' --quiet | grep -Fxq "$role"; then
+    log "Bucket IAM present: ${bucket} ${member} -> ${role}"
+  else
+    log "Granting bucket IAM: ${bucket} ${member} -> ${role}"
+    gcloud_cmd storage buckets add-iam-policy-binding "gs://${bucket}" \
+      --member "$member" --role "$role" --quiet >/dev/null
+  fi
+}
+
+ensure_storage_bucket() {
+  local bucket="$1" visibility="$2"
+  if resource_exists storage buckets describe "gs://${bucket}" --project "$PROJECT_ID" --quiet; then
+    log "Storage bucket present: ${bucket}"
+  else
+    log "Creating Storage bucket: ${bucket}"
+    gcloud_cmd storage buckets create "gs://${bucket}" \
+      --project "$PROJECT_ID" \
+      --location "$REGION" \
+      --uniform-bucket-level-access \
+      --quiet >/dev/null
+  fi
+  gcloud_cmd storage buckets update "gs://${bucket}" \
+    --uniform-bucket-level-access \
+    --quiet >/dev/null
+  if [[ "$visibility" == "public" ]]; then
+    gcloud_cmd storage buckets update "gs://${bucket}" \
+      --no-public-access-prevention \
+      --quiet >/dev/null
+    ensure_bucket_role "$bucket" allUsers roles/storage.objectViewer
+  else
+    gcloud_cmd storage buckets update "gs://${bucket}" \
+      --public-access-prevention \
+      --quiet >/dev/null
+  fi
+  ensure_bucket_role \
+    "$bucket" \
+    "serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" \
+    roles/storage.objectUser
 }
 
 ensure_sql_instance() {
@@ -462,10 +510,11 @@ print_plan() {
   printf '%s\n' \
     "  Cloud SQL ${SQL_INSTANCE}: reconcile PostgreSQL 16 ${SQL_TIER}, zonal, 10 GB SSD, backup/PITR/deletion protection" \
     "  IAM: reconcile runtime/deployer service accounts and least-privilege bindings" \
+    "  Cloud Storage: reconcile public-image and private-QR buckets for production and verification" \
     "  WIF: reconcile ${WORKLOAD_POOL}/${WORKLOAD_PROVIDER}, main branch only" \
     "  Artifact Registry: reconcile ${ARTIFACT_REPOSITORY}" \
     "  Cloud Run: reconcile private ff-restaurent-api and ff-restaurent-web placeholders" \
-    "  Secret Manager: reconcile eight named secrets (values are not read in plan mode)" \
+    "  Secret Manager: reconcile six named secrets (values are not read in plan mode)" \
     "  Billing: reconcile VND 2,630,000 monthly budget (approximately USD 100) with 50/80/100 actual and 100 forecast thresholds"
 }
 
@@ -486,6 +535,12 @@ apply_foundation() {
   ensure_project_role "$deploy_member" roles/cloudsql.viewer
   ensure_service_account_role "$RUNTIME_SERVICE_ACCOUNT" "$deploy_member" roles/iam.serviceAccountUser
   ensure_service_account_role "$RUNTIME_SERVICE_ACCOUNT" "$deploy_member" roles/iam.serviceAccountTokenCreator
+  ensure_service_account_role "$RUNTIME_SERVICE_ACCOUNT" "$runtime_member" roles/iam.serviceAccountTokenCreator
+
+  ensure_storage_bucket "$PUBLIC_BUCKET" public
+  ensure_storage_bucket "$QR_BUCKET" private
+  ensure_storage_bucket "$VERIFY_PUBLIC_BUCKET" public
+  ensure_storage_bucket "$VERIFY_QR_BUCKET" private
 
   ensure_sql_instance
 
@@ -518,10 +573,8 @@ PY
   ensure_secret ff-registration-invite-code "$(read_input_secret REGISTRATION_INVITE_CODE)"
   ensure_secret ff-root-admin-username "$(read_input_secret ROOT_ADMIN_USERNAME)"
   ensure_secret ff-cors-origins "$cors_origin"
-  ensure_secret ff-supabase-url "$(read_input_secret SUPABASE_URL)"
-  ensure_secret ff-supabase-service-role-key "$(read_input_secret SUPABASE_SERVICE_ROLE_KEY)"
 
-  for secret_name in ff-database-url ff-database-password ff-jwt-secret ff-registration-invite-code ff-root-admin-username ff-cors-origins ff-supabase-url ff-supabase-service-role-key; do
+  for secret_name in ff-database-url ff-database-password ff-jwt-secret ff-registration-invite-code ff-root-admin-username ff-cors-origins; do
     ensure_secret_access "$secret_name"
   done
 

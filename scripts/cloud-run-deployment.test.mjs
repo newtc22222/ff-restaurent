@@ -58,7 +58,7 @@ test('workflow passes only the public API URL into the web build', async () => {
   assert.match(webBuild, /--build-arg "VITE_API_URL=\$\{API_URL\}"/);
   assert.doesNotMatch(
     webBuild,
-    /JWT_SECRET|DATABASE_URL|REGISTRATION_INVITE_CODE|SUPABASE_SERVICE_ROLE_KEY/,
+    /JWT_SECRET|DATABASE_URL|REGISTRATION_INVITE_CODE|ROOT_ADMIN_PASSWORD/,
   );
   assert.match(
     workflow,
@@ -74,4 +74,17 @@ test('deployment workflow supports staging deployment target for develop branch'
   assert.match(workflow, /ff-restaurent-release-staging/);
   assert.match(workflow, /ff-staging-database-url/);
   assert.match(workflow, /ff-staging-cors-origins/);
+  assert.match(workflow, /ff-staging-public-images/);
+  assert.match(workflow, /ff-staging-payment-qr/);
+});
+
+test('API deployments use GCS buckets without injecting legacy Supabase credentials', async () => {
+  const workflow = await read('.github/workflows/gcp-deploy.yml');
+  assert.match(workflow, /GCP_PROJECT_ID=\$\{GCP_PROJECT_ID\}/);
+  assert.match(workflow, /GCS_PUBLIC_BUCKET=\$\{GCS_PUBLIC_BUCKET\}/);
+  assert.match(workflow, /GCS_QR_BUCKET=\$\{GCS_QR_BUCKET\}/);
+  assert.doesNotMatch(
+    workflow,
+    /SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY|ff-supabase/,
+  );
 });

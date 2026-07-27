@@ -55,14 +55,35 @@ done
 [[ "$impersonation_ready" == "true" ]] || die "runtime impersonation did not propagate within 60 seconds"
 log "Runtime impersonation is ready"
 
-for secret_name in ff-database-url ff-database-password ff-jwt-secret ff-registration-invite-code ff-root-admin-username ff-cors-origins ff-supabase-url ff-supabase-service-role-key; do
+for secret_name in ff-database-url ff-database-password ff-jwt-secret ff-registration-invite-code ff-root-admin-username ff-cors-origins; do
   gcloud_cmd secrets versions access latest \
     --secret "$secret_name" \
     --project "$PROJECT_ID" \
     --impersonate-service-account "$RUNTIME_SERVICE_ACCOUNT" \
     --quiet >/dev/null
 done
-log "Runtime identity accessed exactly eight required secrets"
+log "Runtime identity accessed exactly six required secrets"
+
+for bucket_name in \
+  "${PROJECT_ID}-ff-public-images" \
+  "${PROJECT_ID}-ff-payment-qr" \
+  "${PROJECT_ID}-ff-verify-public-images" \
+  "${PROJECT_ID}-ff-verify-payment-qr"; do
+  gcloud_cmd storage ls "gs://${bucket_name}" \
+    --impersonate-service-account "$RUNTIME_SERVICE_ACCOUNT" \
+    --limit 1 \
+    --quiet >/dev/null
+done
+log "Runtime identity accessed all required Cloud Storage buckets"
+
+gcloud_cmd iam service-accounts get-iam-policy "$RUNTIME_SERVICE_ACCOUNT" \
+  --project "$PROJECT_ID" \
+  --flatten='bindings[].members' \
+  --filter="bindings.role=roles/iam.serviceAccountTokenCreator AND bindings.members=serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" \
+  --format='value(bindings.role)' \
+  --quiet \
+  | grep -Fxq roles/iam.serviceAccountTokenCreator
+log "Runtime identity can sign private payment-QR URLs"
 
 CSQL_PROXY_TOKEN="$(
   gcloud_cmd auth print-access-token \

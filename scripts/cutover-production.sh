@@ -586,8 +586,8 @@ deploy_and_smoke() {
     --region "$REGION" --image "$API_IMAGE" \
     --service-account "$RUNTIME_SERVICE_ACCOUNT" \
     --set-cloudsql-instances "$CLOUD_SQL_CONNECTION" \
-    --set-secrets "DATABASE_URL=${TARGET_DATABASE_SECRET}:latest,JWT_SECRET=ff-jwt-secret:latest,REGISTRATION_INVITE_CODE=ff-registration-invite-code:latest,CORS_ORIGINS=${TARGET_CORS_SECRET}:latest,SUPABASE_URL=ff-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=ff-supabase-service-role-key:latest" \
-    --set-env-vars "NODE_ENV=production,JWT_EXPIRES_IN=8h,SUPABASE_PUBLIC_BUCKET=ff-public-images,SUPABASE_QR_BUCKET=ff-payment-qr,SUPABASE_SIGNED_URL_TTL_SECONDS=900" \
+    --set-secrets "DATABASE_URL=${TARGET_DATABASE_SECRET}:latest,JWT_SECRET=ff-jwt-secret:latest,REGISTRATION_INVITE_CODE=ff-registration-invite-code:latest,CORS_ORIGINS=${TARGET_CORS_SECRET}:latest" \
+    --set-env-vars "NODE_ENV=production,JWT_EXPIRES_IN=8h,GCP_PROJECT_ID=${PROJECT_ID},GCS_PUBLIC_BUCKET=${PROJECT_ID}-ff-public-images,GCS_QR_BUCKET=${PROJECT_ID}-ff-payment-qr,GCS_SIGNED_URL_TTL_SECONDS=900,LEGACY_SUPABASE_PUBLIC_BUCKET=ff-public-images" \
     --port 8080 --min 0 --max 3 --allow-unauthenticated \
     --quiet >/dev/null
   local api_url

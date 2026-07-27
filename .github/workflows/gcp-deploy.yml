@@ -97,6 +97,8 @@ jobs:
             cors_secret=ff-cors-origins
             root_admin_username_secret=ff-root-admin-username
             root_admin_password_secret=""
+            public_bucket="${GCP_PROJECT_ID}-ff-public-images"
+            qr_bucket="${GCP_PROJECT_ID}-ff-payment-qr"
           elif [[ "$DEPLOY_TARGET" == staging ]]; then
             api_service=ff-restaurent-api-staging
             web_service=ff-restaurent-web-staging
@@ -105,6 +107,8 @@ jobs:
             cors_secret=ff-staging-cors-origins
             root_admin_username_secret=ff-staging-root-admin-username
             root_admin_password_secret=ff-staging-root-admin-password
+            public_bucket="${GCP_PROJECT_ID}-ff-staging-public-images"
+            qr_bucket="${GCP_PROJECT_ID}-ff-staging-payment-qr"
           else
             api_service=ff-restaurent-api-verify
             web_service=ff-restaurent-web-verify
@@ -113,6 +117,8 @@ jobs:
             cors_secret=ff-release-verify-cors-origins
             root_admin_username_secret=ff-root-admin-username
             root_admin_password_secret=""
+            public_bucket="${GCP_PROJECT_ID}-ff-verify-public-images"
+            qr_bucket="${GCP_PROJECT_ID}-ff-verify-payment-qr"
           fi
 
           web_url="$(
@@ -131,6 +137,8 @@ jobs:
             echo "CORS_SECRET=$cors_secret"
             echo "ROOT_ADMIN_USERNAME_SECRET=$root_admin_username_secret"
             echo "ROOT_ADMIN_PASSWORD_SECRET=$root_admin_password_secret"
+            echo "GCS_PUBLIC_BUCKET=$public_bucket"
+            echo "GCS_QR_BUCKET=$qr_bucket"
             echo "WEB_URL=$web_url"
             echo "IMAGE_ROOT=${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}"
           } >>"$GITHUB_ENV"
@@ -226,8 +234,8 @@ jobs:
             --image "$API_IMAGE" \
             --service-account "$RUNTIME_SERVICE_ACCOUNT" \
             --set-cloudsql-instances "$CLOUD_SQL_CONNECTION" \
-            --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest,JWT_SECRET=ff-jwt-secret:latest,REGISTRATION_INVITE_CODE=ff-registration-invite-code:latest,CORS_ORIGINS=${CORS_SECRET}:latest,SUPABASE_URL=ff-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=ff-supabase-service-role-key:latest" \
-            --set-env-vars "NODE_ENV=production,JWT_EXPIRES_IN=8h,SUPABASE_PUBLIC_BUCKET=ff-public-images,SUPABASE_QR_BUCKET=ff-payment-qr,SUPABASE_SIGNED_URL_TTL_SECONDS=900" \
+            --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest,JWT_SECRET=ff-jwt-secret:latest,REGISTRATION_INVITE_CODE=ff-registration-invite-code:latest,CORS_ORIGINS=${CORS_SECRET}:latest" \
+            --set-env-vars "NODE_ENV=production,JWT_EXPIRES_IN=8h,GCP_PROJECT_ID=${GCP_PROJECT_ID},GCS_PUBLIC_BUCKET=${GCS_PUBLIC_BUCKET},GCS_QR_BUCKET=${GCS_QR_BUCKET},GCS_SIGNED_URL_TTL_SECONDS=900,LEGACY_SUPABASE_PUBLIC_BUCKET=ff-public-images" \
             --port 8080 \
             --min 0 \
             --max 3 \

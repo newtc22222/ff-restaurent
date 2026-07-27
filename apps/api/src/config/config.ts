@@ -40,13 +40,13 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('8h'),
   CORS_ORIGINS: csvList,
   REGISTRATION_INVITE_CODE: z.string().optional(),
-  SUPABASE_URL: z.string().optional(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
-  SUPABASE_PUBLIC_BUCKET: z.string().default('ff-public-images'),
-  SUPABASE_QR_BUCKET: z.string().default('ff-payment-qr'),
-  SUPABASE_SIGNED_URL_TTL_SECONDS: positiveIntegerWithDefault(
+  GCP_PROJECT_ID: z.string().optional(),
+  GCS_PUBLIC_BUCKET: z.string().optional(),
+  GCS_QR_BUCKET: z.string().optional(),
+  GCS_SIGNED_URL_TTL_SECONDS: positiveIntegerWithDefault(
     DEFAULT_SIGNED_URL_TTL_SECONDS,
   ),
+  LEGACY_SUPABASE_PUBLIC_BUCKET: z.string().default('ff-public-images'),
 });
 
 type ParsedEnv = z.infer<typeof envSchema>;
@@ -57,11 +57,11 @@ export type AppConfig = {
   jwtExpiresIn: string;
   corsOrigins: string[];
   registrationInviteCode: string;
-  supabaseUrl?: string;
-  supabaseServiceRoleKey?: string;
-  supabasePublicBucket: string;
-  supabaseQrBucket: string;
-  supabaseSignedUrlTtlSeconds: number;
+  gcpProjectId?: string;
+  gcsPublicBucket?: string;
+  gcsQrBucket?: string;
+  gcsSignedUrlTtlSeconds: number;
+  legacySupabasePublicBucket: string;
 };
 
 /*
@@ -99,11 +99,11 @@ const toConfig = (env: ParsedEnv): AppConfig => ({
   jwtExpiresIn: env.JWT_EXPIRES_IN,
   corsOrigins: env.CORS_ORIGINS,
   registrationInviteCode: env.REGISTRATION_INVITE_CODE ?? 'local-dev-invite',
-  supabaseUrl: env.SUPABASE_URL,
-  supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
-  supabasePublicBucket: env.SUPABASE_PUBLIC_BUCKET,
-  supabaseQrBucket: env.SUPABASE_QR_BUCKET,
-  supabaseSignedUrlTtlSeconds: env.SUPABASE_SIGNED_URL_TTL_SECONDS,
+  gcpProjectId: env.GCP_PROJECT_ID,
+  gcsPublicBucket: env.GCS_PUBLIC_BUCKET,
+  gcsQrBucket: env.GCS_QR_BUCKET,
+  gcsSignedUrlTtlSeconds: env.GCS_SIGNED_URL_TTL_SECONDS,
+  legacySupabasePublicBucket: env.LEGACY_SUPABASE_PUBLIC_BUCKET,
 });
 
 let cached: AppConfig | undefined;

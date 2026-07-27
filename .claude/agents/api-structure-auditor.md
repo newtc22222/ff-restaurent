@@ -20,11 +20,11 @@ Audit the `api/` directory structure (or the path given to you) and produce a st
    - Locate plugin registration (`app.ts`/`server.ts`/`plugins/`). Check whether routes are registered via the plugin/encapsulation pattern (`fastify.register`) or all bolted onto one root instance.
    - Check whether route handlers contain business logic directly, or delegate to a service layer (handlers should stay thin: parse input, call service, format output).
    - Check schema validation: are request/response JSON schemas (or TypeBox/Zod schemas) colocated with routes, or centralized and shared?
-   - Check plugin decoration usage (e.g. decorating `fastify.prisma`, `fastify.supabase`) vs importing singletons ad hoc everywhere.
+   - Check plugin decoration usage (e.g. decorating `fastify.prisma`, `fastify.storage`) vs importing singletons ad hoc everywhere.
 
 3. **Layering & separation of concerns**
    - Confirm presence (or absence) of clear boundaries: routes (HTTP layer) → services (business logic) → data access (Prisma/Supabase calls).
-   - Flag any route handler files that directly call `prisma.*` or `supabase.*` inline — this couples HTTP layer to data layer and hurts testability.
+   - Flag any route handler files that directly call `prisma.*` or storage SDK methods inline — this couples HTTP layer to data layer and hurts testability.
    - Check for a consistent error-handling strategy (centralized error handler / custom error classes) vs try/catch scattered inconsistently per route.
 
 4. **Prisma organization**
