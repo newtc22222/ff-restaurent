@@ -37,28 +37,6 @@ export const CUISINE_OPTIONS: string[] = [
 ];
 
 /**
- * Array of Vietnamese restaurant types.
- */
-export const TYPE_OPTIONS_VI: string[] = [
-  'Nhà hàng',
-  'Quán ăn',
-  'Quán cà phê',
-  'Quán nước',
-  'Tiệm bánh',
-];
-
-/**
- * Array of English restaurant types.
- */
-export const TYPE_OPTIONS_EN: string[] = [
-  'Restaurant',
-  'Eatery',
-  'Café',
-  'Drink shop',
-  'Bakery',
-];
-
-/**
  * Colors used in Pie charts for stats breakdowns.
  */
 export const PIE_COLORS: string[] = [

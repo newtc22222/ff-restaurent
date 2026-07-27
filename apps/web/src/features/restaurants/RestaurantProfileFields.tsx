@@ -29,21 +29,17 @@ export default function RestaurantProfileFields({
   value: RestaurantProfileDraft;
   onChange: (value: RestaurantProfileDraft) => void;
 }) {
-  const { locale } = useI18n();
+  const { t } = useI18n();
   const phone = parseVietnamMobilePhone(value.phone);
   return (
     <div className="space-y-3">
       <div className="field-group">
         <p className="field-group-title">
           <Phone size={13} aria-hidden="true" />
-          {locale === 'vi' ? 'Liên hệ' : 'Contact'}
+          {t('restaurants.contact')}
         </p>
         <label className="block space-y-1">
-          <span className="label">
-            {locale === 'vi'
-              ? 'Điện thoại (không bắt buộc)'
-              : 'Phone (optional)'}
-          </span>
+          <span className="label">{t('restaurants.phoneOptional')}</span>
           <input
             className="field w-full"
             inputMode="tel"
@@ -54,9 +50,7 @@ export default function RestaurantProfileFields({
           />
           {!phone.success && (
             <span className="block text-xs text-red-600 dark:text-red-400">
-              {locale === 'vi'
-                ? 'Nhập số di động Việt Nam hợp lệ.'
-                : 'Enter a valid Vietnamese mobile number.'}
+              {t('restaurants.invalidPhone')}
             </span>
           )}
         </label>

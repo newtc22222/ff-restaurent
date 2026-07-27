@@ -59,7 +59,7 @@ export default function PlatformLinksEditor({
   links: RestaurantPlatformLink[];
   onChange: (links: RestaurantPlatformLink[]) => void;
 }) {
-  const { locale } = useI18n();
+  const { t } = useI18n();
   const update = (index: number, patch: Partial<RestaurantPlatformLink>) =>
     onChange(
       links.map((link, current) =>
@@ -79,7 +79,7 @@ export default function PlatformLinksEditor({
       <div className="flex items-center justify-between gap-3">
         <legend className="field-group-title">
           <Link2 size={13} aria-hidden="true" />
-          {locale === 'vi' ? 'Liên kết nền tảng' : 'Platform links'}
+          {t('restaurants.platformLinks')}
         </legend>
         <button
           type="button"
@@ -89,7 +89,7 @@ export default function PlatformLinksEditor({
             onChange([...links, { platform: 'WEBSITE', url: '', label: null }])
           }
         >
-          <Plus size={12} /> {locale === 'vi' ? 'Thêm' : 'Add link'}
+          <Plus size={12} /> {t('restaurants.addLink')}
         </button>
       </div>
       {links.map((link, index) => (
@@ -100,8 +100,8 @@ export default function PlatformLinksEditor({
           <div className="flex gap-2">
             <Dropdown
               fullWidth
-              label={locale === 'vi' ? 'Nền tảng' : 'Platform'}
-              ariaLabel={`${locale === 'vi' ? 'Nền tảng' : 'Platform'} ${index + 1}`}
+              label={t('restaurants.platform')}
+              ariaLabel={`${t('restaurants.platform')} ${index + 1}`}
               value={link.platform}
               onChange={(platform) =>
                 update(index, {
@@ -117,7 +117,7 @@ export default function PlatformLinksEditor({
             <div className="flex shrink-0 gap-1">
               <button
                 type="button"
-                aria-label={`${locale === 'vi' ? 'Chuyển lên' : 'Move up'} ${index + 1}`}
+                aria-label={`${t('restaurants.moveUp')} ${index + 1}`}
                 className="btn btn-soft h-10 w-12 p-0"
                 disabled={index === 0}
                 onClick={() => move(index, -1)}
@@ -126,7 +126,7 @@ export default function PlatformLinksEditor({
               </button>
               <button
                 type="button"
-                aria-label={`${locale === 'vi' ? 'Chuyển xuống' : 'Move down'} ${index + 1}`}
+                aria-label={`${t('restaurants.moveDown')} ${index + 1}`}
                 className="btn btn-soft h-10 p-0"
                 disabled={index === links.length - 1}
                 onClick={() => move(index, 1)}
@@ -135,7 +135,7 @@ export default function PlatformLinksEditor({
               </button>
               <button
                 type="button"
-                aria-label={`${locale === 'vi' ? 'Xóa liên kết' : 'Remove link'} ${index + 1}`}
+                aria-label={`${t('restaurants.removeLink')} ${index + 1}`}
                 className="btn btn-soft h-10 p-0 text-red-500"
                 onClick={() =>
                   onChange(links.filter((_, current) => current !== index))
@@ -147,16 +147,16 @@ export default function PlatformLinksEditor({
           </div>
           {link.platform === 'OTHER' && (
             <input
-              aria-label={`${locale === 'vi' ? 'Nhãn tùy chỉnh' : 'Custom label'} ${index + 1}`}
+              aria-label={`${t('restaurants.customLabel')} ${index + 1}`}
               className="field w-full"
               maxLength={60}
-              placeholder={locale === 'vi' ? 'Nhãn tùy chỉnh' : 'Custom label'}
+              placeholder={t('restaurants.customLabel')}
               value={link.label ?? ''}
               onChange={(event) => update(index, { label: event.target.value })}
             />
           )}
           <input
-            aria-label={`${locale === 'vi' ? 'URL liên kết' : 'Link URL'} ${index + 1}`}
+            aria-label={`${t('restaurants.linkUrl')} ${index + 1}`}
             className="field w-full"
             inputMode="url"
             placeholder="https://"
@@ -168,9 +168,7 @@ export default function PlatformLinksEditor({
       ))}
       {links.length > 0 && !arePlatformLinksValid(links) && (
         <p className="text-xs text-red-600 dark:text-red-400">
-          {locale === 'vi'
-            ? 'Mỗi liên kết phải dùng HTTPS và không trùng; nền tảng “Khác” cần nhãn.'
-            : 'Links must use unique HTTPS URLs; Other links need a label and named platforms may appear once.'}
+          {t('restaurants.invalidPlatformLinks')}
         </p>
       )}
     </fieldset>

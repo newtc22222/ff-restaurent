@@ -69,53 +69,27 @@ export default function VietnamAddressFields({
   onChange,
   loadDirectory = defaultLoader,
 }: VietnamAddressFieldsProps) {
-  const { locale } = useI18n();
-  const text =
-    locale === 'vi'
-      ? {
-          address: 'Địa chỉ',
-          addressLine: 'Số nhà, tên đường',
-          province: 'Tỉnh / thành phố',
-          ward: 'Phường / xã',
-          chooseProvince: 'Chọn tỉnh / thành phố...',
-          chooseWard: 'Chọn phường / xã...',
-          searchProvince: 'Tìm tỉnh / thành phố...',
-          searchWard: 'Tìm phường / xã...',
-          noResults: 'Không tìm thấy kết quả',
-          loading: 'Đang tải...',
-          retry: 'Thử lại',
-          unavailable: 'Không thể tải danh mục địa chỉ.',
-          stale: 'Đang dùng danh mục đã lưu do nguồn dữ liệu chưa phản hồi.',
-          legacyProvince:
-            'Địa chỉ đã lưu dùng danh mục cũ. Hãy chọn lại tỉnh / thành phố và phường / xã hiện tại.',
-          legacyWard:
-            'Tỉnh / thành phố đã được cập nhật. Hãy chọn lại phường / xã hiện tại.',
-          manual: 'Nhập địa chỉ thủ công',
-          structured: 'Chọn địa chỉ có cấu trúc',
-          manualPlaceholder: 'Nhập địa chỉ đầy đủ',
-        }
-      : {
-          address: 'Address',
-          addressLine: 'Street address',
-          province: 'Province / city',
-          ward: 'Ward',
-          chooseProvince: 'Choose a province / city...',
-          chooseWard: 'Choose a ward...',
-          searchProvince: 'Search provinces / cities...',
-          searchWard: 'Search wards...',
-          noResults: 'No results found',
-          loading: 'Loading...',
-          retry: 'Retry',
-          unavailable: 'The address directory could not be loaded.',
-          stale: 'Using saved address data while the directory is unavailable.',
-          legacyProvince:
-            'This saved address uses the previous directory. Select its current province and ward.',
-          legacyWard:
-            'The province was updated. Select the current ward for this address.',
-          manual: 'Enter address manually',
-          structured: 'Choose a structured address',
-          manualPlaceholder: 'Enter the complete address',
-        };
+  const { t } = useI18n();
+  const text = {
+    address: t('address.address'),
+    addressLine: t('address.addressLine'),
+    province: t('address.province'),
+    ward: t('address.ward'),
+    chooseProvince: t('address.chooseProvince'),
+    chooseWard: t('address.chooseWard'),
+    searchProvince: t('address.searchProvince'),
+    searchWard: t('address.searchWard'),
+    noResults: t('address.noResults'),
+    loading: t('address.loading'),
+    retry: t('address.retry'),
+    unavailable: t('address.unavailable'),
+    stale: t('address.stale'),
+    legacyProvince: t('address.legacyProvince'),
+    legacyWard: t('address.legacyWard'),
+    manual: t('address.manual'),
+    structured: t('address.structured'),
+    manualPlaceholder: t('address.manualPlaceholder'),
+  };
   const [manual, setManual] = useState(
     Boolean(value.address) && !value.provinceCode,
   );
