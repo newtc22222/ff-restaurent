@@ -18,3 +18,4 @@ export * from './notification.js';
 export * from './participant-group.js';
 export * from './restaurant.js';
 export * from './stats.js';
+export * from './transport.js';

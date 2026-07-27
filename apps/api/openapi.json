@@ -1,0 +1,6195 @@
+{
+  "components": {
+    "schemas": {
+      "AdjustmentAllocation": {
+        "enum": ["EQUAL", "PROPORTIONAL"],
+        "type": "string",
+        "x-shared-type": "AdjustmentAllocationValue"
+      },
+      "AdjustmentType": {
+        "enum": ["FIXED", "PERCENTAGE"],
+        "type": "string",
+        "x-shared-type": "AdjustmentTypeValue"
+      },
+      "Bill": {
+        "additionalProperties": true,
+        "properties": {
+          "adjustmentAllocation": {
+            "$ref": "#/components/schemas/AdjustmentAllocation"
+          },
+          "baseCost": { "type": "integer" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "createdBy": { "$ref": "#/components/schemas/User" },
+          "createdById": { "type": "string" },
+          "discounts": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "label": { "type": "string" },
+                "type": { "$ref": "#/components/schemas/AdjustmentType" },
+                "value": { "type": "number" }
+              },
+              "required": ["type", "value"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "id": { "type": "string" },
+          "participants": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "allocatedShipping": { "type": "integer" },
+                "allocatedVat": { "type": "integer" },
+                "discountApplied": { "type": "integer" },
+                "finalPrice": { "type": "integer" },
+                "member": { "$ref": "#/components/schemas/User" },
+                "memberId": { "type": "string" },
+                "originCost": { "type": "integer" },
+                "paidAt": {
+                  "format": "date-time",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "paymentStatus": {
+                  "$ref": "#/components/schemas/PaymentStatus"
+                }
+              },
+              "required": [
+                "memberId",
+                "member",
+                "originCost",
+                "allocatedVat",
+                "allocatedShipping",
+                "discountApplied",
+                "finalPrice",
+                "paymentStatus"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "paymentQrImage": {
+            "additionalProperties": true,
+            "nullable": true,
+            "properties": {
+              "id": { "type": "string" },
+              "imageUrl": { "type": "string" },
+              "label": { "type": "string" },
+              "status": { "$ref": "#/components/schemas/EntryStatus" }
+            },
+            "required": ["id", "label", "status", "imageUrl"],
+            "type": "object"
+          },
+          "paymentQrImageId": { "nullable": true, "type": "string" },
+          "paymentUrl": { "nullable": true, "type": "string" },
+          "qrCodePath": { "nullable": true, "type": "string" },
+          "restaurant": { "$ref": "#/components/schemas/RestaurantEntry" },
+          "shippingFee": { "type": "integer" },
+          "status": { "$ref": "#/components/schemas/EntryStatus" },
+          "totalCost": { "type": "integer" },
+          "updatedAt": { "format": "date-time", "type": "string" },
+          "vat": { "type": "integer" },
+          "vouchers": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "code": { "type": "string" },
+                "value": { "type": "integer" }
+              },
+              "required": ["code", "value"],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "restaurant",
+          "createdById",
+          "createdBy",
+          "baseCost",
+          "vat",
+          "shippingFee",
+          "totalCost",
+          "discounts",
+          "vouchers",
+          "adjustmentAllocation",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "participants"
+        ],
+        "type": "object"
+      },
+      "ChefRole": {
+        "enum": ["SOUS_CHEF", "HEAD_CHEF"],
+        "type": "string",
+        "x-shared-type": "ChefRoleValue"
+      },
+      "Collection": {
+        "additionalProperties": true,
+        "properties": {
+          "_count": {
+            "additionalProperties": true,
+            "properties": {
+              "restaurants": { "type": "integer" },
+              "shares": { "type": "integer" }
+            },
+            "required": ["restaurants", "shares"],
+            "type": "object"
+          },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "description": { "nullable": true, "type": "string" },
+          "id": { "type": "string" },
+          "isPublic": { "type": "boolean" },
+          "name": { "type": "string" },
+          "owner": {
+            "additionalProperties": true,
+            "nullable": true,
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "username": { "type": "string" }
+            },
+            "required": ["id", "username", "name"],
+            "type": "object"
+          },
+          "ownerId": { "nullable": true, "type": "string" },
+          "systemType": {
+            "anyOf": [{ "$ref": "#/components/schemas/CollectionSystemType" }],
+            "nullable": true
+          },
+          "updatedAt": { "format": "date-time", "type": "string" }
+        },
+        "required": [
+          "id",
+          "name",
+          "isPublic",
+          "systemType",
+          "_count",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "CollectionSystemType": {
+        "enum": ["FAVORITES", "RECOMMENDED"],
+        "type": "string",
+        "x-shared-type": "CollectionSystemTypeValue"
+      },
+      "EntryStatus": {
+        "enum": ["ACTIVE", "ARCHIVED"],
+        "type": "string",
+        "x-shared-type": "EntryStatusValue"
+      },
+      "PaymentStatus": {
+        "enum": ["PAID", "WAITING"],
+        "type": "string",
+        "x-shared-type": "PaymentStatusValue"
+      },
+      "RestaurantEntry": {
+        "additionalProperties": true,
+        "properties": {
+          "address": { "type": "string" },
+          "addressLine": { "nullable": true, "type": "string" },
+          "avatarUrl": { "nullable": true, "type": "string" },
+          "bannerImageUrl": { "nullable": true, "type": "string" },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "createdById": { "type": "string" },
+          "cuisines": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "cuisine": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "description": { "nullable": true, "type": "string" },
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "type": { "type": "string" }
+                  },
+                  "required": ["id", "name", "type"],
+                  "type": "object"
+                },
+                "isPrimary": { "type": "boolean" }
+              },
+              "required": ["isPrimary", "cuisine"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "cuisineType": { "type": "string" },
+          "diningArea": {
+            "additionalProperties": true,
+            "nullable": true,
+            "properties": {
+              "address": { "type": "string" },
+              "addressLine": { "nullable": true, "type": "string" },
+              "description": { "nullable": true, "type": "string" },
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "provinceCode": { "nullable": true, "type": "string" },
+              "provinceName": { "nullable": true, "type": "string" },
+              "wardCode": { "nullable": true, "type": "string" },
+              "wardName": { "nullable": true, "type": "string" }
+            },
+            "required": ["id", "name", "address"],
+            "type": "object"
+          },
+          "diningAreaId": { "nullable": true, "type": "string" },
+          "feedbackAggregates": {
+            "additionalProperties": true,
+            "properties": {
+              "feedbackCount": { "type": "integer" },
+              "foodRating": { "nullable": true, "type": "number" },
+              "serviceRating": { "nullable": true, "type": "number" }
+            },
+            "required": ["foodRating", "serviceRating", "feedbackCount"],
+            "type": "object"
+          },
+          "id": { "type": "string" },
+          "isFavorite": { "type": "boolean" },
+          "isFavoritedByMe": { "type": "boolean" },
+          "isRecommended": { "type": "boolean" },
+          "name": { "type": "string" },
+          "phone": { "nullable": true, "type": "string" },
+          "platformLinks": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "id": { "type": "string" },
+                "label": { "nullable": true, "type": "string" },
+                "platform": {
+                  "$ref": "#/components/schemas/RestaurantPlatform"
+                },
+                "sortOrder": { "type": "integer" },
+                "url": { "type": "string" }
+              },
+              "required": ["platform", "url"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "provinceCode": { "nullable": true, "type": "string" },
+          "provinceName": { "nullable": true, "type": "string" },
+          "status": { "$ref": "#/components/schemas/EntryStatus" },
+          "type": { "type": "string" },
+          "updatedAt": { "format": "date-time", "type": "string" },
+          "wardCode": { "nullable": true, "type": "string" },
+          "wardName": { "nullable": true, "type": "string" }
+        },
+        "required": [
+          "id",
+          "name",
+          "address",
+          "cuisineType",
+          "type",
+          "isRecommended",
+          "isFavorite",
+          "status"
+        ],
+        "type": "object"
+      },
+      "RestaurantPlatform": {
+        "enum": [
+          "GRAB",
+          "SHOPEE_FOOD",
+          "BE_FOOD",
+          "GOJEK",
+          "WEBSITE",
+          "FACEBOOK",
+          "OTHER"
+        ],
+        "type": "string",
+        "x-shared-type": "RestaurantPlatformValue"
+      },
+      "SystemRole": {
+        "enum": ["ROOT_ADMIN"],
+        "type": "string",
+        "x-shared-type": "SystemRoleValue"
+      },
+      "User": {
+        "additionalProperties": true,
+        "properties": {
+          "avatarUrl": { "nullable": true, "type": "string" },
+          "chefRole": {
+            "anyOf": [{ "$ref": "#/components/schemas/ChefRole" }],
+            "nullable": true
+          },
+          "createdAt": { "format": "date-time", "type": "string" },
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "paymentRemindersEnabled": { "type": "boolean" },
+          "phone": { "nullable": true, "type": "string" },
+          "roles": { "items": { "type": "string" }, "type": "array" },
+          "systemRole": {
+            "anyOf": [{ "$ref": "#/components/schemas/SystemRole" }],
+            "nullable": true
+          },
+          "username": { "type": "string" }
+        },
+        "required": [
+          "id",
+          "username",
+          "name",
+          "chefRole",
+          "systemRole",
+          "roles"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": { "bearerAuth": { "scheme": "bearer", "type": "http" } }
+  },
+  "info": { "title": "FF RESTaurent API", "version": "1.1.0" },
+  "openapi": "3.0.3",
+  "paths": {
+    "/address/provinces": {
+      "get": {
+        "operationId": "getAddressProvinces",
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/address/provinces/{provinceCode}/wards": {
+      "get": {
+        "operationId": "getAddressProvincesByProvinceCodeWards",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provinceCode",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^p-[a-z0-9-]{1,62}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/admin/password-reset-requests": {
+      "get": {
+        "operationId": "getAdminPassword-reset-requests",
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/admin/password-reset-requests/{id}/issue": {
+      "post": {
+        "operationId": "postAdminPassword-reset-requestsByIdIssue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/admin/password-reset-requests/{id}/reject": {
+      "post": {
+        "operationId": "postAdminPassword-reset-requestsByIdReject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/admin/root-transfer": {
+      "post": {
+        "operationId": "postAdminRoot-transfer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "confirmationUsername": {
+                    "maxLength": 30,
+                    "minLength": 3,
+                    "type": "string"
+                  },
+                  "currentPassword": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "targetUsername": {
+                    "maxLength": 30,
+                    "minLength": 3,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "currentPassword",
+                  "targetUsername",
+                  "confirmationUsername"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "postAuthLogin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "identifier": { "minLength": 1, "type": "string" },
+                  "password": { "minLength": 1, "type": "string" }
+                },
+                "required": ["identifier", "password"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "token": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  },
+                  "required": ["token", "user"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/password-reset": {
+      "post": {
+        "operationId": "postAuthPassword-reset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": { "maxLength": 8, "minLength": 8, "type": "string" },
+                  "confirmation": { "type": "string" },
+                  "identifier": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "newPassword": { "type": "string" }
+                },
+                "required": [
+                  "identifier",
+                  "code",
+                  "newPassword",
+                  "confirmation"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/password-reset-requests": {
+      "post": {
+        "operationId": "postAuthPassword-reset-requests",
+        "requestBody": {
+          "content": { "application/json": { "schema": {} } },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "postAuthRegister",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "inviteCode": { "minLength": 1, "type": "string" },
+                  "name": { "minLength": 1, "type": "string" },
+                  "password": { "minLength": 8, "type": "string" },
+                  "phone": {
+                    "anyOf": [
+                      { "maxLength": 40, "type": "string" },
+                      { "enum": ["null"], "nullable": true }
+                    ]
+                  },
+                  "username": {
+                    "maxLength": 30,
+                    "minLength": 3,
+                    "type": "string"
+                  }
+                },
+                "required": ["name", "username", "password", "inviteCode"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "token": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  },
+                  "required": ["token", "user"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": []
+      }
+    },
+    "/bills": {
+      "get": {
+        "operationId": "getBills",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "forward",
+              "enum": ["forward", "backward"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "created-desc",
+              "enum": [
+                "created-desc",
+                "created-asc",
+                "total-desc",
+                "total-asc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "restaurantId",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "participantId",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "participantIds",
+            "required": false,
+            "schema": { "maxLength": 4000, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "paymentStatus",
+            "required": false,
+            "schema": { "$ref": "#/components/schemas/PaymentStatus" }
+          },
+          {
+            "in": "query",
+            "name": "archive",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "enum": ["active", "archived", "all"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ownerId",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": { "format": "date-time", "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": { "format": "date-time", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "items": {
+                      "items": { "$ref": "#/components/schemas/Bill" },
+                      "type": "array"
+                    },
+                    "pageInfo": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "endCursor": { "nullable": true, "type": "string" },
+                        "hasNextPage": { "type": "boolean" },
+                        "hasPreviousPage": { "type": "boolean" },
+                        "startCursor": { "nullable": true, "type": "string" }
+                      },
+                      "required": ["endCursor", "hasNextPage"],
+                      "type": "object"
+                    }
+                  },
+                  "required": ["items", "pageInfo"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "operationId": "postBills",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "adjustmentAllocation": {
+                    "$ref": "#/components/schemas/AdjustmentAllocation"
+                  },
+                  "allowDuplicate": { "default": false, "type": "boolean" },
+                  "baseCost": { "minimum": 0, "type": "integer" },
+                  "discounts": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "label": { "type": "string" },
+                        "type": {
+                          "$ref": "#/components/schemas/AdjustmentType"
+                        },
+                        "value": { "minimum": 0, "type": "number" }
+                      },
+                      "required": ["type", "value"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "participants": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "memberId": { "minLength": 1, "type": "string" },
+                        "originCost": { "minimum": 0, "type": "integer" }
+                      },
+                      "required": ["memberId"],
+                      "type": "object"
+                    },
+                    "minItems": 2,
+                    "type": "array"
+                  },
+                  "paymentQrImageId": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "paymentUrl": { "format": "uri", "type": "string" },
+                  "restaurantId": { "minLength": 1, "type": "string" },
+                  "shippingFee": { "minimum": 0, "type": "integer" },
+                  "vat": { "minimum": 0, "type": "integer" },
+                  "vouchers": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": { "minLength": 1, "type": "string" },
+                        "value": { "minimum": 0, "type": "integer" }
+                      },
+                      "required": ["code", "value"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "restaurantId",
+                  "baseCost",
+                  "vat",
+                  "shippingFee",
+                  "participants"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Bill" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/bills/{billId}/feedback": {
+      "post": {
+        "operationId": "postBillsByBillIdFeedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billId",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "comment": {
+                    "maxLength": 2000,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "foodRating": {
+                    "maximum": 10,
+                    "minimum": 1,
+                    "type": "number"
+                  },
+                  "serviceRating": {
+                    "maximum": 10,
+                    "minimum": 1,
+                    "type": "number"
+                  }
+                },
+                "required": ["foodRating", "serviceRating"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/bills/{id}": {
+      "get": {
+        "operationId": "getBillsById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Bill" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "operationId": "putBillsById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "adjustmentAllocation": {
+                    "$ref": "#/components/schemas/AdjustmentAllocation"
+                  },
+                  "allowDuplicate": { "default": false, "type": "boolean" },
+                  "baseCost": { "minimum": 0, "type": "integer" },
+                  "discounts": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "label": { "type": "string" },
+                        "type": {
+                          "$ref": "#/components/schemas/AdjustmentType"
+                        },
+                        "value": { "minimum": 0, "type": "number" }
+                      },
+                      "required": ["type", "value"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "participants": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "memberId": { "minLength": 1, "type": "string" },
+                        "originCost": { "minimum": 0, "type": "integer" }
+                      },
+                      "required": ["memberId"],
+                      "type": "object"
+                    },
+                    "minItems": 2,
+                    "type": "array"
+                  },
+                  "paymentQrImageId": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "paymentUrl": { "format": "uri", "type": "string" },
+                  "restaurantId": { "minLength": 1, "type": "string" },
+                  "shippingFee": { "minimum": 0, "type": "integer" },
+                  "vat": { "minimum": 0, "type": "integer" },
+                  "vouchers": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": { "minLength": 1, "type": "string" },
+                        "value": { "minimum": 0, "type": "integer" }
+                      },
+                      "required": ["code", "value"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "restaurantId",
+                  "baseCost",
+                  "vat",
+                  "shippingFee",
+                  "participants"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Bill" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/bills/{id}/activity": {
+      "get": {
+        "operationId": "getBillsByIdActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/bills/{id}/archive": {
+      "patch": {
+        "operationId": "patchBillsByIdArchive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Bill" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/bills/{id}/participants/{memberId}/payment": {
+      "patch": {
+        "operationId": "patchBillsByIdParticipantsByMemberIdPayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "expectedStatus": {
+                    "$ref": "#/components/schemas/PaymentStatus"
+                  },
+                  "status": { "$ref": "#/components/schemas/PaymentStatus" }
+                },
+                "required": ["status", "expectedStatus"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/bills/{id}/payment-qr-options": {
+      "get": {
+        "operationId": "getBillsByIdPayment-qr-options",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/bills/{id}/reminders": {
+      "post": {
+        "operationId": "postBillsByIdReminders",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/bills/{id}/restore": {
+      "patch": {
+        "operationId": "patchBillsByIdRestore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Bill" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/collections": {
+      "get": {
+        "operationId": "getCollections",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": { "maxLength": 100, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "name-asc",
+              "enum": ["name-asc", "name-desc", "created-desc", "created-asc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": { "maxLength": 80, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "provinceCode",
+            "required": false,
+            "schema": { "maxLength": 64, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "visibility",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": ["all", "owned", "public", "shared"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "systemType",
+            "required": false,
+            "schema": {
+              "enum": ["FAVORITES", "RECOMMENDED", "custom"],
+              "type": "string",
+              "x-shared-literals": ["custom"],
+              "x-shared-type": "CollectionSystemTypeValue"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "items": {
+                      "items": { "$ref": "#/components/schemas/Collection" },
+                      "type": "array"
+                    },
+                    "pageInfo": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "endCursor": { "nullable": true, "type": "string" },
+                        "hasNextPage": { "type": "boolean" },
+                        "hasPreviousPage": { "type": "boolean" },
+                        "startCursor": { "nullable": true, "type": "string" }
+                      },
+                      "required": ["endCursor", "hasNextPage"],
+                      "type": "object"
+                    }
+                  },
+                  "required": ["items", "pageInfo"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "operationId": "postCollections",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "maxLength": 500,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "isPublic": { "default": false, "type": "boolean" },
+                  "name": { "maxLength": 100, "minLength": 1, "type": "string" }
+                },
+                "required": ["name"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Collection" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/collections/{id}": {
+      "delete": {
+        "operationId": "deleteCollectionsById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "get": {
+        "operationId": "getCollectionsById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Collection" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "operationId": "putCollectionsById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "maxLength": 500,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "isPublic": { "default": false, "type": "boolean" },
+                  "name": { "maxLength": 100, "minLength": 1, "type": "string" }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Collection" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/collections/{id}/restaurants": {
+      "get": {
+        "operationId": "getCollectionsByIdRestaurants",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": { "maxLength": 100, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "name-asc",
+              "enum": ["name-asc", "name-desc", "created-desc", "created-asc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": { "maxLength": 80, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "provinceCode",
+            "required": false,
+            "schema": { "maxLength": 64, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "visibility",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": ["all", "owned", "public", "shared"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "systemType",
+            "required": false,
+            "schema": {
+              "enum": ["FAVORITES", "RECOMMENDED", "custom"],
+              "type": "string",
+              "x-shared-literals": ["custom"],
+              "x-shared-type": "CollectionSystemTypeValue"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/collections/{id}/restaurants/{restaurantId}": {
+      "delete": {
+        "operationId": "deleteCollectionsByIdRestaurantsByRestaurantId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "restaurantId",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "operationId": "postCollectionsByIdRestaurantsByRestaurantId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "restaurantId",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/collections/{id}/shares": {
+      "get": {
+        "operationId": "getCollectionsByIdShares",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": { "maxLength": 100, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "name-asc",
+              "enum": ["name-asc", "name-desc", "created-desc", "created-asc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": { "maxLength": 80, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "provinceCode",
+            "required": false,
+            "schema": { "maxLength": 64, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "visibility",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": ["all", "owned", "public", "shared"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "systemType",
+            "required": false,
+            "schema": {
+              "enum": ["FAVORITES", "RECOMMENDED", "custom"],
+              "type": "string",
+              "x-shared-literals": ["custom"],
+              "x-shared-type": "CollectionSystemTypeValue"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "operationId": "postCollectionsByIdShares",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "userId": { "minLength": 1, "type": "string" }
+                },
+                "required": ["userId"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/collections/{id}/shares/{userId}": {
+      "delete": {
+        "operationId": "deleteCollectionsByIdSharesByUserId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/cuisines": {
+      "get": {
+        "operationId": "getCuisines",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": { "maxLength": 100, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "name-asc",
+              "enum": ["name-asc", "name-desc", "created-desc", "created-asc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": { "maxLength": 80, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "provinceCode",
+            "required": false,
+            "schema": { "maxLength": 64, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "visibility",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": ["all", "owned", "public", "shared"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "systemType",
+            "required": false,
+            "schema": {
+              "enum": ["FAVORITES", "RECOMMENDED", "custom"],
+              "type": "string",
+              "x-shared-literals": ["custom"],
+              "x-shared-type": "CollectionSystemTypeValue"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "operationId": "postCuisines",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "maxLength": 500,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "name": { "maxLength": 80, "minLength": 1, "type": "string" },
+                  "type": { "maxLength": 80, "minLength": 1, "type": "string" }
+                },
+                "required": ["name", "type"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/cuisines/{id}": {
+      "delete": {
+        "operationId": "deleteCuisinesById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "operationId": "putCuisinesById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "maxLength": 500,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "name": { "maxLength": 80, "minLength": 1, "type": "string" },
+                  "type": { "maxLength": 80, "minLength": 1, "type": "string" }
+                },
+                "required": ["name", "type"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/dining-areas": {
+      "get": {
+        "operationId": "getDining-areas",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": { "maxLength": 100, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "name-asc",
+              "enum": ["name-asc", "name-desc", "created-desc", "created-asc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": { "maxLength": 80, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "provinceCode",
+            "required": false,
+            "schema": { "maxLength": 64, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "visibility",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": ["all", "owned", "public", "shared"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "systemType",
+            "required": false,
+            "schema": {
+              "enum": ["FAVORITES", "RECOMMENDED", "custom"],
+              "type": "string",
+              "x-shared-literals": ["custom"],
+              "x-shared-type": "CollectionSystemTypeValue"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "operationId": "postDining-areas",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "address": { "minLength": 1, "type": "string" },
+                  "addressLine": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "description": {
+                    "maxLength": 500,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "name": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "provinceCode": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "provinceName": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "wardCode": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "wardName": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  }
+                },
+                "required": ["address", "name"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/dining-areas/{id}": {
+      "delete": {
+        "operationId": "deleteDining-areasById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "operationId": "putDining-areasById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "address": { "minLength": 1, "type": "string" },
+                  "addressLine": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "description": {
+                    "maxLength": 500,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "name": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "provinceCode": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "provinceName": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "wardCode": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "wardName": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/feedback/{id}": {
+      "delete": {
+        "operationId": "deleteFeedbackById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "operationId": "putFeedbackById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "comment": {
+                    "maxLength": 2000,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "foodRating": {
+                    "maximum": 10,
+                    "minimum": 1,
+                    "type": "number"
+                  },
+                  "serviceRating": {
+                    "maximum": 10,
+                    "minimum": 1,
+                    "type": "number"
+                  }
+                },
+                "required": ["foodRating", "serviceRating"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": { "ok": { "enum": [true], "type": "boolean" } },
+                  "required": ["ok"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": []
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getMe",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/me/avatar": {
+      "delete": {
+        "operationId": "deleteMeAvatar",
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "operationId": "putMeAvatar",
+        "requestBody": {
+          "content": { "multipart/form-data": { "schema": {} } },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/me/notification-preferences": {
+      "get": {
+        "operationId": "getMeNotification-preferences",
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "patch": {
+        "operationId": "patchMeNotification-preferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "paymentRemindersEnabled": { "type": "boolean" }
+                },
+                "required": ["paymentRemindersEnabled"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/me/password": {
+      "patch": {
+        "operationId": "patchMePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "confirmation": { "type": "string" },
+                  "currentPassword": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "newPassword": { "type": "string" }
+                },
+                "required": ["currentPassword", "newPassword", "confirmation"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/me/payment-qr-images": {
+      "get": {
+        "operationId": "getMePayment-qr-images",
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "operationId": "postMePayment-qr-images",
+        "requestBody": {
+          "content": { "multipart/form-data": { "schema": {} } },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/me/payment-qr-images/{id}": {
+      "delete": {
+        "operationId": "deleteMePayment-qr-imagesById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "patch": {
+        "operationId": "patchMePayment-qr-imagesById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": { "application/json": { "schema": {} } },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/me/payment-qr-images/{id}/replacement": {
+      "post": {
+        "operationId": "postMePayment-qr-imagesByIdReplacement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": { "multipart/form-data": { "schema": {} } },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/me/profile": {
+      "put": {
+        "operationId": "putMeProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": { "minLength": 1, "type": "string" },
+                  "phone": {
+                    "anyOf": [
+                      { "maxLength": 40, "type": "string" },
+                      { "enum": ["null"], "nullable": true }
+                    ]
+                  },
+                  "username": {
+                    "maxLength": 30,
+                    "minLength": 3,
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/members": {
+      "get": {
+        "operationId": "getMembers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": { "maxLength": 100, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "forward",
+              "enum": ["forward", "backward"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "name-asc",
+              "enum": ["name-asc", "name-desc", "created-desc"],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "items": {
+                      "items": { "$ref": "#/components/schemas/User" },
+                      "type": "array"
+                    },
+                    "pageInfo": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "endCursor": { "nullable": true, "type": "string" },
+                        "hasNextPage": { "type": "boolean" },
+                        "hasPreviousPage": { "type": "boolean" },
+                        "startCursor": { "nullable": true, "type": "string" }
+                      },
+                      "required": ["endCursor", "hasNextPage"],
+                      "type": "object"
+                    }
+                  },
+                  "required": ["items", "pageInfo"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "getNotifications",
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "operationId": "patchNotificationsByIdRead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "operationId": "patchNotificationsRead-all",
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/participant-groups": {
+      "get": {
+        "operationId": "getParticipant-groups",
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "operationId": "postParticipant-groups",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "memberIds": {
+                    "items": { "minLength": 1, "type": "string" },
+                    "maxItems": 100,
+                    "minItems": 2,
+                    "type": "array"
+                  },
+                  "name": { "maxLength": 80, "minLength": 1, "type": "string" }
+                },
+                "required": ["name", "memberIds"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/participant-groups/{id}": {
+      "delete": {
+        "operationId": "deleteParticipant-groupsById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "operationId": "putParticipant-groupsById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "memberIds": {
+                    "items": { "minLength": 1, "type": "string" },
+                    "maxItems": 100,
+                    "minItems": 2,
+                    "type": "array"
+                  },
+                  "name": { "maxLength": 80, "minLength": 1, "type": "string" }
+                },
+                "required": ["name", "memberIds"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "getReady",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "database": { "enum": ["ready"], "type": "string" },
+                    "ok": { "enum": [true], "type": "boolean" }
+                  },
+                  "required": ["ok", "database"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "database": { "enum": ["unavailable"], "type": "string" },
+                    "ok": { "enum": [false], "type": "boolean" }
+                  },
+                  "required": ["ok", "database"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": []
+      }
+    },
+    "/restaurants": {
+      "get": {
+        "operationId": "getRestaurants",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": { "maxLength": 100, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "forward",
+              "enum": ["forward", "backward"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "name-asc",
+              "enum": ["name-asc", "name-desc", "created-desc", "created-asc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cuisineId",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "primaryCuisineId",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "diningAreaId",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "collectionId",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": { "$ref": "#/components/schemas/RestaurantPlatform" }
+          },
+          {
+            "in": "query",
+            "name": "archive",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "enum": ["active", "archived", "all"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "favorite",
+            "required": false,
+            "schema": { "enum": ["true", "false"], "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "recommended",
+            "required": false,
+            "schema": { "enum": ["true", "false"], "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "$ref": "#/components/schemas/RestaurantEntry"
+                      },
+                      "type": "array"
+                    },
+                    "pageInfo": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "endCursor": { "nullable": true, "type": "string" },
+                        "hasNextPage": { "type": "boolean" },
+                        "hasPreviousPage": { "type": "boolean" },
+                        "startCursor": { "nullable": true, "type": "string" }
+                      },
+                      "required": ["endCursor", "hasNextPage"],
+                      "type": "object"
+                    }
+                  },
+                  "required": ["items", "pageInfo"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "operationId": "postRestaurants",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "address": { "minLength": 1, "type": "string" },
+                  "addressLine": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "avatarUrl": { "type": "string" },
+                  "bannerImageUrl": {
+                    "anyOf": [
+                      { "format": "uri", "type": "string" },
+                      { "enum": [""], "type": "string" },
+                      { "enum": ["null"], "nullable": true }
+                    ]
+                  },
+                  "collectionIds": {
+                    "items": { "minLength": 1, "type": "string" },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "cuisineIds": {
+                    "items": { "minLength": 1, "type": "string" },
+                    "maxItems": 20,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "cuisineType": { "minLength": 1, "type": "string" },
+                  "diningAreaId": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "isFavorite": { "type": "boolean" },
+                  "isRecommended": { "type": "boolean" },
+                  "links": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "label": { "maxLength": 60, "type": "string" },
+                        "url": { "format": "uri", "type": "string" }
+                      },
+                      "required": ["url"],
+                      "type": "object"
+                    },
+                    "maxItems": 20,
+                    "type": "array"
+                  },
+                  "name": { "minLength": 1, "type": "string" },
+                  "phone": {
+                    "anyOf": [
+                      { "maxLength": 40, "type": "string" },
+                      { "enum": ["null"], "nullable": true }
+                    ]
+                  },
+                  "platformLinks": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "label": {
+                          "maxLength": 60,
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "platform": {
+                          "$ref": "#/components/schemas/RestaurantPlatform"
+                        },
+                        "url": { "format": "uri", "type": "string" }
+                      },
+                      "required": ["platform", "url"],
+                      "type": "object"
+                    },
+                    "maxItems": 20,
+                    "type": "array"
+                  },
+                  "primaryCuisineId": { "minLength": 1, "type": "string" },
+                  "provinceCode": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "provinceName": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "type": { "minLength": 1, "type": "string" },
+                  "wardCode": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "wardName": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  }
+                },
+                "required": ["address", "name", "type"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RestaurantEntry" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/restaurants/{id}": {
+      "get": {
+        "operationId": "getRestaurantsById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RestaurantEntry" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "operationId": "putRestaurantsById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "address": { "minLength": 1, "type": "string" },
+                  "addressLine": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "avatarUrl": { "type": "string" },
+                  "bannerImageUrl": {
+                    "anyOf": [
+                      { "format": "uri", "type": "string" },
+                      { "enum": [""], "type": "string" },
+                      { "enum": ["null"], "nullable": true }
+                    ]
+                  },
+                  "collectionIds": {
+                    "items": { "minLength": 1, "type": "string" },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "cuisineIds": {
+                    "items": { "minLength": 1, "type": "string" },
+                    "maxItems": 20,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "cuisineType": { "minLength": 1, "type": "string" },
+                  "diningAreaId": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "isFavorite": { "type": "boolean" },
+                  "isRecommended": { "type": "boolean" },
+                  "links": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "label": { "maxLength": 60, "type": "string" },
+                        "url": { "format": "uri", "type": "string" }
+                      },
+                      "required": ["url"],
+                      "type": "object"
+                    },
+                    "maxItems": 20,
+                    "type": "array"
+                  },
+                  "name": { "minLength": 1, "type": "string" },
+                  "phone": {
+                    "anyOf": [
+                      { "maxLength": 40, "type": "string" },
+                      { "enum": ["null"], "nullable": true }
+                    ]
+                  },
+                  "platformLinks": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "label": {
+                          "maxLength": 60,
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "platform": {
+                          "$ref": "#/components/schemas/RestaurantPlatform"
+                        },
+                        "url": { "format": "uri", "type": "string" }
+                      },
+                      "required": ["platform", "url"],
+                      "type": "object"
+                    },
+                    "maxItems": 20,
+                    "type": "array"
+                  },
+                  "primaryCuisineId": { "minLength": 1, "type": "string" },
+                  "provinceCode": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "provinceName": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "type": { "minLength": 1, "type": "string" },
+                  "wardCode": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "wardName": {
+                    "minLength": 1,
+                    "nullable": true,
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RestaurantEntry" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/restaurants/{id}/archive": {
+      "patch": {
+        "operationId": "patchRestaurantsByIdArchive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RestaurantEntry" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/restaurants/{id}/banner": {
+      "delete": {
+        "operationId": "deleteRestaurantsByIdBanner",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "operationId": "putRestaurantsByIdBanner",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": { "multipart/form-data": { "schema": {} } },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/restaurants/{id}/collections": {
+      "put": {
+        "operationId": "putRestaurantsByIdCollections",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "collectionIds": {
+                    "items": { "minLength": 1, "type": "string" },
+                    "maxItems": 100,
+                    "type": "array"
+                  }
+                },
+                "required": ["collectionIds"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/restaurants/{id}/favorite": {
+      "post": {
+        "operationId": "postRestaurantsByIdFavorite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/restaurants/{id}/feedback": {
+      "get": {
+        "operationId": "getRestaurantsByIdFeedback",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/restaurants/{id}/logo": {
+      "delete": {
+        "operationId": "deleteRestaurantsByIdLogo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "operationId": "putRestaurantsByIdLogo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": { "multipart/form-data": { "schema": {} } },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/restaurants/{id}/recommend": {
+      "patch": {
+        "operationId": "patchRestaurantsByIdRecommend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RestaurantEntry" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/restaurants/{id}/restore": {
+      "patch": {
+        "operationId": "patchRestaurantsByIdRestore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RestaurantEntry" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/stats/me": {
+      "get": {
+        "operationId": "getStatsMe",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "default": "monthly",
+              "enum": ["weekly", "monthly", "yearly", "custom"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": { "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": { "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "type": "string" }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/users": {
+      "get": {
+        "operationId": "getUsers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": { "maxLength": 100, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": { "minLength": 1, "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "forward",
+              "enum": ["forward", "backward"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "name-asc",
+              "enum": ["name-asc", "name-desc", "created-desc"],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "items": {
+                      "items": { "$ref": "#/components/schemas/User" },
+                      "type": "array"
+                    },
+                    "pageInfo": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "endCursor": { "nullable": true, "type": "string" },
+                        "hasNextPage": { "type": "boolean" },
+                        "hasPreviousPage": { "type": "boolean" },
+                        "startCursor": { "nullable": true, "type": "string" }
+                      },
+                      "required": ["endCursor", "hasNextPage"],
+                      "type": "object"
+                    }
+                  },
+                  "required": ["items", "pageInfo"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/users/{id}/chef-role": {
+      "patch": {
+        "operationId": "patchUsersByIdChef-role",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "chefRole": {
+                    "anyOf": [{ "$ref": "#/components/schemas/ChefRole" }],
+                    "nullable": true
+                  }
+                },
+                "required": ["chefRole"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    }
+  }
+}

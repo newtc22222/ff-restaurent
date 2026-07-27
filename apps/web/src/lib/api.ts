@@ -6,6 +6,10 @@ import type {
   RestaurantPlatformValue,
   SystemRoleValue,
 } from '@ff-restaurent/shared';
+import type { components } from './generated/api-types';
+import { createTransportClient } from './generated/transport-client';
+
+type GeneratedSchemas = components['schemas'];
 
 /*
  * Domain enums are owned by @ff-restaurent/shared, which mirrors the Prisma
@@ -67,18 +71,7 @@ export type BillPage = {
 
 export type CollectionSystemType = CollectionSystemTypeValue | null;
 
-export type Collection = {
-  id: string;
-  name: string;
-  description?: string | null;
-  isPublic: boolean;
-  systemType: CollectionSystemType;
-  ownerId?: string | null;
-  owner?: Pick<User, 'id' | 'username' | 'name'> | null;
-  _count: { restaurants: number; shares: number };
-  createdAt: string;
-  updatedAt: string;
-};
+export type Collection = GeneratedSchemas['Collection'];
 
 export type CollectionRestaurant = RestaurantEntry & { addedAt: string };
 
@@ -107,17 +100,7 @@ export type RestaurantDetailData = {
   collections: Collection[];
 };
 
-export type User = {
-  id: string;
-  username: string;
-  phone?: string | null;
-  name: string;
-  avatarUrl?: string | null;
-  chefRole: ChefRole;
-  systemRole: SystemRole;
-  roles: string[];
-  paymentRemindersEnabled?: boolean;
-};
+export type User = GeneratedSchemas['User'];
 
 export type PaymentQrImage = {
   id: string;
@@ -139,30 +122,7 @@ export type ParticipantGroup = {
   updatedAt: string;
 };
 
-export type RestaurantEntry = {
-  id: string;
-  name: string;
-  address: string;
-  addressLine?: string | null;
-  provinceCode?: string | null;
-  provinceName?: string | null;
-  wardCode?: string | null;
-  wardName?: string | null;
-  phone?: string | null;
-  bannerImageUrl?: string | null;
-  diningAreaId?: string | null;
-  diningArea?: DiningArea | null;
-  cuisineType: string;
-  type: string;
-  avatarUrl?: string | null;
-  platformLinks?: RestaurantPlatformLink[];
-  cuisines?: { isPrimary: boolean; cuisine: Cuisine }[];
-  isRecommended: boolean;
-  isFavorite: boolean;
-  isFavoritedByMe?: boolean;
-  status: EntryStatus;
-  feedbackAggregates?: FeedbackAggregates;
-};
+export type RestaurantEntry = GeneratedSchemas['RestaurantEntry'];
 
 export type FeedbackAggregates = {
   foodRating: number | null;
@@ -221,30 +181,7 @@ export type BillParticipant = {
   paidAt?: string | null;
 };
 
-export type Bill = {
-  id: string;
-  restaurant: RestaurantEntry;
-  createdById: string;
-  createdBy: User;
-  baseCost: number;
-  vat: number;
-  shippingFee: number;
-  totalCost: number;
-  discounts: { type: 'FIXED' | 'PERCENTAGE'; value: number; label?: string }[];
-  vouchers: { code: string; value: number }[];
-  adjustmentAllocation: 'EQUAL' | 'PROPORTIONAL';
-  qrCodePath?: string | null;
-  paymentUrl?: string | null;
-  paymentQrImageId?: string | null;
-  paymentQrImage?: Pick<
-    PaymentQrImage,
-    'id' | 'label' | 'status' | 'imageUrl'
-  > | null;
-  status: EntryStatus;
-  createdAt: string;
-  updatedAt: string;
-  participants: BillParticipant[];
-};
+export type Bill = GeneratedSchemas['Bill'];
 
 export type BillActivityAction =
   | 'CREATED'
@@ -320,6 +257,11 @@ export class ApiClient {
 
   setToken(token: string | null) {
     this.token = token;
+  }
+
+  /** OpenAPI-driven client for endpoint-by-endpoint typed transport adoption. */
+  transport() {
+    return createTransportClient(API_URL, this.token);
   }
 
   async request<T>(path: string, init: RequestInit = {}): Promise<T> {
