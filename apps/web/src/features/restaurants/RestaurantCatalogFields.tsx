@@ -25,6 +25,10 @@ export const emptyRestaurantCatalogs = (): RestaurantCatalogValue => ({
 
 const noInitialCuisines: Cuisine[] = [];
 
+const mergeById = <T extends { id: string }>(current: T[], next: T[]) => [
+  ...new Map([...current, ...next].map((item) => [item.id, item])).values(),
+];
+
 export default function RestaurantCatalogFields({
   value,
   onChange,
@@ -45,7 +49,7 @@ export default function RestaurantCatalogFields({
   const [areaQuery, setAreaQuery] = useState('');
   const [debouncedCuisineQuery, setDebouncedCuisineQuery] = useState('');
   const [debouncedAreaQuery, setDebouncedAreaQuery] = useState('');
-  const [cuisines, setCuisines] = useState<Cuisine[]>(initialCuisines);
+  const [catalogCuisines, setCatalogCuisines] = useState<Cuisine[]>([]);
   const [areas, setAreas] = useState<DiningArea[]>(
     initialDiningArea ? [initialDiningArea] : [],
   );
@@ -55,23 +59,16 @@ export default function RestaurantCatalogFields({
     loadCatalog,
   );
 
-  const mergeById = <T extends { id: string }>(current: T[], next: T[]) => [
-    ...new Map([...current, ...next].map((item) => [item.id, item])).values(),
-  ];
-
   useEffect(() => {
     const items = cuisineCatalog.data?.pages.flatMap((page) => page.items);
     if (!items) return;
-    setCuisines((current) =>
+    setCatalogCuisines((current) =>
       mergeById(
-        [
-          ...initialCuisines,
-          ...current.filter((item) => value.cuisineIds.includes(item.id)),
-        ],
+        current.filter((item) => value.cuisineIds.includes(item.id)),
         items,
       ),
     );
-  }, [cuisineCatalog.data, initialCuisines, value.cuisineIds]);
+  }, [cuisineCatalog.data, value.cuisineIds]);
 
   useEffect(() => {
     const items = diningAreaCatalog.data?.pages.flatMap((page) => page.items);
@@ -111,6 +108,10 @@ export default function RestaurantCatalogFields({
     });
   }, [catalogError, t]);
 
+  const cuisines = useMemo(
+    () => mergeById(initialCuisines, catalogCuisines),
+    [catalogCuisines, initialCuisines],
+  );
   const cuisineOptions = useMemo(
     () =>
       cuisines.map((cuisine) => ({
