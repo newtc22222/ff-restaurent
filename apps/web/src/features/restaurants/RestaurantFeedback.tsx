@@ -1,10 +1,10 @@
 import { MessageSquare, Star } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import type { RestaurantFeedbackPage } from '../../lib/api';
-import Dropdown from '../../components/ui/Dropdown';
+import { useI18n } from '@/app/providers/i18n';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import type { RestaurantFeedbackPage } from '@/api/types';
+import Dropdown from '@/components/ui/Dropdown';
 
 const ratingOptions = Array.from({ length: 19 }, (_, index) => 1 + index / 2);
 
@@ -17,7 +17,7 @@ export default function RestaurantFeedback({
   data: RestaurantFeedbackPage;
 }) {
   const { locale, t } = useI18n();
-  const { fetcher, mutate } = useMutation();
+  const { fetcher, mutate } = useRouteMutation();
   const [selectedBillId, setSelectedBillId] = useState(
     data.eligibleBills[0]?.billId ?? '',
   );

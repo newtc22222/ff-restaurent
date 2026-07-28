@@ -9,10 +9,12 @@ import {
 } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { I18nProvider } from '../../app/providers/i18n';
-import type { CatalogPage, Cuisine, DiningArea } from '../../lib/api';
+import { I18nProvider } from '@/app/providers/i18n';
+import { QueryProvider } from '@/app/providers/query';
+import type { CatalogPage, Cuisine, DiningArea } from '@/api/types';
 import RestaurantCatalogFields, {
   emptyRestaurantCatalogs,
+  type RestaurantCatalogValue,
 } from './RestaurantCatalogFields';
 
 beforeEach(() => {
@@ -58,17 +60,49 @@ function Harness() {
   const [value, setValue] = useState(emptyRestaurantCatalogs());
   const [primaryName, setPrimaryName] = useState('');
   return (
-    <I18nProvider>
-      <RestaurantCatalogFields
-        value={value}
-        onChange={setValue}
-        onPrimaryCuisineNameChange={setPrimaryName}
-        loadCatalog={loader}
-      />
-      <output data-testid="catalogs">
-        {JSON.stringify({ ...value, primaryName })}
-      </output>
-    </I18nProvider>
+    <QueryProvider>
+      <I18nProvider>
+        <RestaurantCatalogFields
+          value={value}
+          onChange={setValue}
+          onPrimaryCuisineNameChange={setPrimaryName}
+          loadCatalog={loader}
+        />
+        <output data-testid="catalogs">
+          {JSON.stringify({ ...value, primaryName })}
+        </output>
+      </I18nProvider>
+    </QueryProvider>
+  );
+}
+
+function UnstableInitialCuisinesHarness({
+  initialName,
+}: {
+  initialName: string;
+}) {
+  const [value, setValue] = useState<RestaurantCatalogValue>({
+    cuisineIds: ['existing'],
+    primaryCuisineId: 'existing',
+    diningAreaId: null,
+  });
+  return (
+    <QueryProvider>
+      <I18nProvider>
+        <RestaurantCatalogFields
+          value={value}
+          onChange={setValue}
+          initialCuisines={[
+            {
+              id: 'existing',
+              name: initialName,
+              type: 'Regional',
+            },
+          ]}
+          loadCatalog={loader}
+        />
+      </I18nProvider>
+    </QueryProvider>
   );
 }
 
@@ -123,5 +157,19 @@ describe('RestaurantCatalogFields', () => {
     expect(screen.getByTestId('catalogs').textContent).toContain(
       '"diningAreaId":null',
     );
+  });
+
+  it('derives initial cuisines without synchronizing unstable arrays into state', async () => {
+    const { rerender } = render(
+      <UnstableInitialCuisinesHarness initialName="Existing cuisine" />,
+    );
+    await screen.findByRole('button', { name: 'Load more cuisines' });
+
+    rerender(<UnstableInitialCuisinesHarness initialName="Updated cuisine" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cuisines' }));
+    expect(
+      await screen.findByRole('option', { name: /Updated cuisine/ }),
+    ).toBeTruthy();
   });
 });

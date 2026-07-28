@@ -4,9 +4,14 @@ import {
   forwardListQuery,
   requireToken,
   rethrowRouteError,
-} from '../../app/route-helpers';
-import type { Bill, BillActivityEvent, CatalogPage } from '../../lib/api';
-import { session } from '../../lib/session';
+} from '@/app/route-helpers';
+import type { Bill, BillActivityEvent, CatalogPage } from '@/api/types';
+import { session } from '@/lib/session';
+import type {
+  IntentContext,
+  IntentMap,
+  MutationBody,
+} from '@/app/mutation-types';
 
 /**
  * Route data and mutations owned by the bills feature.
@@ -54,22 +59,6 @@ export async function billActivityLoader({ params }: LoaderFunctionArgs) {
  * Body shape the shared mutation action passes through. Kept loose because the
  * intents are dispatched dynamically; each handler reads what it needs.
  */
-type MutationBody = {
-  intent: string;
-  payload?: unknown;
-  toastSuccess?: unknown;
-  billId?: string;
-  memberId?: string;
-  status?: string;
-  expectedStatus?: string;
-};
-
-type IntentContext = {
-  api: ReturnType<typeof session.api>;
-  body: MutationBody;
-  params: Record<string, string | undefined>;
-};
-
 const announce = (body: MutationBody) => {
   if (typeof body.toastSuccess === 'string') toast.success(body.toastSuccess);
 };
@@ -115,4 +104,4 @@ export const billIntents = {
         }),
       },
     ),
-};
+} satisfies IntentMap;

@@ -10,19 +10,19 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
-import type { RestaurantDirectoryData } from '../../lib/api';
-import { canChef, isHead } from '../../lib/helpers';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import SectionTitle from '../../components/ui/SectionTitle';
-import EmptyState from '../../components/ui/EmptyState';
-import Dropdown from '../../components/ui/Dropdown';
-import Modal from '../../components/ui/Modal';
+import type { RestaurantDirectoryData } from '@/api/types';
+import { canChef, isHead } from '@/lib/permissions';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import SectionTitle from '@/components/ui/SectionTitle';
+import EmptyState from '@/components/ui/EmptyState';
+import Dropdown from '@/components/ui/Dropdown';
+import Modal from '@/components/ui/Modal';
 import VietnamAddressFields, {
   emptyVietnamAddress,
   isVietnamAddressComplete,
-} from '../../components/address/VietnamAddressFields';
+} from '@/features/address/VietnamAddressFields';
 import RestaurantProfileFields, {
   emptyRestaurantProfile,
   isRestaurantProfileValid,
@@ -30,8 +30,8 @@ import RestaurantProfileFields, {
 import RestaurantCatalogFields, {
   emptyRestaurantCatalogs,
 } from './RestaurantCatalogFields';
-import ImagePicker from '../../components/ui/ImagePicker';
-import { session } from '../../lib/session';
+import ImagePicker from '@/components/ui/ImagePicker';
+import { useRestaurantMediaMutation } from './restaurant-media.mutations';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
@@ -48,7 +48,8 @@ export default function RestaurantsPage() {
     searchParamsRef.current = searchParams;
   }, [searchParams]);
   const { t } = useI18n();
-  const { mutate } = useMutation();
+  const { mutate } = useRouteMutation();
+  const restaurantMediaMutation = useRestaurantMediaMutation();
   const typeOptions = [
     t('restaurants.typeRestaurant'),
     t('restaurants.typeEatery'),
@@ -189,11 +190,11 @@ export default function RestaurantsPage() {
         ['logo' | 'banner', File | null]
       >) {
         if (!file) continue;
-        const body = new FormData();
-        body.append('file', file);
-        await session.api().request(`/restaurants/${id}/${kind}`, {
-          method: 'PUT',
-          body,
+        await restaurantMediaMutation.mutateAsync({
+          action: 'upload',
+          restaurantId: id,
+          kind,
+          file,
         });
       }
     } catch {

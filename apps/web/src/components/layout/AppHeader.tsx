@@ -7,11 +7,11 @@ import {
   MoreVertical,
   UserCircle,
 } from 'lucide-react';
-import type { Notification } from '../../lib/api';
-import { roleLabel } from '../../lib/helpers';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useTheme } from '../../app/providers/theme';
+import type { Notification } from '@/api/types';
+import { roleLabel } from '@/lib/permissions';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import { useTheme } from '@/app/providers/theme';
 import BrandIcon from '../ui/BrandIcon';
 import ThemeToggle from '../ui/ThemeToggle';
 import LocaleToggle from '../ui/LocaleToggle';

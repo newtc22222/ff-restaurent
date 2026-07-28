@@ -8,7 +8,7 @@ const root = resolve(import.meta.dirname, '..');
 const openApiPath = resolve(root, 'apps/api/openapi.json');
 const generatedTypesPath = resolve(
   root,
-  'apps/web/src/lib/generated/api-types.ts',
+  'apps/web/src/api/generated/api-types.ts',
 );
 
 const sharedTypes = {

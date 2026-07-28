@@ -14,23 +14,16 @@ import {
 } from 'lucide-react';
 import { Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import {
-  money,
-  type BillActivityAction,
-  type BillActivityEvent,
-} from '../../lib/api';
-import {
-  PIE_COLORS,
-  canChef,
-  isHead,
-  canManageBill,
-  initials,
-} from '../../lib/helpers';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import BackButton from '../../components/ui/BackButton';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import type { BillActivityAction, BillActivityEvent } from '@/api/types';
+import { money } from '@/lib/currency';
+import { PIE_COLORS } from '@/lib/charts';
+import { canChef, canManageBill, isHead } from '@/lib/permissions';
+import { initials } from '@/lib/user-display';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import BackButton from '@/components/ui/BackButton';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 const activityIcon = (action: BillActivityAction) => {
   switch (action) {
@@ -73,7 +66,7 @@ export default function BillDetailPage() {
   const activity = useLoaderData<BillActivityEvent[]>();
   const { user, bills } = useAppContext();
   const { locale, t } = useI18n();
-  const { mutate } = useMutation();
+  const { mutate } = useRouteMutation();
   const [confirmAction, setConfirmAction] = useState<
     'archive' | 'restore' | null
   >(null);

@@ -14,16 +14,16 @@ import { useEffect, useRef, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import { enUS, vi } from 'date-fns/locale';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
-import type { Bill, BillPage, BillParticipant, User } from '../../lib/api';
-import { money } from '../../lib/api';
-import { canChef, isHead, canManageBill } from '../../lib/helpers';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import Dropdown from '../../components/ui/Dropdown';
-import EmptyState from '../../components/ui/EmptyState';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import ScrollArea from '../../components/ui/ScrollArea';
+import type { Bill, BillPage, BillParticipant, User } from '@/api/types';
+import { money } from '@/lib/currency';
+import { canChef, canManageBill, isHead } from '@/lib/permissions';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import Dropdown from '@/components/ui/Dropdown';
+import EmptyState from '@/components/ui/EmptyState';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import ScrollArea from '@/components/ui/ScrollArea';
 
 const parseDateOnly = (value: string) => {
   if (!value) return null;
@@ -54,7 +54,7 @@ export default function BillsPage() {
     searchParamsRef.current = searchParams;
   }, [searchParams]);
   const { locale, t } = useI18n();
-  const { mutate } = useMutation();
+  const { mutate } = useRouteMutation();
   const filterRestaurant = searchParams.get('restaurantId') ?? '';
   const filterMembers = (searchParams.get('participantIds') ?? '')
     .split(',')

@@ -4,7 +4,7 @@ import test from 'node:test';
 
 test('generated transport composes with shared domain enums', async () => {
   const generated = await readFile(
-    new URL('../apps/web/src/lib/generated/api-types.ts', import.meta.url),
+    new URL('../apps/web/src/api/generated/api-types.ts', import.meta.url),
     'utf8',
   );
 

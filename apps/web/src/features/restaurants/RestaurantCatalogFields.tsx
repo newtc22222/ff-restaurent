@@ -1,10 +1,15 @@
 import { ChefHat } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useI18n } from '../../app/providers/i18n';
-import type { CatalogPage, Cuisine, DiningArea } from '../../lib/api';
-import { session } from '../../lib/session';
-import Dropdown from '../../components/ui/Dropdown';
+import { useI18n } from '@/app/providers/i18n';
+import type { Cuisine, DiningArea } from '@/api/types';
+import Dropdown from '@/components/ui/Dropdown';
+import {
+  defaultCatalogLoader,
+  useCuisineCatalog,
+  useDiningAreaCatalog,
+  type CatalogLoader,
+} from './restaurant-catalog.queries';
 
 export type RestaurantCatalogValue = {
   cuisineIds: string[];
@@ -18,20 +23,19 @@ export const emptyRestaurantCatalogs = (): RestaurantCatalogValue => ({
   diningAreaId: null,
 });
 
-type CatalogLoader = (
-  path: string,
-) => Promise<CatalogPage<Cuisine | DiningArea>>;
+const noInitialCuisines: Cuisine[] = [];
 
-const defaultLoader: CatalogLoader = (path) =>
-  session.api().request<CatalogPage<Cuisine | DiningArea>>(path);
+const mergeById = <T extends { id: string }>(current: T[], next: T[]) => [
+  ...new Map([...current, ...next].map((item) => [item.id, item])).values(),
+];
 
 export default function RestaurantCatalogFields({
   value,
   onChange,
   onPrimaryCuisineNameChange,
-  initialCuisines = [],
+  initialCuisines = noInitialCuisines,
   initialDiningArea,
-  loadCatalog = defaultLoader,
+  loadCatalog = defaultCatalogLoader,
 }: {
   value: RestaurantCatalogValue;
   onChange: (value: RestaurantCatalogValue) => void;
@@ -43,119 +47,71 @@ export default function RestaurantCatalogFields({
   const { t } = useI18n();
   const [cuisineQuery, setCuisineQuery] = useState('');
   const [areaQuery, setAreaQuery] = useState('');
-  const [cuisines, setCuisines] = useState<Cuisine[]>(initialCuisines);
+  const [debouncedCuisineQuery, setDebouncedCuisineQuery] = useState('');
+  const [debouncedAreaQuery, setDebouncedAreaQuery] = useState('');
+  const [catalogCuisines, setCatalogCuisines] = useState<Cuisine[]>([]);
   const [areas, setAreas] = useState<DiningArea[]>(
     initialDiningArea ? [initialDiningArea] : [],
   );
-  const [cuisinePage, setCuisinePage] = useState<
-    CatalogPage<Cuisine>['pageInfo']
-  >({ endCursor: null, hasNextPage: false });
-  const [areaPage, setAreaPage] = useState<CatalogPage<DiningArea>['pageInfo']>(
-    { endCursor: null, hasNextPage: false },
-  );
-  const [loadingCuisines, setLoadingCuisines] = useState(false);
-  const [loadingAreas, setLoadingAreas] = useState(false);
-  const [catalogError, setCatalogError] = useState(false);
-
-  const mergeById = <T extends { id: string }>(current: T[], next: T[]) => [
-    ...new Map([...current, ...next].map((item) => [item.id, item])).values(),
-  ];
-
-  const loadCuisines = useCallback(
-    async (append = false) => {
-      setLoadingCuisines(true);
-      setCatalogError(false);
-      try {
-        const query = new URLSearchParams({
-          search: cuisineQuery,
-          limit: '25',
-        });
-        if (append && cuisinePage.endCursor)
-          query.set('cursor', cuisinePage.endCursor);
-        const result = (await loadCatalog(
-          `/cuisines?${query}`,
-        )) as CatalogPage<Cuisine>;
-        setCuisines((current) =>
-          mergeById(
-            append
-              ? current
-              : [
-                  ...initialCuisines,
-                  ...current.filter((item) =>
-                    value.cuisineIds.includes(item.id),
-                  ),
-                ],
-            result.items,
-          ),
-        );
-        setCuisinePage(result.pageInfo);
-      } catch {
-        setCatalogError(true);
-        toast.error(t('restaurants.catalogLoadError'), {
-          id: 'restaurant-catalog-error',
-        });
-      } finally {
-        setLoadingCuisines(false);
-      }
-    },
-    [
-      cuisinePage.endCursor,
-      cuisineQuery,
-      initialCuisines,
-      loadCatalog,
-      t,
-      value.cuisineIds,
-    ],
-  );
-
-  const loadAreas = useCallback(
-    async (append = false) => {
-      setLoadingAreas(true);
-      setCatalogError(false);
-      try {
-        const query = new URLSearchParams({ search: areaQuery, limit: '25' });
-        if (append && areaPage.endCursor)
-          query.set('cursor', areaPage.endCursor);
-        const result = (await loadCatalog(
-          `/dining-areas?${query}`,
-        )) as CatalogPage<DiningArea>;
-        setAreas((current) =>
-          mergeById(
-            append
-              ? current
-              : [
-                  ...(initialDiningArea ? [initialDiningArea] : []),
-                  ...current.filter((item) => item.id === value.diningAreaId),
-                ],
-            result.items,
-          ),
-        );
-        setAreaPage(result.pageInfo);
-      } catch {
-        setCatalogError(true);
-      } finally {
-        setLoadingAreas(false);
-      }
-    },
-    [
-      areaPage.endCursor,
-      areaQuery,
-      initialDiningArea,
-      loadCatalog,
-      value.diningAreaId,
-    ],
+  const cuisineCatalog = useCuisineCatalog(debouncedCuisineQuery, loadCatalog);
+  const diningAreaCatalog = useDiningAreaCatalog(
+    debouncedAreaQuery,
+    loadCatalog,
   );
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void loadCuisines(false), 200);
+    const items = cuisineCatalog.data?.pages.flatMap((page) => page.items);
+    if (!items) return;
+    setCatalogCuisines((current) =>
+      mergeById(
+        current.filter((item) => value.cuisineIds.includes(item.id)),
+        items,
+      ),
+    );
+  }, [cuisineCatalog.data, value.cuisineIds]);
+
+  useEffect(() => {
+    const items = diningAreaCatalog.data?.pages.flatMap((page) => page.items);
+    if (!items) return;
+    setAreas((current) =>
+      mergeById(
+        [
+          ...(initialDiningArea ? [initialDiningArea] : []),
+          ...current.filter((item) => item.id === value.diningAreaId),
+        ],
+        items,
+      ),
+    );
+  }, [diningAreaCatalog.data, initialDiningArea, value.diningAreaId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setDebouncedCuisineQuery(cuisineQuery),
+      200,
+    );
     return () => window.clearTimeout(timer);
   }, [cuisineQuery]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void loadAreas(false), 200);
+    const timer = window.setTimeout(
+      () => setDebouncedAreaQuery(areaQuery),
+      200,
+    );
     return () => window.clearTimeout(timer);
   }, [areaQuery]);
 
+  const catalogError = cuisineCatalog.isError || diningAreaCatalog.isError;
+  useEffect(() => {
+    if (!catalogError) return;
+    toast.error(t('restaurants.catalogLoadError'), {
+      id: 'restaurant-catalog-error',
+    });
+  }, [catalogError, t]);
+
+  const cuisines = useMemo(
+    () => mergeById(initialCuisines, catalogCuisines),
+    [catalogCuisines, initialCuisines],
+  );
   const cuisineOptions = useMemo(
     () =>
       cuisines.map((cuisine) => ({
@@ -200,7 +156,7 @@ export default function RestaurantCatalogFields({
           fullWidth
           searchable
           label={
-            loadingCuisines
+            cuisineCatalog.isFetching
               ? t('restaurants.loading')
               : t('restaurants.chooseCuisines')
           }
@@ -217,11 +173,11 @@ export default function RestaurantCatalogFields({
               : `${selected.length} ${t('restaurants.selected')}`
           }
         />
-        {cuisinePage.hasNextPage && (
+        {cuisineCatalog.hasNextPage && (
           <button
             type="button"
             className="text-xs font-semibold text-slate-500 hover:underline"
-            onClick={() => void loadCuisines(true)}
+            onClick={() => void cuisineCatalog.fetchNextPage()}
           >
             {t('restaurants.loadMoreCuisines')}
           </button>
@@ -251,7 +207,7 @@ export default function RestaurantCatalogFields({
           searchable
           allowClear
           label={
-            loadingAreas
+            diningAreaCatalog.isFetching
               ? t('restaurants.loading')
               : t('restaurants.chooseDiningArea')
           }
@@ -270,11 +226,11 @@ export default function RestaurantCatalogFields({
           searchPlaceholder={t('restaurants.catalogSearchDiningArea')}
           emptyMessage={t('restaurants.noResults')}
         />
-        {areaPage.hasNextPage && (
+        {diningAreaCatalog.hasNextPage && (
           <button
             type="button"
             className="text-xs font-semibold text-slate-500 hover:underline"
-            onClick={() => void loadAreas(true)}
+            onClick={() => void diningAreaCatalog.fetchNextPage()}
           >
             {t('restaurants.loadMoreDiningAreas')}
           </button>
@@ -285,8 +241,10 @@ export default function RestaurantCatalogFields({
           type="button"
           className="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
           onClick={() => {
-            void loadCuisines(false);
-            void loadAreas(false);
+            void Promise.all([
+              cuisineCatalog.refetch(),
+              diningAreaCatalog.refetch(),
+            ]);
           }}
         >
           {t('restaurants.retryCatalogLoading')}

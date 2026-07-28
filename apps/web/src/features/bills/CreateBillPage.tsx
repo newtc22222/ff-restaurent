@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { ChevronRight, Plus, X } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
 import { Navigate, useNavigate, useParams } from 'react-router';
@@ -7,17 +7,18 @@ import {
   AdjustmentType,
   calculateBillSplit,
 } from '@ff-restaurent/shared';
-import { money, type PaymentQrImage } from '../../lib/api';
-import { session } from '../../lib/session';
-import { canChef, uniqueUsers } from '../../lib/helpers';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import BackButton from '../../components/ui/BackButton';
-import AmountInput from '../../components/ui/AmountInput';
-import SummaryLine from '../../components/ui/SummaryLine';
-import Dropdown from '../../components/ui/Dropdown';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { money } from '@/lib/currency';
+import { canChef } from '@/lib/permissions';
+import { uniqueUsers } from '@/lib/user-display';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import BackButton from '@/components/ui/BackButton';
+import AmountInput from '@/components/ui/AmountInput';
+import SummaryLine from '@/components/ui/SummaryLine';
+import Dropdown from '@/components/ui/Dropdown';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { usePaymentQrImages } from '@/features/profile/profile-media.queries';
 
 interface ParticipantDraft {
   memberId: string;
@@ -77,7 +78,6 @@ export default function CreateBillPage() {
   const [paymentQrImageId, setPaymentQrImageId] = useState(
     editBill?.paymentQrImageId ?? editBill?.paymentQrImage?.id ?? '',
   );
-  const [paymentQrImages, setPaymentQrImages] = useState<PaymentQrImage[]>([]);
   const [participants, setParticipants] = useState<ParticipantDraft[]>(
     editBill?.participants?.map((p) => ({
       memberId: p.memberId,
@@ -87,26 +87,13 @@ export default function CreateBillPage() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [duplicateDetected, setDuplicateDetected] = useState(false);
-  const { mutate } = useMutation();
-  useEffect(() => {
-    let cancelled = false;
-    void session
-      .api()
-      .request<PaymentQrImage[]>(
-        isEditing && editBill
-          ? `/bills/${editBill.id}/payment-qr-options`
-          : '/me/payment-qr-images',
-      )
-      .then((images) => {
-        if (!cancelled) setPaymentQrImages(images);
-      })
-      .catch(() => {
-        if (!cancelled) setPaymentQrImages([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [editBill?.id, isEditing]);
+  const { mutate } = useRouteMutation();
+  const paymentQrImagesQuery = usePaymentQrImages(
+    canChef(user),
+    user.id,
+    isEditing ? editBill?.id : undefined,
+  );
+  const paymentQrImages = paymentQrImagesQuery.data ?? [];
   const activeRestaurants = restaurants.filter(
     (entry) => entry.status === 'ACTIVE' || entry.id === restaurantId,
   );
@@ -519,7 +506,11 @@ export default function CreateBillPage() {
             <div className="mb-6 space-y-2">
               <span className="label">{t('bills.paymentQr')}</span>
               <Dropdown
-                label="No payment QR"
+                label={
+                  paymentQrImagesQuery.isPending
+                    ? t('common.loading')
+                    : 'No payment QR'
+                }
                 ariaLabel={t('bills.paymentQr')}
                 value={paymentQrImageId}
                 onChange={setPaymentQrImageId}
@@ -536,6 +527,15 @@ export default function CreateBillPage() {
                 }))}
                 allowClear
               />
+              {paymentQrImagesQuery.isError && (
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
+                  onClick={() => void paymentQrImagesQuery.refetch()}
+                >
+                  {t('common.retry')}
+                </button>
+              )}
               {paymentQrImageId && (
                 <img
                   src={
