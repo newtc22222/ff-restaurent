@@ -20,6 +20,7 @@ vi.mock('react-router', async (importOriginal) => {
     ...actual,
     useNavigate: () => vi.fn(),
     useParams: () => ({}),
+    useSearchParams: () => [new URLSearchParams(), vi.fn()],
   };
 });
 

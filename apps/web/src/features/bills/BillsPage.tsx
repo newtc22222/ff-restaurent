@@ -13,7 +13,12 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import { enUS, vi } from 'date-fns/locale';
-import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
+import {
+  useLoaderData,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router';
 import type { Bill, BillPage, BillParticipant, User } from '@/api/types';
 import { money } from '@/lib/currency';
 import {
@@ -29,12 +34,14 @@ import Dropdown from '@/components/ui/Dropdown';
 import EmptyState from '@/components/ui/EmptyState';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import ScrollArea from '@/components/ui/ScrollArea';
+import { billsDetailNavigationState } from './bill-navigation';
 
 /**
  * BillsPage displays the list of bills with filters and action triggers for managing bills.
  */
 export default function BillsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, bills: snapshotBills } = useAppContext();
   const page = useLoaderData() as BillPage;
   const bills = page.items;
@@ -126,6 +133,10 @@ export default function BillsPage() {
       { intent, billId, ...(status ? { status } : {}) },
       { fallback, success },
     );
+  const viewBill = (billId: string) =>
+    navigate(`/bills/${billId}`, {
+      state: billsDetailNavigationState(location.pathname, location.search),
+    });
 
   return (
     <div className="w-full">
@@ -340,7 +351,7 @@ export default function BillsPage() {
               bill={bill}
               locale={locale}
               user={user}
-              onView={() => navigate(`/bills/${bill.id}`)}
+              onView={() => viewBill(bill.id)}
               onRemind={() =>
                 runAction(
                   'bill-reminders',
@@ -379,7 +390,7 @@ export default function BillsPage() {
               key={bill.id}
               bill={bill}
               locale={locale}
-              onView={() => navigate(`/bills/${bill.id}`)}
+              onView={() => viewBill(bill.id)}
               t={t}
             />
           ))}
@@ -389,7 +400,7 @@ export default function BillsPage() {
         <BillTable
           bills={bills}
           locale={locale}
-          onView={(bill) => navigate(`/bills/${bill.id}`)}
+          onView={(bill) => viewBill(bill.id)}
           t={t}
         />
       )}

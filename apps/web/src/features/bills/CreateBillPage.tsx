@@ -1,7 +1,12 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { ChevronRight, Plus, X } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
-import { Navigate, useNavigate, useParams } from 'react-router';
+import {
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router';
 import {
   AdjustmentAllocation,
   AdjustmentType,
@@ -20,6 +25,10 @@ import SummaryLine from '@/components/ui/SummaryLine';
 import Dropdown from '@/components/ui/Dropdown';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { usePaymentQrImages } from '@/features/profile/profile-media.queries';
+import {
+  billDetailPath,
+  billsReturnPath,
+} from '@/features/bills/bill-navigation';
 
 interface ParticipantDraft {
   memberId: string;
@@ -43,6 +52,7 @@ interface VoucherDraft {
  */
 export default function CreateBillPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { billId } = useParams();
   const { user, users, bills, restaurants, participantGroups } =
     useAppContext();
@@ -53,6 +63,7 @@ export default function CreateBillPage() {
     ? bills.find((candidate) => candidate.id === billId)
     : undefined;
   const isEditing = !!editBill;
+  const billsReturnTo = billsReturnPath(null, searchParams.get('returnTo'));
 
   const [restaurantId, setRestaurantId] = useState(
     editBill?.restaurant?.id ?? '',
@@ -149,7 +160,10 @@ export default function CreateBillPage() {
   if (!canChef(user)) return <Navigate to="/bills" replace />;
   if (billId && !editBill) return <Navigate to="/bills" replace />;
 
-  const onBack = () => navigate('/bills');
+  const onBack = () =>
+    navigate(
+      isEditing && billId ? billDetailPath(billId, billsReturnTo) : '/bills',
+    );
 
   const updateParticipant = (memberId: string, originCost: number) => {
     setParticipants((current) =>
@@ -180,7 +194,11 @@ export default function CreateBillPage() {
     };
 
     void mutate(
-      { intent: isEditing ? 'update-bill' : 'create-bill', payload },
+      {
+        intent: isEditing ? 'update-bill' : 'create-bill',
+        payload,
+        ...(isEditing ? { billsReturnTo } : {}),
+      },
       {
         fallback: t(
           isEditing ? 'toast.billUpdateFailed' : 'toast.billCreateFailed',

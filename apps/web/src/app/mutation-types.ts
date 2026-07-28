@@ -17,6 +17,7 @@ export type MutationBody = {
   chefRole?: string | null;
   requestId?: string;
   notificationId?: string;
+  billsReturnTo?: string;
 };
 
 export type IntentContext = {
