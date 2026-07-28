@@ -11,6 +11,5 @@
 
 ## Issues
 
-- CUSTOMER only do not have Participant groups page
 - Need to correct text "SOUS_CHEF and HEAD_CHEF can maintain the directory."
 - Need to map 1:1 for English and Vietnamese translate for all text in application
