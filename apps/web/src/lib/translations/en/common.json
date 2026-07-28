@@ -28,6 +28,7 @@
   "common.add": "Add",
   "common.step": "Step",
   "common.remove": "Remove",
+  "common.retry": "Retry",
   "common.confirm": "Confirm",
   "common.yes": "Yes",
   "common.no": "No",

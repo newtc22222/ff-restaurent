@@ -1,7 +1,7 @@
 import { Phone } from 'lucide-react';
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
-import { useI18n } from '../../app/providers/i18n';
-import type { RestaurantPlatformLink } from '../../lib/api';
+import { useI18n } from '@/app/providers/i18n';
+import type { RestaurantPlatformLink } from '@/api/types';
 import PlatformLinksEditor, {
   arePlatformLinksValid,
 } from './PlatformLinksEditor';

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
-import { useTheme } from '../../app/providers/theme';
+import { useTheme } from '@/app/providers/theme';
 
 const mobileQuery = '(max-width: 639px)';
 

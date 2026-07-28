@@ -3,8 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 import { router } from './app/router';
 import { I18nProvider } from './app/providers/i18n';
+import { QueryProvider } from './app/providers/query';
 import { ThemeProvider } from './app/providers/theme';
-import { API_URL } from './lib/api';
+import { API_URL } from './api/client';
 import ToastHost from './components/ui/ToastHost';
 import 'react-datepicker/dist/react-datepicker.css';
 import './index.css';
@@ -27,10 +28,12 @@ if (import.meta.env.PROD) {
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>
-      <I18nProvider>
-        <ToastHost />
-        <RouterProvider router={router} />
-      </I18nProvider>
+      <QueryProvider>
+        <I18nProvider>
+          <ToastHost />
+          <RouterProvider router={router} />
+        </I18nProvider>
+      </QueryProvider>
     </ThemeProvider>
   </React.StrictMode>,
 );

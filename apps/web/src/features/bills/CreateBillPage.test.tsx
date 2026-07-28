@@ -8,7 +8,8 @@ import {
   screen,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { I18nProvider } from '../../app/providers/i18n';
+import { I18nProvider } from '@/app/providers/i18n';
+import { QueryProvider } from '@/app/providers/query';
 import CreateBillPage from './CreateBillPage';
 
 const mutate = vi.fn();
@@ -22,7 +23,7 @@ vi.mock('react-router', async (importOriginal) => {
   };
 });
 
-vi.mock('../../components/ui/Dropdown', () => ({
+vi.mock('@/components/ui/Dropdown', () => ({
   default: ({
     ariaLabel,
     value = '',
@@ -55,11 +56,11 @@ vi.mock('../../components/ui/Dropdown', () => ({
   ),
 }));
 
-vi.mock('../../hooks/useMutation', () => ({
-  useMutation: () => ({ mutate }),
+vi.mock('@/hooks/useRouteMutation', () => ({
+  useRouteMutation: () => ({ mutate }),
 }));
 
-vi.mock('../../app/providers/app-context', () => ({
+vi.mock('@/app/providers/app-context', () => ({
   useAppContext: () => ({
     user: {
       id: 'sous-1',
@@ -127,9 +128,11 @@ afterEach(cleanup);
 describe('CreateBillPage repeat workflows', () => {
   it('applies an owner participant group without managing it inline', () => {
     render(
-      <I18nProvider>
-        <CreateBillPage />
-      </I18nProvider>,
+      <QueryProvider>
+        <I18nProvider>
+          <CreateBillPage />
+        </I18nProvider>
+      </QueryProvider>,
     );
 
     fireEvent.change(screen.getByLabelText('Choose a group'), {
@@ -147,9 +150,11 @@ describe('CreateBillPage repeat workflows', () => {
 
   it('requires explicit confirmation before overriding an exact duplicate', () => {
     render(
-      <I18nProvider>
-        <CreateBillPage />
-      </I18nProvider>,
+      <QueryProvider>
+        <I18nProvider>
+          <CreateBillPage />
+        </I18nProvider>
+      </QueryProvider>,
     );
     fireEvent.change(screen.getByLabelText('Restaurant / Eatery'), {
       target: { value: 'restaurant-1' },
@@ -183,9 +188,11 @@ describe('CreateBillPage repeat workflows', () => {
 
   it('resets a discount value when its type changes', () => {
     render(
-      <I18nProvider>
-        <CreateBillPage />
-      </I18nProvider>,
+      <QueryProvider>
+        <I18nProvider>
+          <CreateBillPage />
+        </I18nProvider>
+      </QueryProvider>,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Add discount' }));

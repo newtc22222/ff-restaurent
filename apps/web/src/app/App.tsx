@@ -17,24 +17,24 @@ import {
   useNavigate,
   useRouteError,
 } from 'react-router';
-import type { Notification } from '../lib/api';
+import type { Notification } from '@/api/types';
 import {
   AppProvider,
   type AppLoaderData,
   useAppContext,
 } from './providers/app-context';
 import { useI18n } from './providers/i18n';
-import { isRootAdmin } from '../lib/helpers';
-import { useMutation } from '../hooks/useMutation';
-import AppHeader from '../components/layout/AppHeader';
-import Sidebar from '../components/layout/Sidebar';
-import ScrollArea from '../components/ui/ScrollArea';
+import { isRootAdmin } from '@/lib/permissions';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import AppHeader from '@/components/layout/AppHeader';
+import Sidebar from '@/components/layout/Sidebar';
+import ScrollArea from '@/components/ui/ScrollArea';
 
 function AppShellContent() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { user, notifications, warning, loading } = useAppContext();
-  const { mutate } = useMutation();
+  const { mutate } = useRouteMutation();
   const warned = useRef(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     typeof window === 'undefined'

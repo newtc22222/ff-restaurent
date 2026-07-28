@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import AppHeader from './AppHeader';
 
-vi.mock('../../app/providers/app-context', () => ({
+vi.mock('@/app/providers/app-context', () => ({
   useAppContext: () => ({
     user: {
       id: 'user-1',
@@ -19,7 +19,7 @@ vi.mock('../../app/providers/app-context', () => ({
   }),
 }));
 
-vi.mock('../../app/providers/i18n', () => ({
+vi.mock('@/app/providers/i18n', () => ({
   useI18n: () => ({
     locale: 'en',
     setLocale: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock('../../app/providers/i18n', () => ({
   }),
 }));
 
-vi.mock('../../app/providers/theme', () => ({
+vi.mock('@/app/providers/theme', () => ({
   useTheme: () => ({ theme: 'light', setTheme: vi.fn() }),
 }));
 

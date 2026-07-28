@@ -12,9 +12,9 @@ import {
   translations,
   type Locale,
   type TranslationKey,
-} from '../../lib/translations';
+} from '@/lib/translations';
 
-export type { Locale } from '../../lib/translations';
+export type { Locale } from '@/lib/translations';
 
 interface I18nContextValue {
   locale: Locale;

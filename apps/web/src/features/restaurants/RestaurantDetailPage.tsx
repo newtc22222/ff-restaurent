@@ -2,15 +2,15 @@ import { ExternalLink, Images, Layers, Pencil, Phone } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate, useRevalidator } from 'react-router';
-import { canChef, isHead } from '../../lib/helpers';
-import type { RestaurantDetailData, VietnamAddress } from '../../lib/api';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import BackButton from '../../components/ui/BackButton';
+import { canChef, isHead } from '@/lib/permissions';
+import type { RestaurantDetailData, VietnamAddress } from '@/api/types';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import BackButton from '@/components/ui/BackButton';
 import VietnamAddressFields, {
   isVietnamAddressComplete,
-} from '../../components/address/VietnamAddressFields';
+} from '@/features/address/VietnamAddressFields';
 import RestaurantProfileFields, {
   isRestaurantProfileValid,
   type RestaurantProfileDraft,
@@ -21,10 +21,10 @@ import RestaurantCatalogFields, {
   type RestaurantCatalogValue,
 } from './RestaurantCatalogFields';
 import RestaurantFeedback from './RestaurantFeedback';
-import Dropdown from '../../components/ui/Dropdown';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import ImagePicker from '../../components/ui/ImagePicker';
-import { session } from '../../lib/session';
+import { useRestaurantMediaMutation } from './restaurant-media.mutations';
+import Dropdown from '@/components/ui/Dropdown';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import ImagePicker from '@/components/ui/ImagePicker';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,
@@ -35,7 +35,8 @@ export default function RestaurantDetailPage() {
   const revalidator = useRevalidator();
   const { user } = useAppContext();
   const { t } = useI18n();
-  const { fetcher, mutate } = useMutation();
+  const { fetcher, mutate } = useRouteMutation();
+  const restaurantMediaMutation = useRestaurantMediaMutation();
   const { restaurant, feedback, collections } =
     useLoaderData() as RestaurantDetailData;
   const [editingProfile, setEditingProfile] = useState(false);
@@ -102,11 +103,11 @@ export default function RestaurantDetailPage() {
         ['logo' | 'banner', File | null]
       >) {
         if (!file) continue;
-        const body = new FormData();
-        body.append('file', file);
-        await session.api().request(`/restaurants/${restaurant.id}/${kind}`, {
-          method: 'PUT',
-          body,
+        await restaurantMediaMutation.mutateAsync({
+          action: 'upload',
+          restaurantId: restaurant.id,
+          kind,
+          file,
         });
       }
       setMedia({ logo: null, banner: null });
@@ -119,8 +120,10 @@ export default function RestaurantDetailPage() {
 
   const removeMedia = async (kind: 'logo' | 'banner') => {
     try {
-      await session.api().request(`/restaurants/${restaurant.id}/${kind}`, {
-        method: 'DELETE',
+      await restaurantMediaMutation.mutateAsync({
+        action: 'remove',
+        restaurantId: restaurant.id,
+        kind,
       });
       void revalidator.revalidate();
     } catch {

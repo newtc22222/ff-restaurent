@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { I18nProvider } from '../../app/providers/i18n';
+import { I18nProvider } from '@/app/providers/i18n';
 import RestaurantBanner from './RestaurantBanner';
 import RestaurantProfileFields, {
   emptyRestaurantProfile,
