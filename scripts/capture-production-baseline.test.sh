@@ -3,6 +3,15 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
+migrations_dir="$repo_root/apps/api/prisma/migrations"
+expected_migration_count="$(
+  find "$migrations_dir" \
+    -mindepth 1 \
+    -maxdepth 1 \
+    -type d |
+    wc -l |
+    tr -d ' '
+)"
 capture_script="$script_dir/capture-production-baseline.sh"
 render_capture_script="$script_dir/capture-render-production-baseline.sh"
 test_root="$(mktemp -d)"
@@ -39,19 +48,26 @@ while IFS= read -r line; do
       ;;
     *"SELECT migration_name ||"*)
       : >"$output_file"
-      migration_count="${MOCK_MIGRATION_COUNT:-17}"
-      for ((index = 1; index <= migration_count; index += 1)); do
-        if [[ "$index" == "$migration_count" ]]; then
-          migration_name="20260720000000_contract_phase2_normalized_restaurants"
-        else
-          migration_name="migration-$index"
+      mapfile -t migration_names < <(
+        find "${MOCK_MIGRATIONS_DIR:?}" \
+          -mindepth 1 \
+          -maxdepth 1 \
+          -type d \
+          -exec basename {} \; |
+          LC_ALL=C sort
+      )
+      migration_count="${MOCK_MIGRATION_COUNT:-${#migration_names[@]}}"
+      for ((index = 0; index < migration_count; index += 1)); do
+        migration_name="${migration_names[$index]}"
+        if [[ "$index" == "0" && -n "${MOCK_REPLACE_MIGRATION_NAME:-}" ]]; then
+          migration_name="$MOCK_REPLACE_MIGRATION_NAME"
         fi
         printf '%s|2026-07-22T00:00:00.000000Z|\n' "$migration_name" >>"$output_file"
       done
       ;;
     *"COUNT(*) FILTER"*)
       printf '%s|0|1\n' \
-        "${MOCK_APPLIED_MIGRATION_COUNT:-${MOCK_MIGRATION_COUNT:-17}}" \
+        "${MOCK_APPLIED_MIGRATION_COUNT:-${MOCK_MIGRATION_COUNT:-${MOCK_EXPECTED_MIGRATION_COUNT:?}}}" \
         >"$output_file"
       ;;
     "\\q")
@@ -136,6 +152,8 @@ common_environment=(
   "BACKUP_PASSPHRASE=focused-test-passphrase"
   "DEPLOYED_GIT_SHA=0638ae3aa622b30ed024302106802d32458d3d32"
   "SOURCE_DATABASE_ID=focused-test-db"
+  "MOCK_MIGRATIONS_DIR=$migrations_dir"
+  "MOCK_EXPECTED_MIGRATION_COUNT=$expected_migration_count"
   "PSQL_BIN=$mock_bin/psql"
   "PG_DUMP_BIN=$mock_bin/pg_dump"
   "PG_RESTORE_BIN=$mock_bin/pg_restore"
@@ -205,8 +223,12 @@ run_failure_case \
 run_failure_case \
   incomplete-migrations \
   "migration inventory count does not match applied migration count" \
-  "MOCK_MIGRATION_COUNT=16" \
-  "MOCK_APPLIED_MIGRATION_COUNT=17"
+  "MOCK_MIGRATION_COUNT=$((expected_migration_count - 1))" \
+  "MOCK_APPLIED_MIGRATION_COUNT=$expected_migration_count"
+run_failure_case \
+  wrong-migration-inventory \
+  "migration inventory does not match repository migrations" \
+  "MOCK_REPLACE_MIGRATION_NAME=missing-shipped-migration"
 run_failure_case \
   failed-encryption \
   "GPG encryption failed" \
@@ -222,6 +244,8 @@ render_log="$(
     "BASELINE_OUTPUT_DIR=$render_output" \
     "RENDER_CLI_BIN=$mock_bin/render" \
     "MOCK_RENDER_ARGUMENTS_FILE=$render_arguments_file" \
+    "MOCK_MIGRATIONS_DIR=$migrations_dir" \
+    "MOCK_EXPECTED_MIGRATION_COUNT=$expected_migration_count" \
     "PSQL_BIN=$mock_bin/psql" \
     "PG_DUMP_BIN=$mock_bin/pg_dump" \
     "PG_RESTORE_BIN=$mock_bin/pg_restore" \

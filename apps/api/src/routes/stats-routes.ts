@@ -24,7 +24,7 @@ export const resolveStatsDateRange = (query: StatsQuery, now = new Date()) => {
 
   const today = parseIsoDateOnly(todayInHoChiMinh(now));
   const start = new Date(today);
-  if (query.range === 'weekly') start.setUTCDate(start.getUTCDate() - 7);
+  if (query.range === 'weekly') start.setUTCDate(start.getUTCDate() - 6);
   else if (query.range === 'yearly')
     start.setUTCFullYear(start.getUTCFullYear() - 1);
   else start.setUTCMonth(start.getUTCMonth() - 1);
