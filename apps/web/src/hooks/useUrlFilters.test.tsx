@@ -17,7 +17,7 @@ import {
 import { useUrlFilters } from './useUrlFilters';
 
 function FilterProbe() {
-  const { searchValue, setSearchValue, setQuery, clearFilters } =
+  const { searchValue, setSearchValue, setQuery, setPage, clearFilters } =
     useUrlFilters();
   const location = useLocation();
   const navigate = useNavigate();
@@ -32,6 +32,9 @@ function FilterProbe() {
       />
       <button type="button" onClick={() => setQuery('visibility', 'owned')}>
         Owned
+      </button>
+      <button type="button" onClick={() => setPage('next-cursor', 'forward')}>
+        Next page
       </button>
       <button type="button" onClick={clearFilters}>
         Clear
@@ -116,5 +119,29 @@ describe('useUrlFilters', () => {
     act(() => vi.advanceTimersByTime(300));
     expect((search as HTMLInputElement).value).toBe('first');
     expect(screen.getByLabelText('Location').textContent).toBe('?search=first');
+  });
+
+  it('drops an old-result cursor when pagination races a pending search', () => {
+    vi.useFakeTimers();
+    render(
+      <MemoryRouter
+        initialEntries={[
+          '/catalog?search=old&cursor=old-cursor&direction=forward',
+        ]}
+      >
+        <FilterProbe />
+      </MemoryRouter>,
+    );
+
+    const search = screen.getByRole('textbox', { name: 'Search' });
+    fireEvent.change(search, { target: { value: 'new' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+
+    expect(screen.getByLabelText('Location').textContent).toBe('?search=new');
+    expect(screen.getByLabelText('Navigation type').textContent).toBe(
+      'REPLACE',
+    );
+    act(() => vi.advanceTimersByTime(300));
+    expect(screen.getByLabelText('Location').textContent).toBe('?search=new');
   });
 });

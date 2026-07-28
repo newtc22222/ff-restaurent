@@ -113,13 +113,27 @@ export const useUrlFilters = ({
     (cursor: string, direction?: 'forward' | 'backward') => {
       cancelPending();
       const next = new URLSearchParams(paramsRef.current);
+      const committedSearch = next.get(searchKey) ?? '';
+      if (searchValueRef.current !== committedSearch) {
+        resetPagination(next);
+        includeLocalSearch(next);
+        paramsRef.current = next;
+        setSearchParams(next, { replace: true });
+        return;
+      }
       includeLocalSearch(next);
       next.set('cursor', cursor);
       applyValue(next, 'direction', direction);
       paramsRef.current = next;
       setSearchParams(next);
     },
-    [cancelPending, includeLocalSearch, setSearchParams],
+    [
+      cancelPending,
+      includeLocalSearch,
+      resetPagination,
+      searchKey,
+      setSearchParams,
+    ],
   );
 
   const replaceParams = useCallback(
