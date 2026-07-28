@@ -5,11 +5,21 @@ import { resolveStatsDateRange } from './stats-routes.js';
 
 test('statistics queries default to a rolling monthly range', () => {
   const query = statsQuerySchema.parse({});
+  const now = new Date('2026-07-15T18:30:00.000Z');
+
+  assert.deepEqual(resolveStatsDateRange(query, now), {
+    start: new Date('2026-06-16T00:00:00.000Z'),
+    end: new Date('2026-07-17T00:00:00.000Z'),
+  });
+});
+
+test('weekly statistics include exactly seven Ho Chi Minh calendar dates', () => {
+  const query = statsQuerySchema.parse({ range: 'weekly' });
   const now = new Date('2026-07-15T12:30:00.000Z');
 
   assert.deepEqual(resolveStatsDateRange(query, now), {
-    start: new Date('2026-06-15T12:30:00.000Z'),
-    end: now,
+    start: new Date('2026-07-09T00:00:00.000Z'),
+    end: new Date('2026-07-16T00:00:00.000Z'),
   });
 });
 

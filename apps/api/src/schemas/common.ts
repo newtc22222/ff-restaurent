@@ -6,6 +6,8 @@ import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
  * shape and its structural rule, and the URL schemas platform links build on.
  */
 
+export const isoDateOnlySchema = z.string().date();
+
 export const vietnamMobilePhoneSchema = z
   .union([z.string().max(40), z.null()])
   .transform((value, context) => {

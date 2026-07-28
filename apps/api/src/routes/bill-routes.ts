@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
-import { AdjustmentAllocation } from '@ff-restaurent/shared';
+import { AdjustmentAllocation, parseIsoDateOnly } from '@ff-restaurent/shared';
 import {
   requireAuthenticatedUser,
   requireHeadChef,
@@ -107,23 +107,16 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         .map((value) => value.trim())
         .filter(Boolean)
         .slice(0, 100);
-      const to = query.to
-        ? new Date(
-            query.to.getUTCHours() === 0 &&
-              query.to.getUTCMinutes() === 0 &&
-              query.to.getUTCSeconds() === 0
-              ? query.to.getTime() + 86_400_000 - 1
-              : query.to.getTime(),
-          )
-        : undefined;
+      const from = query.from ? parseIsoDateOnly(query.from) : undefined;
+      const to = query.to ? parseIsoDateOnly(query.to) : undefined;
       const orderBy: Prisma.BillOrderByWithRelationInput[] =
         query.sort === 'created-asc'
-          ? [{ createdAt: 'asc' }, { id: 'asc' }]
+          ? [{ occurredOn: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }]
           : query.sort === 'total-desc'
             ? [{ totalCost: 'desc' }, { id: 'desc' }]
             : query.sort === 'total-asc'
               ? [{ totalCost: 'asc' }, { id: 'asc' }]
-              : [{ createdAt: 'desc' }, { id: 'desc' }];
+              : [{ occurredOn: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }];
       const backward = query.direction === 'backward' && Boolean(query.cursor);
       const queriedRows = await prisma.bill.findMany({
         where: {
@@ -137,8 +130,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
               status,
               restaurantId: query.restaurantId,
               createdById: query.ownerId,
-              createdAt:
-                query.from || to ? { gte: query.from, lte: to } : undefined,
+              occurredOn: from || to ? { gte: from, lte: to } : undefined,
             },
           ],
         },
@@ -264,16 +256,20 @@ export const registerBillRoutes = (app: FastifyInstance) => {
               duplicateFingerprint: computed.bill.duplicateFingerprint,
               status: EntryStatus.ACTIVE,
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [
+              { occurredOn: 'desc' },
+              { createdAt: 'desc' },
+              { id: 'desc' },
+            ],
             select: { id: true },
           });
           if (!duplicate) {
             const legacyCandidates = await tx.bill.findMany({
               where: {
                 createdById: request.currentUser.id,
-                duplicateFingerprint: null,
                 status: EntryStatus.ACTIVE,
                 restaurantId: computed.bill.restaurantId,
+                occurredOn: computed.bill.occurredOn,
                 baseCost: computed.bill.baseCost,
                 vat: computed.bill.vat,
                 shippingFee: computed.bill.shippingFee,
@@ -355,6 +351,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         existing.createdById,
         existing.adjustmentAllocation as AdjustmentAllocation,
         existing.paymentUrl,
+        existing.occurredOn,
       );
       const qrCheck = await validatePaymentQr(
         computed.bill.paymentQrImageId,

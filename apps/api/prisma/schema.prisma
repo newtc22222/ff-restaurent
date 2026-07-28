@@ -221,14 +221,15 @@ model Bill {
   participants         BillParticipant[]
   auditLogs            BillAuditLog[]
   feedback             Feedback[]
+  occurredOn           DateTime             @default(dbgenerated("((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh'::text))::date")) @db.Date
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   duplicateFingerprint String?
 
   @@index([createdById, duplicateFingerprint, status])
-  @@index([status, createdAt, id])
-  @@index([restaurantId, createdAt, id])
-  @@index([createdById, createdAt, id])
+  @@index([status, occurredOn, createdAt, id])
+  @@index([restaurantId, occurredOn, createdAt, id])
+  @@index([createdById, occurredOn, createdAt, id])
   @@index([paymentQrImageId])
 }
 

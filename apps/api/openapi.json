@@ -55,6 +55,7 @@
             "type": "array"
           },
           "id": { "type": "string" },
+          "occurredOn": { "format": "date", "type": "string" },
           "participants": {
             "items": {
               "additionalProperties": true,
@@ -162,6 +163,7 @@
           "vouchers",
           "adjustmentAllocation",
           "status",
+          "occurredOn",
           "createdAt",
           "updatedAt",
           "participants"
@@ -1089,13 +1091,13 @@
             "in": "query",
             "name": "from",
             "required": false,
-            "schema": { "format": "date-time", "type": "string" }
+            "schema": { "format": "date", "type": "string" }
           },
           {
             "in": "query",
             "name": "to",
             "required": false,
-            "schema": { "format": "date-time", "type": "string" }
+            "schema": { "format": "date", "type": "string" }
           }
         ],
         "responses": {
@@ -1195,6 +1197,7 @@
                     },
                     "type": "array"
                   },
+                  "occurredOn": { "format": "date", "type": "string" },
                   "participants": {
                     "items": {
                       "additionalProperties": false,
@@ -1468,6 +1471,7 @@
                     },
                     "type": "array"
                   },
+                  "occurredOn": { "format": "date", "type": "string" },
                   "participants": {
                     "items": {
                       "additionalProperties": false,
@@ -5990,13 +5994,13 @@
             "in": "query",
             "name": "from",
             "required": false,
-            "schema": { "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "type": "string" }
+            "schema": { "format": "date", "type": "string" }
           },
           {
             "in": "query",
             "name": "to",
             "required": false,
-            "schema": { "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "type": "string" }
+            "schema": { "format": "date", "type": "string" }
           }
         ],
         "responses": {

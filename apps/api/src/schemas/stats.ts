@@ -1,22 +1,13 @@
 import { z } from 'zod';
+import { isoDateOnlySchema } from './common.js';
 
 /** Statistics range queries, including validated custom date ranges. */
-
-const dateOnlySchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a date in YYYY-MM-DD format')
-  .refine((value) => {
-    const date = new Date(`${value}T00:00:00.000Z`);
-    return (
-      !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
-    );
-  }, 'Expected a valid calendar date');
 
 export const statsQuerySchema = z
   .object({
     range: z.enum(['weekly', 'monthly', 'yearly', 'custom']).default('monthly'),
-    from: dateOnlySchema.optional(),
-    to: dateOnlySchema.optional(),
+    from: isoDateOnlySchema.optional(),
+    to: isoDateOnlySchema.optional(),
   })
   .superRefine((value, context) => {
     if (value.range !== 'custom') return;

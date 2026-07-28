@@ -988,6 +988,8 @@ export interface components {
         [key: string]: unknown;
       })[];
       id: string;
+      /** Format: date */
+      occurredOn: string;
       participants: ({
         allocatedShipping: number;
         allocatedVat: number;
@@ -1832,6 +1834,8 @@ export interface operations {
             type: components['schemas']['AdjustmentType'];
             value: number;
           }[];
+          /** Format: date */
+          occurredOn?: string;
           participants: {
             memberId: string;
             originCost?: number;
@@ -2036,6 +2040,8 @@ export interface operations {
             type: components['schemas']['AdjustmentType'];
             value: number;
           }[];
+          /** Format: date */
+          occurredOn?: string;
           participants: {
             memberId: string;
             originCost?: number;

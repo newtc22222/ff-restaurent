@@ -76,7 +76,6 @@ const run = async () => {
     (migration) => migration.rolledBack,
   ).length;
   const migrationInventoryMatches =
-    expectedMigrations.length === 17 &&
     completedMigrations.length === expectedMigrations.length &&
     expectedMigrations.every(
       (migration, index) => completedMigrations[index] === migration,
@@ -270,7 +269,7 @@ const run = async () => {
     migrationInventory: check(
       migrationInventoryMatches,
       completedMigrations.length,
-      17,
+      expectedMigrations.length,
     ),
     rolledBackMigrations: check(
       rolledBackMigrations === 0,

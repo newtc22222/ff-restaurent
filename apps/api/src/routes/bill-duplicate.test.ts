@@ -6,6 +6,7 @@ import { createBillFingerprint } from '../services/bill-service.js';
 test('bill fingerprints ignore participant and adjustment ordering', () => {
   const bill = {
     restaurantId: 'restaurant-1',
+    occurredOn: '2026-07-15',
     baseCost: 3000,
     vat: 300,
     shippingFee: 200,
@@ -36,6 +37,10 @@ test('bill fingerprints ignore participant and adjustment ordering', () => {
   assert.notEqual(
     createBillFingerprint(bill),
     createBillFingerprint({ ...bill, shippingFee: 201 }),
+  );
+  assert.notEqual(
+    createBillFingerprint(bill),
+    createBillFingerprint({ ...bill, occurredOn: '2026-07-16' }),
   );
   assert.notEqual(
     createBillFingerprint({

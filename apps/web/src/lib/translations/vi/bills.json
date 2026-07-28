@@ -56,6 +56,7 @@
   "bills.rows": "dòng",
   "bills.restaurant": "Nhà hàng / Quán ăn",
   "bills.date": "Ngày",
+  "bills.occurredOn": "Ngày hóa đơn",
   "bills.createdBy": "Người tạo",
   "bills.paymentProgress": "Tiến độ thanh toán",
   "bills.total": "Tổng cộng",
@@ -73,6 +74,7 @@
   "activity.participant": "Thành viên",
   "activity.noEvents": "Chưa có hoạt động nào.",
   "activity.change.restaurant": "nhà hàng",
+  "activity.change.date": "ngày hóa đơn",
   "activity.change.costs": "chi phí",
   "activity.change.adjustments": "điều chỉnh",
   "activity.change.paymentLink": "liên kết thanh toán",
@@ -80,6 +82,8 @@
   "createBill.title": "Tạo hóa đơn",
   "createBill.subtitle": "Giá trị tính bằng VND. Cơ bản là tổng giá trị của các thành viên; phí ship chia đều.",
   "createBill.restaurant": "Nhà hàng / Quán ăn",
+  "createBill.occurredOn": "Ngày hóa đơn",
+  "createBill.occurredOnRequired": "Vui lòng chọn ngày hóa đơn.",
   "createBill.choose": "Chọn...",
   "createBill.vat": "VAT",
   "createBill.shipping": "Phí ship",
@@ -97,6 +101,6 @@
   "createBill.allocationEqual": "Chia đều",
   "createBill.allocationEqualHint": "Mỗi thành viên nhận phần giảm giá bằng nhau.",
   "duplicate.title": "Phát hiện hóa đơn trùng",
-  "duplicate.message": "Một hóa đơn đang hoạt động có cùng địa điểm, chi phí, điều chỉnh và thành viên. Bạn vẫn muốn tạo bản trùng?",
+  "duplicate.message": "Một hóa đơn đang hoạt động có cùng ngày, địa điểm, chi phí, điều chỉnh và thành viên. Bạn vẫn muốn tạo bản trùng?",
   "bills.paymentQr": "Ảnh QR thanh toán"
 }

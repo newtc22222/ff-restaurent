@@ -2,10 +2,65 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   type BillServiceDb,
+  computeBillCreateData,
   participantAllocationsChanged,
   validateParticipantIds,
   validatePaymentQr,
 } from './bill-service.js';
+
+const billBody = {
+  restaurantId: 'restaurant-1',
+  baseCost: 2000,
+  vat: 0,
+  shippingFee: 0,
+  participants: [
+    { memberId: 'member-1', originCost: 1000 },
+    { memberId: 'member-2', originCost: 1000 },
+  ],
+};
+
+test('bill computation defaults new bills to the Ho Chi Minh City calendar date', () => {
+  const computed = computeBillCreateData(
+    billBody,
+    'owner-1',
+    undefined,
+    null,
+    undefined,
+    new Date('2026-07-15T18:30:00.000Z'),
+  );
+
+  assert.equal(
+    computed.bill.occurredOn.toISOString(),
+    '2026-07-16T00:00:00.000Z',
+  );
+});
+
+test('bill computation preserves the stored date for legacy edit clients', () => {
+  const computed = computeBillCreateData(
+    billBody,
+    'owner-1',
+    undefined,
+    null,
+    new Date('2026-07-04T00:00:00.000Z'),
+  );
+
+  assert.equal(
+    computed.bill.occurredOn.toISOString(),
+    '2026-07-04T00:00:00.000Z',
+  );
+});
+
+test('bill computation accepts an explicit occurrence date', () => {
+  const computed = computeBillCreateData(
+    { ...billBody, occurredOn: '2026-07-10' },
+    'owner-1',
+  );
+
+  assert.equal(
+    computed.bill.occurredOn.toISOString(),
+    '2026-07-10T00:00:00.000Z',
+  );
+});
 
 /**
  * These exercise the persistence-backed validations with an injected stub, so

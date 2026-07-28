@@ -1,4 +1,5 @@
 import { EntryStatus } from '@prisma/client';
+import { formatIsoDateOnly } from '@ff-restaurent/shared';
 import { publicUserSelect } from '../lib/roles.js';
 import {
   type PublicRestaurantRecord,
@@ -45,6 +46,7 @@ export const paymentResponseInclude = {
 export const serializeBill = async <
   T extends {
     restaurant: PublicRestaurantRecord;
+    occurredOn: Date;
     paymentQrImage?: null | {
       id: string;
       label: string;
@@ -57,6 +59,7 @@ export const serializeBill = async <
   userId: string,
 ) => ({
   ...bill,
+  occurredOn: formatIsoDateOnly(bill.occurredOn),
   restaurant: serializePublicRestaurant(bill.restaurant, userId),
   paymentQrImage: bill.paymentQrImage
     ? {
