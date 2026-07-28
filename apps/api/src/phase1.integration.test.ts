@@ -1063,6 +1063,7 @@ integrationTest(
       headers: auth(tokenFor(sousId)),
       payload: {
         restaurantId,
+        occurredOn: '2026-07-10',
         baseCost: 10001,
         vat: 1001,
         shippingFee: 501,
@@ -1077,7 +1078,16 @@ integrationTest(
     });
     assert.equal(create.statusCode, 201);
     billId = create.json().id;
+    assert.equal(create.json().occurredOn, '2026-07-10');
     assert.equal(JSON.stringify(create.json()).includes('passwordHash'), false);
+
+    const dateStats = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=custom&from=2026-07-10&to=2026-07-10',
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(dateStats.statusCode, 200);
+    assert.equal(dateStats.json().totals.totalObligation > 0, true);
 
     const waitingBill = await prisma.bill.create({
       data: {
@@ -1169,6 +1179,7 @@ integrationTest(
       },
     });
     assert.equal(safeEdit.statusCode, 200);
+    assert.equal(safeEdit.json().occurredOn, '2026-07-10');
     assert.equal(
       safeEdit
         .json()
@@ -1176,6 +1187,40 @@ integrationTest(
           (item: { memberId: string }) => item.memberId === customerAId,
         ).paymentStatus,
       PaymentStatus.PAID,
+    );
+
+    const dateEdit = await app.inject({
+      method: 'PUT',
+      url: `/bills/${billId}`,
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        occurredOn: '2026-07-11',
+        baseCost: 10001,
+        vat: 1001,
+        shippingFee: 501,
+        discounts: [{ type: 'FIXED', value: 500, label: 'Launch' }],
+        vouchers: [{ code: 'TEST', value: 100 }],
+        participants: [
+          { memberId: customerAId, originCost: 5000 },
+          { memberId: customerBId, originCost: 5001 },
+        ],
+      },
+    });
+    assert.equal(dateEdit.statusCode, 200);
+    assert.equal(dateEdit.json().occurredOn, '2026-07-11');
+
+    const dateFiltered = await app.inject({
+      method: 'GET',
+      url: '/bills?from=2026-07-11&to=2026-07-11',
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(dateFiltered.statusCode, 200);
+    assert.equal(
+      dateFiltered
+        .json()
+        .items.some((item: { id: string }) => item.id === billId),
+      true,
     );
 
     const riskyEdit = await app.inject({
@@ -1279,6 +1324,16 @@ integrationTest(
     assert.equal(
       JSON.stringify(activity.json()).includes('passwordHash'),
       false,
+    );
+    assert.equal(
+      activity
+        .json()
+        .some(
+          (event: { action: string; details?: { changes?: string[] } }) =>
+            event.action === 'UPDATED' &&
+            event.details?.changes?.includes('date'),
+        ),
+      true,
     );
   },
 );

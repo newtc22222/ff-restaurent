@@ -16,6 +16,7 @@ import { Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import type { BillActivityAction, BillActivityEvent } from '@/api/types';
 import { money } from '@/lib/currency';
+import { formatDateOnlyForLocale } from '@/lib/date-only';
 import { PIE_COLORS } from '@/lib/charts';
 import { canChef, canManageBill, isHead } from '@/lib/permissions';
 import { initials } from '@/lib/user-display';
@@ -148,7 +149,11 @@ export default function BillDetailPage() {
                   </h2>
                   <p className="mt-0.5 text-[13px] text-slate-500">
                     {bill.restaurant.type} / {bill.restaurant.cuisineType} /
-                    created by {bill.createdBy.name}
+                    {t('bills.createdBy')} {bill.createdBy.name}
+                  </p>
+                  <p className="mt-1 text-[13px] font-medium text-slate-500">
+                    {t('bills.occurredOn')}:{' '}
+                    {formatDateOnlyForLocale(bill.occurredOn, locale)}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">

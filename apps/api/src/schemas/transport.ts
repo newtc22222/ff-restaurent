@@ -9,6 +9,7 @@ import {
   RESTAURANT_PLATFORM_VALUES,
   SYSTEM_ROLE_VALUES,
 } from '@ff-restaurent/shared';
+import { isoDateOnlySchema } from './common.js';
 
 /**
  * Serialized API response contracts.
@@ -233,6 +234,7 @@ export const billResponseSchema = z
     paymentQrImageId: nullableStringSchema.optional(),
     paymentQrImage: paymentQrImageSummaryResponseSchema.nullable().optional(),
     status: entryStatusResponseSchema,
+    occurredOn: isoDateOnlySchema,
     createdAt: serializedDateSchema,
     updatedAt: serializedDateSchema,
     participants: z.array(billParticipantResponseSchema),

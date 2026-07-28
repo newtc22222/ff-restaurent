@@ -56,6 +56,7 @@
   "bills.rows": "rows",
   "bills.restaurant": "Restaurant / Eatery",
   "bills.date": "Date",
+  "bills.occurredOn": "Bill date",
   "bills.createdBy": "Created by",
   "bills.paymentProgress": "Payment progress",
   "bills.total": "Total",
@@ -73,6 +74,7 @@
   "activity.participant": "Participant",
   "activity.noEvents": "No activity yet.",
   "activity.change.restaurant": "restaurant",
+  "activity.change.date": "bill date",
   "activity.change.costs": "costs",
   "activity.change.adjustments": "adjustments",
   "activity.change.paymentLink": "payment link",
@@ -80,6 +82,8 @@
   "createBill.title": "Create bill",
   "createBill.subtitle": "Amounts are in VND. Base is the sum of member values; shipping is split evenly.",
   "createBill.restaurant": "Restaurant / Eatery",
+  "createBill.occurredOn": "Bill date",
+  "createBill.occurredOnRequired": "Choose a bill date.",
   "createBill.choose": "Choose...",
   "createBill.vat": "VAT",
   "createBill.shipping": "Shipping",
@@ -97,6 +101,6 @@
   "createBill.allocationEqual": "Split equally",
   "createBill.allocationEqualHint": "Give every member an equal adjustment share.",
   "duplicate.title": "Duplicate bill detected",
-  "duplicate.message": "An active bill has the same restaurant, costs, adjustments, and participants. Create the duplicate anyway?",
+  "duplicate.message": "An active bill has the same date, restaurant, costs, adjustments, and participants. Create the duplicate anyway?",
   "bills.paymentQr": "Payment QR image"
 }

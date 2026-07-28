@@ -6,6 +6,7 @@ import {
   AdjustmentAllocation,
   AdjustmentType,
   calculateBillSplit,
+  todayInHoChiMinh,
 } from '@ff-restaurent/shared';
 import { money } from '@/lib/currency';
 import { canChef } from '@/lib/permissions';
@@ -55,6 +56,9 @@ export default function CreateBillPage() {
 
   const [restaurantId, setRestaurantId] = useState(
     editBill?.restaurant?.id ?? '',
+  );
+  const [occurredOn, setOccurredOn] = useState(
+    editBill?.occurredOn ?? todayInHoChiMinh(),
   );
   const [vat, setVat] = useState(editBill?.vat ?? 0);
   const [shippingFee, setShippingFee] = useState(
@@ -135,6 +139,7 @@ export default function CreateBillPage() {
     );
   const isFormReady =
     restaurantId.length > 0 &&
+    occurredOn.length > 0 &&
     participants.length >= 2 &&
     participants.every((participant) => participant.originCost > 0) &&
     totalBase > 0 &&
@@ -159,6 +164,7 @@ export default function CreateBillPage() {
   const submitBill = (allowDuplicate: boolean) => {
     const payload = {
       restaurantId,
+      occurredOn,
       baseCost: totalBase,
       vat,
       shippingFee,
@@ -193,6 +199,10 @@ export default function CreateBillPage() {
     setLocalError(null);
     if (participants.length < 2) {
       setLocalError('A bill requires at least two participants.');
+      return;
+    }
+    if (!occurredOn) {
+      setLocalError(t('createBill.occurredOnRequired'));
       return;
     }
     if (totalBase <= 0) {
@@ -277,6 +287,17 @@ export default function CreateBillPage() {
                 emptyMessage={t('bills.noFilterResults')}
               />
             </div>
+
+            <label className="mb-5 block space-y-1.5">
+              <span className="label">{t('createBill.occurredOn')}</span>
+              <input
+                className="input w-full"
+                type="date"
+                required
+                value={occurredOn}
+                onChange={(event) => setOccurredOn(event.target.value)}
+              />
+            </label>
 
             <div className="mb-6 grid grid-cols-2 gap-3">
               <AmountInput

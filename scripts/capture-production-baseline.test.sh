@@ -49,7 +49,9 @@ while IFS= read -r line; do
       done
       ;;
     *"COUNT(*) FILTER"*)
-      printf '%s|0|1\n' "${MOCK_MIGRATION_COUNT:-17}" >"$output_file"
+      printf '%s|0|1\n' \
+        "${MOCK_APPLIED_MIGRATION_COUNT:-${MOCK_MIGRATION_COUNT:-17}}" \
+        >"$output_file"
       ;;
     "\\q")
       exit 0
@@ -201,8 +203,9 @@ run_failure_case \
   "MOCK_PG_RESTORE_FAIL=1"
 run_failure_case \
   incomplete-migrations \
-  "migration state does not match the released Phase 2 boundary" \
-  "MOCK_MIGRATION_COUNT=16"
+  "migration inventory count does not match applied migration count" \
+  "MOCK_MIGRATION_COUNT=16" \
+  "MOCK_APPLIED_MIGRATION_COUNT=17"
 run_failure_case \
   failed-encryption \
   "GPG encryption failed" \

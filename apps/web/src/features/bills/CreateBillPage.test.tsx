@@ -159,6 +159,9 @@ describe('CreateBillPage repeat workflows', () => {
     fireEvent.change(screen.getByLabelText('Restaurant / Eatery'), {
       target: { value: 'restaurant-1' },
     });
+    fireEvent.change(screen.getByLabelText('Bill date'), {
+      target: { value: '2026-07-15' },
+    });
     fireEvent.change(screen.getByLabelText('Choose a group'), {
       target: { value: 'group-1' },
     });
@@ -181,6 +184,7 @@ describe('CreateBillPage repeat workflows', () => {
         payload: expect.objectContaining({
           adjustmentAllocation: 'PROPORTIONAL',
           allowDuplicate: true,
+          occurredOn: '2026-07-15',
         }),
       }),
     );

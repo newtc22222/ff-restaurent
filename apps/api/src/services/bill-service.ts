@@ -3,6 +3,9 @@ import { EntryStatus, Prisma } from '@prisma/client';
 import {
   AdjustmentAllocation,
   calculateBillSplit,
+  formatIsoDateOnly,
+  parseIsoDateOnly,
+  todayInHoChiMinh,
 } from '@ff-restaurent/shared';
 import { prisma } from '../lib/prisma.js';
 import { billSchema } from '../schemas/index.js';
@@ -21,6 +24,7 @@ export const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
 
 type FingerprintBill = {
   restaurantId: string;
+  occurredOn?: string | Date;
   baseCost: number;
   vat: number;
   shippingFee: number;
@@ -41,6 +45,10 @@ type FingerprintBill = {
 export const createBillFingerprint = (bill: FingerprintBill) => {
   const canonical = {
     restaurantId: bill.restaurantId,
+    occurredOn:
+      bill.occurredOn instanceof Date
+        ? formatIsoDateOnly(bill.occurredOn)
+        : (bill.occurredOn ?? null),
     baseCost: bill.baseCost,
     vat: bill.vat,
     shippingFee: bill.shippingFee,
@@ -70,15 +78,24 @@ export const computeBillCreateData = (
   createdById: string,
   fallbackAllocation = AdjustmentAllocation.PROPORTIONAL,
   legacyPaymentUrl: string | null = null,
+  fallbackOccurredOn?: Date,
+  now = new Date(),
 ) => {
   const parsed = billSchema.parse(body);
   const adjustmentAllocation =
     parsed.adjustmentAllocation ?? fallbackAllocation;
+  const occurredOn = parseIsoDateOnly(
+    parsed.occurredOn ??
+      (fallbackOccurredOn
+        ? formatIsoDateOnly(fallbackOccurredOn)
+        : todayInHoChiMinh(now)),
+  );
   const split = calculateBillSplit({ ...parsed, adjustmentAllocation });
   return {
     allowDuplicate: parsed.allowDuplicate,
     bill: {
       restaurantId: parsed.restaurantId,
+      occurredOn,
       baseCost: parsed.baseCost,
       vat: parsed.vat,
       shippingFee: parsed.shippingFee,
@@ -91,6 +108,7 @@ export const computeBillCreateData = (
       createdById,
       duplicateFingerprint: createBillFingerprint({
         ...parsed,
+        occurredOn,
         adjustmentAllocation,
       }),
     },

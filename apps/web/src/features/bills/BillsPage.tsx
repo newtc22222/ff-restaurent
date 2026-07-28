@@ -16,6 +16,11 @@ import { enUS, vi } from 'date-fns/locale';
 import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
 import type { Bill, BillPage, BillParticipant, User } from '@/api/types';
 import { money } from '@/lib/currency';
+import {
+  formatDateOnlyForLocale,
+  formatLocalDateOnly,
+  parseLocalDateOnly,
+} from '@/lib/date-only';
 import { canChef, canManageBill, isHead } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
@@ -24,21 +29,6 @@ import Dropdown from '@/components/ui/Dropdown';
 import EmptyState from '@/components/ui/EmptyState';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import ScrollArea from '@/components/ui/ScrollArea';
-
-const parseDateOnly = (value: string) => {
-  if (!value) return null;
-  const [year, month, day] = value.split('-').map(Number);
-  if (!year || !month || !day) return null;
-  return new Date(year, month - 1, day);
-};
-
-const formatDateOnly = (value: Date | null) => {
-  if (!value) return undefined;
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const day = String(value.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 /**
  * BillsPage displays the list of bills with filters and action triggers for managing bills.
@@ -288,11 +278,11 @@ export default function BillsPage() {
             <label className="space-y-1">
               <span className="label">{t('bills.from')}</span>
               <DatePicker
-                selected={parseDateOnly(filterFrom)}
+                selected={parseLocalDateOnly(filterFrom)}
                 onChange={(date: Date | null) =>
-                  setQuery('from', formatDateOnly(date))
+                  setQuery('from', formatLocalDateOnly(date))
                 }
-                maxDate={parseDateOnly(filterTo) ?? undefined}
+                maxDate={parseLocalDateOnly(filterTo) ?? undefined}
                 locale={locale === 'vi' ? vi : enUS}
                 dateFormat="dd/MM/yyyy"
                 placeholderText={t('bills.chooseDate')}
@@ -304,11 +294,11 @@ export default function BillsPage() {
             <label className="space-y-1">
               <span className="label">{t('bills.to')}</span>
               <DatePicker
-                selected={parseDateOnly(filterTo)}
+                selected={parseLocalDateOnly(filterTo)}
                 onChange={(date: Date | null) =>
-                  setQuery('to', formatDateOnly(date))
+                  setQuery('to', formatLocalDateOnly(date))
                 }
-                minDate={parseDateOnly(filterFrom) ?? undefined}
+                minDate={parseLocalDateOnly(filterFrom) ?? undefined}
                 locale={locale === 'vi' ? vi : enUS}
                 dateFormat="dd/MM/yyyy"
                 placeholderText={t('bills.chooseDate')}
@@ -348,6 +338,7 @@ export default function BillsPage() {
             <BillCard
               key={bill.id}
               bill={bill}
+              locale={locale}
               user={user}
               onView={() => navigate(`/bills/${bill.id}`)}
               onRemind={() =>
@@ -450,6 +441,7 @@ export default function BillsPage() {
 
 interface BillCardProps {
   bill: Bill;
+  locale: string;
   user: User;
   onView: () => void;
   onRemind: () => void;
@@ -478,10 +470,7 @@ function billPaymentSummary(bill: Bill) {
 
 function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
   const summary = billPaymentSummary(bill);
-  const createdAt = new Intl.DateTimeFormat(
-    locale === 'vi' ? 'vi-VN' : 'en-US',
-    { dateStyle: 'medium' },
-  ).format(new Date(bill.createdAt));
+  const occurredOn = formatDateOnlyForLocale(bill.occurredOn, locale);
 
   return (
     <button
@@ -505,7 +494,7 @@ function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
           </span>
         </div>
         <p className="mt-1 text-xs text-slate-500">
-          {createdAt} · {bill.createdBy.name} · {summary.paid} {t('bills.of')}{' '}
+          {occurredOn} · {bill.createdBy.name} · {summary.paid} {t('bills.of')}{' '}
           {summary.total} {t('bills.paidCount')}
         </p>
       </div>
@@ -525,10 +514,6 @@ interface BillTableProps {
 }
 
 function BillTable({ bills, locale, onView, t }: BillTableProps) {
-  const date = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', {
-    dateStyle: 'medium',
-  });
-
   return (
     <>
       <div className="space-y-2 md:hidden">
@@ -576,7 +561,7 @@ function BillTable({ bills, locale, onView, t }: BillTableProps) {
                     {bill.restaurant.name}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-500">
-                    {date.format(new Date(bill.createdAt))}
+                    {formatDateOnlyForLocale(bill.occurredOn, locale)}
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {bill.createdBy.name}
@@ -605,6 +590,7 @@ function BillTable({ bills, locale, onView, t }: BillTableProps) {
  */
 function BillCard({
   bill,
+  locale,
   user,
   onView,
   onRemind,
@@ -634,6 +620,10 @@ function BillCard({
             <p className="mt-0.5 text-[12px] text-slate-500">
               {bill.restaurant.type} / {bill.restaurant.cuisineType} / by{' '}
               {bill.createdBy.name}
+            </p>
+            <p className="mt-1 text-[12px] font-medium text-slate-500">
+              {t('bills.occurredOn')}:{' '}
+              {formatDateOnlyForLocale(bill.occurredOn, locale)}
             </p>
           </div>
           <div className="shrink-0 text-right">
