@@ -1,11 +1,14 @@
 import { Storage } from '@google-cloud/storage';
-import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { prisma } from '../../src/lib/prisma.js';
 import {
   gcsPublicUrl,
   managedPublicPathFor,
 } from '../../src/services/storage.js';
+import {
+  assertDestinationObjectMatchesSource,
+  md5Base64,
+} from '../../src/services/storage-object-integrity.js';
 
 type Mode = 'plan' | 'apply' | 'verify';
 type PublicReference =
@@ -36,9 +39,6 @@ const modeFromArgs = (): Mode => {
   if (selected.length === 1 && selected[0] === '--verify') return 'verify';
   throw new Error('Use exactly one of --plan, --apply, or --verify');
 };
-
-const md5 = (buffer: Buffer) =>
-  createHash('md5').update(buffer).digest('base64');
 
 const main = async () => {
   const mode = modeFromArgs();
@@ -129,37 +129,6 @@ const main = async () => {
     return;
   }
 
-  const verifyDestination = async (
-    bucket: string,
-    path: string,
-    expectedSize?: number,
-  ) => {
-    const [exists] = await storage.bucket(bucket).file(path).exists();
-    if (!exists) throw new Error(`Missing destination object in ${bucket}`);
-    if (expectedSize !== undefined) {
-      const [metadata] = await storage.bucket(bucket).file(path).getMetadata();
-      if (Number(metadata.size) !== expectedSize) {
-        throw new Error(`Destination object size mismatch in ${bucket}`);
-      }
-    }
-  };
-
-  if (mode === 'verify') {
-    await Promise.all([
-      ...publicPaths.map((path) => verifyDestination(publicBucket, path)),
-      ...[...qrByPath.values()].map((image) =>
-        verifyDestination(qrBucket, image.storagePath, image.sizeBytes),
-      ),
-    ]);
-    if (legacyUrlCount > 0) {
-      throw new Error(
-        `${legacyUrlCount} managed public image URLs still reference Supabase`,
-      );
-    }
-    console.log(JSON.stringify({ ...summary, verified: true }, null, 2));
-    return;
-  }
-
   const supabaseUrl = requiredEnv('SUPABASE_URL');
   const supabaseServiceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
   const fetchSource = async (bucket: string, path: string) => {
@@ -180,6 +149,62 @@ const main = async () => {
         response.headers.get('content-type') || 'application/octet-stream',
     };
   };
+
+  const verifyDestination = async ({
+    sourceBucket,
+    destinationBucket,
+    path,
+    expectedSize,
+  }: {
+    sourceBucket: string;
+    destinationBucket: string;
+    path: string;
+    expectedSize?: number;
+  }) => {
+    const file = storage.bucket(destinationBucket).file(path);
+    const [exists] = await file.exists();
+    if (!exists) {
+      throw new Error(`Missing destination object in ${destinationBucket}`);
+    }
+    const [source, [metadata]] = await Promise.all([
+      fetchSource(sourceBucket, path),
+      file.getMetadata(),
+    ]);
+    assertDestinationObjectMatchesSource({
+      source: source.buffer,
+      metadata,
+      sourceBucket,
+      destinationBucket,
+      expectedSize,
+    });
+  };
+
+  if (mode === 'verify') {
+    await Promise.all([
+      ...publicPaths.map((path) =>
+        verifyDestination({
+          sourceBucket: legacyPublicBucket,
+          destinationBucket: publicBucket,
+          path,
+        }),
+      ),
+      ...[...qrByPath.values()].map((image) =>
+        verifyDestination({
+          sourceBucket: legacyQrBucket,
+          destinationBucket: qrBucket,
+          path: image.storagePath,
+          expectedSize: image.sizeBytes,
+        }),
+      ),
+    ]);
+    if (legacyUrlCount > 0) {
+      throw new Error(
+        `${legacyUrlCount} managed public image URLs still reference Supabase`,
+      );
+    }
+    console.log(JSON.stringify({ ...summary, verified: true }, null, 2));
+    return;
+  }
 
   const copyObject = async ({
     sourceBucket,
@@ -202,7 +227,7 @@ const main = async () => {
     const [exists] = await file.exists();
     if (exists) {
       const [metadata] = await file.getMetadata();
-      if (metadata.md5Hash !== md5(source.buffer)) {
+      if (metadata.md5Hash !== md5Base64(source.buffer)) {
         throw new Error(
           `Destination object content mismatch in ${destinationBucket}`,
         );
@@ -218,7 +243,7 @@ const main = async () => {
       preconditionOpts: { ifGenerationMatch: 0 },
     });
     const [metadata] = await file.getMetadata();
-    if (metadata.md5Hash !== md5(source.buffer)) {
+    if (metadata.md5Hash !== md5Base64(source.buffer)) {
       throw new Error(
         `Copied object verification failed in ${destinationBucket}`,
       );

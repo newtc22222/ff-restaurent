@@ -163,6 +163,8 @@ expected = {
     "JWT_SECRET",
     "REGISTRATION_INVITE_CODE",
     "ROOT_ADMIN_USERNAME",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
 }
 try:
     with open(path, encoding="utf-8") as stream:
@@ -514,7 +516,7 @@ print_plan() {
     "  WIF: reconcile ${WORKLOAD_POOL}/${WORKLOAD_PROVIDER}, main branch only" \
     "  Artifact Registry: reconcile ${ARTIFACT_REPOSITORY}" \
     "  Cloud Run: reconcile private ff-restaurent-api and ff-restaurent-web placeholders" \
-    "  Secret Manager: reconcile six named secrets (values are not read in plan mode)" \
+    "  Secret Manager: reconcile eight named secrets, including two migration-only Supabase secrets (values are not read in plan mode)" \
     "  Billing: reconcile VND 2,630,000 monthly budget (approximately USD 100) with 50/80/100 actual and 100 forecast thresholds"
 }
 
@@ -573,8 +575,10 @@ PY
   ensure_secret ff-registration-invite-code "$(read_input_secret REGISTRATION_INVITE_CODE)"
   ensure_secret ff-root-admin-username "$(read_input_secret ROOT_ADMIN_USERNAME)"
   ensure_secret ff-cors-origins "$cors_origin"
+  ensure_secret ff-supabase-url "$(read_input_secret SUPABASE_URL)"
+  ensure_secret ff-supabase-service-role-key "$(read_input_secret SUPABASE_SERVICE_ROLE_KEY)"
 
-  for secret_name in ff-database-url ff-database-password ff-jwt-secret ff-registration-invite-code ff-root-admin-username ff-cors-origins; do
+  for secret_name in ff-database-url ff-database-password ff-jwt-secret ff-registration-invite-code ff-root-admin-username ff-cors-origins ff-supabase-url ff-supabase-service-role-key; do
     ensure_secret_access "$secret_name"
   done
 

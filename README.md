@@ -115,9 +115,13 @@ For the one-time Supabase cutover, freeze media writes and run
 `npm run storage:migrate:gcs -w @ff-restaurent/api -- --plan`, then `--apply`
 with the legacy `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
 `SUPABASE_PUBLIC_BUCKET`, and `SUPABASE_QR_BUCKET` available only to the
-operator process. Run `--verify` before removing the legacy credentials. The
-script copies only database-referenced objects, verifies their content, and
-rewrites managed public image URLs; external image URLs are left untouched.
+migration process. The GCP deploy workflow runs `--apply` and checksum-backed
+`--verify` as a blocking Cloud Run Job before switching the API service to GCS;
+the API service itself never receives the legacy credentials. Keep the two
+migration-only Secret Manager values through the rollback window, then remove
+the migration job and credentials in the retirement follow-up. The script
+copies only database-referenced objects, verifies their content, and rewrites
+managed public image URLs; external image URLs are left untouched.
 
 ### Vietnam address directory
 

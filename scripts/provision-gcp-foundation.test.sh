@@ -76,6 +76,8 @@ case "$args" in
       *"--secret ff-registration-invite-code"*) printf invite ;;
       *"--secret ff-root-admin-username"*) printf root ;;
       *"--secret ff-cors-origins"*) printf 'https://ff-restaurent-web.example.run.app' ;;
+      *"--secret ff-supabase-url"*) printf 'https://legacy.supabase.co' ;;
+      *"--secret ff-supabase-service-role-key"*) printf legacy-service-role ;;
     esac
     ;;
   "storage buckets describe "*) : ;;
@@ -115,7 +117,9 @@ write_valid_secrets() {
 {
   "JWT_SECRET": "this-is-a-jwt-secret-with-more-than-32-characters",
   "REGISTRATION_INVITE_CODE": "invite",
-  "ROOT_ADMIN_USERNAME": "root"
+  "ROOT_ADMIN_USERNAME": "root",
+  "SUPABASE_URL": "https://legacy.supabase.co",
+  "SUPABASE_SERVICE_ROLE_KEY": "legacy-service-role"
 }
 EOF
   chmod 600 "$directory/secrets.json"
@@ -194,9 +198,10 @@ for bucket_name in \
 done
 grep -Fq 'bindings.members=serviceAccount:ff-runtime@ff-restaurent.iam.gserviceaccount.com' "$GCLOUD_MOCK_LOG" \
   || fail 'runtime self-signing IAM'
-if grep -Fq 'ff-supabase' "$GCLOUD_MOCK_LOG"; then
-  fail 'legacy Supabase secret reconciliation removed'
-fi
+grep -Fq 'secrets versions access latest --secret ff-supabase-url' "$GCLOUD_MOCK_LOG" \
+  || fail 'migration-only Supabase URL secret reconciliation'
+grep -Fq 'secrets versions access latest --secret ff-supabase-service-role-key' "$GCLOUD_MOCK_LOG" \
+  || fail 'migration-only Supabase service-role secret reconciliation'
 if grep -Eq ' (create|enable|add-iam-policy-binding|versions add) ' "$TMP/gcloud.log"; then
   fail 'safe rerun performed a create operation'
 fi

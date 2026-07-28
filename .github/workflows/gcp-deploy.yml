@@ -93,6 +93,7 @@ jobs:
             api_service=ff-restaurent-api
             web_service=ff-restaurent-web
             release_job=ff-restaurent-release
+            storage_migration_job=ff-restaurent-storage-migration
             database_secret=ff-database-url
             cors_secret=ff-cors-origins
             root_admin_username_secret=ff-root-admin-username
@@ -103,6 +104,7 @@ jobs:
             api_service=ff-restaurent-api-staging
             web_service=ff-restaurent-web-staging
             release_job=ff-restaurent-release-staging
+            storage_migration_job=ff-restaurent-storage-migration-staging
             database_secret=ff-staging-database-url
             cors_secret=ff-staging-cors-origins
             root_admin_username_secret=ff-staging-root-admin-username
@@ -113,6 +115,7 @@ jobs:
             api_service=ff-restaurent-api-verify
             web_service=ff-restaurent-web-verify
             release_job=ff-restaurent-release-verify
+            storage_migration_job=ff-restaurent-storage-migration-verify
             database_secret=ff-release-verify-database-url
             cors_secret=ff-release-verify-cors-origins
             root_admin_username_secret=ff-root-admin-username
@@ -133,6 +136,7 @@ jobs:
             echo "API_SERVICE=$api_service"
             echo "WEB_SERVICE=$web_service"
             echo "RELEASE_JOB=$release_job"
+            echo "STORAGE_MIGRATION_JOB=$storage_migration_job"
             echo "DATABASE_SECRET=$database_secret"
             echo "CORS_SECRET=$cors_secret"
             echo "ROOT_ADMIN_USERNAME_SECRET=$root_admin_username_secret"
@@ -220,6 +224,45 @@ jobs:
           )"
           test -n "$execution"
           echo "RELEASE_EXECUTION=$execution" >>"$GITHUB_ENV"
+
+      - name: Deploy the blocking storage migration job
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          gcloud run jobs deploy "$STORAGE_MIGRATION_JOB" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --image "$API_IMAGE" \
+            --command sh \
+            --args scripts/run-storage-migration.sh \
+            --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+            --set-cloudsql-instances "$CLOUD_SQL_CONNECTION" \
+            --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest,SUPABASE_URL=ff-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=ff-supabase-service-role-key:latest" \
+            --set-env-vars "NODE_ENV=production,GCP_PROJECT_ID=${GCP_PROJECT_ID},GCS_PUBLIC_BUCKET=${GCS_PUBLIC_BUCKET},GCS_QR_BUCKET=${GCS_QR_BUCKET},SUPABASE_PUBLIC_BUCKET=ff-public-images,SUPABASE_QR_BUCKET=ff-payment-qr" \
+            --tasks 1 \
+            --max-retries 0 \
+            --task-timeout 30m \
+            --quiet
+
+      - name: Execute and await the storage migration
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          execution="$(
+            gcloud run jobs execute "$STORAGE_MIGRATION_JOB" \
+              --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" \
+              --wait \
+              --format='value(metadata.name)'
+          )"
+          test -n "$execution"
+          echo "STORAGE_MIGRATION_EXECUTION=$execution" >>"$GITHUB_ENV"
 
       - name: Deploy the private API service
         shell: bash
