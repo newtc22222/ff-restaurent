@@ -9,7 +9,7 @@ Phase 1 / version 1.0.0 is operationally complete. The release was promoted to
 passed, and Linear issue `FF-21` is Done.
 
 Phase 2 implementation and the `v1.1.0-rc.1` observation window are complete.
-Resume all Phase 2 release work from `.codex/PHASE_2_HANDOFF.md` and
+Resume all Phase 2 release work from `.agents/PHASE_2_HANDOFF.md` and
 `wiki/RELEASE_1-1-0`. The overall roadmap remains In Progress for later
 phases.
 
@@ -20,7 +20,7 @@ Read these files before starting Phase 2 or another production operation:
 - `wiki/PRE_RELEASE` — release-readiness checklist.
 - `wiki/Production-Runbook` — deployment, rollback, smoke, and recovery
   procedures.
-- `AGENTS.md` and `.codex/skills/ff-restaurent-app/SKILL.md` — repository rules
+- `AGENTS.md` and `.agents/skills/ff-restaurent-app/SKILL.md` — repository rules
   and commands.
 
 ## Final Phase 1 boundaries

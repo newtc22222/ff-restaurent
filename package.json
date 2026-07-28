@@ -14,6 +14,7 @@
     "test": "npm run test --workspaces --if-present && node --test scripts/*.test.mjs",
     "test:e2e": "playwright test",
     "smoke": "node scripts/staging-smoke.mjs",
+    "agents:verify": "node scripts/verify-agent-system.mjs",
     "measure:web": "node scripts/measure-web-bundle.mjs",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write .",
