@@ -86,6 +86,7 @@ export type CollectionDetailData = {
 
 export type RestaurantDirectoryData = CatalogPage<RestaurantEntry> & {
   collections: Collection[];
+  cuisines: Cuisine[];
 };
 
 export type RestaurantCollectionSummary = Pick<

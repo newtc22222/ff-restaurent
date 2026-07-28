@@ -3,6 +3,7 @@ import { ApiError } from '@/api/client';
 import type {
   CatalogPage,
   Collection,
+  Cuisine,
   RestaurantDetailData,
   RestaurantDirectoryData,
   RestaurantEntry,
@@ -33,13 +34,14 @@ export async function restaurantsLoader({ request }: LoaderFunctionArgs) {
       'recommended',
     ]),
   );
-  const [page, collections] = await Promise.all([
+  const [page, collections, cuisines] = await Promise.all([
     session
       .api()
       .request<CatalogPage<RestaurantEntry>>(`/restaurants?${query}`),
     fetchAllPages<Collection>('/collections?limit=100'),
+    fetchAllPages<Cuisine>('/cuisines?limit=100'),
   ]);
-  return { ...page, collections } satisfies RestaurantDirectoryData;
+  return { ...page, collections, cuisines } satisfies RestaurantDirectoryData;
 }
 
 export async function restaurantFeedbackLoader({
