@@ -365,7 +365,14 @@ export const registerBillRoutes = (app: FastifyInstance) => {
       const participantIds = computed.participants.map(
         (participant) => participant.memberId,
       );
-      const participantCheck = await validateParticipantIds(participantIds);
+      const existingParticipantIds = new Set(
+        existing.participants.map((participant) => participant.memberId),
+      );
+      const participantCheck = await validateParticipantIds(
+        participantIds.filter(
+          (participantId) => !existingParticipantIds.has(participantId),
+        ),
+      );
       if (!participantCheck.ok) {
         return reply.code(400).send({
           code: participantCheck.code,

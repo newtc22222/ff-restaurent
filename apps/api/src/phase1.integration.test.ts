@@ -377,6 +377,24 @@ integrationTest(
         where: { userId: target.id, activeKey: target.id },
       }),
     );
+    const historicalBill = await app.inject({
+      method: 'POST',
+      url: '/bills',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        occurredOn: '2025-07-02',
+        baseCost: 3000,
+        vat: 0,
+        shippingFee: 0,
+        participants: [
+          { memberId: target.id, originCost: 1000 },
+          { memberId: customerAId, originCost: 1000 },
+          { memberId: customerBId, originCost: 1000 },
+        ],
+      },
+    });
+    assert.equal(historicalBill.statusCode, 201);
 
     const oldCustomerToken = tokenFor(target.id);
     const blocked = await app.inject({
@@ -492,6 +510,42 @@ integrationTest(
     });
     assert.equal(invalidBill.statusCode, 400);
     assert.equal(invalidBill.json().code, 'INVALID_PARTICIPANTS');
+    const historicalBillId = historicalBill.json().id;
+    const preservedHistoricalParticipant = await app.inject({
+      method: 'PUT',
+      url: `/bills/${historicalBillId}`,
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        occurredOn: '2025-07-02',
+        baseCost: 3000,
+        vat: 0,
+        shippingFee: 300,
+        participants: [
+          { memberId: target.id, originCost: 1000 },
+          { memberId: customerAId, originCost: 1000 },
+          { memberId: customerBId, originCost: 1000 },
+        ],
+      },
+    });
+    assert.equal(preservedHistoricalParticipant.statusCode, 200);
+    const removedHistoricalParticipant = await app.inject({
+      method: 'PUT',
+      url: `/bills/${historicalBillId}`,
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        occurredOn: '2025-07-02',
+        baseCost: 2000,
+        vat: 0,
+        shippingFee: 300,
+        participants: [
+          { memberId: customerAId, originCost: 1000 },
+          { memberId: customerBId, originCost: 1000 },
+        ],
+      },
+    });
+    assert.equal(removedHistoricalParticipant.statusCode, 200);
     const invalidTransfer = await app.inject({
       method: 'POST',
       url: '/admin/root-transfer',

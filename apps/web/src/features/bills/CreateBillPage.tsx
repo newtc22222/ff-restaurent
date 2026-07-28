@@ -58,11 +58,21 @@ export default function CreateBillPage() {
     useAppContext();
   const { t } = useI18n();
 
-  const members = uniqueUsers(users, user);
   const editBill = billId
     ? bills.find((candidate) => candidate.id === billId)
     : undefined;
   const isEditing = !!editBill;
+  const members = uniqueUsers(
+    users.filter((candidate) => candidate.accountStatus !== 'BLOCKED'),
+    user,
+  );
+  const activeMemberIds = new Set(members.map((member) => member.id));
+  const usersById = new Map(users.map((member) => [member.id, member]));
+  const historicalParticipantMembers =
+    editBill?.participants.map(
+      (participant) =>
+        usersById.get(participant.memberId) ?? participant.member,
+    ) ?? [];
   const billsReturnTo = billsReturnPath(null, searchParams.get('returnTo'));
 
   const [restaurantId, setRestaurantId] = useState(
@@ -113,6 +123,19 @@ export default function CreateBillPage() {
     (entry) => entry.status === 'ACTIVE' || entry.id === restaurantId,
   );
   const participantIds = new Set(participants.map((p) => p.memberId));
+  const participantMembers = new Map(
+    [...members, ...historicalParticipantMembers].map((member) => [
+      member.id,
+      member,
+    ]),
+  );
+  const participantOptions = [
+    ...members,
+    ...historicalParticipantMembers.filter(
+      (member) =>
+        participantIds.has(member.id) && !activeMemberIds.has(member.id),
+    ),
+  ];
   const availableMembers = members.filter((m) => !participantIds.has(m.id));
   const totalBase = participants.reduce((sum, p) => sum + p.originCost, 0);
   const preview = useMemo(() => {
@@ -247,11 +270,13 @@ export default function CreateBillPage() {
     const group = participantGroups.find(({ id }) => id === selectedGroupId);
     if (!group) return;
     setParticipants((current) =>
-      group.members.map(({ userId }) =>
-        current.find(({ memberId }) => memberId === userId)
-          ? { ...current.find(({ memberId }) => memberId === userId)! }
-          : { memberId: userId, originCost: 0 },
-      ),
+      group.members
+        .filter(({ userId }) => activeMemberIds.has(userId))
+        .map(({ userId }) =>
+          current.find(({ memberId }) => memberId === userId)
+            ? { ...current.find(({ memberId }) => memberId === userId)! }
+            : { memberId: userId, originCost: 0 },
+        ),
     );
   };
 
@@ -640,10 +665,11 @@ export default function CreateBillPage() {
                   </p>
                 )}
                 {participants.map((participant) => {
-                  const member = members.find(
-                    (candidate) => candidate.id === participant.memberId,
-                  );
+                  const member = participantMembers.get(participant.memberId);
                   if (!member) return null;
+                  const memberLabel = activeMemberIds.has(member.id)
+                    ? member.name
+                    : `${member.name} (${t('createBill.blockedParticipant')})`;
                   const calculated = calculatedPreview?.participants.find(
                     (item) => item.memberId === participant.memberId,
                   );
@@ -654,7 +680,7 @@ export default function CreateBillPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-semibold text-ink">
-                          {member.name}
+                          {memberLabel}
                         </p>
                         {calculated && (
                           <p className="mt-0.5 text-[11px] text-slate-500">
@@ -668,7 +694,7 @@ export default function CreateBillPage() {
                       </div>
                       <div className="relative">
                         <CurrencyInput
-                          aria-label={`Base amount for ${member.name}`}
+                          aria-label={`Base amount for ${memberLabel}`}
                           className="h-9 w-32 rounded-md border border-border bg-surface px-3 text-right text-[14px] text-ink outline-none transition-colors focus:border-ink"
                           value={
                             participant.originCost === 0
@@ -729,9 +755,11 @@ export default function CreateBillPage() {
                         ),
                       )
                     }
-                    options={members.map((member) => ({
+                    options={participantOptions.map((member) => ({
                       value: member.id,
-                      label: member.name,
+                      label: activeMemberIds.has(member.id)
+                        ? member.name
+                        : `${member.name} (${t('createBill.blockedParticipant')})`,
                       description: `@${member.username}`,
                       searchText: `${member.name} ${member.username}`,
                     }))}

@@ -100,6 +100,7 @@
   "createBill.allocationProportionalHint": "Use each member’s percentage of the base cost.",
   "createBill.allocationEqual": "Split equally",
   "createBill.allocationEqualHint": "Give every member an equal adjustment share.",
+  "createBill.blockedParticipant": "blocked account",
   "duplicate.title": "Duplicate bill detected",
   "duplicate.message": "An active bill has the same date, restaurant, costs, adjustments, and participants. Create the duplicate anyway?",
   "bills.paymentQr": "Payment QR image"
