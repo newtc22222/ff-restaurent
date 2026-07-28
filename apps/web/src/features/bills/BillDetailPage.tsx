@@ -12,7 +12,13 @@ import {
   RotateCcw,
   WalletCards,
 } from 'lucide-react';
-import { Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
+import {
+  Navigate,
+  useLoaderData,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import type { BillActivityAction, BillActivityEvent } from '@/api/types';
 import { money } from '@/lib/currency';
@@ -25,6 +31,7 @@ import { useI18n } from '@/app/providers/i18n';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { billsReturnPath } from './bill-navigation';
 
 const activityIcon = (action: BillActivityAction) => {
   switch (action) {
@@ -63,6 +70,7 @@ const activityTone = (action: BillActivityAction) => {
  */
 export default function BillDetailPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { billId } = useParams();
   const activity = useLoaderData<BillActivityEvent[]>();
   const { user, bills } = useAppContext();
@@ -79,7 +87,8 @@ export default function BillDetailPage() {
   const bill = bills.find((candidate) => candidate.id === billId);
   if (!bill) return <Navigate to="/bills" replace />;
 
-  const onBack = () => navigate('/bills');
+  const onBack = () =>
+    navigate(billsReturnPath(location.state), { replace: true });
 
   const paid = bill.participants.filter(
     (participant) => participant.paymentStatus === 'PAID',
