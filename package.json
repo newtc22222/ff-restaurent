@@ -16,6 +16,8 @@
     "smoke": "node scripts/staging-smoke.mjs",
     "agents:verify": "node scripts/verify-agent-system.mjs",
     "measure:web": "node scripts/measure-web-bundle.mjs",
+    "openapi:generate": "tsx scripts/generate-openapi.ts",
+    "openapi:check": "tsx scripts/generate-openapi.ts --check",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write .",
     "prettier:check": "prettier --check ."
@@ -32,6 +34,7 @@
     "eslint-config-prettier": "^10.1.5",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.6.2",
     "typescript": "^5.8.3"
   },
