@@ -44,4 +44,13 @@ describe('translation dictionaries', () => {
     );
     expect(unnamespaced).toEqual([]);
   });
+
+  it('describes restaurant permissions accurately in both locales', () => {
+    expect(translations.en['restaurants.addEntrySubtitle']).toBe(
+      'SOUS_CHEF and HEAD_CHEF can create and edit restaurant entries. HEAD_CHEF can also archive and restore them.',
+    );
+    expect(translations.vi['restaurants.addEntrySubtitle']).toBe(
+      'SOUS_CHEF và HEAD_CHEF có thể tạo và chỉnh sửa mục nhà hàng. HEAD_CHEF cũng có thể lưu trữ và khôi phục.',
+    );
+  });
 });
