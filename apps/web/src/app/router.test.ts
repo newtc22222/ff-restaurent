@@ -534,6 +534,36 @@ describe('mutationAction', () => {
     );
   });
 
+  it('preserves the Bills return target after updating a bill', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const request = new Request('http://localhost/bills/bill-1/edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'update-bill',
+        payload: { occurredOn: '2026-07-28' },
+        billsReturnTo: '/bills?restaurantId=restaurant-1&cursor=bill-1',
+      }),
+    });
+
+    const response = (await mutationAction({
+      request,
+      params: { billId: 'bill-1' },
+      context: {},
+    } as never)) as Response;
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/bills\/bill-1$/),
+      expect.objectContaining({ method: 'PUT' }),
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe(
+      '/bills/bill-1?returnTo=%2Fbills%3FrestaurantId%3Drestaurant-1%26cursor%3Dbill-1',
+    );
+  });
+
   it('returns handled API failures for mutation toasts', async () => {
     localStorage.setItem('ff-token', 'token');
     vi.stubGlobal(

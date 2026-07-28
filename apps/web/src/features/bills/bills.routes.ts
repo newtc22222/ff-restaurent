@@ -12,6 +12,7 @@ import type {
   IntentMap,
   MutationBody,
 } from '@/app/mutation-types';
+import { billDetailPath } from './bill-navigation';
 
 /**
  * Route data and mutations owned by the bills feature.
@@ -83,7 +84,7 @@ export const billIntents = {
       body: JSON.stringify(body.payload),
     });
     announce(body);
-    return redirect(`/bills/${params.billId}`);
+    return redirect(billDetailPath(params.billId!, body.billsReturnTo));
   },
   'bill-status': ({ api, body, params }: IntentContext) =>
     api.request(`/bills/${body.billId ?? params.billId}/${body.status}`, {

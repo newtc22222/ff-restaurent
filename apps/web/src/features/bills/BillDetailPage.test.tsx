@@ -9,16 +9,17 @@ const { navigate, routerState } = vi.hoisted(() => ({
   navigate: vi.fn(),
   routerState: {
     state: null as unknown,
+    returnTo: null as string | null,
   },
 }));
 
 const user = {
-  id: 'customer-1',
-  username: 'customer',
-  name: 'Customer',
-  chefRole: null,
+  id: 'chef-1',
+  username: 'chef',
+  name: 'Chef',
+  chefRole: 'SOUS_CHEF',
   systemRole: null,
-  roles: ['CUSTOMER'],
+  roles: ['CUSTOMER', 'SOUS_CHEF'],
   paymentRemindersEnabled: true,
 };
 
@@ -65,6 +66,12 @@ vi.mock('react-router', async (importOriginal) => {
     useLocation: () => routerState,
     useNavigate: () => navigate,
     useParams: () => ({ billId: bill.id }),
+    useSearchParams: () => [
+      new URLSearchParams(
+        routerState.returnTo ? { returnTo: routerState.returnTo } : undefined,
+      ),
+      vi.fn(),
+    ],
   };
 });
 
@@ -89,6 +96,7 @@ const renderPage = () =>
 beforeEach(() => {
   localStorage.setItem('ff-locale', 'en');
   routerState.state = null;
+  routerState.returnTo = null;
 });
 
 afterEach(() => {
@@ -109,6 +117,31 @@ describe('BillDetailPage back navigation', () => {
 
     expect(navigate).toHaveBeenCalledWith(
       '/bills?restaurantId=restaurant-1&cursor=bill-1&direction=forward',
+      { replace: true },
+    );
+  });
+
+  it('preserves the return target while editing a bill', () => {
+    routerState.state = {
+      billsReturnTo: '/bills?restaurantId=restaurant-1&cursor=bill-1',
+    };
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit bill' }));
+
+    expect(navigate).toHaveBeenCalledWith(
+      '/bills/bill-1/edit?returnTo=%2Fbills%3FrestaurantId%3Drestaurant-1%26cursor%3Dbill-1',
+    );
+  });
+
+  it('uses the return target carried by an edit redirect', () => {
+    routerState.returnTo = '/bills?restaurantId=restaurant-1&cursor=bill-1';
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /Back to Bills/i }));
+
+    expect(navigate).toHaveBeenCalledWith(
+      '/bills?restaurantId=restaurant-1&cursor=bill-1',
       { replace: true },
     );
   });

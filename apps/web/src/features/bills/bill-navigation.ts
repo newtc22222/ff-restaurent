@@ -14,13 +14,26 @@ export const billsDetailNavigationState = (
   [BILLS_RETURN_STATE_KEY]: billsListPath(pathname, search),
 });
 
-export const billsReturnPath = (state: unknown) => {
-  if (!state || typeof state !== 'object') return '/bills';
-  const returnTo = (state as Partial<BillsDetailNavigationState>)[
-    BILLS_RETURN_STATE_KEY
-  ];
-  return typeof returnTo === 'string' &&
-    (returnTo === '/bills' || returnTo.startsWith('/bills?'))
-    ? returnTo
-    : '/bills';
+const validBillsReturnPath = (returnTo: unknown): returnTo is string =>
+  typeof returnTo === 'string' &&
+  (returnTo === '/bills' || returnTo.startsWith('/bills?'));
+
+export const billsReturnPath = (
+  state: unknown,
+  queryReturnTo?: string | null,
+) => {
+  const stateReturnTo =
+    state && typeof state === 'object'
+      ? (state as Partial<BillsDetailNavigationState>)[BILLS_RETURN_STATE_KEY]
+      : undefined;
+  if (validBillsReturnPath(stateReturnTo)) return stateReturnTo;
+  return validBillsReturnPath(queryReturnTo) ? queryReturnTo : '/bills';
 };
+
+export const billEditPath = (billId: string, state: unknown) =>
+  `/bills/${billId}/edit?returnTo=${encodeURIComponent(billsReturnPath(state))}`;
+
+export const billDetailPath = (billId: string, returnTo: unknown) =>
+  `/bills/${billId}?returnTo=${encodeURIComponent(
+    validBillsReturnPath(returnTo) ? returnTo : '/bills',
+  )}`;
