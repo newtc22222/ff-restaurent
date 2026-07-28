@@ -26,6 +26,7 @@ test.beforeAll(async () => {
   await prisma.rootAdminTransferAudit.deleteMany();
   await prisma.billAuditLog.deleteMany();
   await prisma.roleAuditLog.deleteMany();
+  await prisma.userAccountStatusAudit.deleteMany();
   await prisma.billParticipant.deleteMany();
   await prisma.bill.deleteMany();
   await prisma.collection.deleteMany();
