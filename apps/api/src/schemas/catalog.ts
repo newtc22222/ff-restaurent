@@ -9,6 +9,7 @@ export const cuisineSchema = z.object({
   type: z.string().trim().min(1).max(80),
   description: z.string().trim().max(500).nullable().optional(),
 });
+export const cuisineUpdateSchema = cuisineSchema.partial();
 
 const diningAreaObjectSchema = z.object({
   ...vietnamAddressShape,

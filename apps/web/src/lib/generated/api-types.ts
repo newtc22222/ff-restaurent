@@ -3202,8 +3202,8 @@ export interface operations {
       content: {
         'application/json': {
           description?: string | null;
-          name: string;
-          type: string;
+          name?: string;
+          type?: string;
         };
       };
     };

@@ -935,6 +935,16 @@ integrationTest(
     assert.equal(cuisineSearch.json().items[0].name, 'Vegan');
     assert.equal('nameKey' in cuisineSearch.json().items[0], false);
 
+    const partialCuisineUpdate = await app.inject({
+      method: 'PUT',
+      url: `/cuisines/${vegan.json().id}`,
+      headers: auth(tokenFor(sousId)),
+      payload: { description: 'Plant-based dishes' },
+    });
+    assert.equal(partialCuisineUpdate.statusCode, 200);
+    assert.equal(partialCuisineUpdate.json().name, 'Vegan');
+    assert.equal(partialCuisineUpdate.json().description, 'Plant-based dishes');
+
     const protectedCuisine = await app.inject({
       method: 'DELETE',
       url: `/cuisines/${vegan.json().id}`,
