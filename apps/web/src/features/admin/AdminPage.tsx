@@ -5,8 +5,8 @@ import {
   Search,
   Users,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Navigate, useLoaderData, useSearchParams } from 'react-router';
+import { useState, type FormEvent } from 'react';
+import { Navigate, useLoaderData } from 'react-router';
 import type { CatalogPage, ChefRole, User } from '@/api/types';
 import { isRootAdmin, roleLabel } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
@@ -17,6 +17,8 @@ import EmptyState from '@/components/ui/EmptyState';
 import Dropdown from '@/components/ui/Dropdown';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import FilterBar from '@/components/ui/FilterBar';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 
 /**
  * AdminPage is the ROOT_ADMIN-only role governance and ownership-transfer UI.
@@ -47,11 +49,13 @@ export default function AdminPage() {
     },
   };
   const users = page.items;
-  const [searchParams, setSearchParams] = useSearchParams();
-  const searchParamsRef = useRef(searchParams);
-  useEffect(() => {
-    searchParamsRef.current = searchParams;
-  }, [searchParams]);
+  const {
+    searchParams,
+    searchValue: memberSearch,
+    setSearchValue,
+    setQuery,
+    setPage,
+  } = useUrlFilters();
   const [targetUsername, setTargetUsername] = useState('');
   const [confirmationUsername, setConfirmationUsername] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -101,7 +105,6 @@ export default function AdminPage() {
       member.systemRole !== 'ROOT_ADMIN' &&
       member.accountStatus === 'ACTIVE',
   );
-  const memberSearch = searchParams.get('search') ?? '';
   const limit = searchParams.get('limit') ?? '25';
   const normalizedSearch = memberSearch.trim().toLocaleLowerCase();
   const filteredUsers = normalizedSearch
@@ -111,22 +114,6 @@ export default function AdminPage() {
         ),
       )
     : users;
-  const setQuery = (key: string, value?: string) => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.delete('cursor');
-    next.delete('direction');
-    if (value) next.set(key, value);
-    else next.delete(key);
-    searchParamsRef.current = next;
-    setSearchParams(next);
-  };
-  const goToPage = (cursor: string, direction: 'forward' | 'backward') => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.set('cursor', cursor);
-    next.set('direction', direction);
-    searchParamsRef.current = next;
-    setSearchParams(next);
-  };
   const roleOptions = [
     { value: '', label: t('role.customer') },
     { value: 'SOUS_CHEF', label: t('role.souschef') },
@@ -233,7 +220,12 @@ export default function AdminPage() {
   return (
     <div className="space-y-4">
       <SectionTitle title={t('admin.title')} subtitle={t('admin.subtitle')} />
-      <section className="panel p-4 sm:p-5" aria-busy={loading}>
+      <FilterBar
+        label={t('common.filters')}
+        busy={loading}
+        className="p-4 sm:p-5"
+        controlsClassName="block"
+      >
         <div className="relative max-w-lg">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -246,7 +238,7 @@ export default function AdminPage() {
             aria-label={t('admin.searchMembers')}
             placeholder={t('admin.searchMembers')}
             value={memberSearch}
-            onChange={(event) => setQuery('search', event.target.value)}
+            onChange={(event) => setSearchValue(event.target.value)}
           />
         </div>
         {loading && (
@@ -254,7 +246,7 @@ export default function AdminPage() {
             {t('common.loading')}
           </p>
         )}
-      </section>
+      </FilterBar>
       {users.length === 0 && (
         <EmptyState
           icon={Users}
@@ -377,7 +369,7 @@ export default function AdminPage() {
             }
             onClick={() =>
               page.pageInfo.startCursor &&
-              goToPage(page.pageInfo.startCursor, 'backward')
+              setPage(page.pageInfo.startCursor, 'backward')
             }
           >
             <ChevronLeft size={14} /> {t('common.previousPage')}
@@ -388,7 +380,7 @@ export default function AdminPage() {
             disabled={!page.pageInfo.hasNextPage || !page.pageInfo.endCursor}
             onClick={() =>
               page.pageInfo.endCursor &&
-              goToPage(page.pageInfo.endCursor, 'forward')
+              setPage(page.pageInfo.endCursor, 'forward')
             }
           >
             {t('common.nextPage')} <ChevronRight size={14} />
