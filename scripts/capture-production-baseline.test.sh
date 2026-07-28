@@ -2,6 +2,7 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/.." && pwd)"
 capture_script="$script_dir/capture-production-baseline.sh"
 render_capture_script="$script_dir/capture-render-production-baseline.sh"
 test_root="$(mktemp -d)"
@@ -271,12 +272,20 @@ if [[ "${RUN_BASELINE_DB_TESTS:-0}" == "1" ]]; then
   tar --list --gzip --file "$decrypted_archive" | grep -Fx 'row-counts.tsv' >/dev/null
   manifest_contents="$(tar --extract --gzip --to-stdout --file "$decrypted_archive" manifest.txt)"
   migrations_contents="$(tar --extract --gzip --to-stdout --file "$decrypted_archive" migrations.tsv)"
-  grep -Fx 'applied_migrations=17' <<<"$manifest_contents" >/dev/null
+  expected_migration_count="$(
+    find "$repo_root/apps/api/prisma/migrations" \
+      -mindepth 1 \
+      -maxdepth 1 \
+      -type d |
+      wc -l |
+      tr -d ' '
+  )"
+  grep -Fx "applied_migrations=$expected_migration_count" <<<"$manifest_contents" >/dev/null
   grep -Fx 'rolled_back_migrations=0' <<<"$manifest_contents" >/dev/null
   grep -Fx 'phase2_contract_migrations=1' <<<"$manifest_contents" >/dev/null
   grep -E '^source_database_version=16(\.|$)' <<<"$manifest_contents" >/dev/null
   grep -F '20260720000000_contract_phase2_normalized_restaurants|' <<<"$migrations_contents" >/dev/null
-  [[ "$(wc -l <<<"$migrations_contents" | tr -d ' ')" == "17" ]]
+  [[ "$(wc -l <<<"$migrations_contents" | tr -d ' ')" == "$expected_migration_count" ]]
 fi
 
 echo "Production baseline focused tests passed"
