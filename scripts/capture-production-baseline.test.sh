@@ -213,6 +213,10 @@ run_failure_case \
   "PostgreSQL did not export a snapshot" \
   "MOCK_PSQL_FAIL=1"
 run_failure_case \
+  unavailable-migration-inventory \
+  "migration inventory directory is unavailable" \
+  "MIGRATION_INVENTORY_DIR=$test_root/missing-migrations"
+run_failure_case \
   failed-dump \
   "pg_dump failed" \
   "MOCK_PG_DUMP_FAIL=1"

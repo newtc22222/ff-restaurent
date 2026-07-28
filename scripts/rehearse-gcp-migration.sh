@@ -451,6 +451,7 @@ capture_source() {
   BACKUP_PASSPHRASE="$(<"$PASSPHRASE_FILE")" \
     DEPLOYED_GIT_SHA="$SOURCE_DEPLOYED_SHA" \
     RENDER_POSTGRES_ID="$RENDER_DATABASE_ID" \
+    MIGRATION_INVENTORY_DIR="$SCRIPT_DIR/../apps/api/prisma/migrations" \
     BASELINE_OUTPUT_DIR="$OUTPUT_DIR" \
     CAPTURE_OUTPUT_FILE="$capture_output" \
     bash "$capture_scripts/capture-render-production-baseline.sh" >/dev/null

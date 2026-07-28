@@ -4,7 +4,12 @@ set -euo pipefail
 umask 077
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-migrations_dir="$script_dir/../apps/api/prisma/migrations"
+migrations_dir="${MIGRATION_INVENTORY_DIR:-$script_dir/../apps/api/prisma/migrations}"
+
+if [[ ! -d "$migrations_dir" ]]; then
+  echo "Production baseline capture failed: migration inventory directory is unavailable" >&2
+  exit 1
+fi
 
 : "${DATABASE_URL:?DATABASE_URL is required}"
 : "${BACKUP_PASSPHRASE:?BACKUP_PASSPHRASE is required}"
