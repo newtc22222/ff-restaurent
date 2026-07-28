@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -93,9 +94,32 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.useRealTimers();
 });
 
 describe('RestaurantsPage Cuisine filters', () => {
+  it('commits one settled search navigation with replacement history', () => {
+    vi.useFakeTimers();
+    renderPage('/restaurants?cursor=entry-1&direction=forward');
+    const search = screen.getByRole('searchbox', {
+      name: 'Search restaurants without accents...',
+    });
+
+    fireEvent.change(search, { target: { value: 'p' } });
+    fireEvent.change(search, { target: { value: 'ph' } });
+    fireEvent.change(search, { target: { value: 'pho' } });
+    expect(routerState.setSearchParams).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(300));
+    expect(routerState.setSearchParams).toHaveBeenCalledTimes(1);
+    const [next, options] = routerState.setSearchParams.mock.calls[0]!;
+    const params = new URLSearchParams(next);
+    expect(params.get('search')).toBe('pho');
+    expect(params.has('cursor')).toBe(false);
+    expect(params.has('direction')).toBe(false);
+    expect(options).toEqual({ replace: true });
+  });
+
   it('offers canonical Cuisines that are absent from the current restaurant page', async () => {
     renderPage('/restaurants');
 

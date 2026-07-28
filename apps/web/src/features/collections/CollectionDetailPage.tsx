@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ExternalLink,
   Globe2,
@@ -8,7 +8,7 @@ import {
   Trash2,
   UserMinus,
 } from 'lucide-react';
-import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
+import { useLoaderData, useNavigate } from 'react-router';
 import type { CollectionDetailData } from '@/api/types';
 import { canChef } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
@@ -18,6 +18,8 @@ import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Dropdown from '@/components/ui/Dropdown';
 import EmptyState from '@/components/ui/EmptyState';
+import FilterBar from '@/components/ui/FilterBar';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 
 export default function CollectionDetailPage() {
   const { collection, restaurants, shares } =
@@ -26,8 +28,7 @@ export default function CollectionDetailPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
   const { mutate } = useRouteMutation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const searchParamsRef = useRef(searchParams);
+  const { searchValue, setSearchValue, setPage } = useUrlFilters();
   const [restaurantId, setRestaurantId] = useState('');
   const [shareUserId, setShareUserId] = useState('');
   const [editing, setEditing] = useState(false);
@@ -39,30 +40,12 @@ export default function CollectionDetailPage() {
   });
 
   useEffect(() => {
-    searchParamsRef.current = searchParams;
-  }, [searchParams]);
-  useEffect(() => {
     setForm({
       name: collection.name,
       description: collection.description ?? '',
       isPublic: collection.isPublic,
     });
   }, [collection]);
-
-  const setQuery = (key: string, value?: string) => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.delete('cursor');
-    if (value) next.set(key, value);
-    else next.delete(key);
-    searchParamsRef.current = next;
-    setSearchParams(next);
-  };
-  const goToNextPage = (cursor: string) => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.set('cursor', cursor);
-    searchParamsRef.current = next;
-    setSearchParams(next);
-  };
 
   const isOwner = collection.ownerId === user.id;
   const canManageRestaurants =
@@ -243,39 +226,39 @@ export default function CollectionDetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
         <section className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <FilterBar label={t('common.filters')} controlsClassName="block">
             <input
-              className="field h-9 min-w-52 flex-1 py-0 text-sm"
+              className="field h-9 w-full min-w-0 py-0 text-sm"
               type="search"
-              value={searchParams.get('search') ?? ''}
-              onChange={(event) => setQuery('search', event.target.value)}
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
               aria-label={t('collections.searchRestaurants')}
               placeholder={t('collections.searchRestaurants')}
             />
-            {canManageRestaurants && (
-              <>
-                <Dropdown
-                  label={t('collections.addRestaurant')}
-                  value={restaurantId}
-                  onChange={setRestaurantId}
-                  options={restaurantOptions}
-                  searchable
-                  searchPlaceholder={t('bills.searchRestaurants')}
-                  emptyMessage={t('bills.noFilterResults')}
-                  variant="field"
-                  fullWidth={false}
-                />
-                <button
-                  type="button"
-                  className="btn btn-primary h-9"
-                  disabled={!restaurantId}
-                  onClick={addRestaurant}
-                >
-                  <Plus size={13} /> {t('common.add')}
-                </button>
-              </>
-            )}
-          </div>
+          </FilterBar>
+          {canManageRestaurants && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Dropdown
+                label={t('collections.addRestaurant')}
+                value={restaurantId}
+                onChange={setRestaurantId}
+                options={restaurantOptions}
+                searchable
+                searchPlaceholder={t('bills.searchRestaurants')}
+                emptyMessage={t('bills.noFilterResults')}
+                variant="field"
+                fullWidth={false}
+              />
+              <button
+                type="button"
+                className="btn btn-primary h-9"
+                disabled={!restaurantId}
+                onClick={addRestaurant}
+              >
+                <Plus size={13} /> {t('common.add')}
+              </button>
+            </div>
+          )}
 
           {restaurants.items.length === 0 && (
             <EmptyState
@@ -357,7 +340,7 @@ export default function CollectionDetailPage() {
                 type="button"
                 className="btn btn-soft w-full justify-center"
                 onClick={() =>
-                  goToNextPage(restaurants.pageInfo.endCursor as string)
+                  setPage(restaurants.pageInfo.endCursor as string)
                 }
               >
                 {t('common.nextPage')}

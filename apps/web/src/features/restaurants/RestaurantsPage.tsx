@@ -1,15 +1,14 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
   Images,
   Layers,
   Plus,
-  SlidersHorizontal,
   Store,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
+import { useLoaderData, useNavigate } from 'react-router';
 import type { RestaurantDirectoryData } from '@/api/types';
 import { canChef, isHead } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
@@ -31,6 +30,8 @@ import RestaurantCatalogFields, {
   emptyRestaurantCatalogs,
 } from './RestaurantCatalogFields';
 import ImagePicker from '@/components/ui/ImagePicker';
+import FilterBar from '@/components/ui/FilterBar';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { useRestaurantMediaMutation } from './restaurant-media.mutations';
 import {
   readCuisineFilter,
@@ -48,11 +49,15 @@ export default function RestaurantsPage() {
   const { user, restaurants: snapshotRestaurants } = useAppContext();
   const page = useLoaderData() as RestaurantDirectoryData;
   const restaurants = page.items;
-  const [searchParams, setSearchParams] = useSearchParams();
-  const searchParamsRef = useRef(searchParams);
-  useEffect(() => {
-    searchParamsRef.current = searchParams;
-  }, [searchParams]);
+  const {
+    searchParams,
+    searchValue: search,
+    setSearchValue,
+    setQuery,
+    setPage,
+    replaceParams,
+    clearFilters,
+  } = useUrlFilters();
   const { t } = useI18n();
   const { mutate } = useRouteMutation();
   const restaurantMediaMutation = useRestaurantMediaMutation();
@@ -63,7 +68,6 @@ export default function RestaurantsPage() {
     t('restaurants.typeDrinkShop'),
     t('restaurants.typeBakery'),
   ];
-  const search = searchParams.get('search') ?? '';
   const sort = searchParams.get('sort') ?? 'name-asc';
   const { cuisineId: filterCuisine, match: cuisineMatch } =
     readCuisineFilter(searchParams);
@@ -86,24 +90,6 @@ export default function RestaurantsPage() {
     type: typeOptions[0] ?? 'Restaurant',
     collectionIds: [] as string[],
   });
-
-  const setQuery = (key: string, value?: string) => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.delete('cursor');
-    next.delete('direction');
-    if (value) next.set(key, value);
-    else next.delete(key);
-    searchParamsRef.current = next;
-    setSearchParams(next);
-  };
-
-  const goToPage = (cursor: string, direction: 'forward' | 'backward') => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.set('cursor', cursor);
-    next.set('direction', direction);
-    searchParamsRef.current = next;
-    setSearchParams(next);
-  };
 
   const cuisineOptions = page.cuisines
     .map((cuisine) => ({ value: cuisine.id, label: cuisine.name }))
@@ -163,20 +149,14 @@ export default function RestaurantsPage() {
     }));
 
   const setCuisineFilter = (cuisineId: string) => {
-    const next = updateCuisineFilter(
-      searchParamsRef.current,
-      cuisineId,
-      cuisineMatch,
+    replaceParams((current) =>
+      updateCuisineFilter(current, cuisineId, cuisineMatch),
     );
-    searchParamsRef.current = next;
-    setSearchParams(next);
   };
 
   const changeCuisineMatch = (match: string) => {
     const nextMatch: CuisineMatch = match === 'primary' ? 'primary' : 'all';
-    const next = updateCuisineMatch(searchParamsRef.current, nextMatch);
-    searchParamsRef.current = next;
-    setSearchParams(next);
+    replaceParams((current) => updateCuisineMatch(current, nextMatch));
   };
 
   const finishCreate = async (data: unknown) => {
@@ -245,17 +225,27 @@ export default function RestaurantsPage() {
             </button>
           )}
         </div>
-        <section className="panel w-full space-y-3 p-3">
-          <p className="field-group-title px-1">
-            <SlidersHorizontal size={13} aria-hidden="true" />
-            {t('restaurants.filters')}
-          </p>
+        <FilterBar
+          label={t('restaurants.filters')}
+          controlsClassName="block space-y-2"
+          actions={
+            activeFilterCount > 0 ? (
+              <button
+                type="button"
+                className="text-[12px] text-slate-400 hover:text-red-400"
+                onClick={clearFilters}
+              >
+                {t('bills.clearAll')}
+              </button>
+            ) : undefined
+          }
+        >
           <div className="grid gap-2 md:grid-cols-3">
             <input
               className="field w-full"
               type="search"
               value={search}
-              onChange={(event) => setQuery('search', event.target.value)}
+              onChange={(event) => setSearchValue(event.target.value)}
               placeholder={t('restaurants.search')}
               aria-label={t('restaurants.search')}
             />
@@ -342,16 +332,7 @@ export default function RestaurantsPage() {
               clearLabel={t('bills.clearAll')}
             />
           </div>
-          {activeFilterCount > 0 && (
-            <button
-              type="button"
-              className="text-[12px] text-slate-400 hover:text-red-400"
-              onClick={() => setSearchParams({})}
-            >
-              {t('bills.clearAll')}
-            </button>
-          )}
-        </section>
+        </FilterBar>
         {restaurants.length === 0 && activeFilterCount === 0 && (
           <EmptyState
             icon={Store}
@@ -430,7 +411,7 @@ export default function RestaurantsPage() {
               }
               onClick={() =>
                 page.pageInfo.startCursor &&
-                goToPage(page.pageInfo.startCursor, 'backward')
+                setPage(page.pageInfo.startCursor, 'backward')
               }
             >
               <ChevronLeft size={14} /> {t('common.previousPage')}
@@ -441,7 +422,7 @@ export default function RestaurantsPage() {
               disabled={!page.pageInfo.hasNextPage || !page.pageInfo.endCursor}
               onClick={() =>
                 page.pageInfo.endCursor &&
-                goToPage(page.pageInfo.endCursor, 'forward')
+                setPage(page.pageInfo.endCursor, 'forward')
               }
             >
               {t('common.nextPage')} <ChevronRight size={14} />

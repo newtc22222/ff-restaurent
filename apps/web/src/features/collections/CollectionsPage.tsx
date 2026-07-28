@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import {
   FolderHeart,
   Globe2,
@@ -8,7 +8,7 @@ import {
   Share2,
   Sparkles,
 } from 'lucide-react';
-import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
+import { useLoaderData, useNavigate } from 'react-router';
 import type { CatalogPage, Collection } from '@/api/types';
 import { useI18n } from '@/app/providers/i18n';
 import { useAppContext } from '@/app/providers/app-context';
@@ -17,6 +17,8 @@ import EmptyState from '@/components/ui/EmptyState';
 import SectionTitle from '@/components/ui/SectionTitle';
 import Dropdown from '@/components/ui/Dropdown';
 import Modal from '@/components/ui/Modal';
+import FilterBar from '@/components/ui/FilterBar';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 
 const collectionIcon = (collection: Collection) =>
   collection.systemType === 'FAVORITES'
@@ -31,27 +33,19 @@ export default function CollectionsPage() {
   const { t } = useI18n();
   const { user } = useAppContext();
   const { mutate } = useRouteMutation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const searchParamsRef = useRef(searchParams);
+  const {
+    searchParams,
+    searchValue: search,
+    setSearchValue,
+    setQuery,
+    setPage,
+  } = useUrlFilters();
   const [form, setForm] = useState({
     name: '',
     description: '',
     isPublic: false,
   });
   const [createOpen, setCreateOpen] = useState(false);
-
-  useEffect(() => {
-    searchParamsRef.current = searchParams;
-  }, [searchParams]);
-
-  const setQuery = (key: string, value?: string) => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.delete('cursor');
-    if (value) next.set(key, value);
-    else next.delete(key);
-    searchParamsRef.current = next;
-    setSearchParams(next);
-  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -69,7 +63,6 @@ export default function CollectionsPage() {
   };
 
   const visibility = searchParams.get('visibility') ?? 'all';
-  const search = searchParams.get('search') ?? '';
 
   return (
     <div className="space-y-4">
@@ -87,12 +80,12 @@ export default function CollectionsPage() {
             <Plus size={14} /> {t('collections.create')}
           </button>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <FilterBar label={t('common.filters')}>
           <input
-            className="field h-9 min-w-56 flex-1 py-0 text-sm"
+            className="field h-9 min-w-0 py-0 text-sm"
             type="search"
             value={search}
-            onChange={(event) => setQuery('search', event.target.value)}
+            onChange={(event) => setSearchValue(event.target.value)}
             placeholder={t('collections.search')}
             aria-label={t('collections.search')}
           />
@@ -109,7 +102,7 @@ export default function CollectionsPage() {
             ]}
             fullWidth={false}
           />
-        </div>
+        </FilterBar>
 
         {page.items.length === 0 && (
           <EmptyState
@@ -168,7 +161,7 @@ export default function CollectionsPage() {
           <button
             type="button"
             className="btn btn-soft w-full justify-center"
-            onClick={() => setQuery('cursor', page.pageInfo.endCursor!)}
+            onClick={() => setPage(page.pageInfo.endCursor!)}
           >
             {t('common.nextPage')}
           </button>
