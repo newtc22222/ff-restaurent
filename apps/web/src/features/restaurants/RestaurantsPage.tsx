@@ -32,6 +32,12 @@ import RestaurantCatalogFields, {
 } from './RestaurantCatalogFields';
 import ImagePicker from '@/components/ui/ImagePicker';
 import { useRestaurantMediaMutation } from './restaurant-media.mutations';
+import {
+  readCuisineFilter,
+  updateCuisineFilter,
+  updateCuisineMatch,
+  type CuisineMatch,
+} from './restaurant-filters';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
@@ -59,9 +65,8 @@ export default function RestaurantsPage() {
   ];
   const search = searchParams.get('search') ?? '';
   const sort = searchParams.get('sort') ?? 'name-asc';
-  const filterCuisine =
-    searchParams.get('primaryCuisineId') ?? searchParams.get('cuisineId') ?? '';
-  const cuisineMatch = searchParams.has('primaryCuisineId') ? 'primary' : 'all';
+  const { cuisineId: filterCuisine, match: cuisineMatch } =
+    readCuisineFilter(searchParams);
   const filterDiningArea = searchParams.get('diningAreaId') ?? '';
   const filterCollection = searchParams.get('collectionId') ?? '';
   const filterPlatform = searchParams.get('platform') ?? '';
@@ -100,16 +105,9 @@ export default function RestaurantsPage() {
     setSearchParams(next);
   };
 
-  const cuisineOptions = Array.from(
-    new Map(
-      snapshotRestaurants.flatMap((entry) =>
-        (entry.cuisines ?? []).map(({ cuisine }) => [
-          cuisine.id,
-          { value: cuisine.id, label: cuisine.name },
-        ]),
-      ),
-    ).values(),
-  ).sort((left, right) => left.label.localeCompare(right.label));
+  const cuisineOptions = page.cuisines
+    .map((cuisine) => ({ value: cuisine.id, label: cuisine.name }))
+    .sort((left, right) => left.label.localeCompare(right.label));
 
   const activeFilterCount =
     (search ? 1 : 0) +
@@ -164,17 +162,19 @@ export default function RestaurantsPage() {
             : undefined,
     }));
 
+  const setCuisineFilter = (cuisineId: string) => {
+    const next = updateCuisineFilter(
+      searchParamsRef.current,
+      cuisineId,
+      cuisineMatch,
+    );
+    searchParamsRef.current = next;
+    setSearchParams(next);
+  };
+
   const changeCuisineMatch = (match: string) => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.delete('cursor');
-    next.delete('cuisineId');
-    next.delete('primaryCuisineId');
-    if (filterCuisine) {
-      next.set(
-        match === 'primary' ? 'primaryCuisineId' : 'cuisineId',
-        filterCuisine,
-      );
-    }
+    const nextMatch: CuisineMatch = match === 'primary' ? 'primary' : 'all';
+    const next = updateCuisineMatch(searchParamsRef.current, nextMatch);
     searchParamsRef.current = next;
     setSearchParams(next);
   };
@@ -314,15 +314,7 @@ export default function RestaurantsPage() {
               <Dropdown
                 label={t('restaurants.filterCuisine')}
                 value={filterCuisine}
-                onChange={(value) => {
-                  if (cuisineMatch === 'primary') {
-                    setQuery('primaryCuisineId', value);
-                    if (value) setQuery('cuisineId');
-                  } else {
-                    setQuery('cuisineId', value);
-                    if (value) setQuery('primaryCuisineId');
-                  }
-                }}
+                onChange={setCuisineFilter}
                 options={cuisineOptions}
                 searchable
                 searchPlaceholder={t('restaurants.searchCuisine')}

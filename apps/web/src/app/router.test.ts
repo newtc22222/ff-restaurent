@@ -262,12 +262,21 @@ describe('paginated list loaders', () => {
         params: {},
         context: {},
       } as never),
-    ).resolves.toEqual({ ...response, collections: [] });
-    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    ).resolves.toEqual({ ...response, collections: [], cuisines: [] });
+    const requestedUrl = String(
+      fetchMock.mock.calls.find(([input]) =>
+        String(input).includes('/restaurants?'),
+      )?.[0],
+    );
     expect(requestedUrl).toContain('search=bep+viet');
     expect(requestedUrl).toContain('cuisineId=cuisine-1');
     expect(requestedUrl).toContain('favorite=true');
     expect(requestedUrl).toContain('cursor=restaurant-1');
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).includes('/cuisines?limit=100'),
+      ),
+    ).toBe(true);
   });
 });
 
