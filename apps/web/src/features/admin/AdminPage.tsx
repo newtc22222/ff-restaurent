@@ -16,6 +16,7 @@ import SectionTitle from '@/components/ui/SectionTitle';
 import EmptyState from '@/components/ui/EmptyState';
 import Dropdown from '@/components/ui/Dropdown';
 import Modal from '@/components/ui/Modal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 /**
  * AdminPage is the ROOT_ADMIN-only role governance and ownership-transfer UI.
@@ -29,7 +30,7 @@ export default function AdminPage() {
     refresh = async () => undefined,
   } = useAppContext();
   const { t } = useI18n();
-  const { mutate } = useRouteMutation();
+  const { fetcher, mutate } = useRouteMutation();
   let loaderPage: CatalogPage<User> | null = null;
   try {
     loaderPage = useLoaderData() as CatalogPage<User>;
@@ -60,6 +61,9 @@ export default function AdminPage() {
   } | null>(null);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<
+    (typeof users)[number] | null
+  >(null);
 
   if (!isRootAdmin(user)) return <Navigate to="/bills" replace />;
 
@@ -92,7 +96,10 @@ export default function AdminPage() {
   };
 
   const transferTargets = allUsers.filter(
-    (member) => member.id !== user.id && member.systemRole !== 'ROOT_ADMIN',
+    (member) =>
+      member.id !== user.id &&
+      member.systemRole !== 'ROOT_ADMIN' &&
+      member.accountStatus === 'ACTIVE',
   );
   const memberSearch = searchParams.get('search') ?? '';
   const limit = searchParams.get('limit') ?? '25';
@@ -137,8 +144,63 @@ export default function AdminPage() {
         value={member.chefRole ?? ''}
         onChange={(role) => updateRole(member.id, (role || null) as ChefRole)}
         options={roleOptions}
+        disabled={member.accountStatus === 'BLOCKED'}
         menuAlign="right"
       />
+    );
+
+  const updateAccountStatus = (member: (typeof users)[number]) => {
+    const accountStatus =
+      member.accountStatus === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED';
+    void mutate(
+      {
+        intent: 'update-account-status',
+        userId: member.id,
+        accountStatus,
+      },
+      {
+        fallback: t('toast.accountStatusUpdateFailed'),
+        success:
+          accountStatus === 'BLOCKED'
+            ? t('toast.accountBlocked')
+            : t('toast.accountRestored'),
+        onSuccess: () => {
+          setStatusTarget(null);
+          void refresh();
+        },
+      },
+    );
+  };
+
+  const statusBadge = (member: (typeof users)[number]) => (
+    <span
+      className={
+        member.accountStatus === 'BLOCKED'
+          ? 'inline-flex rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-200'
+          : 'inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200'
+      }
+    >
+      {member.accountStatus === 'BLOCKED'
+        ? t('admin.statusBlocked')
+        : t('admin.statusActive')}
+    </span>
+  );
+
+  const statusControl = (member: (typeof users)[number]) =>
+    member.systemRole === 'ROOT_ADMIN' ? null : (
+      <button
+        type="button"
+        className={
+          member.accountStatus === 'BLOCKED'
+            ? 'btn btn-soft'
+            : 'btn border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950 dark:text-red-200'
+        }
+        onClick={() => setStatusTarget(member)}
+      >
+        {member.accountStatus === 'BLOCKED'
+          ? t('admin.restoreAccount')
+          : t('admin.blockAccount')}
+      </button>
     );
 
   const issueReset = (requestId: string, username: string) =>
@@ -224,6 +286,9 @@ export default function AdminPage() {
                   <th className="px-4 py-3 font-semibold">
                     {t('admin.effectiveRole')}
                   </th>
+                  <th className="px-4 py-3 font-semibold">
+                    {t('admin.accountStatus')}
+                  </th>
                   <th className="px-4 py-3 text-right font-semibold">
                     {t('admin.actions')}
                   </th>
@@ -242,8 +307,12 @@ export default function AdminPage() {
                       {member.phone ?? '—'}
                     </td>
                     <td className="px-4 py-3">{roleLabel(member, t)}</td>
+                    <td className="px-4 py-3">{statusBadge(member)}</td>
                     <td className="px-4 py-3 text-right">
-                      <div className="ml-auto w-44">{roleControl(member)}</div>
+                      <div className="ml-auto flex items-center justify-end gap-2">
+                        <div className="w-44">{roleControl(member)}</div>
+                        {statusControl(member)}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -273,8 +342,13 @@ export default function AdminPage() {
                 <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
                   <dt className="text-slate-500">{t('admin.phone')}</dt>
                   <dd className="text-right text-ink">{member.phone ?? '—'}</dd>
+                  <dt className="text-slate-500">{t('admin.accountStatus')}</dt>
+                  <dd className="text-right">{statusBadge(member)}</dd>
                 </dl>
-                <div className="mt-4">{roleControl(member)}</div>
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="flex-1">{roleControl(member)}</div>
+                  {statusControl(member)}
+                </div>
               </article>
             ))}
           </section>
@@ -509,6 +583,24 @@ export default function AdminPage() {
           </button>
         </form>
       </Modal>
+      {statusTarget && (
+        <ConfirmDialog
+          title={
+            statusTarget.accountStatus === 'BLOCKED'
+              ? t('admin.restoreAccountTitle')
+              : t('admin.blockAccountTitle')
+          }
+          message={`${t(
+            statusTarget.accountStatus === 'BLOCKED'
+              ? 'admin.restoreAccountMessage'
+              : 'admin.blockAccountMessage',
+          )} ${statusTarget.name} (@${statusTarget.username}).`}
+          onConfirm={() => updateAccountStatus(statusTarget)}
+          onCancel={() => setStatusTarget(null)}
+          t={t}
+          pending={fetcher.state !== 'idle'}
+        />
+      )}
     </div>
   );
 }

@@ -22,6 +22,11 @@ export const adminIntents = {
       method: 'PATCH',
       body: JSON.stringify({ chefRole: body.chefRole }),
     }),
+  'update-account-status': ({ api, body }) =>
+    api.request(`/users/${body.userId}/account-status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ accountStatus: body.accountStatus }),
+    }),
   'root-transfer': async ({ api, body }) => {
     await api.request('/admin/root-transfer', {
       method: 'POST',

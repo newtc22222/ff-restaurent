@@ -7,6 +7,11 @@ export enum SystemRole {
   ROOT_ADMIN = 'ROOT_ADMIN',
 }
 
+export enum UserAccountStatus {
+  ACTIVE = 'ACTIVE',
+  BLOCKED = 'BLOCKED',
+}
+
 export enum EntryStatus {
   ACTIVE = 'ACTIVE',
   ARCHIVED = 'ARCHIVED',
@@ -70,6 +75,11 @@ export const SYSTEM_ROLE_VALUES = [
   'ROOT_ADMIN',
 ] as const satisfies readonly `${SystemRole}`[];
 
+export const USER_ACCOUNT_STATUS_VALUES = [
+  'ACTIVE',
+  'BLOCKED',
+] as const satisfies readonly `${UserAccountStatus}`[];
+
 export const ENTRY_STATUS_VALUES = [
   'ACTIVE',
   'ARCHIVED',
@@ -108,6 +118,8 @@ export const COLLECTION_SYSTEM_TYPE_VALUES = [
 /** Literal-union counterparts of the domain enums, for wire-level shapes. */
 export type ChefRoleValue = (typeof CHEF_ROLE_VALUES)[number];
 export type SystemRoleValue = (typeof SYSTEM_ROLE_VALUES)[number];
+export type UserAccountStatusValue =
+  (typeof USER_ACCOUNT_STATUS_VALUES)[number];
 export type EntryStatusValue = (typeof ENTRY_STATUS_VALUES)[number];
 export type PaymentStatusValue = (typeof PAYMENT_STATUS_VALUES)[number];
 export type AdjustmentTypeValue = (typeof ADJUSTMENT_TYPE_VALUES)[number];

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { EntryStatus, Prisma } from '@prisma/client';
+import { EntryStatus, Prisma, UserAccountStatus } from '@prisma/client';
 import {
   AdjustmentAllocation,
   calculateBillSplit,
@@ -179,7 +179,12 @@ export type BillServiceDb = {
     }) => Promise<{ id: string } | null>;
   };
   user: {
-    count: (args: { where: { id: { in: string[] } } }) => Promise<number>;
+    count: (args: {
+      where: {
+        id: { in: string[] };
+        accountStatus: UserAccountStatus;
+      };
+    }) => Promise<number>;
   };
 };
 
@@ -211,7 +216,10 @@ export const validateParticipantIds = async (
   db: BillServiceDb = prisma,
 ): Promise<BillValidationResult> => {
   const userCount = await db.user.count({
-    where: { id: { in: participantIds } },
+    where: {
+      id: { in: participantIds },
+      accountStatus: UserAccountStatus.ACTIVE,
+    },
   });
   if (userCount === participantIds.length) return VALID;
   return {

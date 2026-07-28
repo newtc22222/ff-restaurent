@@ -15,6 +15,7 @@ export type MutationBody = {
   groupId?: string;
   userId?: string;
   chefRole?: string | null;
+  accountStatus?: string;
   requestId?: string;
   notificationId?: string;
   billsReturnTo?: string;

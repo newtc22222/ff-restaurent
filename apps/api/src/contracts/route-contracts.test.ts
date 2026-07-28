@@ -32,7 +32,7 @@ test('every application operation exposes runtime responses and a stable operati
     }
   }
 
-  assert.equal(operationCount, 81);
+  assert.equal(operationCount, 82);
   assert.deepEqual(Object.keys(document.components?.schemas ?? {}).sort(), [
     'AdjustmentAllocation',
     'AdjustmentType',
@@ -46,6 +46,7 @@ test('every application operation exposes runtime responses and a stable operati
     'RestaurantPlatform',
     'SystemRole',
     'User',
+    'UserAccountStatus',
   ]);
   await app.close();
 });
@@ -82,7 +83,11 @@ test('nested public users omit derived roles while full users require them', () 
   assert.equal(publicUserResponseSchema.parse(publicUser).id, 'user-1');
   assert.throws(() => userResponseSchema.parse(publicUser));
   assert.equal(
-    userResponseSchema.parse({ ...publicUser, roles: ['CUSTOMER'] }).id,
+    userResponseSchema.parse({
+      ...publicUser,
+      accountStatus: 'ACTIVE',
+      roles: ['CUSTOMER'],
+    }).id,
     'user-1',
   );
 });

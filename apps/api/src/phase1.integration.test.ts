@@ -7,6 +7,7 @@ import {
   Prisma,
   RestaurantPlatform,
   SystemRole,
+  UserAccountStatus,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
@@ -48,6 +49,7 @@ before(async () => {
   await prisma.billAuditLog.deleteMany();
   await prisma.rootAdminTransferAudit.deleteMany();
   await prisma.roleAuditLog.deleteMany();
+  await prisma.userAccountStatusAudit.deleteMany();
   await prisma.billParticipant.deleteMany();
   await prisma.bill.deleteMany();
   await prisma.collection.deleteMany();
@@ -332,6 +334,199 @@ integrationTest('the database permits exactly one ROOT_ADMIN', async () => {
     1,
   );
 });
+
+integrationTest(
+  'ROOT_ADMIN block and restore transitions are audited and enforced everywhere',
+  async () => {
+    const target = await prisma.user.create({
+      data: {
+        username: 'blocked-account-int',
+        name: 'Blockable Account',
+        passwordHash: await bcrypt.hash('password123', 4),
+      },
+    });
+    const denied = await app.inject({
+      method: 'PATCH',
+      url: `/users/${target.id}/account-status`,
+      headers: auth(tokenFor(headId)),
+      payload: { accountStatus: UserAccountStatus.BLOCKED },
+    });
+    assert.equal(denied.statusCode, 403);
+    assert.equal(denied.json().code, 'ROOT_ADMIN_REQUIRED');
+
+    const rootSelfBlock = await app.inject({
+      method: 'PATCH',
+      url: `/users/${rootId}/account-status`,
+      headers: auth(tokenFor(rootId)),
+      payload: { accountStatus: UserAccountStatus.BLOCKED },
+    });
+    assert.equal(rootSelfBlock.statusCode, 403);
+    assert.equal(
+      rootSelfBlock.json().code,
+      'ROOT_ADMIN_ACCOUNT_STATUS_FORBIDDEN',
+    );
+
+    const resetRequest = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: target.username },
+    });
+    assert.equal(resetRequest.statusCode, 202);
+    assert.ok(
+      await prisma.passwordResetRequest.findFirst({
+        where: { userId: target.id, activeKey: target.id },
+      }),
+    );
+
+    const oldCustomerToken = tokenFor(target.id);
+    const blocked = await app.inject({
+      method: 'PATCH',
+      url: `/users/${target.id}/account-status`,
+      headers: auth(tokenFor(rootId)),
+      payload: { accountStatus: UserAccountStatus.BLOCKED },
+    });
+    assert.equal(blocked.statusCode, 200);
+    assert.equal(blocked.json().accountStatus, UserAccountStatus.BLOCKED);
+    const blockedUser = await prisma.user.findUniqueOrThrow({
+      where: { id: target.id },
+    });
+    assert.equal(blockedUser.sessionVersion, 1);
+    const supersededReset = await prisma.passwordResetRequest.findFirstOrThrow({
+      where: { userId: target.id },
+    });
+    assert.equal(supersededReset.activeKey, null);
+    assert.equal(supersededReset.status, 'SUPERSEDED');
+    const audit = await prisma.userAccountStatusAudit.findFirstOrThrow({
+      where: { userId: target.id },
+    });
+    assert.equal(audit.changedById, rootId);
+    assert.equal(audit.fromStatus, UserAccountStatus.ACTIVE);
+    assert.equal(audit.toStatus, UserAccountStatus.BLOCKED);
+
+    const repeated = await app.inject({
+      method: 'PATCH',
+      url: `/users/${target.id}/account-status`,
+      headers: auth(tokenFor(rootId)),
+      payload: { accountStatus: UserAccountStatus.BLOCKED },
+    });
+    assert.equal(repeated.statusCode, 200);
+    assert.equal(
+      await prisma.userAccountStatusAudit.count({
+        where: { userId: target.id },
+      }),
+      1,
+    );
+    assert.equal(
+      (await prisma.user.findUniqueOrThrow({ where: { id: target.id } }))
+        .sessionVersion,
+      1,
+    );
+
+    const invalidated = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(oldCustomerToken),
+    });
+    assert.equal(invalidated.statusCode, 401);
+    assert.equal(invalidated.json().code, 'SESSION_INVALIDATED');
+    const blockedLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: target.username, password: 'password123' },
+    });
+    assert.equal(blockedLogin.statusCode, 401);
+    assert.equal(blockedLogin.json().code, 'INVALID_CREDENTIALS');
+
+    const members = await app.inject({
+      method: 'GET',
+      url: '/members?limit=100',
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(members.statusCode, 200);
+    assert.equal(
+      members
+        .json()
+        .items.some((member: { id: string }) => member.id === target.id),
+      false,
+    );
+    const users = await app.inject({
+      method: 'GET',
+      url: '/users?limit=100',
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(users.statusCode, 200);
+    assert.equal(
+      users
+        .json()
+        .items.find((member: { id: string }) => member.id === target.id)
+        .accountStatus,
+      UserAccountStatus.BLOCKED,
+    );
+
+    const invalidGroup = await app.inject({
+      method: 'POST',
+      url: '/participant-groups',
+      headers: auth(tokenFor(customerAId)),
+      payload: {
+        name: 'Blocked member group',
+        memberIds: [customerAId, target.id],
+      },
+    });
+    assert.equal(invalidGroup.statusCode, 400);
+    assert.equal(invalidGroup.json().code, 'INVALID_PARTICIPANTS');
+    const invalidBill = await app.inject({
+      method: 'POST',
+      url: '/bills',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        occurredOn: '2026-07-01',
+        baseCost: 1000,
+        vat: 0,
+        shippingFee: 0,
+        participants: [
+          { memberId: customerAId, originCost: 500 },
+          { memberId: target.id, originCost: 500 },
+        ],
+      },
+    });
+    assert.equal(invalidBill.statusCode, 400);
+    assert.equal(invalidBill.json().code, 'INVALID_PARTICIPANTS');
+    const invalidTransfer = await app.inject({
+      method: 'POST',
+      url: '/admin/root-transfer',
+      headers: auth(tokenFor(rootId)),
+      payload: {
+        currentPassword: 'password123',
+        targetUsername: target.username,
+        confirmationUsername: target.username,
+      },
+    });
+    assert.equal(invalidTransfer.statusCode, 400);
+    assert.equal(invalidTransfer.json().code, 'ROOT_TRANSFER_TARGET_INVALID');
+
+    const restored = await app.inject({
+      method: 'PATCH',
+      url: `/users/${target.id}/account-status`,
+      headers: auth(tokenFor(rootId)),
+      payload: { accountStatus: UserAccountStatus.ACTIVE },
+    });
+    assert.equal(restored.statusCode, 200);
+    assert.equal(restored.json().accountStatus, UserAccountStatus.ACTIVE);
+    assert.equal(
+      await prisma.userAccountStatusAudit.count({
+        where: { userId: target.id },
+      }),
+      2,
+    );
+    const restoredLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: target.username, password: 'password123' },
+    });
+    assert.equal(restoredLogin.statusCode, 200);
+  },
+);
 
 integrationTest(
   'server search and composable filters paginate deterministically within authorization scope',

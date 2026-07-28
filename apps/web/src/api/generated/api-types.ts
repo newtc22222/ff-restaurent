@@ -7,6 +7,7 @@ import type {
   PaymentStatusValue,
   RestaurantPlatformValue,
   SystemRoleValue,
+  UserAccountStatusValue,
 } from '@ff-restaurent/shared';
 export interface paths {
   '/address/provinces': {
@@ -937,6 +938,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/users/{id}/account-status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['patchUsersByIdAccount-status'];
+    trace?: never;
+  };
   '/users/{id}/chef-role': {
     parameters: {
       query?: never;
@@ -1158,6 +1175,7 @@ export interface components {
     /** @enum {string} */
     SystemRole: SystemRoleValue;
     User: {
+      accountStatus: components['schemas']['UserAccountStatus'];
       avatarUrl?: string | null;
       chefRole: components['schemas']['ChefRole'] | null;
       /** Format: date-time */
@@ -1172,6 +1190,8 @@ export interface components {
     } & {
       [key: string]: unknown;
     };
+    /** @enum {string} */
+    UserAccountStatus: UserAccountStatusValue;
   };
   responses: never;
   parameters: never;
@@ -5840,6 +5860,71 @@ export interface operations {
           } & {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  'patchUsersByIdAccount-status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          accountStatus: components['schemas']['UserAccountStatus'];
+        };
+      };
+    };
+    responses: {
+      /** @description Default Response */
+      '2XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+      /** @description Default Response */
+      '4XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Default Response */
+      '5XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Default Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['User'];
         };
       };
     };

@@ -24,6 +24,7 @@ const root = {
   phone: null,
   chefRole: null,
   systemRole: 'ROOT_ADMIN' as const,
+  accountStatus: 'ACTIVE' as const,
   roles: ['CUSTOMER', 'ROOT_ADMIN'],
 };
 const member = {
@@ -33,6 +34,7 @@ const member = {
   phone: '+84901234567',
   chefRole: 'HEAD_CHEF' as const,
   systemRole: null,
+  accountStatus: 'ACTIVE' as const,
   roles: ['CUSTOMER', 'HEAD_CHEF'],
 };
 const sous = {
@@ -42,6 +44,7 @@ const sous = {
   phone: '+84909876543',
   chefRole: 'SOUS_CHEF' as const,
   systemRole: null,
+  accountStatus: 'ACTIVE' as const,
   roles: ['CUSTOMER', 'SOUS_CHEF'],
 };
 const customer = {
@@ -51,7 +54,18 @@ const customer = {
   phone: null,
   chefRole: null,
   systemRole: null,
+  accountStatus: 'ACTIVE' as const,
   roles: ['CUSTOMER'],
+};
+const blocked = {
+  id: 'blocked-1',
+  name: 'Blocked Member',
+  username: 'blocked-member',
+  phone: null,
+  chefRole: 'SOUS_CHEF' as const,
+  systemRole: null,
+  accountStatus: 'BLOCKED' as const,
+  roles: ['CUSTOMER', 'SOUS_CHEF'],
 };
 let currentUser: typeof root | typeof member = root;
 
@@ -68,7 +82,7 @@ vi.mock('react-router', async (importOriginal) => {
 vi.mock('@/app/providers/app-context', () => ({
   useAppContext: () => ({
     user: currentUser,
-    users: [root, member, sous, customer],
+    users: [root, member, sous, customer, blocked],
     refresh,
     passwordResetRequests: [
       {
@@ -83,7 +97,7 @@ vi.mock('@/app/providers/app-context', () => ({
 }));
 
 vi.mock('@/hooks/useRouteMutation', () => ({
-  useRouteMutation: () => ({ mutate }),
+  useRouteMutation: () => ({ fetcher: { state: 'idle' }, mutate }),
 }));
 
 beforeEach(() => {
@@ -112,6 +126,7 @@ describe('AdminPage ROOT_ADMIN governance', () => {
       'Username',
       'Phone',
       'Effective role',
+      'Account status',
       'Actions',
     ]) {
       expect(
@@ -182,6 +197,48 @@ describe('AdminPage ROOT_ADMIN governance', () => {
         redirects: true,
       },
     );
+  });
+
+  it('confirms account blocking and disables incompatible role controls', () => {
+    render(
+      <MemoryRouter>
+        <I18nProvider>
+          <AdminPage />
+        </I18nProvider>
+      </MemoryRouter>,
+    );
+
+    const memberRow = within(screen.getByRole('table'))
+      .getByText('Member One')
+      .closest('tr');
+    fireEvent.click(within(memberRow!).getByRole('button', { name: 'Block' }));
+    expect(screen.getByText('Block this account?')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    expect(mutate).toHaveBeenCalledWith(
+      {
+        intent: 'update-account-status',
+        userId: 'member-1',
+        accountStatus: 'BLOCKED',
+      },
+      expect.objectContaining({
+        fallback: 'Could not update the account status.',
+        success: 'Account blocked.',
+      }),
+    );
+
+    const blockedRow = within(screen.getByRole('table'))
+      .getByText('Blocked Member')
+      .closest('tr');
+    expect(
+      (
+        within(blockedRow!).getByRole('button', {
+          name: 'Blocked Member role',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(
+      within(blockedRow!).getByRole('button', { name: 'Restore' }),
+    ).toBeTruthy();
   });
 
   it('searches the authenticated member snapshot by name, username, and phone', () => {

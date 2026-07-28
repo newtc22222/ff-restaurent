@@ -16,6 +16,8 @@ import {
   RestaurantPlatform,
   SYSTEM_ROLE_VALUES,
   SystemRole,
+  USER_ACCOUNT_STATUS_VALUES,
+  UserAccountStatus,
   isHeadChef,
   isRootAdmin,
   isSousChefOrAbove,
@@ -32,6 +34,7 @@ describe('domain enum value tuples', () => {
   > = [
     ['ChefRole', ChefRole, CHEF_ROLE_VALUES],
     ['SystemRole', SystemRole, SYSTEM_ROLE_VALUES],
+    ['UserAccountStatus', UserAccountStatus, USER_ACCOUNT_STATUS_VALUES],
     ['EntryStatus', EntryStatus, ENTRY_STATUS_VALUES],
     ['PaymentStatus', PaymentStatus, PAYMENT_STATUS_VALUES],
     ['AdjustmentType', AdjustmentType, ADJUSTMENT_TYPE_VALUES],

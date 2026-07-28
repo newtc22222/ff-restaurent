@@ -14,6 +14,7 @@ const generatedTypesPath = resolve(
 const sharedTypes = {
   ChefRole: 'ChefRoleValue',
   SystemRole: 'SystemRoleValue',
+  UserAccountStatus: 'UserAccountStatusValue',
   EntryStatus: 'EntryStatusValue',
   PaymentStatus: 'PaymentStatusValue',
   AdjustmentType: 'AdjustmentTypeValue',
@@ -145,6 +146,7 @@ const buildArtifacts = async () => {
   PaymentStatusValue,
   RestaurantPlatformValue,
   SystemRoleValue,
+  UserAccountStatusValue,
 } from '@ff-restaurent/shared';`,
     transform(schemaObject) {
       const sharedType = schemaObject['x-shared-type'];

@@ -8,6 +8,7 @@ import {
   PAYMENT_STATUS_VALUES,
   RESTAURANT_PLATFORM_VALUES,
   SYSTEM_ROLE_VALUES,
+  USER_ACCOUNT_STATUS_VALUES,
 } from '@ff-restaurent/shared';
 import { isoDateOnlySchema } from './common.js';
 
@@ -21,6 +22,9 @@ import { isoDateOnlySchema } from './common.js';
 
 export const chefRoleResponseSchema = z.enum(CHEF_ROLE_VALUES);
 export const systemRoleResponseSchema = z.enum(SYSTEM_ROLE_VALUES);
+export const userAccountStatusResponseSchema = z.enum(
+  USER_ACCOUNT_STATUS_VALUES,
+);
 export const entryStatusResponseSchema = z.enum(ENTRY_STATUS_VALUES);
 export const paymentStatusResponseSchema = z.enum(PAYMENT_STATUS_VALUES);
 export const adjustmentTypeResponseSchema = z.enum(ADJUSTMENT_TYPE_VALUES);
@@ -64,6 +68,7 @@ export const publicUserResponseSchema = publicUserSummaryResponseSchema
 
 export const userResponseSchema = publicUserResponseSchema
   .extend({
+    accountStatus: userAccountStatusResponseSchema,
     roles: z.array(z.string()),
     paymentRemindersEnabled: z.boolean().optional(),
   })
@@ -251,6 +256,7 @@ export const authSessionResponseSchema = z
 export const openApiComponentSchemas = {
   ChefRole: chefRoleResponseSchema,
   SystemRole: systemRoleResponseSchema,
+  UserAccountStatus: userAccountStatusResponseSchema,
   EntryStatus: entryStatusResponseSchema,
   PaymentStatus: paymentStatusResponseSchema,
   AdjustmentType: adjustmentTypeResponseSchema,
