@@ -66,6 +66,7 @@ export async function seed({ reset = true }: { reset?: boolean } = {}) {
     await prisma.billAuditLog.deleteMany();
     await prisma.rootAdminTransferAudit.deleteMany();
     await prisma.roleAuditLog.deleteMany();
+    await prisma.userAccountStatusAudit.deleteMany();
     await prisma.billParticipant.deleteMany();
     await prisma.bill.deleteMany();
     await prisma.restaurantEntry.deleteMany();

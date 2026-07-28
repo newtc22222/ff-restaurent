@@ -1,4 +1,7 @@
 {
+  "toast.accountBlocked": "Account blocked.",
+  "toast.accountRestored": "Account restored.",
+  "toast.accountStatusUpdateFailed": "Could not update the account status.",
   "toast.partialData": "Some data could not be refreshed. Your session is still active.",
   "toast.notificationReadFailed": "Could not mark the notification as read.",
   "toast.signInSuccess": "Signed in successfully.",

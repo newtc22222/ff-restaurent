@@ -72,6 +72,7 @@ type QrRow = { id: string } | null;
 const stubDb = (options: {
   qr?: QrRow;
   userCount?: number;
+  onUserCountArgs?: (args: unknown) => void;
   onQrArgs?: (args: unknown) => void;
 }): BillServiceDb => ({
   paymentQrImage: {
@@ -81,7 +82,10 @@ const stubDb = (options: {
     },
   },
   user: {
-    count: async () => options.userCount ?? 0,
+    count: async (args) => {
+      options.onUserCountArgs?.(args);
+      return options.userCount ?? 0;
+    },
   },
 });
 
@@ -117,10 +121,25 @@ test('payment QR validation rejects an image that is missing, retired, or owned 
 });
 
 test('participant validation passes only when every id resolves to a user', async () => {
+  let countArgs: unknown;
   assert.deepEqual(
-    await validateParticipantIds(['a', 'b'], stubDb({ userCount: 2 })),
+    await validateParticipantIds(
+      ['a', 'b'],
+      stubDb({
+        userCount: 2,
+        onUserCountArgs: (args) => {
+          countArgs = args;
+        },
+      }),
+    ),
     { ok: true },
   );
+  assert.deepEqual(countArgs, {
+    where: {
+      id: { in: ['a', 'b'] },
+      accountStatus: 'ACTIVE',
+    },
+  });
   assert.deepEqual(
     await validateParticipantIds(['a', 'b'], stubDb({ userCount: 1 })),
     {

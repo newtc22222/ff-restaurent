@@ -35,6 +35,7 @@ import {
   rootAdminTransferSchema,
   statsQuerySchema,
   userResponseSchema,
+  userAccountStatusSchema,
 } from '../schemas/index.js';
 
 type RequestContract = {
@@ -72,6 +73,7 @@ const requestContracts: Record<string, RequestContract> = {
   'GET /members': { querystring: memberQuerySchema },
   'GET /users': { querystring: memberQuerySchema },
   'PATCH /users/:id/chef-role': { body: chefRoleSchema },
+  'PATCH /users/:id/account-status': { body: userAccountStatusSchema },
   'POST /admin/root-transfer': { body: rootAdminTransferSchema },
   'GET /restaurants': { querystring: restaurantListQuerySchema },
   'POST /restaurants': { body: restaurantSchema },
@@ -141,6 +143,7 @@ const successResponses: Record<string, Record<string, ZodTypeAny>> = {
   'GET /members': { '200': pageOf(userResponseSchema) },
   'GET /users': { '200': pageOf(userResponseSchema) },
   'PATCH /users/:id/chef-role': { '200': userResponseSchema },
+  'PATCH /users/:id/account-status': { '200': userResponseSchema },
   'GET /collections': { '200': pageOf(collectionResponseSchema) },
   'POST /collections': { '201': collectionResponseSchema },
   'GET /collections/:id': { '200': collectionResponseSchema },

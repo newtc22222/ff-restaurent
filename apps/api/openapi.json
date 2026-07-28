@@ -360,6 +360,7 @@
       "User": {
         "additionalProperties": true,
         "properties": {
+          "accountStatus": { "$ref": "#/components/schemas/UserAccountStatus" },
           "avatarUrl": { "nullable": true, "type": "string" },
           "chefRole": {
             "anyOf": [{ "$ref": "#/components/schemas/ChefRole" }],
@@ -383,9 +384,15 @@
           "name",
           "chefRole",
           "systemRole",
+          "accountStatus",
           "roles"
         ],
         "type": "object"
+      },
+      "UserAccountStatus": {
+        "enum": ["ACTIVE", "BLOCKED"],
+        "type": "string",
+        "x-shared-type": "UserAccountStatusValue"
       }
     },
     "securitySchemes": { "bearerAuth": { "scheme": "bearer", "type": "http" } }
@@ -6118,6 +6125,83 @@
                   "required": ["items", "pageInfo"],
                   "type": "object"
                 }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/users/{id}/account-status": {
+      "patch": {
+        "operationId": "patchUsersByIdAccount-status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "accountStatus": {
+                    "$ref": "#/components/schemas/UserAccountStatus"
+                  }
+                },
+                "required": ["accountStatus"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
               }
             },
             "description": "Default Response"

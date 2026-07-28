@@ -1,4 +1,13 @@
 {
+  "admin.accountStatus": "Trạng thái tài khoản",
+  "admin.statusActive": "Hoạt động",
+  "admin.statusBlocked": "Đã chặn",
+  "admin.blockAccount": "Chặn",
+  "admin.restoreAccount": "Khôi phục",
+  "admin.blockAccountTitle": "Chặn tài khoản này?",
+  "admin.restoreAccountTitle": "Khôi phục tài khoản này?",
+  "admin.blockAccountMessage": "Thao tác này kết thúc ngay các phiên hiện tại và ngăn đăng nhập của",
+  "admin.restoreAccountMessage": "Thao tác này cho phép đăng nhập và tham gia trở lại đối với",
   "role.customer": "Khách hàng",
   "role.headchef": "Bếp trưởng",
   "role.souschef": "Bếp phó",

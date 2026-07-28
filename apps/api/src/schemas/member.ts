@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { CHEF_ROLE_VALUES } from '@ff-restaurent/shared';
+import {
+  CHEF_ROLE_VALUES,
+  USER_ACCOUNT_STATUS_VALUES,
+} from '@ff-restaurent/shared';
 
 /** Member directory queries and role administration bodies. */
 
@@ -13,6 +16,10 @@ export const memberQuerySchema = z.object({
 
 export const chefRoleSchema = z.object({
   chefRole: z.enum(CHEF_ROLE_VALUES).nullable(),
+});
+
+export const userAccountStatusSchema = z.object({
+  accountStatus: z.enum(USER_ACCOUNT_STATUS_VALUES),
 });
 
 export const rootAdminTransferSchema = z.object({

@@ -1,4 +1,7 @@
 {
+  "toast.accountBlocked": "Đã chặn tài khoản.",
+  "toast.accountRestored": "Đã khôi phục tài khoản.",
+  "toast.accountStatusUpdateFailed": "Không thể cập nhật trạng thái tài khoản.",
   "toast.partialData": "Một số dữ liệu chưa thể làm mới. Phiên đăng nhập của bạn vẫn hoạt động.",
   "toast.notificationReadFailed": "Không thể đánh dấu thông báo đã đọc.",
   "toast.signInSuccess": "Đăng nhập thành công.",

@@ -5,6 +5,7 @@ import type {
   PaymentStatusValue,
   RestaurantPlatformValue,
   SystemRoleValue,
+  UserAccountStatusValue,
 } from '@ff-restaurent/shared';
 import type { components } from './generated/api-types';
 
@@ -17,6 +18,7 @@ type GeneratedSchemas = components['schemas'];
  */
 export type ChefRole = ChefRoleValue | null;
 export type SystemRole = SystemRoleValue | null;
+export type UserAccountStatus = UserAccountStatusValue;
 export type PaymentStatus = PaymentStatusValue;
 export type EntryStatus = EntryStatusValue;
 export type RestaurantPlatform = RestaurantPlatformValue;

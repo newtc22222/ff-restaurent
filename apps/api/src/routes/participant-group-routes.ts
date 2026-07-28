@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserAccountStatus } from '@prisma/client';
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../lib/prisma.js';
 import { publicUserSelect } from '../lib/roles.js';
@@ -13,7 +13,12 @@ const groupInclude = {
 } satisfies Prisma.ParticipantGroupInclude;
 
 const ensureMembersExist = async (memberIds: string[], reply: FastifyReply) => {
-  const count = await prisma.user.count({ where: { id: { in: memberIds } } });
+  const count = await prisma.user.count({
+    where: {
+      id: { in: memberIds },
+      accountStatus: UserAccountStatus.ACTIVE,
+    },
+  });
   if (count === memberIds.length) return true;
   reply.code(400).send({
     code: 'INVALID_PARTICIPANTS',

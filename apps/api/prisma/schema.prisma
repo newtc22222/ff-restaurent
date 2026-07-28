@@ -16,6 +16,11 @@ enum SystemRole {
   ROOT_ADMIN
 }
 
+enum UserAccountStatus {
+  ACTIVE
+  BLOCKED
+}
+
 enum PasswordResetStatus {
   PENDING
   CODE_ISSUED
@@ -57,35 +62,52 @@ enum CollectionSystemType {
 }
 
 model User {
-  id                          String                   @id @default(cuid())
-  username                    String                   @unique
-  phone                       String?                  @unique
-  name                        String
-  avatarUrl                   String?
-  searchText                  String                   @default("")
-  passwordHash                String
-  chefRole                    ChefRole?
-  systemRole                  SystemRole?              @unique
-  sessionVersion              Int                      @default(0)
-  paymentRemindersEnabled     Boolean                  @default(true)
-  createdAt                   DateTime                 @default(now())
-  updatedAt                   DateTime                 @updatedAt
-  billsCreated                Bill[]                   @relation("BillCreator")
-  restaurants                 RestaurantEntry[]        @relation("RestaurantCreator")
-  participants                BillParticipant[]
-  notifications               Notification[]
-  roleChangesMade             RoleAuditLog[]           @relation("RoleChangedBy")
-  roleChangesReceived         RoleAuditLog[]           @relation("RoleChangedUser")
-  billAuditLogs               BillAuditLog[]
-  rootTransfersFrom           RootAdminTransferAudit[] @relation("RootTransferredFrom")
-  rootTransfersTo             RootAdminTransferAudit[] @relation("RootTransferredTo")
-  passwordResetRequests       PasswordResetRequest[]
-  ownedCollections            Collection[]             @relation("CollectionOwner")
-  collectionShares            CollectionShare[]
-  feedback                    Feedback[]
-  ownedParticipantGroups      ParticipantGroup[]       @relation("ParticipantGroupOwner")
-  participantGroupMemberships ParticipantGroupMember[]
-  paymentQrImages             PaymentQrImage[]
+  id                           String                   @id @default(cuid())
+  username                     String                   @unique
+  phone                        String?                  @unique
+  name                         String
+  avatarUrl                    String?
+  searchText                   String                   @default("")
+  passwordHash                 String
+  chefRole                     ChefRole?
+  systemRole                   SystemRole?              @unique
+  accountStatus                UserAccountStatus        @default(ACTIVE)
+  sessionVersion               Int                      @default(0)
+  paymentRemindersEnabled      Boolean                  @default(true)
+  createdAt                    DateTime                 @default(now())
+  updatedAt                    DateTime                 @updatedAt
+  billsCreated                 Bill[]                   @relation("BillCreator")
+  restaurants                  RestaurantEntry[]        @relation("RestaurantCreator")
+  participants                 BillParticipant[]
+  notifications                Notification[]
+  roleChangesMade              RoleAuditLog[]           @relation("RoleChangedBy")
+  roleChangesReceived          RoleAuditLog[]           @relation("RoleChangedUser")
+  billAuditLogs                BillAuditLog[]
+  rootTransfersFrom            RootAdminTransferAudit[] @relation("RootTransferredFrom")
+  rootTransfersTo              RootAdminTransferAudit[] @relation("RootTransferredTo")
+  passwordResetRequests        PasswordResetRequest[]
+  ownedCollections             Collection[]             @relation("CollectionOwner")
+  collectionShares             CollectionShare[]
+  feedback                     Feedback[]
+  ownedParticipantGroups       ParticipantGroup[]       @relation("ParticipantGroupOwner")
+  participantGroupMemberships  ParticipantGroupMember[]
+  paymentQrImages              PaymentQrImage[]
+  accountStatusChangesMade     UserAccountStatusAudit[] @relation("AccountStatusChangedBy")
+  accountStatusChangesReceived UserAccountStatusAudit[] @relation("AccountStatusChangedUser")
+}
+
+model UserAccountStatusAudit {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation("AccountStatusChangedUser", fields: [userId], references: [id])
+  changedById String
+  changedBy   User              @relation("AccountStatusChangedBy", fields: [changedById], references: [id])
+  fromStatus  UserAccountStatus
+  toStatus    UserAccountStatus
+  createdAt   DateTime          @default(now())
+
+  @@index([userId, createdAt])
+  @@index([changedById, createdAt])
 }
 
 model PasswordResetRequest {
@@ -214,7 +236,7 @@ model Bill {
   qrCodePath           String?
   paymentUrl           String?
   paymentQrImageId     String?
-  paymentQrImage       PaymentQrImage?       @relation(fields: [paymentQrImageId], references: [id], onDelete: Restrict)
+  paymentQrImage       PaymentQrImage?      @relation(fields: [paymentQrImageId], references: [id], onDelete: Restrict)
   status               EntryStatus          @default(ACTIVE)
   createdById          String
   createdBy            User                 @relation("BillCreator", fields: [createdById], references: [id])

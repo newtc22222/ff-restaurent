@@ -100,6 +100,7 @@
   "createBill.allocationProportionalHint": "Theo tỷ lệ chi phí gốc của từng thành viên.",
   "createBill.allocationEqual": "Chia đều",
   "createBill.allocationEqualHint": "Mỗi thành viên nhận phần giảm giá bằng nhau.",
+  "createBill.blockedParticipant": "tài khoản bị chặn",
   "duplicate.title": "Phát hiện hóa đơn trùng",
   "duplicate.message": "Một hóa đơn đang hoạt động có cùng ngày, địa điểm, chi phí, điều chỉnh và thành viên. Bạn vẫn muốn tạo bản trùng?",
   "bills.paymentQr": "Ảnh QR thanh toán"

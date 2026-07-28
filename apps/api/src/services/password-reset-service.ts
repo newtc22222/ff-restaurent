@@ -1,5 +1,9 @@
 import { randomInt } from 'node:crypto';
-import { PasswordResetStatus, SystemRole } from '@prisma/client';
+import {
+  PasswordResetStatus,
+  SystemRole,
+  UserAccountStatus,
+} from '@prisma/client';
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma.js';
@@ -48,7 +52,7 @@ const resolveUser = async (identifier: string) => {
  */
 export const requestPasswordReset = async (identifier: string) => {
   const user = await resolveUser(identifier);
-  if (!user) return;
+  if (!user || user.accountStatus !== UserAccountStatus.ACTIVE) return;
   try {
     await prisma.$transaction(async (tx) => {
       await tx.passwordResetRequest.updateMany({
@@ -97,7 +101,13 @@ export const consumePasswordReset = async (input: {
     input.code.toUpperCase(),
     reset?.codeHash ?? (await dummyHash),
   );
-  if (!user || !reset || !reset.codeHash) return 'invalid';
+  if (
+    !user ||
+    user.accountStatus !== UserAccountStatus.ACTIVE ||
+    !reset ||
+    !reset.codeHash
+  )
+    return 'invalid';
 
   if (!reset.expiresAt || reset.expiresAt <= new Date()) {
     await prisma.passwordResetRequest.updateMany({
@@ -178,6 +188,7 @@ export const listPendingResetRequests = () =>
         in: [PasswordResetStatus.PENDING, PasswordResetStatus.CODE_ISSUED],
       },
       activeKey: { not: null },
+      user: { accountStatus: UserAccountStatus.ACTIVE },
     },
     select: {
       id: true,
@@ -219,7 +230,12 @@ export const issueResetCode = async (
     where: { id },
     include: { user: true },
   });
-  if (!reset || !reset.activeKey || reset.status === PasswordResetStatus.USED) {
+  if (
+    !reset ||
+    !reset.activeKey ||
+    reset.status === PasswordResetStatus.USED ||
+    reset.user.accountStatus !== UserAccountStatus.ACTIVE
+  ) {
     return { outcome: 'not-found' };
   }
   if (
