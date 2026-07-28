@@ -1,2 +1,7 @@
 * text=auto eol=lf
 *.sh text eol=lf
+.agents/skills/vercel-react-best-practices/** whitespace=-trailing-space
+.agents/skills/vercel-react-native-skills/** whitespace=-trailing-space
+.agents/skills/vercel-react-view-transitions/** whitespace=-trailing-space
+.agents/skills/web-design-guidelines/** whitespace=-trailing-space
+.agents/skills/writing-guidelines/** whitespace=-trailing-space

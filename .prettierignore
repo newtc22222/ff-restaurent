@@ -1,1 +1,6 @@
 apps/web/src/app/router.ts
+.agents/skills/vercel-react-best-practices/
+.agents/skills/vercel-react-native-skills/
+.agents/skills/vercel-react-view-transitions/
+.agents/skills/web-design-guidelines/
+.agents/skills/writing-guidelines/

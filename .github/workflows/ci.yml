@@ -51,6 +51,8 @@ jobs:
           echo "Postgres did not become ready in time" >&2
           exit 1
       - run: npm ci
+      - name: Verify canonical agent system
+        run: npm run agents:verify
       - run: npm run build -w @ff-restaurent/shared
       - run: npm run prettier:check
       - run: npm run lint
