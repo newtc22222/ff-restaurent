@@ -22,6 +22,7 @@ import { useRouteMutation } from '@/hooks/useRouteMutation';
 import BackButton from '@/components/ui/BackButton';
 import AmountInput from '@/components/ui/AmountInput';
 import SummaryLine from '@/components/ui/SummaryLine';
+import DatePicker from '@/components/ui/DatePicker';
 import Dropdown from '@/components/ui/Dropdown';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { usePaymentQrImages } from '@/features/profile/profile-media.queries';
@@ -333,13 +334,7 @@ export default function CreateBillPage() {
 
             <label className="mb-5 block space-y-1.5">
               <span className="label">{t('createBill.occurredOn')}</span>
-              <input
-                className="input w-full"
-                type="date"
-                required
-                value={occurredOn}
-                onChange={(event) => setOccurredOn(event.target.value)}
-              />
+              <DatePicker value={occurredOn} onChange={setOccurredOn} />
             </label>
 
             <div className="mb-6 grid grid-cols-2 gap-3">

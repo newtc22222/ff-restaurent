@@ -237,9 +237,11 @@ describe('CreateBillPage repeat workflows', () => {
     fireEvent.change(screen.getByLabelText('Restaurant / Eatery'), {
       target: { value: 'restaurant-1' },
     });
-    fireEvent.change(screen.getByLabelText('Bill date'), {
-      target: { value: '2026-07-15' },
-    });
+    fireEvent.click(screen.getByLabelText('Bill date'));
+    const day15 = screen
+      .getAllByRole('button', { name: '15' })
+      .find((btn) => !btn.hasAttribute('disabled'));
+    if (day15) fireEvent.click(day15);
     fireEvent.change(screen.getByLabelText('Choose a group'), {
       target: { value: 'group-1' },
     });

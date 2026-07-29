@@ -23,6 +23,7 @@ import type { Stats } from '@/api/types';
 import { money } from '@/lib/currency';
 import { PIE_COLORS } from '@/lib/charts';
 import { useI18n } from '@/app/providers/i18n';
+import DatePicker from '@/components/ui/DatePicker';
 import Dropdown from '@/components/ui/Dropdown';
 import EmptyState from '@/components/ui/EmptyState';
 import SectionTitle from '@/components/ui/SectionTitle';
@@ -123,21 +124,11 @@ export default function StatsPage() {
             <div className="grid w-full gap-3 sm:grid-cols-[1fr_1fr_auto] lg:max-w-2xl">
               <label>
                 <span className="label mb-1.5 block">{t('stats.from')}</span>
-                <input
-                  className="field w-full"
-                  type="date"
-                  value={from}
-                  onChange={(event) => setFrom(event.target.value)}
-                />
+                <DatePicker value={from} onChange={setFrom} />
               </label>
               <label>
                 <span className="label mb-1.5 block">{t('stats.to')}</span>
-                <input
-                  className="field w-full"
-                  type="date"
-                  value={to}
-                  onChange={(event) => setTo(event.target.value)}
-                />
+                <DatePicker value={to} onChange={setTo} />
               </label>
               <button
                 type="button"

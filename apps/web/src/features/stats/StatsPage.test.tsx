@@ -50,9 +50,22 @@ describe('StatsPage ranges and obligations', () => {
     expect(screen.getAllByText('Waiting').length).toBeGreaterThan(0);
     expect(screen.getByText('Total obligation')).toBeTruthy();
 
-    const [from, to] = screen.getAllByDisplayValue(/2026-07-/);
-    fireEvent.change(from, { target: { value: '2026-07-02' } });
-    fireEvent.change(to, { target: { value: '2026-07-20' } });
+    const pickDay = (name: string) => {
+      const day = screen
+        .getAllByRole('button', { name })
+        .find((btn) => !btn.hasAttribute('disabled'));
+      if (day) fireEvent.click(day);
+    };
+
+    const fromBtn = screen.getByRole('button', { name: /Jul 1, 2026/i });
+    const toBtn = screen.getByRole('button', { name: /Jul 15, 2026/i });
+
+    fireEvent.click(fromBtn);
+    pickDay('2');
+
+    fireEvent.click(toBtn);
+    pickDay('20');
+
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(setSearchParams).toHaveBeenCalledWith({
@@ -69,9 +82,21 @@ describe('StatsPage ranges and obligations', () => {
       </I18nProvider>,
     );
 
-    const [from, to] = screen.getAllByDisplayValue(/2026-07-/);
-    fireEvent.change(from, { target: { value: '2026-07-21' } });
-    fireEvent.change(to, { target: { value: '2026-07-20' } });
+    const pickDay = (name: string) => {
+      const day = screen
+        .getAllByRole('button', { name })
+        .find((btn) => !btn.hasAttribute('disabled'));
+      if (day) fireEvent.click(day);
+    };
+
+    const fromBtn = screen.getByRole('button', { name: /Jul 1, 2026/i });
+    const toBtn = screen.getByRole('button', { name: /Jul 15, 2026/i });
+
+    fireEvent.click(fromBtn);
+    pickDay('21');
+
+    fireEvent.click(toBtn);
+    pickDay('20');
 
     expect(
       screen.getByText('The end date must be on or after the start date.'),

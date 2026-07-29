@@ -11,8 +11,6 @@ import {
   Table2,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import DatePicker from 'react-datepicker';
-import { enUS, vi } from 'date-fns/locale';
 import {
   useLoaderData,
   useLocation,
@@ -21,15 +19,12 @@ import {
 } from 'react-router';
 import type { Bill, BillPage, BillParticipant, User } from '@/api/types';
 import { money } from '@/lib/currency';
-import {
-  formatDateOnlyForLocale,
-  formatLocalDateOnly,
-  parseLocalDateOnly,
-} from '@/lib/date-only';
+import { formatDateOnlyForLocale } from '@/lib/date-only';
 import { canChef, canManageBill, isHead } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
+import DatePicker from '@/components/ui/DatePicker';
 import Dropdown from '@/components/ui/Dropdown';
 import EmptyState from '@/components/ui/EmptyState';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -290,32 +285,20 @@ export default function BillsPage() {
             <label className="space-y-1">
               <span className="label">{t('bills.from')}</span>
               <DatePicker
-                selected={parseLocalDateOnly(filterFrom)}
-                onChange={(date: Date | null) =>
-                  setQuery('from', formatLocalDateOnly(date))
-                }
-                maxDate={parseLocalDateOnly(filterTo) ?? undefined}
-                locale={locale === 'vi' ? vi : enUS}
-                dateFormat="dd/MM/yyyy"
+                value={filterFrom}
+                onChange={(dateStr) => setQuery('from', dateStr)}
+                maxDate={filterTo}
                 placeholderText={t('bills.chooseDate')}
-                className="field w-full"
-                wrapperClassName="w-full"
                 isClearable
               />
             </label>
             <label className="space-y-1">
               <span className="label">{t('bills.to')}</span>
               <DatePicker
-                selected={parseLocalDateOnly(filterTo)}
-                onChange={(date: Date | null) =>
-                  setQuery('to', formatLocalDateOnly(date))
-                }
-                minDate={parseLocalDateOnly(filterFrom) ?? undefined}
-                locale={locale === 'vi' ? vi : enUS}
-                dateFormat="dd/MM/yyyy"
+                value={filterTo}
+                onChange={(dateStr) => setQuery('to', dateStr)}
+                minDate={filterFrom}
                 placeholderText={t('bills.chooseDate')}
-                className="field w-full"
-                wrapperClassName="w-full"
                 isClearable
               />
             </label>
