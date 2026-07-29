@@ -234,7 +234,7 @@ export default function AdminPage() {
             aria-hidden="true"
           />
           <input
-            className="field w-full pl-10"
+            className="field w-full !pl-9"
             type="search"
             aria-label={t('admin.searchMembers')}
             placeholder={t('admin.searchMembers')}
