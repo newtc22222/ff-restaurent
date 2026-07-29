@@ -1,17 +1,18 @@
 import {
+  type ReactNode,
   createContext,
   useCallback,
   useContext,
   useMemo,
   useState,
-  type ReactNode,
 } from 'react';
+
 import {
-  getStoredLocale,
   LOCALE_STORAGE_KEY,
-  translations,
   type Locale,
   type TranslationKey,
+  getStoredLocale,
+  translations,
 } from '@/lib/translations';
 
 export type { Locale } from '@/lib/translations';

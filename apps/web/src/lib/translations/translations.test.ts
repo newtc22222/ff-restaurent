@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { translations, type Locale } from './index';
+
+import { type Locale, translations } from './index';
 
 /**
  * The `satisfies` clauses in each en/<domain>.ts module already make a missing

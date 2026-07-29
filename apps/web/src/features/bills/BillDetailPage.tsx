@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Archive as ArchiveIcon,
   BellRing,
@@ -12,6 +11,7 @@ import {
   RotateCcw,
   WalletCards,
 } from 'lucide-react';
+import { useState } from 'react';
 import {
   Navigate,
   useLoaderData,
@@ -20,18 +20,20 @@ import {
   useParams,
   useSearchParams,
 } from 'react-router';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+
 import type { BillActivityAction, BillActivityEvent } from '@/api/types';
-import { money } from '@/lib/currency';
-import { formatDateOnlyForLocale } from '@/lib/date-only';
-import { PIE_COLORS } from '@/lib/charts';
-import { canChef, canManageBill, isHead } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import UserAvatar from '@/components/ui/UserAvatar';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { PIE_COLORS } from '@/lib/charts';
+import { money } from '@/lib/currency';
+import { formatDateOnlyForLocale } from '@/lib/date-only';
+import { canChef, canManageBill, isHead } from '@/lib/permissions';
+
 import { billEditPath, billsReturnPath } from './bill-navigation';
 
 const activityIcon = (action: BillActivityAction) => {

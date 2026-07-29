@@ -1,5 +1,6 @@
-import bcrypt from 'bcryptjs';
 import { Prisma, SystemRole, UserAccountStatus } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
 import { prisma } from '../lib/prisma.js';
 
 export class RootAdminTransferError extends Error {

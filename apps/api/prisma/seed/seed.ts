@@ -1,12 +1,15 @@
-import bcrypt from 'bcryptjs';
 import { pathToFileURL } from 'node:url';
+
 import {
   ChefRole,
   CollectionSystemType,
   PrismaClient,
   SystemRole,
 } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
 import { AdjustmentType, calculateBillSplit } from '@ff-restaurent/shared';
+
 import { seedPopularVietnamCuisines } from '../../src/services/popular-cuisine-seed.js';
 
 const prisma = new PrismaClient();

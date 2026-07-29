@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
+import { publicUserSelect } from '../lib/roles.js';
 import { billActivityActorSelect } from '../services/bill-activity.js';
 import {
   buildBillResponseInclude,
   paymentResponseInclude,
 } from '../services/bill-serializers.js';
-import { publicUserSelect } from '../lib/roles.js';
 
 const expectedPublicUserFields = [
   'avatarUrl',

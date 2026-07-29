@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
 import { NavLink } from 'react-router';
+
 import ScrollArea from '../ui/ScrollArea';
 
 interface SidebarProps {

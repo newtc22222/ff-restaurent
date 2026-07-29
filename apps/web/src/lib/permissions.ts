@@ -3,6 +3,7 @@ import {
   isRootAdmin as isRootAdminShared,
   isSousChefOrAbove,
 } from '@ff-restaurent/shared';
+
 import type { Bill, User } from '@/api/types';
 
 export const roleLabel = (

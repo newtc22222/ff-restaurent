@@ -2,29 +2,31 @@ import { ExternalLink, Images, Layers, Pencil, Phone } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate, useRevalidator } from 'react-router';
-import { canChef, isHead } from '@/lib/permissions';
+
 import type { RestaurantDetailData, VietnamAddress } from '@/api/types';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
 import BackButton from '@/components/ui/BackButton';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import Dropdown from '@/components/ui/Dropdown';
+import ImagePicker from '@/components/ui/ImagePicker';
 import VietnamAddressFields, {
   isVietnamAddressComplete,
 } from '@/features/address/VietnamAddressFields';
-import RestaurantProfileFields, {
-  isRestaurantProfileValid,
-  type RestaurantProfileDraft,
-} from './RestaurantProfileFields';
-import RestaurantBanner from './RestaurantBanner';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { canChef, isHead } from '@/lib/permissions';
+
 import { platformLabel } from './PlatformLinksEditor';
+import RestaurantBanner from './RestaurantBanner';
 import RestaurantCatalogFields, {
   type RestaurantCatalogValue,
 } from './RestaurantCatalogFields';
 import RestaurantFeedback from './RestaurantFeedback';
+import RestaurantProfileFields, {
+  type RestaurantProfileDraft,
+  isRestaurantProfileValid,
+} from './RestaurantProfileFields';
 import { useRestaurantMediaMutation } from './restaurant-media.mutations';
-import Dropdown from '@/components/ui/Dropdown';
-import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import ImagePicker from '@/components/ui/ImagePicker';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,

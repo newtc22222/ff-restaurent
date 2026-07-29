@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-
 import {
   cleanup,
   fireEvent,
@@ -9,9 +8,11 @@ import {
 } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { AddressDirectoryResult, VietnamAddress } from '@/api/types';
 import { I18nProvider } from '@/app/providers/i18n';
 import { QueryProvider } from '@/app/providers/query';
-import type { AddressDirectoryResult, VietnamAddress } from '@/api/types';
+
 import VietnamAddressFields, {
   emptyVietnamAddress,
 } from './VietnamAddressFields';

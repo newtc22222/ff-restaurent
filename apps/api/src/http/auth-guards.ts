@@ -1,7 +1,8 @@
+import { UserAccountStatus } from '@prisma/client';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+
 import { prisma } from '../lib/prisma.js';
 import { isHeadChef, isRootAdmin, isSousChefOrAbove } from '../lib/roles.js';
-import { UserAccountStatus } from '@prisma/client';
 
 type JwtPayload = { sub: string; ver?: number };
 

@@ -1,4 +1,5 @@
-import { redirect, type LoaderFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs, redirect } from 'react-router';
+
 import { ApiError } from '@/api/client';
 import type {
   Bill,
@@ -10,6 +11,7 @@ import type {
   User,
 } from '@/api/types';
 import { session } from '@/lib/session';
+
 import type { AppLoaderData } from './providers/app-context';
 
 export const fetchAllPages = async <T>(path: string): Promise<T[]> => {

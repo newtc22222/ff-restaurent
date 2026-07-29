@@ -9,6 +9,7 @@ import type {
   SystemRoleValue,
   UserAccountStatusValue,
 } from '@ff-restaurent/shared';
+
 export interface paths {
   '/address/provinces': {
     parameters: {

@@ -6,12 +6,12 @@ This document serves as the authoritative component registry for the **FF RESTau
 
 ## Workspace & Framework System Overview
 
-| Property | Details |
-| :--- | :--- |
-| **Primary Framework System** | **React web component** (`apps/web` — React 19, React Router v7, Vite, Tailwind CSS) |
-| **Shared Domain Package** | `@ff-restaurent/shared` (`packages/shared`) |
+| Property                                     | Details                                                                                 |
+| :------------------------------------------- | :-------------------------------------------------------------------------------------- |
+| **Primary Framework System**                 | **React web component** (`apps/web` — React 19, React Router v7, Vite, Tailwind CSS)    |
+| **Shared Domain Package**                    | `@ff-restaurent/shared` (`packages/shared`)                                             |
 | **Equivalent Vue 2 / Vue 3 Implementations** | **None in this repository** (The monorepo frontend is exclusively built with React 19). |
-| **Barrel Export** | `apps/web/src/components/ui/index.ts` |
+| **Barrel Export**                            | `apps/web/src/components/ui/index.ts`                                                   |
 
 ---
 

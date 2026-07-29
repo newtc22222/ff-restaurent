@@ -1,11 +1,14 @@
 import { randomInt } from 'node:crypto';
+
 import {
   PasswordResetStatus,
   SystemRole,
   UserAccountStatus,
 } from '@prisma/client';
-import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 import bcrypt from 'bcryptjs';
+
+import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
+
 import { prisma } from '../lib/prisma.js';
 
 /**

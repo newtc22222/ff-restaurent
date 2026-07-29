@@ -1,10 +1,12 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+
 import { badRequest } from '../http/app-error.js';
 import {
   requireAuthenticatedUser,
   requireSousChefOrHeadChef,
 } from '../http/auth-guards.js';
 import {
+  type RestaurantImageKind,
   clearRestaurantImage,
   clearUserAvatar,
   createQrImage,
@@ -16,7 +18,6 @@ import {
   replaceQrImage,
   replaceRestaurantImage,
   replaceUserAvatar,
-  type RestaurantImageKind,
 } from '../services/media-service.js';
 
 /**

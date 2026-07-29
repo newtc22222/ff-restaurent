@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AdjustmentAllocation, AdjustmentType } from './types.js';
+
 import { calculateBillSplit } from './bill-splitting.js';
+import { AdjustmentAllocation, AdjustmentType } from './types.js';
 
 describe('calculateBillSplit', () => {
   it('splits base, vat, shipping, discounts, and vouchers evenly with deterministic remainders', () => {

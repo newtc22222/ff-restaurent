@@ -1,5 +1,7 @@
-import 'fastify';
 import type { PrismaClient } from '@prisma/client';
+
+import 'fastify';
+
 import { CurrentUser } from '../lib/roles.js';
 import type { AppConfig } from './config.js';
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import { initials } from '@/lib/user-display';
 
 export interface UserAvatarProps {

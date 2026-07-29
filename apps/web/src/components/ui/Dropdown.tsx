@@ -1,16 +1,17 @@
+import { Check, ChevronDown, Search } from 'lucide-react';
 import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
   useLayoutEffect,
   useRef,
   useState,
-  type CSSProperties,
-  type KeyboardEvent,
-  type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronDown, Search } from 'lucide-react';
+
 import ScrollArea from './ScrollArea';
 
 export interface DropdownOption {

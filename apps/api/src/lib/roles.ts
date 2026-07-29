@@ -1,4 +1,5 @@
 import { Prisma, User } from '@prisma/client';
+
 import {
   isHeadChef as isHeadChefShared,
   isRootAdmin as isRootAdminShared,

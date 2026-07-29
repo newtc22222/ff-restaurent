@@ -1,7 +1,7 @@
 import {
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CheckCircle2,
   Clock,
   Grid2X2,
   LayoutDashboard,
@@ -17,20 +17,22 @@ import {
   useNavigate,
   useSearchParams,
 } from 'react-router';
+
 import type { Bill, BillPage, BillParticipant, User } from '@/api/types';
-import { money } from '@/lib/currency';
-import { formatDateOnlyForLocale } from '@/lib/date-only';
-import { canChef, canManageBill, isHead } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import DatePicker from '@/components/ui/DatePicker';
 import Dropdown from '@/components/ui/Dropdown';
 import EmptyState from '@/components/ui/EmptyState';
-import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import FilterBar from '@/components/ui/FilterBar';
 import ScrollArea from '@/components/ui/ScrollArea';
 import UserAvatar from '@/components/ui/UserAvatar';
-import FilterBar from '@/components/ui/FilterBar';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { money } from '@/lib/currency';
+import { formatDateOnlyForLocale } from '@/lib/date-only';
+import { canChef, canManageBill, isHead } from '@/lib/permissions';
+
 import { billsDetailNavigationState } from './bill-navigation';
 
 /**

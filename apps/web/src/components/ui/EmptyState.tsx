@@ -1,4 +1,4 @@
-import { PlusCircle, type LucideIcon } from 'lucide-react';
+import { type LucideIcon, PlusCircle } from 'lucide-react';
 
 interface EmptyStateProps {
   /**

@@ -1,10 +1,11 @@
 import { MessageSquare, Star } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { useI18n } from '@/app/providers/i18n';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
+
 import type { RestaurantFeedbackPage } from '@/api/types';
+import { useI18n } from '@/app/providers/i18n';
 import Dropdown from '@/components/ui/Dropdown';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
 
 const ratingOptions = Array.from({ length: 19 }, (_, index) => 1 + index / 2);
 

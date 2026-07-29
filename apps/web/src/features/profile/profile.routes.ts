@@ -1,5 +1,5 @@
-import { session } from '@/lib/session';
 import type { IntentMap } from '@/app/mutation-types';
+import { session } from '@/lib/session';
 
 export const profileIntents = {
   'update-profile': ({ api, body }) =>

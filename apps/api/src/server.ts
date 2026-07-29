@@ -1,6 +1,6 @@
 import { buildApp } from './app.js';
-import { prisma } from './lib/prisma.js';
 import { resolveServerAddress } from './config/server-config.js';
+import { prisma } from './lib/prisma.js';
 
 const { port, host } = resolveServerAddress();
 

@@ -1,4 +1,3 @@
-import { FormEvent, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -7,38 +6,41 @@ import {
   Plus,
   Store,
 } from 'lucide-react';
+import { FormEvent, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate } from 'react-router';
+
 import type { RestaurantDirectoryData } from '@/api/types';
-import { canChef, isHead } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
-import SectionTitle from '@/components/ui/SectionTitle';
-import EmptyState from '@/components/ui/EmptyState';
 import Dropdown from '@/components/ui/Dropdown';
+import EmptyState from '@/components/ui/EmptyState';
+import FilterBar from '@/components/ui/FilterBar';
+import ImagePicker from '@/components/ui/ImagePicker';
 import Modal from '@/components/ui/Modal';
+import SectionTitle from '@/components/ui/SectionTitle';
 import VietnamAddressFields, {
   emptyVietnamAddress,
   isVietnamAddressComplete,
 } from '@/features/address/VietnamAddressFields';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
+import { canChef, isHead } from '@/lib/permissions';
+
+import RestaurantCatalogFields, {
+  emptyRestaurantCatalogs,
+} from './RestaurantCatalogFields';
 import RestaurantProfileFields, {
   emptyRestaurantProfile,
   isRestaurantProfileValid,
 } from './RestaurantProfileFields';
-import RestaurantCatalogFields, {
-  emptyRestaurantCatalogs,
-} from './RestaurantCatalogFields';
-import ImagePicker from '@/components/ui/ImagePicker';
-import FilterBar from '@/components/ui/FilterBar';
-import { useUrlFilters } from '@/hooks/useUrlFilters';
-import { useRestaurantMediaMutation } from './restaurant-media.mutations';
 import {
+  type CuisineMatch,
   readCuisineFilter,
   updateCuisineFilter,
   updateCuisineMatch,
-  type CuisineMatch,
 } from './restaurant-filters';
+import { useRestaurantMediaMutation } from './restaurant-media.mutations';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,

@@ -1,18 +1,21 @@
-import { FormEvent, useState } from 'react';
 import { Edit3, Plus, QrCode, Trash2 } from 'lucide-react';
+import { FormEvent, useState } from 'react';
 import toast from 'react-hot-toast';
-import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 import { useNavigate } from 'react-router';
-import { canChef, roleLabel } from '@/lib/permissions';
-import { initials } from '@/lib/user-display';
+
+import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
+
+import type { PaymentQrImage } from '@/api/types';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
-import type { PaymentQrImage } from '@/api/types';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import ImagePicker from '@/components/ui/ImagePicker';
 import Modal from '@/components/ui/Modal';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { canChef, roleLabel } from '@/lib/permissions';
+import { initials } from '@/lib/user-display';
+
 import {
   usePaymentQrImages,
   useProfileMediaMutations,

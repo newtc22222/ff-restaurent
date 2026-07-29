@@ -21,15 +21,20 @@ export default [
         'warn', // Configured as 'warn' during Phase 1 migration
         {
           selector: 'JSXElement[openingElement.name.name="select"]',
-          message: 'Do not use native <select>. Use the shared Dropdown component (@/components/ui/Dropdown.tsx) instead.',
+          message:
+            'Do not use native <select>. Use the shared Dropdown component (@/components/ui/Dropdown.tsx) instead.',
         },
         {
-          selector: 'JSXAttribute[name.name="className"] Literal[value=/text-\\[\\d+px\\]/]',
-          message: 'Do not use arbitrary font sizes text-[Npx]. Use standard font scale tokens (text-2xs, text-xs, text-compact, text-sm, text-base, text-lg, text-xl).',
+          selector:
+            'JSXAttribute[name.name="className"] Literal[value=/text-\\[\\d+px\\]/]',
+          message:
+            'Do not use arbitrary font sizes text-[Npx]. Use standard font scale tokens (text-2xs, text-xs, text-compact, text-sm, text-base, text-lg, text-xl).',
         },
         {
-          selector: 'JSXAttribute[name.name="className"] Literal[value=/bg-\\[#[0-9a-fA-F]+\\]|text-\\[#[0-9a-fA-F]+\\]/]',
-          message: 'Do not use hardcoded hex colors in className. Use semantic theme tokens (bg-saffron, bg-basil, chip-saffron, etc.).',
+          selector:
+            'JSXAttribute[name.name="className"] Literal[value=/bg-\\[#[0-9a-fA-F]+\\]|text-\\[#[0-9a-fA-F]+\\]/]',
+          message:
+            'Do not use hardcoded hex colors in className. Use semantic theme tokens (bg-saffron, bg-basil, chip-saffron, etc.).',
         },
       ],
     },

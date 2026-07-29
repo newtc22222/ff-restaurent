@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Bell,
   ChevronDown,
@@ -7,16 +6,19 @@ import {
   MoreVertical,
   UserCircle,
 } from 'lucide-react';
+import { useState } from 'react';
+
 import type { Notification } from '@/api/types';
-import { roleLabel } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import { useTheme } from '@/app/providers/theme';
+import { roleLabel } from '@/lib/permissions';
+
 import BrandIcon from '../ui/BrandIcon';
-import ThemeToggle from '../ui/ThemeToggle';
-import LocaleToggle from '../ui/LocaleToggle';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import LocaleToggle from '../ui/LocaleToggle';
 import ScrollArea from '../ui/ScrollArea';
+import ThemeToggle from '../ui/ThemeToggle';
 import UserAvatar from '../ui/UserAvatar';
 
 interface AppHeaderProps {
@@ -319,9 +321,7 @@ export default function AppHeader({
                     key={notification.id}
                     type="button"
                     className={`block w-full border-b border-border px-4 py-3 text-left text-sm last:border-0 hover:bg-muted ${
-                      !notification.readAt
-                        ? 'chip-saffron'
-                        : ''
+                      !notification.readAt ? 'chip-saffron' : ''
                     }`}
                     onClick={() => {
                       setShowNotifications(false);

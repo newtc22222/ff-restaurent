@@ -1,18 +1,22 @@
-import type { FastifyInstance } from 'fastify';
 import { ChefRole, SystemRole, UserAccountStatus } from '@prisma/client';
+import type { FastifyInstance } from 'fastify';
+
 import {
   requireAuthenticatedUser,
   requireRootAdmin,
 } from '../http/auth-guards.js';
-import { prisma } from '../lib/prisma.js';
-import { transferRootAdmin } from '../services/root-admin-service.js';
-import { sanitizeUser } from '../lib/roles.js';
-import { chefRoleSchema, rootAdminTransferSchema } from '../schemas/index.js';
-import { memberQuerySchema } from '../schemas/index.js';
-import { normalizeSearchQuery } from '../lib/search-normalization.js';
 import { cursorPageResult } from '../lib/pagination.js';
+import { prisma } from '../lib/prisma.js';
+import { sanitizeUser } from '../lib/roles.js';
+import { normalizeSearchQuery } from '../lib/search-normalization.js';
+import {
+  chefRoleSchema,
+  memberQuerySchema,
+  rootAdminTransferSchema,
+  userAccountStatusSchema,
+} from '../schemas/index.js';
+import { transferRootAdmin } from '../services/root-admin-service.js';
 import { updateUserAccountStatus } from '../services/user-account-service.js';
-import { userAccountStatusSchema } from '../schemas/index.js';
 
 const listMembers = async (
   queryValue: unknown,

@@ -1,4 +1,5 @@
-import { redirect, type LoaderFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs, redirect } from 'react-router';
+
 import { ApiError } from '@/api/client';
 import type {
   CatalogPage,
@@ -9,10 +10,10 @@ import type {
   RestaurantEntry,
   RestaurantFeedbackPage,
 } from '@/api/types';
-import { session } from '@/lib/session';
-import { forwardListQuery } from '@/app/route-helpers';
-import { fetchAllPages } from '@/app/root.routes';
 import type { IntentMap } from '@/app/mutation-types';
+import { fetchAllPages } from '@/app/root.routes';
+import { forwardListQuery } from '@/app/route-helpers';
+import { session } from '@/lib/session';
 
 export async function restaurantsLoader({ request }: LoaderFunctionArgs) {
   if (!session.getToken()) throw redirect('/login');

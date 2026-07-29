@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+
 import { z } from 'zod';
+
 import vietnamAddressData from '../data/vietnam-wards-full.json' with { type: 'json' };
 
 export type AddressDirectoryItem = {

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { I18nProvider } from '@/app/providers/i18n';
 import { QueryProvider } from '@/app/providers/query';
+
 import ProfilePage from './ProfilePage';
 
 const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }));

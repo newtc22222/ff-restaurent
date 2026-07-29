@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import { resolveServerAddress } from './server-config.js';
 
 test('Cloud Run PORT takes precedence over the legacy API_PORT', () => {

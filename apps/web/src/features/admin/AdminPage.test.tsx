@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-
 import {
   cleanup,
   fireEvent,
@@ -7,10 +6,12 @@ import {
   screen,
   within,
 } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { I18nProvider } from '@/app/providers/i18n';
-import AdminPage from './AdminPage';
 import { MemoryRouter } from 'react-router';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { I18nProvider } from '@/app/providers/i18n';
+
+import AdminPage from './AdminPage';
 
 const { mutate, refresh } = vi.hoisted(() => ({
   mutate: vi.fn(),

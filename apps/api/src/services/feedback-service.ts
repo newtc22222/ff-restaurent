@@ -1,4 +1,5 @@
 import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
+
 import {
   badRequest,
   conflict,
@@ -6,8 +7,8 @@ import {
   notFound,
 } from '../http/app-error.js';
 import { prisma } from '../lib/prisma.js';
-import { isHeadChef } from '../lib/roles.js';
 import type { CurrentUser } from '../lib/roles.js';
+import { isHeadChef } from '../lib/roles.js';
 
 /**
  * Restaurant feedback: eligibility, aggregates, and per-author mutations.

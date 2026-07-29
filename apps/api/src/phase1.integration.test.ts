@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
+
 import {
   ChefRole,
   CollectionSystemType,
@@ -11,6 +12,7 @@ import {
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
+
 import { buildApp } from './app.js';
 import { prisma } from './lib/prisma.js';
 import { ensureDefaultCollections } from './services/collection-service.js';

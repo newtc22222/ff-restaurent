@@ -1,4 +1,3 @@
-import { FormEvent, useState } from 'react';
 import {
   FolderHeart,
   Globe2,
@@ -8,16 +7,18 @@ import {
   Share2,
   Sparkles,
 } from 'lucide-react';
+import { FormEvent, useState } from 'react';
 import { useLoaderData, useNavigate } from 'react-router';
+
 import type { CatalogPage, Collection } from '@/api/types';
-import { useI18n } from '@/app/providers/i18n';
 import { useAppContext } from '@/app/providers/app-context';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
-import EmptyState from '@/components/ui/EmptyState';
-import SectionTitle from '@/components/ui/SectionTitle';
+import { useI18n } from '@/app/providers/i18n';
 import Dropdown from '@/components/ui/Dropdown';
-import Modal from '@/components/ui/Modal';
+import EmptyState from '@/components/ui/EmptyState';
 import FilterBar from '@/components/ui/FilterBar';
+import Modal from '@/components/ui/Modal';
+import SectionTitle from '@/components/ui/SectionTitle';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 
 const collectionIcon = (collection: Collection) =>

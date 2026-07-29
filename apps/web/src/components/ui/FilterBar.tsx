@@ -1,5 +1,6 @@
-import { useId, type ReactNode } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
+import { type ReactNode, useId } from 'react';
+
 import { cn } from '@/lib/cn';
 
 type FilterBarProps = {

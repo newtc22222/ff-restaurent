@@ -1,13 +1,15 @@
-import { data, redirect, type ActionFunctionArgs } from 'react-router';
+import { type ActionFunctionArgs, data, redirect } from 'react-router';
+
 import { ApiError } from '@/api/client';
-import { session } from '@/lib/session';
-import { billIntents } from '@/features/bills/bills.routes';
-import { restaurantIntents } from '@/features/restaurants/restaurants.routes';
-import { collectionIntents } from '@/features/collections/collections.routes';
-import { participantGroupIntents } from '@/features/participant-groups/participant-groups.routes';
 import { adminIntents } from '@/features/admin/admin.routes';
-import { profileIntents } from '@/features/profile/profile.routes';
+import { billIntents } from '@/features/bills/bills.routes';
+import { collectionIntents } from '@/features/collections/collections.routes';
 import { notificationIntents } from '@/features/notifications/notification.routes';
+import { participantGroupIntents } from '@/features/participant-groups/participant-groups.routes';
+import { profileIntents } from '@/features/profile/profile.routes';
+import { restaurantIntents } from '@/features/restaurants/restaurants.routes';
+import { session } from '@/lib/session';
+
 import type { IntentMap, MutationBody } from './mutation-types';
 
 const mutationIntents: IntentMap = {

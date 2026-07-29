@@ -1,5 +1,6 @@
-import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
+import type { FastifyInstance } from 'fastify';
+
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../lib/prisma.js';
 import { sanitizeUser } from '../lib/roles.js';

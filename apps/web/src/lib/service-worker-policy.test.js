@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-
 import { describe, expect, it } from 'vitest';
+
 import { cacheStrategyFor } from '../../public/sw.js';
 
 const origin = 'https://ff.example.test';

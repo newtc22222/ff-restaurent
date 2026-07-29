@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-
 import {
   act,
   cleanup,
@@ -8,8 +7,10 @@ import {
   screen,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { I18nProvider } from '@/app/providers/i18n';
 import { QueryProvider } from '@/app/providers/query';
+
 import CreateBillPage from './CreateBillPage';
 
 const mutate = vi.fn();

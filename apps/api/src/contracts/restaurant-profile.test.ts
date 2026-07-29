@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
+import { restaurantSchema } from '../schemas/index.js';
 import {
   type PublicRestaurantRecord,
   buildPublicRestaurantSelect,
   serializePublicRestaurant,
 } from './restaurant-contract.js';
-import { restaurantSchema } from '../schemas/index.js';
 
 const base = {
   name: 'Profile Restaurant',

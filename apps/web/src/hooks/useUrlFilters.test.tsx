@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-
 import {
   act,
   cleanup,
@@ -7,13 +6,14 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   MemoryRouter,
   useLocation,
   useNavigate,
   useNavigationType,
 } from 'react-router';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { useUrlFilters } from './useUrlFilters';
 
 function FilterProbe() {

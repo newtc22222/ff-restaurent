@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   ExternalLink,
   Globe2,
@@ -8,18 +7,20 @@ import {
   Trash2,
   UserMinus,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useLoaderData, useNavigate } from 'react-router';
+
 import type { CollectionDetailData } from '@/api/types';
-import { canChef } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Dropdown from '@/components/ui/Dropdown';
 import EmptyState from '@/components/ui/EmptyState';
 import FilterBar from '@/components/ui/FilterBar';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
+import { canChef } from '@/lib/permissions';
 
 export default function CollectionDetailPage() {
   const { collection, restaurants, shares } =

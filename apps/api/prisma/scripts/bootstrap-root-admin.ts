@@ -1,4 +1,5 @@
 import { pathToFileURL } from 'node:url';
+
 import { ChefRole, Prisma, PrismaClient, SystemRole } from '@prisma/client';
 
 const prisma = new PrismaClient();

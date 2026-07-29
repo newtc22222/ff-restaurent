@@ -1,6 +1,8 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
+
 import { AdjustmentAllocation, parseIsoDateOnly } from '@ff-restaurent/shared';
+
 import {
   requireAuthenticatedUser,
   requireHeadChef,
@@ -10,14 +12,14 @@ import { prisma } from '../lib/prisma.js';
 import { isHeadChef, isSousChefOrAbove } from '../lib/roles.js';
 import { billListQuerySchema, paymentStatusSchema } from '../schemas/index.js';
 import {
+  billActivityActorSelect,
+  buildBillActivityTimeline,
+} from '../services/bill-activity.js';
+import {
   buildBillResponseInclude,
   paymentResponseInclude,
   serializeBill,
 } from '../services/bill-serializers.js';
-import {
-  billActivityActorSelect,
-  buildBillActivityTimeline,
-} from '../services/bill-activity.js';
 import {
   REMINDER_COOLDOWN_MS,
   computeBillCreateData,

@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+
 import { prisma } from '../../src/lib/prisma.js';
 
 const scalar = async (sql: string) => {

@@ -1,11 +1,12 @@
 import toast from 'react-hot-toast';
-import { redirect, type LoaderFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs, redirect } from 'react-router';
+
 import type { CatalogPage, User } from '@/api/types';
-import { session } from '@/lib/session';
-import { isRootAdmin } from '@/lib/permissions';
-import { forwardListQuery } from '@/app/route-helpers';
-import { roleGuard } from '@/app/root.routes';
 import type { IntentMap } from '@/app/mutation-types';
+import { roleGuard } from '@/app/root.routes';
+import { forwardListQuery } from '@/app/route-helpers';
+import { isRootAdmin } from '@/lib/permissions';
+import { session } from '@/lib/session';
 
 export async function membersLoader(args: LoaderFunctionArgs) {
   await roleGuard(isRootAdmin, args);
