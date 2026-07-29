@@ -273,6 +273,9 @@ the same database snapshot as the dump.
   roadmap work; old plans and handoffs can be stale.
 - Preserve unrelated dirty-worktree changes and do not use destructive Git
   cleanup commands.
+- Run `npm run prettier:check` after every completed LLM task in this project,
+  and fix formatting with `npm run format` or focused Prettier writes before
+  handing work back.
 - Keep normalized Phase 2 contracts intact while implementing later phases.
 - Add indexes from measured final queries, not speculation.
 - Run focused tests first, then the applicable lint, typecheck, test, build,

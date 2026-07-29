@@ -58,6 +58,10 @@ npm run format
 npm run prettier:check   # non-mutating; this is what CI enforces
 ```
 
+Every Claude/LLM task in this repository should finish by running
+`npm run prettier:check`. If it reports drift, run `npm run format` or a
+focused Prettier write before handing work back.
+
 API docs (Swagger UI): `http://localhost:4000/api/docs`
 
 Pre-commit hooks (husky + lint-staged) run Prettier on staged `ts/tsx/js/jsx/json/md/css` files — a commit may reformat files rather than fail outright.
