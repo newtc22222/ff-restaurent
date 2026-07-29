@@ -355,7 +355,7 @@ test('server-backed directory filters survive direct links and reloads', async (
     await page.getByRole('button', { name: 'Previous month' }).click();
   }
   await expect(page.getByText('January 2026')).toBeVisible();
-  await page.getByRole('button', { name: /January 1.*2026/ }).click();
+  await page.getByRole('button', { name: /^January 1st, 2026$/ }).click();
   await expect(page).toHaveURL(/sort=total-desc/);
   await expect(page).toHaveURL(/from=2026-01-01/);
   await page.reload();
