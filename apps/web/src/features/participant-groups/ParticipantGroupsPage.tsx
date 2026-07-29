@@ -71,7 +71,10 @@ export default function ParticipantGroupsPage() {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5 py-2">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <SectionTitle title={t('groups.title')} subtitle={t('groups.subtitle')} />
+        <SectionTitle
+          title={t('groups.title')}
+          subtitle={t('groups.subtitle')}
+        />
         <button
           type="button"
           className="btn btn-primary w-full sm:w-auto"
