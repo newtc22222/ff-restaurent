@@ -31,7 +31,7 @@ export default function EmptyState({
   return (
     <div className="panel p-6">
       <div className="mx-auto flex max-w-xl flex-col items-center text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-50 text-[#e9900c] dark:bg-amber-950">
+        <div className="chip-saffron flex h-12 w-12 items-center justify-center rounded-lg">
           <Icon size={22} />
         </div>
         <h3 className="mt-3 text-lg font-bold">{title}</h3>
@@ -45,7 +45,7 @@ export default function EmptyState({
                 key={step}
                 className="rounded-lg border border-border bg-muted px-3 py-2 text-sm"
               >
-                <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <div className="mb-1 flex items-center gap-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">
                   <PlusCircle size={14} /> Step {index + 1}
                 </div>
                 <div className="font-medium">{step}</div>

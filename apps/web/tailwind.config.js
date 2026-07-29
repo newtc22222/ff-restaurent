@@ -12,6 +12,11 @@ export default {
         saffron: 'hsl(36 90% 48%)',
         basil: 'hsl(151 45% 32%)',
         chili: 'hsl(6 78% 52%)',
+        success: 'var(--color-success)',
+      },
+      fontSize: {
+        '2xs': ['0.6875rem', { lineHeight: '1rem' }],
+        compact: ['0.8125rem', { lineHeight: '1.125rem' }],
       },
       boxShadow: {
         panel: '0 24px 70px rgb(15 23 42 / 0.12)',
@@ -20,3 +25,4 @@ export default {
   },
   plugins: [],
 };
+

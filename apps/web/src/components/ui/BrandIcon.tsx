@@ -13,7 +13,7 @@ interface BrandIconProps {
 export default function BrandIcon({ size = 48 }: BrandIconProps) {
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-lg bg-[#e9900c] text-white"
+      className="flex shrink-0 items-center justify-center rounded-lg bg-saffron text-white"
       style={{ width: size, height: size }}
     >
       <UtensilsCrossed size={Math.round(size * 0.5)} strokeWidth={2.2} />

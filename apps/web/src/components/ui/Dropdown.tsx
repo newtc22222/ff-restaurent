@@ -246,14 +246,14 @@ export default function Dropdown(props: DropdownProps) {
 
   const triggerClass =
     variant === 'filter'
-      ? `h-9 px-3 text-[13px] font-semibold ${
+      ? `control-md px-3 text-compact font-semibold ${
           hasSelection
             ? 'border-ink bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
             : 'border-border bg-surface text-slate-500 hover:border-ink/40 hover:text-ink'
         }`
       : variant === 'header'
-        ? 'h-8 px-2 text-[12px] font-semibold border-border bg-surface text-ink hover:bg-muted'
-        : 'h-10 w-full px-3 text-sm border-border bg-surface text-ink hover:border-ink/40';
+        ? 'control-sm px-2 text-xs font-semibold border-border bg-surface text-ink hover:bg-muted'
+        : 'control-default w-full px-3 text-sm border-border bg-surface text-ink hover:border-ink/40';
 
   const menuStyle: CSSProperties = position
     ? {
@@ -329,7 +329,7 @@ export default function Dropdown(props: DropdownProps) {
                     value={query}
                     aria-label={searchPlaceholder}
                     placeholder={searchPlaceholder}
-                    className="h-8 w-full rounded-md border border-border bg-surface py-1 pl-2.5 pr-8 text-[13px] text-ink outline-none placeholder:text-slate-400 focus:border-ink/50"
+                    className="h-8 w-full rounded-md border border-border bg-surface py-1 pl-2.5 pr-8 text-compact text-ink outline-none placeholder:text-slate-400 focus:border-ink/50"
                     onChange={(event) => {
                       setQuery(event.target.value);
                       setActiveIndex(0);
@@ -347,7 +347,7 @@ export default function Dropdown(props: DropdownProps) {
               {allowClear && hasSelection && (
                 <button
                   type="button"
-                  className="w-full border-b border-border px-3 py-2 text-left text-[13px] text-slate-500 transition-colors hover:bg-muted hover:text-ink"
+                  className="w-full border-b border-border px-3 py-2 text-left text-compact text-slate-500 transition-colors hover:bg-muted hover:text-ink"
                   onClick={clear}
                 >
                   {clearLabel}
@@ -361,7 +361,7 @@ export default function Dropdown(props: DropdownProps) {
                   aria-multiselectable={props.multiple || undefined}
                 >
                   {visibleOptions.length === 0 && (
-                    <p className="px-3 py-4 text-center text-[13px] text-slate-400">
+                    <p className="px-3 py-4 text-center text-compact text-slate-400">
                       {emptyMessage}
                     </p>
                   )}
@@ -377,7 +377,7 @@ export default function Dropdown(props: DropdownProps) {
                         role="option"
                         tabIndex={-1}
                         aria-selected={active}
-                        className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted ${
+                        className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-compact transition-colors hover:bg-muted ${
                           active || index === activeIndex
                             ? 'bg-muted text-ink'
                             : 'text-slate-600 dark:text-slate-300'
@@ -395,7 +395,7 @@ export default function Dropdown(props: DropdownProps) {
                             {option.label}
                           </span>
                           {option.description && (
-                            <span className="mt-0.5 block truncate text-[11px] font-normal text-slate-500">
+                            <span className="mt-0.5 block truncate text-2xs font-normal text-slate-500">
                               {option.description}
                             </span>
                           )}

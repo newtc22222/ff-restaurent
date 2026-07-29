@@ -35,7 +35,7 @@ export default function ToastHost() {
           maxWidth: 'min(24rem, calc(100vw - 2rem))',
           fontSize: '0.875rem',
         },
-        success: { iconTheme: { primary: '#10b981', secondary: '#ffffff' } },
+        success: { iconTheme: { primary: 'var(--color-success, #10b981)', secondary: '#ffffff' } },
         error: { iconTheme: { primary: '#ef4444', secondary: '#ffffff' } },
       }}
     />
