@@ -240,7 +240,7 @@ describe('CreateBillPage repeat workflows', () => {
     });
     fireEvent.click(screen.getByLabelText('Bill date'));
     const day15 = screen
-      .getAllByRole('button', { name: '15' })
+      .getAllByRole('button', { name: /July 15.*2026/i })
       .find((btn) => !btn.hasAttribute('disabled'));
     if (day15) fireEvent.click(day15);
     fireEvent.change(screen.getByLabelText('Choose a group'), {
