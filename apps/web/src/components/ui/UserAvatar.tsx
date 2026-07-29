@@ -29,9 +29,11 @@ export default function UserAvatar({
   const showImage = Boolean(avatarUrl && !isFailed);
 
   const dimensionClass = typeof size === 'string' ? SIZE_CLASSES[size] : '';
-  const inlineStyle = typeof size === 'number' ? { width: size, height: size } : undefined;
+  const inlineStyle =
+    typeof size === 'number' ? { width: size, height: size } : undefined;
 
-  const displayName = alt || name;
+  const displayName = alt !== undefined ? alt : name;
+  const isDecorative = displayName === '';
 
   if (showImage) {
     return (
@@ -53,8 +55,9 @@ export default function UserAvatar({
     <div
       className={`inline-flex shrink-0 items-center justify-center rounded-full bg-muted font-bold text-ink select-none ${dimensionClass} ${className}`}
       style={inlineStyle}
-      aria-label={displayName}
-      role="img"
+      {...(isDecorative
+        ? { 'aria-hidden': 'true' }
+        : { 'aria-label': displayName, role: 'img' })}
     >
       {initials(name)}
     </div>

@@ -292,7 +292,11 @@ export default function AdminPage() {
                   <tr key={member.id}>
                     <td className="px-4 py-3 font-semibold text-ink">
                       <div className="flex items-center gap-2.5">
-                        <UserAvatar name={member.name} avatarUrl={member.avatarUrl} size="sm" />
+                        <UserAvatar
+                          name={member.name}
+                          avatarUrl={member.avatarUrl}
+                          size="sm"
+                        />
                         <span>{member.name}</span>
                       </div>
                     </td>
@@ -324,7 +328,11 @@ export default function AdminPage() {
               <article key={member.id} className="panel p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <UserAvatar name={member.name} avatarUrl={member.avatarUrl} size="md" />
+                    <UserAvatar
+                      name={member.name}
+                      avatarUrl={member.avatarUrl}
+                      size="md"
+                    />
                     <div className="min-w-0">
                       <h3 className="truncate font-bold text-ink">
                         {member.name}

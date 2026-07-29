@@ -137,7 +137,11 @@ export default function AppHeader({
               aria-expanded={showUserMenu}
               aria-haspopup="menu"
             >
-              <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size="sm" />
+              <UserAvatar
+                name={user.name}
+                avatarUrl={user.avatarUrl}
+                size="sm"
+              />
               <span className="min-w-0 max-w-44 text-left leading-tight">
                 <span className="block truncate text-[13px] font-semibold text-ink">
                   {user.name}
@@ -209,7 +213,11 @@ export default function AppHeader({
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-muted"
                 onClick={openProfile}
               >
-                <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size="sm" />
+                <UserAvatar
+                  name={user.name}
+                  avatarUrl={user.avatarUrl}
+                  size="sm"
+                />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-ink">
                     {user.name}

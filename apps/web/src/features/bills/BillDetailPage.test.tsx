@@ -167,4 +167,3 @@ describe('BillDetailPage member breakdown identity', () => {
     expect(screen.getByText('You')).toBeTruthy();
   });
 });
-
