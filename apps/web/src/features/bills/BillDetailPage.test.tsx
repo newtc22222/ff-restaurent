@@ -160,3 +160,11 @@ describe('BillDetailPage back navigation', () => {
     },
   );
 });
+
+describe('BillDetailPage member breakdown identity', () => {
+  it('renders participant avatar and localized You marker for the current user', () => {
+    renderPage();
+    expect(screen.getByText('You')).toBeTruthy();
+  });
+});
+

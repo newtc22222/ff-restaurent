@@ -18,6 +18,7 @@ import Dropdown from '@/components/ui/Dropdown';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import FilterBar from '@/components/ui/FilterBar';
+import UserAvatar from '@/components/ui/UserAvatar';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 
 /**
@@ -290,7 +291,10 @@ export default function AdminPage() {
                 {filteredUsers.map((member) => (
                   <tr key={member.id}>
                     <td className="px-4 py-3 font-semibold text-ink">
-                      {member.name}
+                      <div className="flex items-center gap-2.5">
+                        <UserAvatar name={member.name} avatarUrl={member.avatarUrl} size="sm" />
+                        <span>{member.name}</span>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                       @{member.username}
@@ -319,13 +323,16 @@ export default function AdminPage() {
             {filteredUsers.map((member) => (
               <article key={member.id} className="panel p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="truncate font-bold text-ink">
-                      {member.name}
-                    </h3>
-                    <p className="truncate text-sm text-slate-500">
-                      @{member.username}
-                    </p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <UserAvatar name={member.name} avatarUrl={member.avatarUrl} size="md" />
+                    <div className="min-w-0">
+                      <h3 className="truncate font-bold text-ink">
+                        {member.name}
+                      </h3>
+                      <p className="truncate text-sm text-slate-500">
+                        @{member.username}
+                      </p>
+                    </div>
                   </div>
                   <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">
                     {roleLabel(member, t)}

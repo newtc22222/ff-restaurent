@@ -17,6 +17,7 @@ import ThemeToggle from '../ui/ThemeToggle';
 import LocaleToggle from '../ui/LocaleToggle';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import ScrollArea from '../ui/ScrollArea';
+import UserAvatar from '../ui/UserAvatar';
 
 interface AppHeaderProps {
   onProfile?: () => void;
@@ -136,7 +137,7 @@ export default function AppHeader({
               aria-expanded={showUserMenu}
               aria-haspopup="menu"
             >
-              <UserCircle size={16} />
+              <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size="sm" />
               <span className="min-w-0 max-w-44 text-left leading-tight">
                 <span className="block truncate text-[13px] font-semibold text-ink">
                   {user.name}
@@ -208,7 +209,7 @@ export default function AppHeader({
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-muted"
                 onClick={openProfile}
               >
-                <UserCircle size={18} className="text-slate-500" />
+                <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size="sm" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-ink">
                     {user.name}
