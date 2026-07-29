@@ -222,6 +222,7 @@ export default function BillsPage() {
                     onChange={(dateStr) => setQuery('from', dateStr)}
                     maxDate={filterTo}
                     placeholderText={t('bills.chooseDate')}
+                    ariaLabel={t('bills.from')}
                     isClearable
                   />
                 </label>
@@ -232,6 +233,7 @@ export default function BillsPage() {
                     onChange={(dateStr) => setQuery('to', dateStr)}
                     minDate={filterFrom}
                     placeholderText={t('bills.chooseDate')}
+                    ariaLabel={t('bills.to')}
                     isClearable
                   />
                 </label>

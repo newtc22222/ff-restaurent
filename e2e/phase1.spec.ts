@@ -349,15 +349,20 @@ test('server-backed directory filters survive direct links and reloads', async (
   await page.getByRole('button', { name: 'Sort bills' }).click();
   await page.getByRole('option', { name: 'Highest total' }).click();
   await page.getByRole('button', { name: 'Advanced filters' }).click();
-  await page.getByLabel('From').fill('01/01/2026');
-  await page.getByLabel('From').press('Tab');
+  await page.getByLabel('From').click();
+  for (let attempts = 0; attempts < 24; attempts += 1) {
+    if (await page.getByText('January 2026').isVisible()) break;
+    await page.getByRole('button', { name: 'Previous month' }).click();
+  }
+  await expect(page.getByText('January 2026')).toBeVisible();
+  await page.getByRole('button', { name: /January 1.*2026/ }).click();
   await expect(page).toHaveURL(/sort=total-desc/);
   await expect(page).toHaveURL(/from=2026-01-01/);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Sort bills' })).toContainText(
     'Highest total',
   );
-  await expect(page.getByLabel('From')).toHaveValue('01/01/2026');
+  await expect(page.getByLabel('From')).toContainText('Jan 1, 2026');
 });
 
 test('member discovers, manages, shares, and reviews Collection places', async ({

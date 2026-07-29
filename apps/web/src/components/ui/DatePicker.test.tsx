@@ -43,7 +43,7 @@ describe('DatePicker', () => {
     fireEvent.click(button);
 
     // Pick day 20
-    const day20 = screen.getByRole('button', { name: '20' });
+    const day20 = screen.getByRole('button', { name: /20.*07.*2026/ });
     fireEvent.click(day20);
 
     expect(onChange).toHaveBeenCalledWith('2026-07-20');

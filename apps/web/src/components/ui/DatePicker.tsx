@@ -309,6 +309,7 @@ export default function DatePicker({
                   <button
                     key={day.toISOString()}
                     type="button"
+                    aria-label={format(day, 'PPP', { locale: activeLocale })}
                     disabled={dayDisabled}
                     onClick={() => handleSelectDay(day)}
                     className={cellStyle}
