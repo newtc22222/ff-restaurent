@@ -3,7 +3,7 @@
   "restaurants.subtitle": "The type label is user-defined per entry.",
   "restaurants.filters": "Filters",
   "restaurants.addEntry": "Add entry",
-  "restaurants.addEntrySubtitle": "Executive Chef and Sous Chef can create and edit restaurant entries. Executive Chef can also archive and restore them.",
+  "restaurants.addEntrySubtitle": "SOUS_CHEF and HEAD_CHEF can create and edit restaurant entries. HEAD_CHEF can also archive and restore them.",
   "restaurants.createEntry": "Create entry",
   "restaurants.noEntries": "No restaurant entries",
   "restaurants.noEntriesDesc": "Build the directory before collecting bills. Mark dependable spots as favorites or recommended.",
