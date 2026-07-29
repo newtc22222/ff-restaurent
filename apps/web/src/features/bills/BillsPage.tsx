@@ -30,6 +30,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import ScrollArea from '@/components/ui/ScrollArea';
 import UserAvatar from '@/components/ui/UserAvatar';
+import FilterBar from '@/components/ui/FilterBar';
 import { billsDetailNavigationState } from './bill-navigation';
 
 /**
@@ -138,8 +139,8 @@ export default function BillsPage() {
     <div className="w-full">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-[22px] font-bold text-ink">{t('bills.title')}</h2>
-          <p className="mt-1 text-[13px] text-slate-500">
+          <h2 className="text-xl font-bold text-ink">{t('bills.title')}</h2>
+          <p className="mt-1 text-sm text-slate-500">
             {t('bills.scopeNote')}
           </p>
         </div>
@@ -179,132 +180,138 @@ export default function BillsPage() {
         </div>
       </div>
 
-      <section className="panel mb-5 space-y-3 p-3">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-          <Dropdown
-            label={t('bills.sort')}
-            ariaLabel={t('bills.sort')}
-            value={sort}
-            onChange={(value) => setQuery('sort', value)}
-            options={[
-              { value: 'created-desc', label: t('bills.newest') },
-              { value: 'created-asc', label: t('bills.oldest') },
-              { value: 'total-desc', label: t('bills.highestTotal') },
-              { value: 'total-asc', label: t('bills.lowestTotal') },
-            ]}
-          />
-          {isHead(user) ? (
-            <Dropdown
-              label={t('bills.status')}
-              ariaLabel={t('bills.status')}
-              value={filterArchive}
-              onChange={(value) => setQuery('archive', value)}
-              options={[
-                { value: 'active', label: t('bills.activeOnly') },
-                { value: 'archived', label: t('bills.archivedOnly') },
-                { value: 'all', label: t('bills.allStatuses') },
-              ]}
-            />
-          ) : !canChef(user) ? (
-            <Dropdown
-              label={t('bills.status')}
-              ariaLabel={t('bills.status')}
-              value={filterPayment}
-              onChange={(value) =>
-                setQuery('paymentStatus', value === 'all' ? undefined : value)
-              }
-              options={[
-                { value: 'all', label: t('bills.allStatuses') },
-                { value: 'PAID', label: t('bills.filterPaid') },
-                { value: 'WAITING', label: t('bills.filterUnpaid') },
-              ]}
-            />
-          ) : (
-            <div className="hidden xl:block" />
-          )}
-          <Dropdown
-            label={t('bills.filterRestaurant')}
-            value={filterRestaurant}
-            options={restaurantOptions}
-            onChange={(value) => setQuery('restaurantId', value)}
-            allowClear
-            clearLabel={t('bills.clearAll')}
-            searchable
-            searchPlaceholder={t('bills.searchRestaurants')}
-            emptyMessage={t('bills.noFilterResults')}
-          />
-          {canChef(user) && (
-            <Dropdown
-              multiple
-              label={t('bills.filterMember')}
-              values={filterMembers}
-              options={memberOptions}
-              onChange={(values) =>
-                setQuery('participantIds', values.join(','))
-              }
-              allowClear
-              clearLabel={t('bills.clearAll')}
-              formatSelection={(selected) =>
-                selected.length === 1
-                  ? (selected[0]?.label.split(' ')[0] ?? '')
-                  : `${selected.length} ${t('bills.filterMember')}`
-              }
-              searchable
-              searchPlaceholder={t('bills.searchMembers')}
-              emptyMessage={t('bills.noFilterResults')}
-            />
-          )}
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-          <button
-            type="button"
-            className="btn btn-soft h-9"
-            aria-expanded={advancedOpen}
-            onClick={() => setAdvancedOpen((current) => !current)}
-          >
-            <SlidersHorizontal size={14} /> {t('bills.advancedFilters')}
-            {(filterFrom || filterTo) && (
-              <span className="h-2 w-2 rounded-full bg-[#e9900c]" />
-            )}
-          </button>
-          {activeFilterCount > 0 && (
+      <FilterBar
+        label={t('common.filters')}
+        className="mb-5"
+        controlsClassName="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
+        headerActions={
+          activeFilterCount > 0 ? (
             <button
               type="button"
-              className="text-[12px] font-semibold text-slate-400 transition-colors hover:text-red-500"
+              className="text-xs font-semibold text-slate-400 transition-colors hover:text-chili"
               onClick={() => {
                 searchParamsRef.current = new URLSearchParams();
                 setSearchParams({});
               }}
             >
-              {t('bills.clearAll')}
+              {t('bills.clearAll')} ({activeFilterCount})
             </button>
-          )}
-        </div>
-        {advancedOpen && (
-          <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
-            <label className="space-y-1">
-              <span className="label">{t('bills.from')}</span>
-              <DatePicker
-                value={filterFrom}
-                onChange={(dateStr) => setQuery('from', dateStr)}
-                maxDate={filterTo}
-                placeholderText={t('bills.chooseDate')}
-                isClearable
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="label">{t('bills.to')}</span>
-              <DatePicker
-                value={filterTo}
-                onChange={(dateStr) => setQuery('to', dateStr)}
-                minDate={filterFrom}
-                placeholderText={t('bills.chooseDate')}
-                isClearable
-              />
-            </label>
-          </div>
+          ) : undefined
+        }
+        actions={
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+              <button
+                type="button"
+                className="btn btn-soft control-md text-compact"
+                aria-expanded={advancedOpen}
+                onClick={() => setAdvancedOpen((current) => !current)}
+              >
+                <SlidersHorizontal size={14} /> {t('bills.advancedFilters')}
+                {(filterFrom || filterTo) && (
+                  <span className="h-2 w-2 rounded-full bg-saffron" />
+                )}
+              </button>
+            </div>
+            {advancedOpen && (
+              <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
+                <label className="space-y-1">
+                  <span className="label">{t('bills.from')}</span>
+                  <DatePicker
+                    value={filterFrom}
+                    onChange={(dateStr) => setQuery('from', dateStr)}
+                    maxDate={filterTo}
+                    placeholderText={t('bills.chooseDate')}
+                    isClearable
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="label">{t('bills.to')}</span>
+                  <DatePicker
+                    value={filterTo}
+                    onChange={(dateStr) => setQuery('to', dateStr)}
+                    minDate={filterFrom}
+                    placeholderText={t('bills.chooseDate')}
+                    isClearable
+                  />
+                </label>
+              </div>
+            )}
+          </>
+        }
+      >
+        <Dropdown
+          label={t('bills.sort')}
+          ariaLabel={t('bills.sort')}
+          value={sort}
+          onChange={(value) => setQuery('sort', value)}
+          options={[
+            { value: 'created-desc', label: t('bills.newest') },
+            { value: 'created-asc', label: t('bills.oldest') },
+            { value: 'total-desc', label: t('bills.highestTotal') },
+            { value: 'total-asc', label: t('bills.lowestTotal') },
+          ]}
+        />
+        {isHead(user) ? (
+          <Dropdown
+            label={t('bills.status')}
+            ariaLabel={t('bills.status')}
+            value={filterArchive}
+            onChange={(value) => setQuery('archive', value)}
+            options={[
+              { value: 'active', label: t('bills.activeOnly') },
+              { value: 'archived', label: t('bills.archivedOnly') },
+              { value: 'all', label: t('bills.allStatuses') },
+            ]}
+          />
+        ) : !canChef(user) ? (
+          <Dropdown
+            label={t('bills.status')}
+            ariaLabel={t('bills.status')}
+            value={filterPayment}
+            onChange={(value) =>
+              setQuery('paymentStatus', value === 'all' ? undefined : value)
+            }
+            options={[
+              { value: 'all', label: t('bills.allStatuses') },
+              { value: 'PAID', label: t('bills.filterPaid') },
+              { value: 'WAITING', label: t('bills.filterUnpaid') },
+            ]}
+          />
+        ) : (
+          <div className="hidden xl:block" />
         )}
-      </section>
+        <Dropdown
+          label={t('bills.filterRestaurant')}
+          value={filterRestaurant}
+          options={restaurantOptions}
+          onChange={(value) => setQuery('restaurantId', value)}
+          allowClear
+          clearLabel={t('bills.clearAll')}
+          searchable
+          searchPlaceholder={t('bills.searchRestaurants')}
+          emptyMessage={t('bills.noFilterResults')}
+        />
+        {canChef(user) && (
+          <Dropdown
+            multiple
+            label={t('bills.filterMember')}
+            values={filterMembers}
+            options={memberOptions}
+            onChange={(values) => setQuery('participantIds', values.join(','))}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+            formatSelection={(selected) =>
+              selected.length === 1
+                ? (selected[0]?.label.split(' ')[0] ?? '')
+                : `${selected.length} ${t('bills.filterMember')}`
+            }
+            searchable
+            searchPlaceholder={t('bills.searchMembers')}
+            emptyMessage={t('bills.noFilterResults')}
+          />
+        )}
+      </FilterBar>
 
       {bills.length === 0 && activeFilterCount === 0 && (
         <EmptyState

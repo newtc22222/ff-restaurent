@@ -6,6 +6,7 @@ type FilterBarProps = {
   label: string;
   children: ReactNode;
   actions?: ReactNode;
+  headerActions?: ReactNode;
   busy?: boolean;
   className?: string;
   controlsClassName?: string;
@@ -20,6 +21,7 @@ export default function FilterBar({
   label,
   children,
   actions,
+  headerActions,
   busy,
   className,
   controlsClassName,
@@ -32,10 +34,13 @@ export default function FilterBar({
       aria-labelledby={headingId}
       aria-busy={busy}
     >
-      <h2 id={headingId} className="field-group-title px-1">
-        <SlidersHorizontal size={13} aria-hidden="true" />
-        {label}
-      </h2>
+      <div className="flex items-center justify-between gap-2 px-1">
+        <h2 id={headingId} className="field-group-title">
+          <SlidersHorizontal size={13} aria-hidden="true" />
+          {label}
+        </h2>
+        {headerActions}
+      </div>
       <div
         className={cn('grid min-w-0 gap-2 sm:grid-cols-2', controlsClassName)}
       >

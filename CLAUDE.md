@@ -10,6 +10,14 @@ FF RESTaurent is a group bill-splitting and restaurant tracker for a shared team
 - `apps/web` — React SPA/PWA (Vite + Tailwind CSS) with EN/VI i18n and light/dark theming
 - `packages/shared` — TypeScript types, enums, bill-splitting math, and phone normalization shared across both apps
 
+## UI Development Instructions
+
+CRITICAL: Before touching, creating, or modifying any frontend/UI code:
+
+1. Read `.context/design-tokens.json` for color, spacing, and typography tokens.
+2. Read `.context/COMPONENTS.md` to prevent recreating existing components.
+3. Strictly follow `.context/ui-guidelines.md` (pay special attention to [MUST] tags).
+
 ## Commands
 
 ```bash

@@ -228,14 +228,14 @@ export default function RestaurantsPage() {
         <FilterBar
           label={t('restaurants.filters')}
           controlsClassName="block space-y-2"
-          actions={
+          headerActions={
             activeFilterCount > 0 ? (
               <button
                 type="button"
-                className="text-[12px] text-slate-400 hover:text-red-400"
+                className="text-xs font-semibold text-slate-400 transition-colors hover:text-chili"
                 onClick={clearFilters}
               >
-                {t('bills.clearAll')}
+                {t('bills.clearAll')} ({activeFilterCount})
               </button>
             ) : undefined
           }

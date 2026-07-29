@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "name": "FF RESTaurent Consolidated Design Tokens",
+  "description": "Authoritative design token scale and consolidated design system rules for @ff-restaurent/web",
+  "version": "1.2.0",
+  "color": {
+    "tokens": {
+      "light": {
+        "border": "hsl(214 32% 91%)",
+        "muted": "hsl(210 40% 96%)",
+        "ink": "hsl(222 47% 11%)",
+        "surface": "#ffffff",
+        "bg": "#faf8f5",
+        "scrollbar_thumb": "rgb(100 116 139 / 55%)",
+        "scrollbar_thumb_hover": "rgb(71 85 105 / 75%)"
+      },
+      "dark": {
+        "border": "hsl(215 20% 25%)",
+        "muted": "hsl(220 15% 18%)",
+        "ink": "hsl(210 20% 92%)",
+        "surface": "hsl(220 15% 13%)",
+        "bg": "hsl(220 15% 9%)",
+        "scrollbar_thumb": "rgb(148 163 184 / 55%)",
+        "scrollbar_thumb_hover": "rgb(203 213 225 / 72%)"
+      },
+      "brand_accents": {
+        "saffron": "hsl(36 90% 48%)",
+        "basil": "hsl(151 45% 32%)",
+        "chili": "hsl(6 78% 52%)"
+      },
+      "semantic": {
+        "success": "hsl(151 55% 42%)"
+      },
+      "chips": {
+        "saffron": {
+          "light": { "bg": "hsl(36 90% 48% / 14%)", "text": "hsl(30 75% 30%)" },
+          "dark": { "bg": "hsl(36 90% 55% / 20%)", "text": "hsl(36 90% 72%)" }
+        },
+        "basil": {
+          "light": { "bg": "hsl(151 45% 32% / 14%)", "text": "hsl(151 55% 22%)" },
+          "dark": { "bg": "hsl(151 50% 45% / 20%)", "text": "hsl(151 55% 72%)" }
+        },
+        "chili": {
+          "light": { "bg": "hsl(6 78% 52% / 14%)", "text": "hsl(6 70% 38%)" },
+          "dark": { "bg": "hsl(6 78% 55% / 22%)", "text": "hsl(6 90% 75%)" }
+        }
+      },
+      "overlays": {
+        "overlay_backdrop": "bg-slate-950/50 backdrop-blur-sm",
+        "overlay_subtle": "bg-slate-950/25 backdrop-blur-[1px]"
+      }
+    }
+  },
+  "spacing_and_dimensions": {
+    "control_heights": {
+      "control-sm": "h-8 (32px)",
+      "control-md": "h-9 (36px)",
+      "control-default": "h-10 (40px)",
+      "control-lg": "h-12 (48px)"
+    },
+    "border_radius": {
+      "field_and_btn": "rounded-md (6px)",
+      "card_and_panel": "rounded-xl (12px)",
+      "chip_and_scrollbar": "rounded-full (999px)"
+    }
+  },
+  "typography": {
+    "font_family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    "font_scale": {
+      "2xs": "0.6875rem (11px)",
+      "xs": "0.75rem (12px)",
+      "compact": "0.8125rem (13px)",
+      "sm": "0.875rem (14px)",
+      "base": "1rem (16px)",
+      "lg": "1.125rem (18px)",
+      "xl": "1.25rem (20px)"
+    },
+    "flagged_for_review": {
+      "15px": "AppHeader brand title text-[15px] preserved for design review before merging into sm"
+    }
+  }
+}

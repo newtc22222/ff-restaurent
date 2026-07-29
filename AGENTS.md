@@ -60,6 +60,14 @@ All packages are versioned `1.1.0`. The shipped database contains 17 Prisma
 migrations; the Phase 2 normalized-restaurant contract migration is
 `20260720000000_contract_phase2_normalized_restaurants`.
 
+## UI Development Instructions
+
+CRITICAL: Before touching, creating, or modifying any frontend/UI code:
+
+1. Read `.context/design-tokens.json` for color, spacing, and typography tokens.
+2. Read `.context/COMPONENTS.md` to prevent recreating existing components.
+3. Strictly follow `.context/ui-guidelines.md` (pay special attention to [MUST] tags).
+
 ## Common commands
 
 Run commands from the repository root.

@@ -31,7 +31,7 @@ interface CommonDropdownProps {
   allowClear?: boolean;
   clearLabel?: string;
   icon?: ReactNode;
-  variant?: 'header' | 'filter' | 'field';
+  variant?: 'header' | 'field';
   menuAlign?: 'left' | 'right';
   fullWidth?: boolean;
   className?: string;
@@ -245,15 +245,9 @@ export default function Dropdown(props: DropdownProps) {
   };
 
   const triggerClass =
-    variant === 'filter'
-      ? `control-md px-3 text-compact font-semibold ${
-          hasSelection
-            ? 'border-ink bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
-            : 'border-border bg-surface text-slate-500 hover:border-ink/40 hover:text-ink'
-        }`
-      : variant === 'header'
-        ? 'control-sm px-2 text-xs font-semibold border-border bg-surface text-ink hover:bg-muted'
-        : 'control-default w-full px-3 text-sm border-border bg-surface text-ink hover:border-ink/40';
+    variant === 'header'
+      ? 'control-sm px-2 text-xs font-semibold border-border bg-surface text-ink hover:bg-muted'
+      : 'control-default w-full px-3 text-sm border-border bg-surface text-ink hover:border-ink/40';
 
   const menuStyle: CSSProperties = position
     ? {
