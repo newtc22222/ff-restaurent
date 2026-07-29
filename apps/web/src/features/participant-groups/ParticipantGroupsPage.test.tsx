@@ -94,4 +94,24 @@ describe('ParticipantGroupsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit group' }));
     expect(screen.getByDisplayValue('Lunch crew')).toBeTruthy();
   });
+
+  it('renders Add Group action aligned in the header region with correct focus order and styles', () => {
+    render(
+      <I18nProvider>
+        <ParticipantGroupsPage />
+      </I18nProvider>,
+    );
+
+    const heading = screen.getByRole('heading', {
+      name: 'Reusable participant groups',
+    });
+    const addButton = screen.getByRole('button', { name: 'Add group' });
+
+    expect(heading).toBeTruthy();
+    expect(addButton).toBeTruthy();
+    expect(addButton.className).toContain('btn btn-primary w-full sm:w-auto');
+
+    const comparison = heading.compareDocumentPosition(addButton);
+    expect(comparison & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
