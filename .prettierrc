@@ -4,7 +4,7 @@
   "semi": true,
   "trailingComma": "all",
   "importOrder": [
-    "<BUILTIN_MODULES>",
+    "^node:(.*)$",
     "<THIRD_PARTY_MODULES>",
     "^@ff-restaurent/(.*)$",
     "^@/(.*)$",
