@@ -1,8 +1,9 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import ts from 'typescript';
+
 import openapiTS, { astToString } from 'openapi-typescript';
 import prettier from 'prettier';
+import ts from 'typescript';
 
 const root = resolve(import.meta.dirname, '..');
 const openApiPath = resolve(root, 'apps/api/openapi.json');

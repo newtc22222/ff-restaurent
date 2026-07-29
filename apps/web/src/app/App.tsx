@@ -2,33 +2,35 @@ import {
   BarChart2,
   FolderHeart,
   LayoutDashboard,
+  type LucideIcon,
   Store,
   UserRoundCheck,
   Users,
-  type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  isRouteErrorResponse,
   NavLink,
   Outlet,
+  isRouteErrorResponse,
   useLoaderData,
   useNavigate,
   useRouteError,
 } from 'react-router';
+
 import type { Notification } from '@/api/types';
-import {
-  AppProvider,
-  type AppLoaderData,
-  useAppContext,
-} from './providers/app-context';
-import { useI18n } from './providers/i18n';
-import { isRootAdmin } from '@/lib/permissions';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
 import AppHeader from '@/components/layout/AppHeader';
 import Sidebar from '@/components/layout/Sidebar';
 import ScrollArea from '@/components/ui/ScrollArea';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { isRootAdmin } from '@/lib/permissions';
+
+import {
+  type AppLoaderData,
+  AppProvider,
+  useAppContext,
+} from './providers/app-context';
+import { useI18n } from './providers/i18n';
 
 function AppShellContent() {
   const { t } = useI18n();

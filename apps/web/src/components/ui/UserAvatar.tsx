@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import { initials } from '@/lib/user-display';
 
 export interface UserAvatarProps {
@@ -38,7 +39,7 @@ export default function UserAvatar({
   if (showImage) {
     return (
       <div
-        className={`relative inline-flex shrink-0 overflow-hidden rounded-full ${dimensionClass} ${className}`}
+        className={`relative inline-flex shrink-0 overflow-hidden rounded-md ${dimensionClass} ${className}`}
         style={inlineStyle}
       >
         <img
@@ -53,7 +54,7 @@ export default function UserAvatar({
 
   return (
     <div
-      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-muted font-bold text-ink select-none ${dimensionClass} ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-md bg-muted font-bold text-ink select-none ${dimensionClass} ${className}`}
       style={inlineStyle}
       {...(isDecorative
         ? { 'aria-hidden': 'true' }

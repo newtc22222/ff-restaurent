@@ -1,11 +1,13 @@
-import type { FastifyInstance } from 'fastify';
+import { UserAccountStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import type { FastifyInstance } from 'fastify';
+
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
+
 import { prisma } from '../lib/prisma.js';
 import { sanitizeUser } from '../lib/roles.js';
 import { loginSchema, registerSchema } from '../schemas/index.js';
 import { ensureDefaultCollections } from '../services/collection-service.js';
-import { UserAccountStatus } from '@prisma/client';
 
 /**
  * Authentication routes issue JWTs and return sanitized user profiles.

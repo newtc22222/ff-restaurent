@@ -10,6 +10,14 @@ FF RESTaurent is a group bill-splitting and restaurant tracker for a shared team
 - `apps/web` — React SPA/PWA (Vite + Tailwind CSS) with EN/VI i18n and light/dark theming
 - `packages/shared` — TypeScript types, enums, bill-splitting math, and phone normalization shared across both apps
 
+## UI Development Instructions
+
+CRITICAL: Before touching, creating, or modifying any frontend/UI code:
+
+1. Read `.context/design-tokens.json` for color, spacing, and typography tokens.
+2. Read `.context/COMPONENTS.md` to prevent recreating existing components.
+3. Strictly follow `.context/ui-guidelines.md` (pay special attention to [MUST] tags).
+
 ## Commands
 
 ```bash
@@ -49,6 +57,10 @@ npm run lint
 npm run format
 npm run prettier:check   # non-mutating; this is what CI enforces
 ```
+
+Every Claude/LLM task in this repository should finish by running
+`npm run prettier:check`. If it reports drift, run `npm run format` or a
+focused Prettier write before handing work back.
 
 API docs (Swagger UI): `http://localhost:4000/api/docs`
 

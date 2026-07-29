@@ -1,17 +1,18 @@
 import { EntryStatus, Prisma } from '@prisma/client';
 import type { z } from 'zod';
-import { badRequest, notFound } from '../http/app-error.js';
+
 import {
   buildPublicRestaurantSelect,
   serializePublicRestaurant,
 } from '../contracts/restaurant-contract.js';
+import { badRequest, notFound } from '../http/app-error.js';
 import {
   normalizeCatalogKey,
   normalizeDisplayText,
 } from '../lib/catalog-normalization.js';
 import { cursorPageResult } from '../lib/pagination.js';
 import { prisma } from '../lib/prisma.js';
-import { isHeadChef, type CurrentUser } from '../lib/roles.js';
+import { type CurrentUser, isHeadChef } from '../lib/roles.js';
 import { normalizeSearchQuery } from '../lib/search-normalization.js';
 import type {
   restaurantListQuerySchema,

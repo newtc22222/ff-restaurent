@@ -1,5 +1,5 @@
-import { FormEvent, useMemo, useState } from 'react';
 import { ChevronRight, Plus, X } from 'lucide-react';
+import { FormEvent, useMemo, useState } from 'react';
 import CurrencyInput from 'react-currency-input-field';
 import {
   Navigate,
@@ -7,28 +7,31 @@ import {
   useParams,
   useSearchParams,
 } from 'react-router';
+
 import {
   AdjustmentAllocation,
   AdjustmentType,
   calculateBillSplit,
   todayInHoChiMinh,
 } from '@ff-restaurent/shared';
-import { money } from '@/lib/currency';
-import { canChef } from '@/lib/permissions';
-import { uniqueUsers } from '@/lib/user-display';
+
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
-import BackButton from '@/components/ui/BackButton';
 import AmountInput from '@/components/ui/AmountInput';
-import SummaryLine from '@/components/ui/SummaryLine';
-import Dropdown from '@/components/ui/Dropdown';
+import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { usePaymentQrImages } from '@/features/profile/profile-media.queries';
+import DatePicker from '@/components/ui/DatePicker';
+import Dropdown from '@/components/ui/Dropdown';
+import SummaryLine from '@/components/ui/SummaryLine';
 import {
   billDetailPath,
   billsReturnPath,
 } from '@/features/bills/bill-navigation';
+import { usePaymentQrImages } from '@/features/profile/profile-media.queries';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { money } from '@/lib/currency';
+import { canChef } from '@/lib/permissions';
+import { uniqueUsers } from '@/lib/user-display';
 
 interface ParticipantDraft {
   memberId: string;
@@ -333,13 +336,7 @@ export default function CreateBillPage() {
 
             <label className="mb-5 block space-y-1.5">
               <span className="label">{t('createBill.occurredOn')}</span>
-              <input
-                className="input w-full"
-                type="date"
-                required
-                value={occurredOn}
-                onChange={(event) => setOccurredOn(event.target.value)}
-              />
+              <DatePicker value={occurredOn} onChange={setOccurredOn} />
             </label>
 
             <div className="mb-6 grid grid-cols-2 gap-3">

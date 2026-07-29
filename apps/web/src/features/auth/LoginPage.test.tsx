@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useFetcher } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { I18nProvider } from '@/app/providers/i18n';
 import { ThemeProvider } from '@/app/providers/theme';
+
 import LoginPage from './LoginPage';
 
 const { toastError, toastSuccess } = vi.hoisted(() => ({

@@ -1,7 +1,9 @@
-import { readdir, mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import { PrismaClient } from '@prisma/client';
+
 import { planUserPhoneBackfill } from '../../src/services/phone-backfill.js';
 
 const prisma = new PrismaClient();

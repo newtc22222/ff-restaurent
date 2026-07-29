@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
+
 import type { AddressDirectoryResult } from '@/api/types';
 import { session } from '@/lib/session';
 

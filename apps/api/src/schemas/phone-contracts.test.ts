@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import { profileUpdateSchema, registerSchema } from './index.js';
 
 test('registration normalizes Vietnamese mobile phones to E.164', () => {

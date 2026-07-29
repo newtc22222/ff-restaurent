@@ -1,4 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
+
 import type { CatalogPage, Cuisine, DiningArea } from '@/api/types';
 import { session } from '@/lib/session';
 

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { I18nProvider } from '@/app/providers/i18n';
+
 import BillDetailPage from './BillDetailPage';
 
 const { navigate, routerState } = vi.hoisted(() => ({

@@ -1,17 +1,19 @@
 import toast from 'react-hot-toast';
-import { redirect, type LoaderFunctionArgs } from 'react-router';
-import {
-  forwardListQuery,
-  requireToken,
-  rethrowRouteError,
-} from '@/app/route-helpers';
+import { type LoaderFunctionArgs, redirect } from 'react-router';
+
 import type { Bill, BillActivityEvent, CatalogPage } from '@/api/types';
-import { session } from '@/lib/session';
 import type {
   IntentContext,
   IntentMap,
   MutationBody,
 } from '@/app/mutation-types';
+import {
+  forwardListQuery,
+  requireToken,
+  rethrowRouteError,
+} from '@/app/route-helpers';
+import { session } from '@/lib/session';
+
 import { billDetailPath } from './bill-navigation';
 
 /**

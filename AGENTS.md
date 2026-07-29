@@ -60,6 +60,14 @@ All packages are versioned `1.1.0`. The shipped database contains 17 Prisma
 migrations; the Phase 2 normalized-restaurant contract migration is
 `20260720000000_contract_phase2_normalized_restaurants`.
 
+## UI Development Instructions
+
+CRITICAL: Before touching, creating, or modifying any frontend/UI code:
+
+1. Read `.context/design-tokens.json` for color, spacing, and typography tokens.
+2. Read `.context/COMPONENTS.md` to prevent recreating existing components.
+3. Strictly follow `.context/ui-guidelines.md` (pay special attention to [MUST] tags).
+
 ## Common commands
 
 Run commands from the repository root.
@@ -265,6 +273,9 @@ the same database snapshot as the dump.
   roadmap work; old plans and handoffs can be stale.
 - Preserve unrelated dirty-worktree changes and do not use destructive Git
   cleanup commands.
+- Run `npm run prettier:check` after every completed LLM task in this project,
+  and fix formatting with `npm run format` or focused Prettier writes before
+  handing work back.
 - Keep normalized Phase 2 contracts intact while implementing later phases.
 - Add indexes from measured final queries, not speculation.
 - Run focused tests first, then the applicable lint, typecheck, test, build,

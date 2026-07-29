@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
+
 import ScrollArea from './ScrollArea';
 
 interface ModalProps {
@@ -9,6 +10,11 @@ interface ModalProps {
   children: ReactNode;
   onClose: () => void;
   size?: 'md' | 'lg';
+  /**
+   * Whether clicking outside the modal content area on the backdrop closes the modal.
+   * Defaults to false to prevent accidental loss of user input in create/edit forms.
+   */
+  closeOnClickOutside?: boolean;
 }
 
 export default function Modal({
@@ -17,6 +23,7 @@ export default function Modal({
   children,
   onClose,
   size = 'md',
+  closeOnClickOutside = false,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -49,7 +56,9 @@ export default function Modal({
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (closeOnClickOutside && event.target === event.currentTarget) {
+          onClose();
+        }
       }}
     >
       <div

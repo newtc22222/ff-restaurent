@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import type { PrismaClient } from '@prisma/client';
+
 import { bootstrapRootAdmin } from '../../prisma/scripts/bootstrap-root-admin.js';
 
 const client = (user: Record<string, unknown>) =>

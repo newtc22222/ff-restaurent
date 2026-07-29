@@ -5,21 +5,22 @@ import {
   Search,
   Users,
 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { type FormEvent, useState } from 'react';
 import { Navigate, useLoaderData } from 'react-router';
+
 import type { CatalogPage, ChefRole, User } from '@/api/types';
-import { isRootAdmin, roleLabel } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
-import SectionTitle from '@/components/ui/SectionTitle';
-import EmptyState from '@/components/ui/EmptyState';
-import Dropdown from '@/components/ui/Dropdown';
-import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import Dropdown from '@/components/ui/Dropdown';
+import EmptyState from '@/components/ui/EmptyState';
 import FilterBar from '@/components/ui/FilterBar';
+import Modal from '@/components/ui/Modal';
+import SectionTitle from '@/components/ui/SectionTitle';
 import UserAvatar from '@/components/ui/UserAvatar';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
+import { isRootAdmin, roleLabel } from '@/lib/permissions';
 
 /**
  * AdminPage is the ROOT_ADMIN-only role governance and ownership-transfer UI.
@@ -234,7 +235,7 @@ export default function AdminPage() {
             aria-hidden="true"
           />
           <input
-            className="field w-full pl-10"
+            className="field w-full !pl-9"
             type="search"
             aria-label={t('admin.searchMembers')}
             placeholder={t('admin.searchMembers')}

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import { planUserPhoneBackfill } from './phone-backfill.js';
 
 test('phone backfill plans canonical updates without exposing full phones', () => {

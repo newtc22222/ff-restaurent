@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-
 import {
   act,
   cleanup,
@@ -9,8 +8,10 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import type { RestaurantDirectoryData } from '@/api/types';
 import { I18nProvider } from '@/app/providers/i18n';
+
 import RestaurantsPage from './RestaurantsPage';
 
 const routerState = vi.hoisted(() => ({

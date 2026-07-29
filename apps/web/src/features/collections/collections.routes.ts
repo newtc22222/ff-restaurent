@@ -1,4 +1,5 @@
-import { redirect, type LoaderFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs, redirect } from 'react-router';
+
 import { ApiError } from '@/api/client';
 import type {
   CatalogPage,
@@ -7,9 +8,9 @@ import type {
   CollectionRestaurant,
   CollectionShare,
 } from '@/api/types';
-import { session } from '@/lib/session';
-import { forwardListQuery } from '@/app/route-helpers';
 import type { IntentMap } from '@/app/mutation-types';
+import { forwardListQuery } from '@/app/route-helpers';
+import { session } from '@/lib/session';
 
 export async function collectionsLoader({ request }: LoaderFunctionArgs) {
   if (!session.getToken()) throw redirect('/login');

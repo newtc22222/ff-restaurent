@@ -1,4 +1,5 @@
-import { redirect, type LoaderFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs, redirect } from 'react-router';
+
 import { ApiError } from '@/api/client';
 import type { Stats } from '@/api/types';
 import { session } from '@/lib/session';

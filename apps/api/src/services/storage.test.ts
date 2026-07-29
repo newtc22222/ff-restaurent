@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import type { MultipartFile } from '@fastify/multipart';
+
 import { validateImage } from './storage.js';
 
 const png = Buffer.from(

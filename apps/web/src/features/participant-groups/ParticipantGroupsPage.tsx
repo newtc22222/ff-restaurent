@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2, UserRoundCheck } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+import type { ParticipantGroup } from '@/api/types';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
-import { useRouteMutation } from '@/hooks/useRouteMutation';
-import type { ParticipantGroup } from '@/api/types';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Dropdown from '@/components/ui/Dropdown';
 import EmptyState from '@/components/ui/EmptyState';
-import SectionTitle from '@/components/ui/SectionTitle';
 import Modal from '@/components/ui/Modal';
+import SectionTitle from '@/components/ui/SectionTitle';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
 
 type GroupDraft = { id?: string; name: string; memberIds: string[] };
 

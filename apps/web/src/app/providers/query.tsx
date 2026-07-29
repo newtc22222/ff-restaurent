@@ -1,9 +1,9 @@
 import {
   QueryClient,
-  QueryClientProvider,
   type QueryClientConfig,
+  QueryClientProvider,
 } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 const queryConfig: QueryClientConfig = {
   defaultOptions: {

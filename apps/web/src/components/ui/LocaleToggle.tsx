@@ -1,5 +1,7 @@
 import { Globe } from 'lucide-react';
+
 import type { Locale } from '@/lib/translations';
+
 import Dropdown from './Dropdown';
 
 interface LocaleToggleProps {

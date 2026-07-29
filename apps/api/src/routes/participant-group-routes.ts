@@ -1,5 +1,6 @@
-import type { FastifyInstance, FastifyReply } from 'fastify';
 import { Prisma, UserAccountStatus } from '@prisma/client';
+import type { FastifyInstance, FastifyReply } from 'fastify';
+
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../lib/prisma.js';
 import { publicUserSelect } from '../lib/roles.js';

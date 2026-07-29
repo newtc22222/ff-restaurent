@@ -1,13 +1,15 @@
 import { MapPin } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useI18n } from '@/app/providers/i18n';
+
 import type { AddressDirectoryResult, VietnamAddress } from '@/api/types';
+import { useI18n } from '@/app/providers/i18n';
 import Dropdown from '@/components/ui/Dropdown';
+
 import {
+  type DirectoryLoader,
   defaultDirectoryLoader,
   useAddressDirectory,
-  type DirectoryLoader,
 } from './address.queries';
 
 export const emptyVietnamAddress = (): VietnamAddress => ({

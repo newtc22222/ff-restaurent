@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import { normalizeCatalogKey } from '../lib/catalog-normalization.js';
 import {
   POPULAR_VIETNAM_CUISINE_SOURCE,
+  type PopularCuisineSeedClient,
   popularVietnamCuisines,
   seedPopularVietnamCuisines,
-  type PopularCuisineSeedClient,
 } from './popular-cuisine-seed.js';
 
 test('popular Vietnam cuisine seed has deterministic unique catalog keys', () => {

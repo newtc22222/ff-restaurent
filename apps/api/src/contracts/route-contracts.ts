@@ -1,10 +1,11 @@
 import type { FastifyInstance, FastifySchema, RouteOptions } from 'fastify';
-import { z, type ZodTypeAny } from 'zod';
+import { type ZodTypeAny, z } from 'zod';
+
 import {
   authSessionResponseSchema,
-  billSchema,
   billListQuerySchema,
   billResponseSchema,
+  billSchema,
   catalogQuerySchema,
   chefRoleSchema,
   collectionResponseSchema,
@@ -34,8 +35,8 @@ import {
   restaurantUpdateSchema,
   rootAdminTransferSchema,
   statsQuerySchema,
-  userResponseSchema,
   userAccountStatusSchema,
+  userResponseSchema,
 } from '../schemas/index.js';
 
 type RequestContract = {

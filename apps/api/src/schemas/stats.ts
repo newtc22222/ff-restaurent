@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { isoDateOnlySchema } from './common.js';
 
 /** Statistics range queries, including validated custom date ranges. */

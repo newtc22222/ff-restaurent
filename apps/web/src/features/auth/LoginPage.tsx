@@ -1,15 +1,18 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 import { useFetcher } from 'react-router';
-import type { LoginActionData } from './auth.routes';
-import { seededUsers } from './auth.constants';
-import { resultErrorMessage } from '@/lib/result-messages';
+
+import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
+
 import { useI18n } from '@/app/providers/i18n';
 import { useTheme } from '@/app/providers/theme';
 import BrandIcon from '@/components/ui/BrandIcon';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 import LocaleToggle from '@/components/ui/LocaleToggle';
+import ThemeToggle from '@/components/ui/ThemeToggle';
+import { resultErrorMessage } from '@/lib/result-messages';
+
+import { seededUsers } from './auth.constants';
+import type { LoginActionData } from './auth.routes';
 
 type Mode = 'login' | 'register' | 'forgot-request' | 'forgot-reset';
 

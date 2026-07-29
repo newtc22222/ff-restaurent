@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../lib/prisma.js';
 import { notificationPreferenceSchema } from '../schemas/index.js';

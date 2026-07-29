@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Bell,
   ChevronDown,
@@ -7,16 +6,19 @@ import {
   MoreVertical,
   UserCircle,
 } from 'lucide-react';
+import { useState } from 'react';
+
 import type { Notification } from '@/api/types';
-import { roleLabel } from '@/lib/permissions';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import { useTheme } from '@/app/providers/theme';
+import { roleLabel } from '@/lib/permissions';
+
 import BrandIcon from '../ui/BrandIcon';
-import ThemeToggle from '../ui/ThemeToggle';
-import LocaleToggle from '../ui/LocaleToggle';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import LocaleToggle from '../ui/LocaleToggle';
 import ScrollArea from '../ui/ScrollArea';
+import ThemeToggle from '../ui/ThemeToggle';
 import UserAvatar from '../ui/UserAvatar';
 
 interface AppHeaderProps {
@@ -117,7 +119,7 @@ export default function AppHeader({
             >
               <Bell size={15} />
               {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#e9900c] px-1 text-[10px] font-bold leading-4 text-white">
+                <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-saffron px-1 text-2xs font-bold leading-4 text-white">
                   {unreadCount}
                 </span>
               )}
@@ -128,7 +130,7 @@ export default function AppHeader({
           <div className="relative">
             <button
               type="button"
-              className="flex items-center gap-2 rounded-md px-2 py-1 text-[13px] text-slate-500 transition-colors hover:bg-muted hover:text-ink"
+              className="flex items-center gap-2 rounded-md px-2 py-1 text-compact text-slate-500 transition-colors hover:bg-muted hover:text-ink"
               onClick={() => {
                 setShowNotifications(false);
                 setShowUserMenu((current) => !current);
@@ -143,10 +145,10 @@ export default function AppHeader({
                 size="sm"
               />
               <span className="min-w-0 max-w-44 text-left leading-tight">
-                <span className="block truncate text-[13px] font-semibold text-ink">
+                <span className="block truncate text-compact font-semibold text-ink">
                   {user.name}
                 </span>
-                <span className="mt-0.5 block truncate text-[10px] text-slate-500">
+                <span className="mt-0.5 block truncate text-2xs text-slate-500">
                   {roleLabel(user, t)}
                 </span>
               </span>
@@ -170,7 +172,7 @@ export default function AppHeader({
                   <button
                     type="button"
                     role="menuitem"
-                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] font-medium text-ink transition-colors hover:bg-muted"
+                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-compact font-medium text-ink transition-colors hover:bg-muted"
                     onClick={openProfile}
                   >
                     <UserCircle size={15} className="text-slate-500" />
@@ -180,7 +182,7 @@ export default function AppHeader({
                   <button
                     type="button"
                     role="menuitem"
-                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] font-semibold text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50"
+                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-compact font-semibold text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50"
                     onClick={openSignOut}
                   >
                     <LogOut size={15} /> {t('auth.signOut')}
@@ -242,7 +244,7 @@ export default function AppHeader({
                     {t('nav.notifications')}
                   </span>
                   {unreadCount > 0 && (
-                    <span className="min-w-5 rounded-full bg-[#e9900c] px-1.5 text-center text-[11px] font-bold leading-5 text-white">
+                    <span className="min-w-5 rounded-full bg-saffron px-1.5 text-center text-2xs font-bold leading-5 text-white">
                       {unreadCount}
                     </span>
                   )}
@@ -293,7 +295,7 @@ export default function AppHeader({
                 {unreadCount > 0 && onMarkAllNotificationsRead && (
                   <button
                     type="button"
-                    className="text-xs font-semibold text-orange-700 hover:text-orange-900 dark:text-orange-300"
+                    className="text-xs font-semibold text-saffron hover:opacity-80"
                     onClick={onMarkAllNotificationsRead}
                   >
                     {t('notifications.markAllRead')}
@@ -319,9 +321,7 @@ export default function AppHeader({
                     key={notification.id}
                     type="button"
                     className={`block w-full border-b border-border px-4 py-3 text-left text-sm last:border-0 hover:bg-muted ${
-                      !notification.readAt
-                        ? 'bg-amber-50/60 dark:bg-amber-950/20'
-                        : ''
+                      !notification.readAt ? 'chip-saffron' : ''
                     }`}
                     onClick={() => {
                       setShowNotifications(false);

@@ -1,7 +1,8 @@
-import bcrypt from 'bcryptjs';
-import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
+import { createInterface } from 'node:readline/promises';
+
 import { PrismaClient, SystemRole } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 if (!stdin.isTTY || !stdout.isTTY) {
   throw new Error(

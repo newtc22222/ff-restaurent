@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { I18nProvider } from '@/app/providers/i18n';
-import CollectionsPage from './CollectionsPage';
+
 import CollectionDetailPage from './CollectionDetailPage';
+import CollectionsPage from './CollectionsPage';
 
 const { mutate, routerState } = vi.hoisted(() => ({
   mutate: vi.fn(),

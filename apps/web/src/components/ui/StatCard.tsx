@@ -32,7 +32,7 @@ export default function StatCard({ title, data }: StatCardProps) {
             </div>
             <div className="h-2 rounded-full bg-muted">
               <div
-                className="h-2 rounded-full bg-emerald-500"
+                className="h-2 rounded-full bg-basil"
                 style={{
                   width: `${total ? Math.max(4, (value / total) * 100) : 0}%`,
                 }}

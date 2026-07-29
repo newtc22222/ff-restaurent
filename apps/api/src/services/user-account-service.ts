@@ -1,10 +1,11 @@
 import {
-  Prisma,
   PasswordResetStatus,
+  Prisma,
   SystemRole,
-  UserAccountStatus,
   type User,
+  UserAccountStatus,
 } from '@prisma/client';
+
 import { forbidden, notFound } from '../http/app-error.js';
 import { prisma } from '../lib/prisma.js';
 

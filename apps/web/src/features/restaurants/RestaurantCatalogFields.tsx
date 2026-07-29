@@ -1,14 +1,16 @@
 import { ChefHat } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useI18n } from '@/app/providers/i18n';
+
 import type { Cuisine, DiningArea } from '@/api/types';
+import { useI18n } from '@/app/providers/i18n';
 import Dropdown from '@/components/ui/Dropdown';
+
 import {
+  type CatalogLoader,
   defaultCatalogLoader,
   useCuisineCatalog,
   useDiningAreaCatalog,
-  type CatalogLoader,
 } from './restaurant-catalog.queries';
 
 export type RestaurantCatalogValue = {

@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
 import { NavLink } from 'react-router';
+
 import ScrollArea from '../ui/ScrollArea';
 
 interface SidebarProps {
@@ -26,7 +27,7 @@ export default function Sidebar({
       {!collapsed && (
         <button
           type="button"
-          className="fixed inset-x-0 bottom-0 top-14 z-30 bg-slate-950/25 backdrop-blur-[1px] md:hidden"
+          className="overlay-subtle fixed inset-x-0 bottom-0 top-14 z-30 md:hidden"
           aria-label="Collapse navigation"
           onClick={onToggle}
         />
@@ -39,13 +40,13 @@ export default function Sidebar({
         }`}
       >
         <div
-          className={`hidden h-12 items-center border-b border-border px-2 md:flex ${
+          className={`hidden control-lg items-center border-b border-border px-2 md:flex ${
             collapsed ? 'justify-center' : 'justify-end'
           }`}
         >
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-muted hover:text-ink"
+            className="flex control-sm w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-muted hover:text-ink"
             onClick={onToggle}
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
             aria-expanded={!collapsed}
@@ -64,7 +65,7 @@ export default function Sidebar({
               title={collapsed ? label : undefined}
               onClick={onNavigate}
               className={({ isActive }) =>
-                `flex h-10 shrink-0 items-center rounded-lg text-[14px] font-semibold transition-all ${
+                `flex control-default shrink-0 items-center rounded-lg text-sm font-semibold transition-all ${
                   collapsed ? 'justify-center px-2' : 'gap-3 px-3'
                 } ${
                   isActive

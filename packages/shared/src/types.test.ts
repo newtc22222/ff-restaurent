@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import {
   ADJUSTMENT_ALLOCATION_VALUES,
   ADJUSTMENT_TYPE_VALUES,

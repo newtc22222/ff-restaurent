@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
-import { I18nProvider } from '@/app/providers/i18n';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import type { RestaurantFeedbackPage } from '@/api/types';
+import { I18nProvider } from '@/app/providers/i18n';
+
 import RestaurantFeedback from './RestaurantFeedback';
 
 const mutate = vi.fn();

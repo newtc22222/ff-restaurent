@@ -1,12 +1,7 @@
 // @vitest-environment jsdom
+import { matchRoutes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('react-router', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-router')>();
-  return { ...actual, createBrowserRouter: vi.fn(() => ({})) };
-});
-
-import { matchRoutes } from 'react-router';
 import {
   appLoader,
   billActivityLoader,
@@ -16,11 +11,16 @@ import {
   loginAction,
   loginLoader,
   mutationAction,
+  restaurantsLoader,
   roleGuard,
   routes,
-  restaurantsLoader,
   statsLoader,
 } from './router';
+
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router')>();
+  return { ...actual, createBrowserRouter: vi.fn(() => ({})) };
+});
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {

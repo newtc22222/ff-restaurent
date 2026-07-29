@@ -1,3 +1,4 @@
+import type { ApiClient } from './client';
 import type {
   AddressDirectoryResult,
   CatalogPage,
@@ -5,7 +6,6 @@ import type {
   DiningArea,
   PaymentQrImage,
 } from './types';
-import type { ApiClient } from './client';
 
 export const addressEndpoints = {
   provinces: (api: ApiClient, search: string) =>

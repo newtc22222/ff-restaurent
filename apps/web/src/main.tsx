@@ -1,13 +1,16 @@
+import 'react-datepicker/dist/react-datepicker.css';
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
-import { router } from './app/router';
+
+import { API_URL } from './api/client';
 import { I18nProvider } from './app/providers/i18n';
 import { QueryProvider } from './app/providers/query';
 import { ThemeProvider } from './app/providers/theme';
-import { API_URL } from './api/client';
+import { router } from './app/router';
 import ToastHost from './components/ui/ToastHost';
-import 'react-datepicker/dist/react-datepicker.css';
+
 import './index.css';
 
 const apiOrigin = new URL(API_URL, window.location.href).origin;
