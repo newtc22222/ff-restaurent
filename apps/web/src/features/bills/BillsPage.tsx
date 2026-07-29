@@ -140,9 +140,7 @@ export default function BillsPage() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-xl font-bold text-ink">{t('bills.title')}</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {t('bills.scopeNote')}
-          </p>
+          <p className="mt-1 text-sm text-slate-500">{t('bills.scopeNote')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-border bg-surface p-1">
@@ -731,7 +729,7 @@ function PaymentChip({ participant }: PaymentChipProps) {
   const paid = participant.paymentStatus === 'PAID';
   return (
     <div
-      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium ${
+      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium ${
         paid
           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
           : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
