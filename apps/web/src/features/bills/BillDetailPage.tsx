@@ -26,12 +26,12 @@ import { money } from '@/lib/currency';
 import { formatDateOnlyForLocale } from '@/lib/date-only';
 import { PIE_COLORS } from '@/lib/charts';
 import { canChef, canManageBill, isHead } from '@/lib/permissions';
-import { initials } from '@/lib/user-display';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import UserAvatar from '@/components/ui/UserAvatar';
 import { billEditPath, billsReturnPath } from './bill-navigation';
 
 const activityIcon = (action: BillActivityAction) => {
@@ -346,13 +346,22 @@ export default function BillDetailPage() {
                   }`}
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-4">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-[13px] font-bold text-ink">
-                      {initials(participant.member.name)}
-                    </div>
+                    <UserAvatar
+                      name={participant.member.name}
+                      avatarUrl={participant.member.avatarUrl}
+                      size="md"
+                    />
                     <div className="min-w-0">
-                      <p className="truncate text-[14px] font-semibold text-ink">
-                        {participant.member.name}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-[14px] font-semibold text-ink">
+                          {participant.member.name}
+                        </p>
+                        {participant.memberId === user.id && (
+                          <span className="chip-saffron text-2xs font-semibold px-2 py-0.5 rounded-full shrink-0">
+                            {t('bills.you')}
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-0.5 text-[12px] text-slate-500">
                         Base {money(participant.originCost)} / VAT{' '}
                         {money(participant.allocatedVat)} / Ship{' '}

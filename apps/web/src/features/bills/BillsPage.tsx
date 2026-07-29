@@ -34,6 +34,7 @@ import Dropdown from '@/components/ui/Dropdown';
 import EmptyState from '@/components/ui/EmptyState';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import ScrollArea from '@/components/ui/ScrollArea';
+import UserAvatar from '@/components/ui/UserAvatar';
 import { billsDetailNavigationState } from './bill-navigation';
 
 /**
@@ -746,6 +747,11 @@ function PaymentChip({ participant }: PaymentChipProps) {
           : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
       }`}
     >
+      <UserAvatar
+        name={participant.member.name}
+        avatarUrl={participant.member.avatarUrl}
+        size={16}
+      />
       {paid ? <CheckCircle2 size={11} /> : <Clock size={11} />}
       {participant.member.name.split(' ')[0]} / {money(participant.finalPrice)}
     </div>
