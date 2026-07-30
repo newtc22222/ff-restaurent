@@ -90,11 +90,11 @@ One asymmetry to keep in mind: web's `vite.config.ts` still aliases `@ff-restaur
 
 ### API Structure
 
-`apps/api/src/app.ts` is composition-only: it registers core plugins (CORS, JWT, rate limit in production, Swagger) and then one `register*Routes` function per module from `apps/api/src/routes/` (auth, address, catalog, collection, feedback, password-reset, participant-group, profile, member, media, restaurant, bill, notification, stats). `media` handles Google Cloud Storage-backed image/QR upload, list, and delete endpoints. `apps/api/src/` is grouped by layer: `services/` (bill, collection, root-admin, storage, address-directory, seeds), `contracts/` (`restaurant-contract.ts`), `lib/` (`prisma.ts`, `roles.ts`, pagination, normalization), `config/`, `http/`, `routes/`, and `schemas/`. Only `app.ts` and `server.ts` sit at the root. The `preHandler` chain is: `requireAuth` (populates `request.currentUser`) → optional `requireSousChef` / `requireHeadChef`.
+`apps/api/src/app.ts` is composition-only: it registers core plugins (CORS, JWT, rate limit in production, Swagger) and then one `register*Routes` function per module from `apps/api/src/routes/` (auth, address, catalog, collection, feedback, password-reset, participant-group, profile, member, media, restaurant, bill, notification, stats). `media` handles Supabase-backed image/QR upload, list, and delete endpoints. `apps/api/src/` is grouped by layer: `services/` (bill, collection, root-admin, storage, address-directory, seeds), `contracts/` (`restaurant-contract.ts`), `lib/` (`prisma.ts`, `roles.ts`, pagination, normalization), `config/`, `http/`, `routes/`, and `schemas/`. Only `app.ts` and `server.ts` sit at the root. The `preHandler` chain is: `requireAuth` (populates `request.currentUser`) → optional `requireSousChef` / `requireHeadChef`.
 
 Validation uses **Zod schemas** in `apps/api/src/schemas/`, split by domain behind the `schemas/index.ts` barrel — import from the barrel. Config comes from `loadConfig()` in `apps/api/src/config/config.ts`. After changing `apps/api/prisma/schema.prisma`, run `prisma:migrate` to generate a migration and regenerate the client.
 
-Key domain models beyond users/bills: `Cuisine` + `RestaurantCuisine` (every restaurant has exactly one primary cuisine), `DiningArea`, `RestaurantPlatformLink` (typed Grab/ShopeeFood/BeFood/Gojek/… links), `Collection`/`CollectionShare`/`CollectionRestaurant` (per-user FAVORITES and one global RECOMMENDED system collection — favorites and recommendations flow through collections), `Feedback` (one per bill+user, decimal food/service ratings), `PaymentQrImage` (owner-scoped payment QR images stored in Google Cloud Storage, referenced by `Bill.paymentQrImageId`), `ParticipantGroup`, and audit tables (`BillAuditLog`, `RoleAuditLog`, `RootAdminTransferAudit`). Denormalized `searchText` columns back list search.
+Key domain models beyond users/bills: `Cuisine` + `RestaurantCuisine` (every restaurant has exactly one primary cuisine), `DiningArea`, `RestaurantPlatformLink` (typed Grab/ShopeeFood/BeFood/Gojek/… links), `Collection`/`CollectionShare`/`CollectionRestaurant` (per-user FAVORITES and one global RECOMMENDED system collection — favorites and recommendations flow through collections), `Feedback` (one per bill+user, decimal food/service ratings), `PaymentQrImage` (owner-scoped payment QR images stored in Supabase, referenced by `Bill.paymentQrImageId`), `ParticipantGroup`, and audit tables (`BillAuditLog`, `RoleAuditLog`, `RootAdminTransferAudit`). Denormalized `searchText` columns back list search.
 
 ### Phase 2 contract (FF-38) — complete
 
@@ -133,11 +133,12 @@ CORS_ORIGINS=http://localhost:5173
 REGISTRATION_INVITE_CODE=replace-with-a-private-group-invite
 ROOT_ADMIN_USERNAME=replace-with-an-existing-username
 
-# Google Cloud Storage (the API uses Application Default Credentials)
-GCP_PROJECT_ID=ff-restaurent
-GCS_PUBLIC_BUCKET=replace-with-your-public-image-bucket
-GCS_QR_BUCKET=replace-with-your-private-payment-qr-bucket
-GCS_SIGNED_URL_TTL_SECONDS=900
+# Supabase Storage (service-role key is API-only; never expose it to Vite)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=replace-with-supabase-service-role-key
+SUPABASE_PUBLIC_BUCKET=ff-public-images
+SUPABASE_QR_BUCKET=ff-payment-qr
+SUPABASE_SIGNED_URL_TTL_SECONDS=900
 
 API_PORT=4000
 VITE_API_URL=http://localhost:4000

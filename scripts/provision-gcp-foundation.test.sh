@@ -42,20 +42,16 @@ case "$args" in
   "config get-value account"*) echo phi.vo.tech@gmail.com ;;
   "projects describe ff-restaurent"*) echo 192523226156 ;;
   "billing projects describe ff-restaurent"*) printf 'True\tbillingAccounts/01D2B2-BCD7E8-002699\n' ;;
-  "services list"*) printf '%s\n' run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com storage.googleapis.com iamcredentials.googleapis.com sts.googleapis.com billingbudgets.googleapis.com logging.googleapis.com monitoring.googleapis.com ;;
-  *"projects get-iam-policy"*|*"service-accounts get-iam-policy"*|*"secrets get-iam-policy"*|*"storage buckets get-iam-policy"*)
+  "services list"*) printf '%s\n' run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com iamcredentials.googleapis.com sts.googleapis.com billingbudgets.googleapis.com logging.googleapis.com monitoring.googleapis.com ;;
+  *"projects get-iam-policy"*|*"service-accounts get-iam-policy"*|*"secrets get-iam-policy"*)
     case "$args" in
       *roles/cloudsql.client*) echo roles/cloudsql.client ;;
       *roles/run.admin*) echo roles/run.admin ;;
-      *roles/run.invoker*) echo roles/run.invoker ;;
       *roles/artifactregistry.writer*) echo roles/artifactregistry.writer ;;
       *roles/cloudsql.viewer*) echo roles/cloudsql.viewer ;;
       *roles/iam.serviceAccountUser*) echo roles/iam.serviceAccountUser ;;
-      *roles/iam.serviceAccountTokenCreator*) echo roles/iam.serviceAccountTokenCreator ;;
       *roles/iam.workloadIdentityUser*) echo roles/iam.workloadIdentityUser ;;
       *roles/secretmanager.secretAccessor*) echo roles/secretmanager.secretAccessor ;;
-      *roles/storage.objectViewer*) echo roles/storage.objectViewer ;;
-      *roles/storage.objectUser*) echo roles/storage.objectUser ;;
     esac
     ;;
   "iam service-accounts describe "*) : ;;
@@ -76,12 +72,10 @@ case "$args" in
       *"--secret ff-registration-invite-code"*) printf invite ;;
       *"--secret ff-root-admin-username"*) printf root ;;
       *"--secret ff-cors-origins"*) printf 'https://ff-restaurent-web.example.run.app' ;;
-      *"--secret ff-supabase-url"*) printf 'https://legacy.supabase.co' ;;
-      *"--secret ff-supabase-service-role-key"*) printf legacy-service-role ;;
+      *"--secret ff-supabase-url"*) printf 'https://example.supabase.co' ;;
+      *"--secret ff-supabase-service-role-key"*) printf service-role ;;
     esac
     ;;
-  "storage buckets describe "*) : ;;
-  "storage buckets update "*) : ;;
   "sql databases describe "*) : ;;
   "sql users list "*) echo ff_app ;;
   "sql users set-password "*) : ;;
@@ -118,8 +112,8 @@ write_valid_secrets() {
   "JWT_SECRET": "this-is-a-jwt-secret-with-more-than-32-characters",
   "REGISTRATION_INVITE_CODE": "invite",
   "ROOT_ADMIN_USERNAME": "root",
-  "SUPABASE_URL": "https://legacy.supabase.co",
-  "SUPABASE_SERVICE_ROLE_KEY": "legacy-service-role"
+  "SUPABASE_URL": "https://example.supabase.co",
+  "SUPABASE_SERVICE_ROLE_KEY": "service-role"
 }
 EOF
   chmod 600 "$directory/secrets.json"
@@ -188,20 +182,6 @@ export GCLOUD_MOCK_LOG="$TMP/gcloud.log"
 : >"$GCLOUD_MOCK_LOG"
 GCLOUD_BIN="$TMP/gcloud" bash "$SUBJECT" --apply --secrets-file "$secrets_file" >"$TMP/apply.out"
 grep -Fq 'Foundation apply completed without production cutover' "$TMP/apply.out" || fail 'safe rerun completion'
-for bucket_name in \
-  ff-restaurent-ff-public-images \
-  ff-restaurent-ff-payment-qr \
-  ff-restaurent-ff-verify-public-images \
-  ff-restaurent-ff-verify-payment-qr; do
-  grep -Fq "storage buckets describe gs://${bucket_name}" "$GCLOUD_MOCK_LOG" \
-    || fail "storage bucket reconciliation: ${bucket_name}"
-done
-grep -Fq 'bindings.members=serviceAccount:ff-runtime@ff-restaurent.iam.gserviceaccount.com' "$GCLOUD_MOCK_LOG" \
-  || fail 'runtime self-signing IAM'
-grep -Fq 'secrets versions access latest --secret ff-supabase-url' "$GCLOUD_MOCK_LOG" \
-  || fail 'migration-only Supabase URL secret reconciliation'
-grep -Fq 'secrets versions access latest --secret ff-supabase-service-role-key' "$GCLOUD_MOCK_LOG" \
-  || fail 'migration-only Supabase service-role secret reconciliation'
 if grep -Eq ' (create|enable|add-iam-policy-binding|versions add) ' "$TMP/gcloud.log"; then
   fail 'safe rerun performed a create operation'
 fi

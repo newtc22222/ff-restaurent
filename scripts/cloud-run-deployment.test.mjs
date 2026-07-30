@@ -31,15 +31,11 @@ test('Cloud Run service target is service-only while Render remains the default'
 test('deployment workflow blocks service deployment on the awaited release job', async () => {
   const workflow = await read('.github/workflows/gcp-deploy.yml');
   const executeJob = workflow.indexOf('gcloud run jobs execute "$RELEASE_JOB"');
-  const executeStorageMigration = workflow.indexOf(
-    'gcloud run jobs execute "$STORAGE_MIGRATION_JOB"',
-  );
   const apiDeploy = workflow.indexOf('gcloud run deploy "$API_SERVICE"');
   const webDeploy = workflow.indexOf('gcloud run deploy "$WEB_SERVICE"');
 
   assert.ok(executeJob > 0);
-  assert.ok(executeStorageMigration > executeJob);
-  assert.ok(apiDeploy > executeStorageMigration);
+  assert.ok(apiDeploy > executeJob);
   assert.ok(webDeploy > apiDeploy);
   assert.match(workflow, /test "\$GITHUB_REF" = refs\/heads\/main/);
   assert.match(workflow, /--target cloud-run/);
@@ -62,7 +58,7 @@ test('workflow passes only the public API URL into the web build', async () => {
   assert.match(webBuild, /--build-arg "VITE_API_URL=\$\{API_URL\}"/);
   assert.doesNotMatch(
     webBuild,
-    /JWT_SECRET|DATABASE_URL|REGISTRATION_INVITE_CODE|ROOT_ADMIN_PASSWORD/,
+    /JWT_SECRET|DATABASE_URL|REGISTRATION_INVITE_CODE|SUPABASE_SERVICE_ROLE_KEY/,
   );
   assert.match(
     workflow,
@@ -78,36 +74,4 @@ test('deployment workflow supports staging deployment target for develop branch'
   assert.match(workflow, /ff-restaurent-release-staging/);
   assert.match(workflow, /ff-staging-database-url/);
   assert.match(workflow, /ff-staging-cors-origins/);
-  assert.match(workflow, /ff-staging-public-images/);
-  assert.match(workflow, /ff-staging-payment-qr/);
-});
-
-test('API deployments use GCS while legacy credentials are isolated to the migration job', async () => {
-  const workflow = await read('.github/workflows/gcp-deploy.yml');
-  const migrationStart = workflow.indexOf(
-    '- name: Deploy the blocking storage migration job',
-  );
-  const apiDeployStart = workflow.indexOf(
-    '- name: Deploy the private API service',
-  );
-  const apiDeployEnd = workflow.indexOf(
-    '- name: Verify private API health and readiness',
-  );
-  const migration = workflow.slice(migrationStart, apiDeployStart);
-  const apiDeploy = workflow.slice(apiDeployStart, apiDeployEnd);
-
-  assert.ok(migrationStart > 0);
-  assert.match(migration, /--args scripts\/run-storage-migration\.sh/);
-  assert.match(migration, /SUPABASE_URL=ff-supabase-url:latest/);
-  assert.match(
-    migration,
-    /SUPABASE_SERVICE_ROLE_KEY=ff-supabase-service-role-key:latest/,
-  );
-  assert.match(workflow, /GCP_PROJECT_ID=\$\{GCP_PROJECT_ID\}/);
-  assert.match(workflow, /GCS_PUBLIC_BUCKET=\$\{GCS_PUBLIC_BUCKET\}/);
-  assert.match(workflow, /GCS_QR_BUCKET=\$\{GCS_QR_BUCKET\}/);
-  assert.doesNotMatch(
-    apiDeploy,
-    /SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY|ff-supabase/,
-  );
 });

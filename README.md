@@ -116,36 +116,22 @@ Remove-Item -Recurse -Force apps\web\node_modules\.vite -ErrorAction SilentlyCon
 
 ### Supabase Storage setup
 
-Image uploads are mediated by the API using Google Cloud Application Default
-Credentials. The runtime identity needs `roles/storage.objectUser` on both
-buckets and `roles/iam.serviceAccountTokenCreator` on itself so it can sign
-private payment-QR URLs.
+Image uploads are mediated by the API; the Supabase service-role key must never
+be exposed through a `VITE_*` variable or committed to Git.
 
-Create two uniform-access buckets:
+Create these buckets in the Supabase dashboard:
 
-- A public image bucket with `allUsers` granted
-  `roles/storage.objectViewer`. It stores user avatars and restaurant
+- `ff-public-images`: public, allowed MIME types `image/jpeg`, `image/png`, and
+  `image/webp`, maximum file size 5 MiB. It stores user avatars and restaurant
   logos/banners.
-- A private payment-QR bucket with public access prevention enabled. The API
-  serves its objects through short-lived V4 signed URLs.
+- `ff-payment-qr`: private, the same MIME allowlist, maximum file size 2 MiB.
+  The API serves these objects through short-lived signed URLs.
 
-Set `GCP_PROJECT_ID`, `GCS_PUBLIC_BUCKET`, `GCS_QR_BUCKET`, and optionally
-`GCS_SIGNED_URL_TTL_SECONDS` (default `900`). The backend validates file
-signatures in addition to bucket IAM. Without bucket variables the rest of the
-app remains available, while media endpoints return
-`STORAGE_NOT_CONFIGURED`.
-
-For the one-time Supabase cutover, freeze media writes and run
-`npm run storage:migrate:gcs -w @ff-restaurent/api -- --plan`, then `--apply`
-with the legacy `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-`SUPABASE_PUBLIC_BUCKET`, and `SUPABASE_QR_BUCKET` available only to the
-migration process. The GCP deploy workflow runs `--apply` and checksum-backed
-`--verify` as a blocking Cloud Run Job before switching the API service to GCS;
-the API service itself never receives the legacy credentials. Keep the two
-migration-only Secret Manager values through the rollback window, then remove
-the migration job and credentials in the retirement follow-up. The script
-copies only database-referenced objects, verifies their content, and rewrites
-managed public image URLs; external image URLs are left untouched.
+Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PUBLIC_BUCKET`,
+`SUPABASE_QR_BUCKET`, and optionally `SUPABASE_SIGNED_URL_TTL_SECONDS` (default
+`900`). The backend validates file signatures in addition to the bucket rules.
+Without these variables the rest of the app remains available, while media
+endpoints return `STORAGE_NOT_CONFIGURED`.
 
 ### Vietnam address directory
 

@@ -126,7 +126,7 @@ test "$(docker inspect --format '{{.State.ExitCode}}' "$API_TWO")" = 0
 docker run --rm --entrypoint sh "$WEB_IMAGE" -c \
   "grep -R -F 'https://api.ff57.invalid' /usr/share/nginx/html >/dev/null"
 if docker run --rm --entrypoint sh "$WEB_IMAGE" -c \
-  "grep -R -E 'JWT_SECRET|DATABASE_URL|REGISTRATION_INVITE_CODE|ROOT_ADMIN_PASSWORD' /usr/share/nginx/html >/dev/null"; then
+  "grep -R -E 'JWT_SECRET|DATABASE_URL|REGISTRATION_INVITE_CODE|SUPABASE_SERVICE_ROLE_KEY' /usr/share/nginx/html >/dev/null"; then
   printf 'Web image contains a server-side secret name\n' >&2
   exit 1
 fi

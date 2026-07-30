@@ -50,7 +50,7 @@ FF RESTaurent is an npm-workspaces monorepo for shared restaurant discovery,
 group bill splitting, payment tracking, and team administration:
 
 - `apps/api` - Fastify REST API, JWT auth, Zod, Prisma/PostgreSQL, Swagger, and
-  Google Cloud Storage-backed media.
+  Supabase-backed media storage.
 - `apps/web` - React 19, React Router, Vite, Tailwind CSS, Vitest, and
   `react-hot-toast`.
 - `packages/shared` - shared enums, API/domain types, Vietnamese phone parsing,
@@ -232,9 +232,8 @@ hashes.
 - Directory endpoints use deterministic cursor pagination with `{ items,
 pageInfo }`; default page size is 25 and maximum is 100.
 - Authenticated API traffic is network-only in PWA caching rules.
-- Media and payment QR files use Google Cloud Storage through Application
-  Default Credentials. Public images live in a public-read bucket; payment QR
-  images stay private and are exposed only through short-lived signed URLs.
+- Media and payment QR files use the existing Supabase storage service. The
+  service-role key is API-only and must never use a `VITE_` prefix.
 
 ## Environment and deployment
 
@@ -245,8 +244,9 @@ Start from `.env.example`. Important variables include:
 - `REGISTRATION_INVITE_CODE`
 - `ROOT_ADMIN_USERNAME`
 - `CORS_ORIGINS`
-- `GCP_PROJECT_ID`, `GCS_PUBLIC_BUCKET`, `GCS_QR_BUCKET`
-- `GCS_SIGNED_URL_TTL_SECONDS`
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_PUBLIC_BUCKET`, `SUPABASE_QR_BUCKET`
+- `SUPABASE_SIGNED_URL_TTL_SECONDS`
 - `API_PORT`, `VITE_API_URL`
 
 Production API startup order is fixed:

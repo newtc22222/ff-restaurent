@@ -20,71 +20,21 @@ const storageError = (
   code = 'STORAGE_ERROR',
 ) => Object.assign(new Error(message), { statusCode, code });
 
-let client: Storage | null = null;
+let client: SupabaseClient | null = null;
 
 const storage = () => {
   const config = loadConfig();
-  if (!config.gcsPublicBucket || !config.gcsQrBucket) {
+  if (!config.supabaseUrl || !config.supabaseServiceRoleKey) {
     throw storageError(
-      'Google Cloud Storage is not configured',
+      'Supabase Storage is not configured',
       503,
       'STORAGE_NOT_CONFIGURED',
     );
   }
-  client ??= new Storage(
-    config.gcpProjectId ? { projectId: config.gcpProjectId } : undefined,
-  );
-  return {
-    client,
-    publicBucket: config.gcsPublicBucket,
-    qrBucket: config.gcsQrBucket,
-    signedUrlTtlSeconds: config.gcsSignedUrlTtlSeconds,
-    legacySupabasePublicBucket: config.legacySupabasePublicBucket,
-  };
-};
-
-const errorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : String(error);
-
-export const gcsPublicUrl = (bucket: string, path: string) =>
-  `https://storage.googleapis.com/${bucket}/${path
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/')}`;
-
-export const managedPublicPathFor = (
-  url: string | null | undefined,
-  {
-    publicBucket,
-    legacySupabasePublicBucket,
-  }: { publicBucket: string; legacySupabasePublicBucket: string },
-) => {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    const gcsMarker = `/${publicBucket}/`;
-    if (
-      parsed.hostname === 'storage.googleapis.com' &&
-      parsed.pathname.startsWith(gcsMarker)
-    ) {
-      return decodeURIComponent(parsed.pathname.slice(gcsMarker.length));
-    }
-    if (
-      parsed.hostname === `${publicBucket}.storage.googleapis.com` &&
-      parsed.pathname.length > 1
-    ) {
-      return decodeURIComponent(parsed.pathname.slice(1));
-    }
-    const supabaseMarker = `/storage/v1/object/public/${legacySupabasePublicBucket}/`;
-    const index = parsed.pathname.indexOf(supabaseMarker);
-    return index < 0
-      ? null
-      : decodeURIComponent(
-          parsed.pathname.slice(index + supabaseMarker.length),
-        );
-  } catch {
-    return null;
-  }
+  client ??= createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return { client, config };
 };
 
 export const validateImage = async (part: MultipartFile, limit: number) => {
@@ -125,26 +75,15 @@ export const uploadImage = async ({
 }) => {
   const image = await validateImage(part, limit);
   const path = `${folder}/${randomUUID()}.${image.extension}`;
-  const store = storage();
-  const cacheControl =
-    bucket === store.publicBucket
-      ? 'public, max-age=31536000, immutable'
-      : 'private, no-store, max-age=0';
-  try {
-    await store.client
-      .bucket(bucket)
-      .file(path)
-      .save(image.buffer, {
-        resumable: false,
-        metadata: {
-          contentType: image.mimeType,
-          cacheControl,
-        },
-        preconditionOpts: { ifGenerationMatch: 0 },
-      });
-  } catch (error) {
-    throw storageError(`Image upload failed: ${errorMessage(error)}`);
-  }
+  const { client: supabase } = storage();
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(path, image.buffer, {
+      contentType: image.mimeType,
+      cacheControl: '31536000',
+      upsert: false,
+    });
+  if (error) throw storageError(`Image upload failed: ${error.message}`);
   return {
     path,
     mimeType: image.mimeType,
@@ -153,51 +92,45 @@ export const uploadImage = async ({
 };
 
 export const publicImageUrl = (path: string) => {
-  const { publicBucket } = storage();
-  return gcsPublicUrl(publicBucket, path);
+  const { client: supabase, config } = storage();
+  return supabase.storage.from(config.supabasePublicBucket).getPublicUrl(path)
+    .data.publicUrl;
 };
 
 export const signedQrUrl = async (path: string) => {
-  const store = storage();
-  try {
-    const [url] = await store.client
-      .bucket(store.qrBucket)
-      .file(path)
-      .getSignedUrl({
-        version: 'v4',
-        action: 'read',
-        expires: Date.now() + store.signedUrlTtlSeconds * 1000,
-      });
-    return url;
-  } catch (error) {
-    throw storageError(`Could not sign image URL: ${errorMessage(error)}`);
-  }
+  const { client: supabase, config } = storage();
+  const { data, error } = await supabase.storage
+    .from(config.supabaseQrBucket)
+    .createSignedUrl(path, config.supabaseSignedUrlTtlSeconds);
+  if (error) throw storageError(`Could not sign image URL: ${error.message}`);
+  return data.signedUrl;
 };
 
 export const removeObject = async (bucket: string, path: string) => {
-  const { client: cloudStorage } = storage();
-  try {
-    await cloudStorage
-      .bucket(bucket)
-      .file(path)
-      .delete({ ignoreNotFound: true });
-  } catch (error) {
-    throw storageError(`Could not remove image: ${errorMessage(error)}`);
-  }
+  const { client: supabase } = storage();
+  const { error } = await supabase.storage.from(bucket).remove([path]);
+  if (error) throw storageError(`Could not remove image: ${error.message}`);
 };
 
 export const managedPublicPath = (url: string | null | undefined) => {
-  const { publicBucket, legacySupabasePublicBucket } = storage();
-  return managedPublicPathFor(url, {
-    publicBucket,
-    legacySupabasePublicBucket,
-  });
+  if (!url) return null;
+  const { config } = storage();
+  try {
+    const parsed = new URL(url);
+    const marker = `/storage/v1/object/public/${config.supabasePublicBucket}/`;
+    const index = parsed.pathname.indexOf(marker);
+    return index < 0
+      ? null
+      : decodeURIComponent(parsed.pathname.slice(index + marker.length));
+  } catch {
+    return null;
+  }
 };
 
 export const storageBuckets = () => {
-  const { publicBucket, qrBucket } = storage();
+  const { config } = storage();
   return {
-    publicBucket,
-    qrBucket,
+    publicBucket: config.supabasePublicBucket,
+    qrBucket: config.supabaseQrBucket,
   };
 };

@@ -18,8 +18,6 @@ STAGING_DATABASE_SECRET="ff-staging-database-url"
 STAGING_CORS_SECRET="ff-staging-cors-origins"
 STAGING_ROOT_ADMIN_USERNAME_SECRET="ff-staging-root-admin-username"
 STAGING_ROOT_ADMIN_PASSWORD_SECRET="ff-staging-root-admin-password"
-STAGING_PUBLIC_BUCKET="${PROJECT_ID}-ff-staging-public-images"
-STAGING_QR_BUCKET="${PROJECT_ID}-ff-staging-payment-qr"
 
 STAGING_WEB_DOMAIN="${STAGING_WEB_DOMAIN:-staging.ff-restaurent.com}"
 STAGING_API_DOMAIN="${STAGING_API_DOMAIN:-api-staging.ff-restaurent.com}"
@@ -114,7 +112,6 @@ print_plan() {
   log "  Secret Manager: Ensure '${STAGING_DATABASE_SECRET}', '${STAGING_CORS_SECRET}', '${STAGING_ROOT_ADMIN_USERNAME_SECRET}', and '${STAGING_ROOT_ADMIN_PASSWORD_SECRET}' exist"
   log "  Root Admin: Configure staging root user '${STAGING_ROOT_ADMIN_USERNAME}'"
   log "  IAM: Grant '${RUNTIME_SERVICE_ACCOUNT}' secretAccessor on staging secrets"
-  log "  Cloud Storage: Reconcile '${STAGING_PUBLIC_BUCKET}' and '${STAGING_QR_BUCKET}'"
   log "  Cloud Run Services: Reconcile placeholders '${STAGING_API_SERVICE}' and '${STAGING_WEB_SERVICE}' with --min-instances 0 (scale to zero)"
   log "  Cloud Run Job: Reconcile placeholder '${STAGING_RELEASE_JOB}'"
 }
@@ -136,42 +133,7 @@ ensure_secret_version() {
   fi
 }
 
-ensure_storage_bucket() {
-  local bucket="$1" visibility="$2"
-  if ! resource_exists storage buckets describe "gs://${bucket}" --project "$PROJECT_ID" --quiet; then
-    gcloud_cmd storage buckets create "gs://${bucket}" \
-      --project "$PROJECT_ID" \
-      --location "$REGION" \
-      --uniform-bucket-level-access \
-      --quiet >/dev/null
-    log "Created Storage bucket '${bucket}'"
-  fi
-  gcloud_cmd storage buckets update "gs://${bucket}" \
-    --uniform-bucket-level-access \
-    --quiet >/dev/null
-  if [[ "$visibility" == "public" ]]; then
-    gcloud_cmd storage buckets update "gs://${bucket}" \
-      --no-public-access-prevention \
-      --quiet >/dev/null
-    gcloud_cmd storage buckets add-iam-policy-binding "gs://${bucket}" \
-      --member allUsers \
-      --role roles/storage.objectViewer \
-      --quiet >/dev/null
-  else
-    gcloud_cmd storage buckets update "gs://${bucket}" \
-      --public-access-prevention \
-      --quiet >/dev/null
-  fi
-  gcloud_cmd storage buckets add-iam-policy-binding "gs://${bucket}" \
-    --member "serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" \
-    --role roles/storage.objectUser \
-    --quiet >/dev/null
-}
-
 apply_staging() {
-  ensure_storage_bucket "$STAGING_PUBLIC_BUCKET" public
-  ensure_storage_bucket "$STAGING_QR_BUCKET" private
-
   log "Reconciling logical database '${SQL_STAGING_DATABASE}' in Cloud SQL instance '${SQL_INSTANCE}'..."
   if ! resource_exists sql databases describe "$SQL_STAGING_DATABASE" --instance="$SQL_INSTANCE" --project "$PROJECT_ID" --quiet; then
     gcloud_cmd sql databases create "$SQL_STAGING_DATABASE" \
@@ -210,11 +172,6 @@ apply_staging() {
       --project "$PROJECT_ID" \
       --quiet >/dev/null 2>&1 || true
   done
-  gcloud_cmd iam service-accounts add-iam-policy-binding "$RUNTIME_SERVICE_ACCOUNT" \
-    --member="serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" \
-    --role=roles/iam.serviceAccountTokenCreator \
-    --project "$PROJECT_ID" \
-    --quiet >/dev/null 2>&1 || true
 
   # Grant run.invoker role to runtime and deployer service accounts
   for member in "serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" "serviceAccount:${deploy_service_account}"; do

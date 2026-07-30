@@ -48,11 +48,9 @@ test('applies documented defaults outside production', () => {
       JWT_EXPIRES_IN: undefined,
       CORS_ORIGINS: undefined,
       REGISTRATION_INVITE_CODE: undefined,
-      GCP_PROJECT_ID: undefined,
-      GCS_PUBLIC_BUCKET: undefined,
-      GCS_QR_BUCKET: undefined,
-      GCS_SIGNED_URL_TTL_SECONDS: undefined,
-      LEGACY_SUPABASE_PUBLIC_BUCKET: undefined,
+      SUPABASE_PUBLIC_BUCKET: undefined,
+      SUPABASE_QR_BUCKET: undefined,
+      SUPABASE_SIGNED_URL_TTL_SECONDS: undefined,
     },
     () => {
       const config = loadConfig();
@@ -61,11 +59,9 @@ test('applies documented defaults outside production', () => {
       assert.equal(config.jwtExpiresIn, '8h');
       assert.deepEqual(config.corsOrigins, []);
       assert.equal(config.registrationInviteCode, 'local-dev-invite');
-      assert.equal(config.gcpProjectId, undefined);
-      assert.equal(config.gcsPublicBucket, undefined);
-      assert.equal(config.gcsQrBucket, undefined);
-      assert.equal(config.gcsSignedUrlTtlSeconds, 900);
-      assert.equal(config.legacySupabasePublicBucket, 'ff-public-images');
+      assert.equal(config.supabasePublicBucket, 'ff-public-images');
+      assert.equal(config.supabaseQrBucket, 'ff-payment-qr');
+      assert.equal(config.supabaseSignedUrlTtlSeconds, 900);
     },
   );
 });
@@ -87,9 +83,16 @@ test('splits and trims the CORS origin list', () => {
 
 test('falls back for a non-positive or unparseable signed-URL TTL', () => {
   for (const value of ['0', '-5', 'abc', '1.5']) {
-    withEnv({ NODE_ENV: 'test', GCS_SIGNED_URL_TTL_SECONDS: value }, () => {
-      assert.equal(loadConfig().gcsSignedUrlTtlSeconds, 900);
-    });
+    withEnv(
+      { NODE_ENV: 'test', SUPABASE_SIGNED_URL_TTL_SECONDS: value },
+      () => {
+        assert.equal(
+          loadConfig().supabaseSignedUrlTtlSeconds,
+          900,
+          `expected fallback for ${value}`,
+        );
+      },
+    );
   }
 });
 
