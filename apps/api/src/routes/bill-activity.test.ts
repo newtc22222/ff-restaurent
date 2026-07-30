@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import { buildBillActivityTimeline } from '../services/bill-activity.js';
 
 const actor = { id: 'user-1', username: 'member', name: 'Member One' };
@@ -15,6 +16,7 @@ test('bill activity returns curated summaries in reverse chronological order', (
         id: 'updated-1',
         action: 'UPDATED',
         before: {
+          occurredOn: '2026-07-14',
           baseCost: 1000,
           vat: 0,
           shippingFee: 0,
@@ -24,6 +26,7 @@ test('bill activity returns curated summaries in reverse chronological order', (
           participants: [{ memberId: actor.id, finalPrice: 1000 }],
         },
         after: {
+          occurredOn: '2026-07-15',
           baseCost: 1200,
           vat: 0,
           shippingFee: 0,
@@ -57,6 +60,7 @@ test('bill activity returns curated summaries in reverse chronological order', (
     toStatus: 'PAID',
   });
   assert.deepEqual(timeline[1]?.details?.changes, [
+    'date',
     'costs',
     'paymentLink',
     'participants',

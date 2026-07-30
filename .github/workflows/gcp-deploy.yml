@@ -62,6 +62,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: Select the fixed deployment target
+        id: deployment-target
         shell: bash
         env:
           INPUT_TARGET: ${{ inputs.target }}
@@ -145,7 +146,9 @@ jobs:
             echo "GCS_QR_BUCKET=$qr_bucket"
             echo "WEB_URL=$web_url"
             echo "IMAGE_ROOT=${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}"
+            echo "DEPLOY_TARGET=$DEPLOY_TARGET"
           } >>"$GITHUB_ENV"
+          echo "deploy_target=$DEPLOY_TARGET" >>"$GITHUB_OUTPUT"
 
       - name: Configure Artifact Registry authentication
         shell: bash
@@ -365,7 +368,7 @@ jobs:
           set -euo pipefail
           evidence="${RUNNER_TEMP}/ff57-deployment-evidence.json"
           jq -n \
-            --arg target "${{ inputs.target }}" \
+            --arg target "$DEPLOY_TARGET" \
             --arg commit "$GITHUB_SHA" \
             --arg releaseJob "$RELEASE_JOB" \
             --arg releaseExecution "$RELEASE_EXECUTION" \
@@ -387,7 +390,7 @@ jobs:
           {
             echo '## FF-57 deployment evidence'
             echo
-            echo "- Target: \`${{ inputs.target }}\`"
+            echo "- Target: \`${DEPLOY_TARGET}\`"
             echo "- Commit: \`${GITHUB_SHA}\`"
             echo "- Release execution: \`${RELEASE_EXECUTION}\`"
             echo "- API image: \`${API_IMAGE}\`"
@@ -397,7 +400,7 @@ jobs:
       - name: Upload sanitized deployment evidence
         uses: actions/upload-artifact@v4
         with:
-          name: ff57-${{ inputs.target }}-${{ github.sha }}
+          name: ff57-${{ steps.deployment-target.outputs.deploy_target }}-${{ github.sha }}
           path: |
             ${{ runner.temp }}/ff57-deployment-evidence.json
             ${{ runner.temp }}/ff57-deployment-evidence.json.sha256

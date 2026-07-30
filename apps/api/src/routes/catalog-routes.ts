@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+
 import {
   requireAuthenticatedUser,
   requireSousChefOrHeadChef,
@@ -6,6 +7,7 @@ import {
 import {
   catalogQuerySchema,
   cuisineSchema,
+  cuisineUpdateSchema,
   diningAreaSchema,
   diningAreaUpdateSchema,
   normalizeVietnamAddressSnapshot,
@@ -40,7 +42,7 @@ export const registerCatalogRoutes = (app: FastifyInstance) => {
 
   app.put('/cuisines/:id', manage, async (request) => {
     const { id } = request.params as { id: string };
-    return updateCuisine(id, cuisineSchema.partial().parse(request.body));
+    return updateCuisine(id, cuisineUpdateSchema.parse(request.body));
   });
 
   app.delete('/cuisines/:id', manage, async (request, reply) => {

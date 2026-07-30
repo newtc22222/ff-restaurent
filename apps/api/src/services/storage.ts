@@ -1,7 +1,9 @@
-import type { MultipartFile } from '@fastify/multipart';
-import { Storage } from '@google-cloud/storage';
-import { fileTypeFromBuffer } from 'file-type';
 import { randomUUID } from 'node:crypto';
+
+import type { MultipartFile } from '@fastify/multipart';
+import { type SupabaseClient, createClient } from '@supabase/supabase-js';
+import { fileTypeFromBuffer } from 'file-type';
+
 import { loadConfig } from '../config/config.js';
 
 export const PUBLIC_IMAGE_LIMIT = 5 * 1024 * 1024;

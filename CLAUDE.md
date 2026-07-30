@@ -10,6 +10,14 @@ FF RESTaurent is a group bill-splitting and restaurant tracker for a shared team
 - `apps/web` — React SPA/PWA (Vite + Tailwind CSS) with EN/VI i18n and light/dark theming
 - `packages/shared` — TypeScript types, enums, bill-splitting math, and phone normalization shared across both apps
 
+## UI Development Instructions
+
+CRITICAL: Before touching, creating, or modifying any frontend/UI code:
+
+1. Read `.context/design-tokens.json` for color, spacing, and typography tokens.
+2. Read `.context/COMPONENTS.md` to prevent recreating existing components.
+3. Strictly follow `.context/ui-guidelines.md` (pay special attention to [MUST] tags).
+
 ## Commands
 
 ```bash
@@ -49,6 +57,10 @@ npm run lint
 npm run format
 npm run prettier:check   # non-mutating; this is what CI enforces
 ```
+
+Every Claude/LLM task in this repository should finish by running
+`npm run prettier:check`. If it reports drift, run `npm run format` or a
+focused Prettier write before handing work back.
 
 API docs (Swagger UI): `http://localhost:4000/api/docs`
 
@@ -96,14 +108,14 @@ Verify the contract against a live DB with `npm run prisma:phase2:contract:verif
 
 `apps/web/src/` is organized as:
 
-- `app/` — `App.tsx`, the `react-router` route tree (`router.ts`: `createBrowserRouter` with per-route loaders/actions and lazy-loaded pages), and providers (`app-context`, `i18n`, `theme`)
-- `pages/` — one component per screen not yet promoted to a feature slice (Login, Collections, CollectionDetail, ParticipantGroups, Stats, Profile, Admin)
-- `features/` — domain-owned pages, components, loaders/actions, and colocated tests: `bills/` (list, create/edit, detail, plus `bills.routes.ts`) and `restaurants/` (directory and detail)
-- `components/` — shared `ui/` primitives, `layout/`, and `address/`
-- `lib/` — `api.ts` (`ApiClient` class, all API calls, local response types), `session.ts`, `translations/` (JSON per locale and domain behind a typed barrel), `pwa.ts`
-- `hooks/` — e.g. `useMutation`
+- `app/` — `App.tsx`, the declarative `react-router` route tree, shared mutation dispatcher, root loader, and providers (`app-context`, `i18n`, `query`, `theme`)
+- `api/` — the session-compatible client, application endpoint helpers, transport types, and generated OpenAPI artifacts
+- `features/` — all domain-owned pages, components, route loaders/actions, TanStack Query hooks, and colocated tests
+- `components/` — shared `ui/` primitives and `layout/`; address controls belong to the address feature
+- `hooks/` — cross-feature UI hooks such as `useRouteMutation`
+- `lib/` — focused currency, permission, display, session, translation, and PWA helpers
 
-Routing is `react-router` (v7), configured in `app/router.ts`; screens load data through per-route `loader`s and submit mutations through `action`s (`AppLoaderData` lives in `app-context`). `VITE_API_URL` controls the API base URL. Web tests are colocated `*.test.tsx` files.
+Routing is `react-router` (v7), configured in `app/router.ts`; route-entry data stays in feature-owned `loader`s and route mutations stay in feature-owned intent tables behind the shared action. Component-initiated reads use focused TanStack Query hooks with stable query keys. Cross-boundary imports use the `@/` alias. `AppLoaderData` lives in `app-context`, `VITE_API_URL` controls the API base URL, and web tests are colocated `*.test.tsx` files.
 
 ### Shared Package Exports
 

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Archive as ArchiveIcon,
   BellRing,
@@ -12,25 +11,30 @@ import {
   RotateCcw,
   WalletCards,
 } from 'lucide-react';
-import { Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { useState } from 'react';
 import {
-  money,
-  type BillActivityAction,
-  type BillActivityEvent,
-} from '../../lib/api';
-import {
-  PIE_COLORS,
-  canChef,
-  isHead,
-  canManageBill,
-  initials,
-} from '../../lib/helpers';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import BackButton from '../../components/ui/BackButton';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
+  Navigate,
+  useLoaderData,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+
+import type { BillActivityAction, BillActivityEvent } from '@/api/types';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import BackButton from '@/components/ui/BackButton';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import UserAvatar from '@/components/ui/UserAvatar';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { PIE_COLORS } from '@/lib/charts';
+import { money } from '@/lib/currency';
+import { formatDateOnlyForLocale } from '@/lib/date-only';
+import { canChef, canManageBill, isHead } from '@/lib/permissions';
+
+import { billEditPath, billsReturnPath } from './bill-navigation';
 
 const activityIcon = (action: BillActivityAction) => {
   switch (action) {
@@ -69,11 +73,13 @@ const activityTone = (action: BillActivityAction) => {
  */
 export default function BillDetailPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { billId } = useParams();
   const activity = useLoaderData<BillActivityEvent[]>();
   const { user, bills } = useAppContext();
   const { locale, t } = useI18n();
-  const { mutate } = useMutation();
+  const { mutate } = useRouteMutation();
   const [confirmAction, setConfirmAction] = useState<
     'archive' | 'restore' | null
   >(null);
@@ -85,7 +91,10 @@ export default function BillDetailPage() {
   const bill = bills.find((candidate) => candidate.id === billId);
   if (!bill) return <Navigate to="/bills" replace />;
 
-  const onBack = () => navigate('/bills');
+  const onBack = () =>
+    navigate(billsReturnPath(location.state, searchParams.get('returnTo')), {
+      replace: true,
+    });
 
   const paid = bill.participants.filter(
     (participant) => participant.paymentStatus === 'PAID',
@@ -155,7 +164,11 @@ export default function BillDetailPage() {
                   </h2>
                   <p className="mt-0.5 text-[13px] text-slate-500">
                     {bill.restaurant.type} / {bill.restaurant.cuisineType} /
-                    created by {bill.createdBy.name}
+                    {t('bills.createdBy')} {bill.createdBy.name}
+                  </p>
+                  <p className="mt-1 text-[13px] font-medium text-slate-500">
+                    {t('bills.occurredOn')}:{' '}
+                    {formatDateOnlyForLocale(bill.occurredOn, locale)}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
@@ -294,7 +307,9 @@ export default function BillDetailPage() {
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   className="btn btn-soft flex-1"
-                  onClick={() => navigate(`/bills/${bill.id}/edit`)}
+                  onClick={() =>
+                    navigate(billEditPath(bill.id, location.state))
+                  }
                 >
                   <Edit3 size={14} /> {t('bills.editBill')}
                 </button>
@@ -333,13 +348,22 @@ export default function BillDetailPage() {
                   }`}
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-4">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-[13px] font-bold text-ink">
-                      {initials(participant.member.name)}
-                    </div>
+                    <UserAvatar
+                      name={participant.member.name}
+                      avatarUrl={participant.member.avatarUrl}
+                      size="md"
+                    />
                     <div className="min-w-0">
-                      <p className="truncate text-[14px] font-semibold text-ink">
-                        {participant.member.name}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-[14px] font-semibold text-ink">
+                          {participant.member.name}
+                        </p>
+                        {participant.memberId === user.id && (
+                          <span className="chip-saffron text-2xs font-semibold px-2 py-0.5 rounded-full shrink-0">
+                            {t('bills.you')}
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-0.5 text-[12px] text-slate-500">
                         Base {money(participant.originCost)} / VAT{' '}
                         {money(participant.allocatedVat)} / Ship{' '}

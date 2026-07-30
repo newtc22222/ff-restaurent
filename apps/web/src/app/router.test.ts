@@ -1,12 +1,7 @@
 // @vitest-environment jsdom
+import { matchRoutes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('react-router', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-router')>();
-  return { ...actual, createBrowserRouter: vi.fn(() => ({})) };
-});
-
-import { matchRoutes } from 'react-router';
 import {
   appLoader,
   billActivityLoader,
@@ -16,11 +11,16 @@ import {
   loginAction,
   loginLoader,
   mutationAction,
+  restaurantsLoader,
   roleGuard,
   routes,
-  restaurantsLoader,
   statsLoader,
 } from './router';
+
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router')>();
+  return { ...actual, createBrowserRouter: vi.fn(() => ({})) };
+});
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -262,12 +262,21 @@ describe('paginated list loaders', () => {
         params: {},
         context: {},
       } as never),
-    ).resolves.toEqual({ ...response, collections: [] });
-    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    ).resolves.toEqual({ ...response, collections: [], cuisines: [] });
+    const requestedUrl = String(
+      fetchMock.mock.calls.find(([input]) =>
+        String(input).includes('/restaurants?'),
+      )?.[0],
+    );
     expect(requestedUrl).toContain('search=bep+viet');
     expect(requestedUrl).toContain('cuisineId=cuisine-1');
     expect(requestedUrl).toContain('favorite=true');
     expect(requestedUrl).toContain('cursor=restaurant-1');
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).includes('/cuisines?limit=100'),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -522,6 +531,36 @@ describe('mutationAction', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringMatching(/\/bills\/bill-1\/archive$/),
       expect.objectContaining({ method: 'PATCH' }),
+    );
+  });
+
+  it('preserves the Bills return target after updating a bill', async () => {
+    localStorage.setItem('ff-token', 'token');
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const request = new Request('http://localhost/bills/bill-1/edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'update-bill',
+        payload: { occurredOn: '2026-07-28' },
+        billsReturnTo: '/bills?restaurantId=restaurant-1&cursor=bill-1',
+      }),
+    });
+
+    const response = (await mutationAction({
+      request,
+      params: { billId: 'bill-1' },
+      context: {},
+    } as never)) as Response;
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/bills\/bill-1$/),
+      expect.objectContaining({ method: 'PUT' }),
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe(
+      '/bills/bill-1?returnTo=%2Fbills%3FrestaurantId%3Drestaurant-1%26cursor%3Dbill-1',
     );
   });
 

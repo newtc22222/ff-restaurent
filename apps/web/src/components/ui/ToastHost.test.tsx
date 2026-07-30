@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-
 import { render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ThemeProvider } from '../../app/providers/theme';
+
+import { ThemeProvider } from '@/app/providers/theme';
+
 import ToastHost from './ToastHost';
 
 const { toaster } = vi.hoisted(() => ({

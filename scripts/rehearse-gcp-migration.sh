@@ -451,6 +451,7 @@ capture_source() {
   BACKUP_PASSPHRASE="$(<"$PASSPHRASE_FILE")" \
     DEPLOYED_GIT_SHA="$SOURCE_DEPLOYED_SHA" \
     RENDER_POSTGRES_ID="$RENDER_DATABASE_ID" \
+    MIGRATION_INVENTORY_DIR="$SCRIPT_DIR/../apps/api/prisma/migrations" \
     BASELINE_OUTPUT_DIR="$OUTPUT_DIR" \
     CAPTURE_OUTPUT_FILE="$capture_output" \
     bash "$capture_scripts/capture-render-production-baseline.sh" >/dev/null
@@ -482,16 +483,20 @@ decrypt_and_validate_artifact() {
   ) || die "artifact internal checksum verification failed"
   pg_restore --list "$extracted/production.dump" >/dev/null ||
     die "artifact dump listing failed"
-  grep -Fxq 'applied_migrations=17' "$extracted/manifest.txt" ||
-    die "artifact manifest does not contain 17 applied migrations"
+  local applied_migrations
+  applied_migrations="$(
+    sed -n 's/^applied_migrations=//p' "$extracted/manifest.txt"
+  )"
+  [[ "$applied_migrations" =~ ^[1-9][0-9]*$ ]] ||
+    die "artifact manifest contains an invalid applied migration count"
   grep -Fxq 'rolled_back_migrations=0' "$extracted/manifest.txt" ||
     die "artifact manifest contains rolled-back migrations"
   grep -Fxq 'phase2_contract_migrations=1' "$extracted/manifest.txt" ||
     die "artifact manifest does not contain the Phase 2 contract exactly once"
   grep -Eq '^source_database_version=16([.]|$)' "$extracted/manifest.txt" ||
     die "artifact source is not PostgreSQL 16"
-  [[ "$(wc -l <"$extracted/migrations.tsv" | tr -d ' ')" == "17" ]] ||
-    die "artifact migration inventory is incomplete"
+  [[ "$(wc -l <"$extracted/migrations.tsv" | tr -d ' ')" == "$applied_migrations" ]] ||
+    die "artifact migration inventory does not match the manifest"
   [[ "$(
     grep -c '^20260720000000_contract_phase2_normalized_restaurants|' \
       "$extracted/migrations.tsv"

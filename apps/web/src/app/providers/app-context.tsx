@@ -1,11 +1,12 @@
 import {
+  type ReactNode,
   createContext,
   useCallback,
   useContext,
   useMemo,
-  type ReactNode,
 } from 'react';
 import { useNavigate, useRevalidator } from 'react-router';
+
 import type {
   Bill,
   Notification,
@@ -13,8 +14,8 @@ import type {
   PasswordResetRequest,
   RestaurantEntry,
   User,
-} from '../../lib/api';
-import { session } from '../../lib/session';
+} from '@/api/types';
+import { session } from '@/lib/session';
 
 export interface AppLoaderData {
   user: User;

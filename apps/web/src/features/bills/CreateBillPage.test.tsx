@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-
 import {
   act,
   cleanup,
@@ -8,21 +7,28 @@ import {
   screen,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { I18nProvider } from '../../app/providers/i18n';
+
+import { I18nProvider } from '@/app/providers/i18n';
+import { QueryProvider } from '@/app/providers/query';
+
 import CreateBillPage from './CreateBillPage';
 
 const mutate = vi.fn();
+const routerState = vi.hoisted(() => ({
+  params: {} as { billId?: string },
+}));
 
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>();
   return {
     ...actual,
     useNavigate: () => vi.fn(),
-    useParams: () => ({}),
+    useParams: () => routerState.params,
+    useSearchParams: () => [new URLSearchParams(), vi.fn()],
   };
 });
 
-vi.mock('../../components/ui/Dropdown', () => ({
+vi.mock('@/components/ui/Dropdown', () => ({
   default: ({
     ariaLabel,
     value = '',
@@ -55,11 +61,11 @@ vi.mock('../../components/ui/Dropdown', () => ({
   ),
 }));
 
-vi.mock('../../hooks/useMutation', () => ({
-  useMutation: () => ({ mutate }),
+vi.mock('@/hooks/useRouteMutation', () => ({
+  useRouteMutation: () => ({ mutate }),
 }));
 
-vi.mock('../../app/providers/app-context', () => ({
+vi.mock('@/app/providers/app-context', () => ({
   useAppContext: () => ({
     user: {
       id: 'sous-1',
@@ -89,8 +95,50 @@ vi.mock('../../app/providers/app-context', () => ({
         roles: ['CUSTOMER'],
         paymentRemindersEnabled: true,
       },
+      {
+        id: 'blocked-1',
+        username: 'blocked-bob',
+        name: 'Blocked Bob',
+        chefRole: null,
+        systemRole: null,
+        roles: ['CUSTOMER'],
+        paymentRemindersEnabled: true,
+        accountStatus: 'BLOCKED',
+      },
     ],
-    bills: [],
+    bills: [
+      {
+        id: 'bill-blocked',
+        restaurant: { id: 'restaurant-1' },
+        occurredOn: '2026-07-15',
+        vat: 0,
+        shippingFee: 0,
+        discounts: [],
+        vouchers: [],
+        adjustmentAllocation: 'PROPORTIONAL',
+        paymentQrImageId: null,
+        participants: [
+          {
+            memberId: 'blocked-1',
+            member: {
+              id: 'blocked-1',
+              username: 'blocked-bob',
+              name: 'Blocked Bob',
+            },
+            originCost: 6000,
+          },
+          {
+            memberId: 'user-1',
+            member: {
+              id: 'user-1',
+              username: 'alice',
+              name: 'Alice',
+            },
+            originCost: 7000,
+          },
+        ],
+      },
+    ],
     restaurants: [
       {
         id: 'restaurant-1',
@@ -120,16 +168,50 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('ff-locale', 'en');
   mutate.mockClear();
+  routerState.params = {};
 });
 
 afterEach(cleanup);
 
 describe('CreateBillPage repeat workflows', () => {
+  it('keeps a blocked historical participant visible and removable while editing', () => {
+    routerState.params = { billId: 'bill-blocked' };
+    render(
+      <QueryProvider>
+        <I18nProvider>
+          <CreateBillPage />
+        </I18nProvider>
+      </QueryProvider>,
+    );
+
+    expect(screen.getAllByText('Blocked Bob (blocked account)')).toHaveLength(
+      2,
+    );
+    const participantPicker = screen.getByLabelText(
+      'Add participant',
+    ) as HTMLSelectElement;
+    expect(
+      Array.from(participantPicker.options).some(
+        (option) => option.text === 'Blocked Bob (blocked account)',
+      ),
+    ).toBe(true);
+
+    fireEvent.click(screen.getAllByTitle('Remove')[0]!);
+    expect(screen.queryByText('Blocked Bob (blocked account)')).toBeNull();
+    expect(
+      Array.from(participantPicker.options).some(
+        (option) => option.text === 'Blocked Bob (blocked account)',
+      ),
+    ).toBe(false);
+  });
+
   it('applies an owner participant group without managing it inline', () => {
     render(
-      <I18nProvider>
-        <CreateBillPage />
-      </I18nProvider>,
+      <QueryProvider>
+        <I18nProvider>
+          <CreateBillPage />
+        </I18nProvider>
+      </QueryProvider>,
     );
 
     fireEvent.change(screen.getByLabelText('Choose a group'), {
@@ -147,13 +229,20 @@ describe('CreateBillPage repeat workflows', () => {
 
   it('requires explicit confirmation before overriding an exact duplicate', () => {
     render(
-      <I18nProvider>
-        <CreateBillPage />
-      </I18nProvider>,
+      <QueryProvider>
+        <I18nProvider>
+          <CreateBillPage />
+        </I18nProvider>
+      </QueryProvider>,
     );
     fireEvent.change(screen.getByLabelText('Restaurant / Eatery'), {
       target: { value: 'restaurant-1' },
     });
+    fireEvent.click(screen.getByLabelText('Bill date'));
+    const day15 = screen
+      .getAllByRole('button', { name: /July 15.*2026/i })
+      .find((btn) => !btn.hasAttribute('disabled'));
+    if (day15) fireEvent.click(day15);
     fireEvent.change(screen.getByLabelText('Choose a group'), {
       target: { value: 'group-1' },
     });
@@ -176,6 +265,7 @@ describe('CreateBillPage repeat workflows', () => {
         payload: expect.objectContaining({
           adjustmentAllocation: 'PROPORTIONAL',
           allowDuplicate: true,
+          occurredOn: '2026-07-15',
         }),
       }),
     );
@@ -183,9 +273,11 @@ describe('CreateBillPage repeat workflows', () => {
 
   it('resets a discount value when its type changes', () => {
     render(
-      <I18nProvider>
-        <CreateBillPage />
-      </I18nProvider>,
+      <QueryProvider>
+        <I18nProvider>
+          <CreateBillPage />
+        </I18nProvider>
+      </QueryProvider>,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Add discount' }));

@@ -54,10 +54,14 @@ jobs:
       - name: Verify canonical agent system
         run: npm run agents:verify
       - run: npm run build -w @ff-restaurent/shared
+      - name: Show Prettier differences
+        run: npx prettier --list-different . || true
       - run: npm run prettier:check
       - run: npm run lint
       - name: Generate Prisma client (workspace)
         run: npm run prisma:generate --workspace @ff-restaurent/api
+      - name: Verify OpenAPI and generated web transport are current
+        run: npm run openapi:check
       - run: npm run typecheck
       - name: Verify representative RC upgrade and contract failures
         shell: bash

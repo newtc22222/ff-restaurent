@@ -1,6 +1,9 @@
-import type { FastifyInstance } from 'fastify';
+import { UserAccountStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import type { FastifyInstance } from 'fastify';
+
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
+
 import { prisma } from '../lib/prisma.js';
 import { sanitizeUser } from '../lib/roles.js';
 import { loginSchema, registerSchema } from '../schemas/index.js';
@@ -28,7 +31,13 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
           });
         }
       }
-      if (!user || !(await bcrypt.compare(body.password, user.passwordHash))) {
+      const passwordMatches =
+        user && (await bcrypt.compare(body.password, user.passwordHash));
+      if (
+        !user ||
+        !passwordMatches ||
+        user.accountStatus !== UserAccountStatus.ACTIVE
+      ) {
         return reply.code(401).send({
           code: 'INVALID_CREDENTIALS',
           message: 'Invalid credentials',

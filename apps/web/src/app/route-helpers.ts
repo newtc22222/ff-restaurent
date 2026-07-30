@@ -1,6 +1,7 @@
 import { redirect } from 'react-router';
-import { ApiError } from '../lib/api';
-import { session } from '../lib/session';
+
+import { ApiError } from '@/api/client';
+import { session } from '@/lib/session';
 
 /**
  * Cross-cutting helpers shared by the route tree and by feature route modules.

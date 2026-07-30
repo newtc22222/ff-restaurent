@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { resultErrorMessage } from './result-messages';
 
 const messages: Record<string, string> = {

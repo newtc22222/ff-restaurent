@@ -1,0 +1,230 @@
+import {
+  FolderHeart,
+  Globe2,
+  Heart,
+  LockKeyhole,
+  Plus,
+  Share2,
+  Sparkles,
+} from 'lucide-react';
+import { FormEvent, useState } from 'react';
+import { useLoaderData, useNavigate } from 'react-router';
+
+import type { CatalogPage, Collection } from '@/api/types';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import Dropdown from '@/components/ui/Dropdown';
+import EmptyState from '@/components/ui/EmptyState';
+import FilterBar from '@/components/ui/FilterBar';
+import Modal from '@/components/ui/Modal';
+import SectionTitle from '@/components/ui/SectionTitle';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
+
+const collectionIcon = (collection: Collection) =>
+  collection.systemType === 'FAVORITES'
+    ? Heart
+    : collection.systemType === 'RECOMMENDED'
+      ? Sparkles
+      : FolderHeart;
+
+export default function CollectionsPage() {
+  const page = useLoaderData() as CatalogPage<Collection>;
+  const navigate = useNavigate();
+  const { t } = useI18n();
+  const { user } = useAppContext();
+  const { mutate } = useRouteMutation();
+  const {
+    searchParams,
+    searchValue: search,
+    setSearchValue,
+    setQuery,
+    setPage,
+  } = useUrlFilters();
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    isPublic: false,
+  });
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    void mutate(
+      { intent: 'create-collection', payload: form },
+      {
+        fallback: t('toast.collectionCreateFailed'),
+        success: t('toast.collectionCreated'),
+        onSuccess: () => {
+          setCreateOpen(false);
+          setForm({ name: '', description: '', isPublic: false });
+        },
+      },
+    );
+  };
+
+  const visibility = searchParams.get('visibility') ?? 'all';
+
+  return (
+    <div className="space-y-4">
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionTitle
+            title={t('collections.title')}
+            subtitle={t('collections.subtitle')}
+          />
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus size={14} /> {t('collections.create')}
+          </button>
+        </div>
+        <FilterBar label={t('common.filters')}>
+          <input
+            className="field h-9 min-w-0 py-0 text-sm"
+            type="search"
+            value={search}
+            onChange={(event) => setSearchValue(event.target.value)}
+            placeholder={t('collections.search')}
+            aria-label={t('collections.search')}
+          />
+          <Dropdown
+            label={t('collections.visibility')}
+            value={visibility}
+            onChange={(value) => setQuery('visibility', value)}
+            ariaLabel={t('collections.visibility')}
+            options={[
+              { value: 'all', label: t('collections.all') },
+              { value: 'owned', label: t('collections.owned') },
+              { value: 'shared', label: t('collections.shared') },
+              { value: 'public', label: t('collections.public') },
+            ]}
+            fullWidth={false}
+          />
+        </FilterBar>
+
+        {page.items.length === 0 && (
+          <EmptyState
+            icon={FolderHeart}
+            title={t('collections.empty')}
+            description={t('collections.emptyHint')}
+            steps={[]}
+          />
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {page.items.map((collection) => {
+            const Icon = collectionIcon(collection);
+            const visibilityLabel = collection.isPublic
+              ? t('collections.public')
+              : collection.ownerId === user.id
+                ? collection._count.shares > 0
+                  ? t('collections.sharedByMe')
+                  : t('collections.private')
+                : t('collections.shared');
+            const VisibilityIcon = collection.isPublic
+              ? Globe2
+              : collection._count.shares > 0
+                ? Share2
+                : LockKeyhole;
+            return (
+              <button
+                key={collection.id}
+                type="button"
+                className="panel group min-h-44 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
+                onClick={() => navigate(`/collections/${collection.id}`)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-300">
+                    <Icon size={19} />
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                    <VisibilityIcon size={11} /> {visibilityLabel}
+                  </span>
+                </div>
+                <h3 className="mt-4 truncate font-bold text-ink">
+                  {collection.name}
+                </h3>
+                <p className="mt-1 line-clamp-2 min-h-10 text-sm text-slate-500">
+                  {collection.description || t('collections.noDescription')}
+                </p>
+                <p className="mt-3 text-xs font-semibold text-slate-500">
+                  {collection._count.restaurants} {t('collections.restaurants')}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {page.pageInfo.hasNextPage && page.pageInfo.endCursor && (
+          <button
+            type="button"
+            className="btn btn-soft w-full justify-center"
+            onClick={() => setPage(page.pageInfo.endCursor!)}
+          >
+            {t('common.nextPage')}
+          </button>
+        )}
+      </section>
+
+      <Modal
+        open={createOpen}
+        title={t('collections.create')}
+        onClose={() => setCreateOpen(false)}
+      >
+        <form className="space-y-4" onSubmit={submit}>
+          <p className="text-sm text-slate-500">
+            {t('collections.createHint')}
+          </p>
+          <label className="block space-y-1">
+            <span className="label">{t('collections.name')}</span>
+            <input
+              className="field w-full"
+              value={form.name}
+              maxLength={100}
+              required
+              onChange={(event) =>
+                setForm((current) => ({ ...current, name: event.target.value }))
+              }
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="label">{t('collections.description')}</span>
+            <textarea
+              className="field min-h-24 w-full resize-y py-2"
+              value={form.description}
+              maxLength={500}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.isPublic}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  isPublic: event.target.checked,
+                }))
+              }
+            />
+            {t('collections.makePublic')}
+          </label>
+          <button
+            className="btn btn-primary w-full"
+            disabled={!form.name.trim()}
+          >
+            <Plus size={14} /> {t('collections.create')}
+          </button>
+        </form>
+      </Modal>
+    </div>
+  );
+}

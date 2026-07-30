@@ -1,8 +1,10 @@
 import { ChevronDown, ChevronUp, Link2, Plus, Trash2 } from 'lucide-react';
+
 import { RESTAURANT_PLATFORM_VALUES } from '@ff-restaurent/shared';
-import { useI18n } from '../../app/providers/i18n';
-import type { RestaurantPlatform, RestaurantPlatformLink } from '../../lib/api';
-import Dropdown from '../../components/ui/Dropdown';
+
+import type { RestaurantPlatform, RestaurantPlatformLink } from '@/api/types';
+import { useI18n } from '@/app/providers/i18n';
+import Dropdown from '@/components/ui/Dropdown';
 
 const platforms: readonly RestaurantPlatform[] = RESTAURANT_PLATFORM_VALUES;
 

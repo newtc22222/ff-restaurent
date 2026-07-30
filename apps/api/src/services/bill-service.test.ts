@@ -1,11 +1,67 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import {
   type BillServiceDb,
+  computeBillCreateData,
   participantAllocationsChanged,
   validateParticipantIds,
   validatePaymentQr,
 } from './bill-service.js';
+
+const billBody = {
+  restaurantId: 'restaurant-1',
+  baseCost: 2000,
+  vat: 0,
+  shippingFee: 0,
+  participants: [
+    { memberId: 'member-1', originCost: 1000 },
+    { memberId: 'member-2', originCost: 1000 },
+  ],
+};
+
+test('bill computation defaults new bills to the Ho Chi Minh City calendar date', () => {
+  const computed = computeBillCreateData(
+    billBody,
+    'owner-1',
+    undefined,
+    null,
+    undefined,
+    new Date('2026-07-15T18:30:00.000Z'),
+  );
+
+  assert.equal(
+    computed.bill.occurredOn.toISOString(),
+    '2026-07-16T00:00:00.000Z',
+  );
+});
+
+test('bill computation preserves the stored date for legacy edit clients', () => {
+  const computed = computeBillCreateData(
+    billBody,
+    'owner-1',
+    undefined,
+    null,
+    new Date('2026-07-04T00:00:00.000Z'),
+  );
+
+  assert.equal(
+    computed.bill.occurredOn.toISOString(),
+    '2026-07-04T00:00:00.000Z',
+  );
+});
+
+test('bill computation accepts an explicit occurrence date', () => {
+  const computed = computeBillCreateData(
+    { ...billBody, occurredOn: '2026-07-10' },
+    'owner-1',
+  );
+
+  assert.equal(
+    computed.bill.occurredOn.toISOString(),
+    '2026-07-10T00:00:00.000Z',
+  );
+});
 
 /**
  * These exercise the persistence-backed validations with an injected stub, so
@@ -17,6 +73,7 @@ type QrRow = { id: string } | null;
 const stubDb = (options: {
   qr?: QrRow;
   userCount?: number;
+  onUserCountArgs?: (args: unknown) => void;
   onQrArgs?: (args: unknown) => void;
 }): BillServiceDb => ({
   paymentQrImage: {
@@ -26,7 +83,10 @@ const stubDb = (options: {
     },
   },
   user: {
-    count: async () => options.userCount ?? 0,
+    count: async (args) => {
+      options.onUserCountArgs?.(args);
+      return options.userCount ?? 0;
+    },
   },
 });
 
@@ -62,10 +122,25 @@ test('payment QR validation rejects an image that is missing, retired, or owned 
 });
 
 test('participant validation passes only when every id resolves to a user', async () => {
+  let countArgs: unknown;
   assert.deepEqual(
-    await validateParticipantIds(['a', 'b'], stubDb({ userCount: 2 })),
+    await validateParticipantIds(
+      ['a', 'b'],
+      stubDb({
+        userCount: 2,
+        onUserCountArgs: (args) => {
+          countArgs = args;
+        },
+      }),
+    ),
     { ok: true },
   );
+  assert.deepEqual(countArgs, {
+    where: {
+      id: { in: ['a', 'b'] },
+      accountStatus: 'ACTIVE',
+    },
+  });
   assert.deepEqual(
     await validateParticipantIds(['a', 'b'], stubDb({ userCount: 1 })),
     {

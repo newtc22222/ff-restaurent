@@ -62,6 +62,7 @@ const updatedFields = (
 ) => {
   if (!isJsonObject(before) || !isJsonObject(after)) return [];
   const changes = new Set<string>();
+  if (valueChanged(before.occurredOn, after.occurredOn)) changes.add('date');
   if (valueChanged(before.restaurantId, after.restaurantId))
     changes.add('restaurant');
   if (

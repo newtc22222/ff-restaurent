@@ -1,12 +1,20 @@
 import toast from 'react-hot-toast';
-import { redirect, type LoaderFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs, redirect } from 'react-router';
+
+import type { Bill, BillActivityEvent, CatalogPage } from '@/api/types';
+import type {
+  IntentContext,
+  IntentMap,
+  MutationBody,
+} from '@/app/mutation-types';
 import {
   forwardListQuery,
   requireToken,
   rethrowRouteError,
-} from '../../app/route-helpers';
-import type { Bill, BillActivityEvent, CatalogPage } from '../../lib/api';
-import { session } from '../../lib/session';
+} from '@/app/route-helpers';
+import { session } from '@/lib/session';
+
+import { billDetailPath } from './bill-navigation';
 
 /**
  * Route data and mutations owned by the bills feature.
@@ -54,22 +62,6 @@ export async function billActivityLoader({ params }: LoaderFunctionArgs) {
  * Body shape the shared mutation action passes through. Kept loose because the
  * intents are dispatched dynamically; each handler reads what it needs.
  */
-type MutationBody = {
-  intent: string;
-  payload?: unknown;
-  toastSuccess?: unknown;
-  billId?: string;
-  memberId?: string;
-  status?: string;
-  expectedStatus?: string;
-};
-
-type IntentContext = {
-  api: ReturnType<typeof session.api>;
-  body: MutationBody;
-  params: Record<string, string | undefined>;
-};
-
 const announce = (body: MutationBody) => {
   if (typeof body.toastSuccess === 'string') toast.success(body.toastSuccess);
 };
@@ -94,7 +86,7 @@ export const billIntents = {
       body: JSON.stringify(body.payload),
     });
     announce(body);
-    return redirect(`/bills/${params.billId}`);
+    return redirect(billDetailPath(params.billId!, body.billsReturnTo));
   },
   'bill-status': ({ api, body, params }: IntentContext) =>
     api.request(`/bills/${body.billId ?? params.billId}/${body.status}`, {
@@ -115,4 +107,4 @@ export const billIntents = {
         }),
       },
     ),
-};
+} satisfies IntentMap;

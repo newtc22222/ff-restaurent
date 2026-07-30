@@ -1,7 +1,8 @@
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 import { z } from 'zod';
-import { AddressDirectory } from '../services/address-directory.js';
+
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
+import { AddressDirectory } from '../services/address-directory.js';
 
 type AddressRouteOptions = {
   authenticate?: preHandlerHookHandler;

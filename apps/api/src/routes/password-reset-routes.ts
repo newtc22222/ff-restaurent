@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+
 import {
   requireAuthenticatedUser,
   requireRootAdmin,

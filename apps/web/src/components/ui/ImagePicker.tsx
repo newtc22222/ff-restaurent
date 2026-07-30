@@ -1,6 +1,7 @@
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useI18n } from '../../app/providers/i18n';
+
+import { useI18n } from '@/app/providers/i18n';
 
 export default function ImagePicker({
   label,

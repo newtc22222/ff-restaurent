@@ -1,4 +1,5 @@
 import { Prisma, User } from '@prisma/client';
+
 import {
   isHeadChef as isHeadChefShared,
   isRootAdmin as isRootAdminShared,
@@ -42,6 +43,7 @@ export const sanitizeUser = (user: User) => ({
   chefRole: user.chefRole,
   systemRole: user.systemRole,
   paymentRemindersEnabled: user.paymentRemindersEnabled,
+  accountStatus: user.accountStatus,
   roles: [
     'CUSTOMER',
     ...(user.chefRole ? [user.chefRole] : []),

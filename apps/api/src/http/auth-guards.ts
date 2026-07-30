@@ -1,4 +1,6 @@
+import { UserAccountStatus } from '@prisma/client';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+
 import { prisma } from '../lib/prisma.js';
 import { isHeadChef, isRootAdmin, isSousChefOrAbove } from '../lib/roles.js';
 
@@ -23,7 +25,10 @@ export const requireAuthenticatedUser = async (
       });
       return;
     }
-    if ((payload.ver ?? 0) !== user.sessionVersion) {
+    if (
+      (payload.ver ?? 0) !== user.sessionVersion ||
+      user.accountStatus !== UserAccountStatus.ACTIVE
+    ) {
       reply.code(401).send({
         code: 'SESSION_INVALIDATED',
         message: 'This session is no longer valid',

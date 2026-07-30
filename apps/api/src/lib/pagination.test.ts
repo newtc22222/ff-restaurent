@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import { cursorPageResult } from './pagination.js';
 
 test('cursor pages expose stable forward and backward boundaries', () => {

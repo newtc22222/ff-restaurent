@@ -3,6 +3,14 @@ set -euo pipefail
 
 umask 077
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+migrations_dir="${MIGRATION_INVENTORY_DIR:-$script_dir/../apps/api/prisma/migrations}"
+
+if [[ ! -d "$migrations_dir" ]]; then
+  echo "Production baseline capture failed: migration inventory directory is unavailable" >&2
+  exit 1
+fi
+
 : "${DATABASE_URL:?DATABASE_URL is required}"
 : "${BACKUP_PASSPHRASE:?BACKUP_PASSPHRASE is required}"
 : "${DEPLOYED_GIT_SHA:?DEPLOYED_GIT_SHA is required}"
@@ -163,15 +171,40 @@ done
 IFS='|' read -r server_version database_name <"$database_info_file"
 IFS='|' read -r applied_migrations rolled_back_migrations phase2_contract_migrations <"$migration_summary_file"
 
-if [[ "$applied_migrations" != "17" || "$rolled_back_migrations" != "0" || "$phase2_contract_migrations" != "1" ]]; then
+if [[ ! "$applied_migrations" =~ ^[1-9][0-9]*$ || "$rolled_back_migrations" != "0" || "$phase2_contract_migrations" != "1" ]]; then
   echo "Production baseline capture failed: migration state does not match the released Phase 2 boundary" >&2
   exit 1
 fi
 
-if [[ "$(wc -l <"$migrations_file" | tr -d ' ')" != "17" ]]; then
-  echo "Production baseline capture failed: migration inventory does not contain exactly 17 rows" >&2
+if [[ "$(wc -l <"$migrations_file" | tr -d ' ')" != "$applied_migrations" ]]; then
+  echo "Production baseline capture failed: migration inventory count does not match applied migration count" >&2
   exit 1
 fi
+
+mapfile -t expected_migrations < <(
+  find "$migrations_dir" \
+    -mindepth 1 \
+    -maxdepth 1 \
+    -type d \
+    -exec basename {} \; |
+    LC_ALL=C sort
+)
+mapfile -t captured_migrations < <(
+  cut -d '|' -f 1 "$migrations_file" |
+    LC_ALL=C sort
+)
+
+if [[ "${#expected_migrations[@]}" == "0" ||
+  "${#captured_migrations[@]}" != "${#expected_migrations[@]}" ]]; then
+  echo "Production baseline capture failed: migration inventory does not match repository migrations" >&2
+  exit 1
+fi
+for migration_index in "${!expected_migrations[@]}"; do
+  if [[ "${captured_migrations[$migration_index]}" != "${expected_migrations[$migration_index]}" ]]; then
+    echo "Production baseline capture failed: migration inventory does not match repository migrations" >&2
+    exit 1
+  fi
+done
 
 if ! "$PG_RESTORE_BIN" --list "$dump_file" >"$dump_list_file"; then
   echo "Production baseline capture failed: pg_restore could not list the dump" >&2

@@ -1,14 +1,3 @@
-import viAdmin from './vi/admin.json';
-import viAuth from './vi/auth.json';
-import viBills from './vi/bills.json';
-import viCollections from './vi/collections.json';
-import viCommon from './vi/common.json';
-import viErrors from './vi/errors.json';
-import viGroups from './vi/groups.json';
-import viRestaurants from './vi/restaurants.json';
-import viStats from './vi/stats.json';
-import viToast from './vi/toast.json';
-
 import enAdmin from './en/admin.json';
 import enAuth from './en/auth.json';
 import enBills from './en/bills.json';
@@ -19,6 +8,16 @@ import enGroups from './en/groups.json';
 import enRestaurants from './en/restaurants.json';
 import enStats from './en/stats.json';
 import enToast from './en/toast.json';
+import viAdmin from './vi/admin.json';
+import viAuth from './vi/auth.json';
+import viBills from './vi/bills.json';
+import viCollections from './vi/collections.json';
+import viCommon from './vi/common.json';
+import viErrors from './vi/errors.json';
+import viGroups from './vi/groups.json';
+import viRestaurants from './vi/restaurants.json';
+import viStats from './vi/stats.json';
+import viToast from './vi/toast.json';
 
 /**
  * Translation dictionaries, assembled from per-locale domain namespaces.

@@ -1,9 +1,12 @@
 import { z } from 'zod';
+
 import {
   AdjustmentAllocation,
   AdjustmentType,
   PAYMENT_STATUS_VALUES,
 } from '@ff-restaurent/shared';
+
+import { isoDateOnlySchema } from './common.js';
 
 /** Bill creation, participants, adjustments, listing, and payment status. */
 
@@ -20,8 +23,8 @@ export const billListQuerySchema = z.object({
   paymentStatus: z.enum(PAYMENT_STATUS_VALUES).optional(),
   archive: z.enum(['active', 'archived', 'all']).default('active'),
   ownerId: z.string().min(1).optional(),
-  from: z.coerce.date().optional(),
-  to: z.coerce.date().optional(),
+  from: isoDateOnlySchema.optional(),
+  to: isoDateOnlySchema.optional(),
 });
 
 export const participantSchema = z.object({
@@ -42,6 +45,7 @@ export const voucherSchema = z.object({
 
 export const billSchema = z.object({
   restaurantId: z.string().min(1),
+  occurredOn: isoDateOnlySchema.optional(),
   baseCost: z.number().int().nonnegative(),
   vat: z.number().int().nonnegative(),
   shippingFee: z.number().int().nonnegative(),

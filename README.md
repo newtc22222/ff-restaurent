@@ -28,9 +28,9 @@ locally so demo seeding remains enabled.
 
 Then open:
 
-- Web: http://localhost:5173
-- API health: http://localhost:4000/health
-- API docs: http://localhost:4000/api/docs
+- Web: <http://localhost:5173>
+- API health: <http://localhost:4000/health>
+- API docs: <http://localhost:4000/api/docs>
 
 Demo logins, all using `password123`:
 
@@ -78,6 +78,14 @@ This command is idempotent: it inserts missing normalized cuisine names and
 does not update or delete existing catalog entries. API container deployments
 run it automatically after Prisma migrations and before the API starts.
 
+To test locally as `ROOT_ADMIN` using one of your own accounts instead of the
+seeded `head` user, register or seed that user first, set
+`ROOT_ADMIN_USERNAME` in `.env` to its username, then promote it:
+
+```bash
+npm run prisma:root:bootstrap -w @ff-restaurent/api
+```
+
 Run the API and web app in separate terminals:
 
 ```bash
@@ -90,7 +98,23 @@ npm run dev -w @ff-restaurent/web
 
 Open the same local URLs listed above.
 
-### Google Cloud Storage setup
+If the web app throws `Invalid hook call` / `Cannot read properties of null
+(reading 'useContext')` after pulling changes that add or update npm
+dependencies, the Vite dev server's dependency pre-bundle cache is stale.
+Clear it and restart (clean cache on browser, too):
+
+```bash
+rm -rf apps/web/node_modules/.vite
+
+# PowerShell
+Remove-Item -Recurse -Force apps/web/node_modules/.vite
+```
+
+```powershell
+Remove-Item -Recurse -Force apps\web\node_modules\.vite -ErrorAction SilentlyContinue
+```
+
+### Supabase Storage setup
 
 Image uploads are mediated by the API using Google Cloud Application Default
 Credentials. The runtime identity needs `roles/storage.objectUser` on both

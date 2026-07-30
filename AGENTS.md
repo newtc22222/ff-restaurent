@@ -60,6 +60,14 @@ All packages are versioned `1.1.0`. The shipped database contains 17 Prisma
 migrations; the Phase 2 normalized-restaurant contract migration is
 `20260720000000_contract_phase2_normalized_restaurants`.
 
+## UI Development Instructions
+
+CRITICAL: Before touching, creating, or modifying any frontend/UI code:
+
+1. Read `.context/design-tokens.json` for color, spacing, and typography tokens.
+2. Read `.context/COMPONENTS.md` to prevent recreating existing components.
+3. Strictly follow `.context/ui-guidelines.md` (pay special attention to [MUST] tags).
+
 ## Common commands
 
 Run commands from the repository root.
@@ -140,26 +148,35 @@ serializer, web API types, and focused tests together.
 The web application is route-based. Do not follow the obsolete single
 `App.tsx`/`tab`/`screen` architecture.
 
-- Router loaders/actions and route definitions: `apps/web/src/app/router.ts`
+- Route definitions: `apps/web/src/app/router.ts`; domain loaders/actions live
+  in `apps/web/src/features/<domain>/*.routes.ts`
 - App shell and route error boundary: `apps/web/src/app/App.tsx`
 - Providers: `apps/web/src/app/providers/`
-- Pages: `apps/web/src/pages/`
-- Feature slices (own their pages, components, loaders and actions):
-  `apps/web/src/features/` — `bills/` and `restaurants/`
+- Feature slices own pages, components, query hooks, loaders/actions, and
+  colocated tests under `apps/web/src/features/`
 - Shared route helpers: `apps/web/src/app/route-helpers.ts`
-- API client/types: `apps/web/src/lib/api.ts`
+- API client, application endpoints, transport types, and generated OpenAPI
+  artifacts: `apps/web/src/api/`
 - Session/token handling: `apps/web/src/lib/session.ts`
-- Role helpers: `apps/web/src/lib/helpers.ts`
+- Focused currency, permission, and display helpers: `apps/web/src/lib/`
 - Localized result mapping: `apps/web/src/lib/result-messages.ts`
 - Translations: `apps/web/src/lib/translations/` — JSON per locale and domain
   (`{vi,en}/<domain>.json`) behind a typed barrel; add keys to Vietnamese first,
   which is the source of truth for the key set
 
-Use the existing router loader/action patterns and `useMutation`. Mutation
-results, API failures, and background warnings use localized
+Route loaders are authoritative for route-entry data. Component-initiated reads
+use focused TanStack Query hooks with stable keys; do not call `session.api()`
+from components. Route-action submissions use `useRouteMutation`; media and
+other on-demand mutations use feature-owned TanStack mutations and explicitly
+invalidate query keys or revalidate route data. Mutation results, API failures,
+and background warnings use localized
 `react-hot-toast`; keep field validation inline, confirmations modal, and fatal
 route failures in the route error boundary. Avoid reintroducing page-level
 transient result banners.
+
+Use the `@/` alias for imports across module boundaries. The
+`apps/web/src/components/ui/index.ts` barrel exists for discoverability, but
+performance-sensitive modules may import a primitive directly.
 
 Use `apps/web/src/components/ui/Dropdown.tsx` for production selection controls;
 do not add native `<select>` elements. Use the app-owned `ScrollArea` CSS
@@ -256,6 +273,9 @@ the same database snapshot as the dump.
   roadmap work; old plans and handoffs can be stale.
 - Preserve unrelated dirty-worktree changes and do not use destructive Git
   cleanup commands.
+- Run `npm run prettier:check` after every completed LLM task in this project,
+  and fix formatting with `npm run format` or focused Prettier writes before
+  handing work back.
 - Keep normalized Phase 2 contracts intact while implementing later phases.
 - Add indexes from measured final queries, not speculation.
 - Run focused tests first, then the applicable lint, typecheck, test, build,

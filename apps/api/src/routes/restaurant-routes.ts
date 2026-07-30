@@ -1,5 +1,6 @@
-import type { FastifyInstance } from 'fastify';
 import { EntryStatus } from '@prisma/client';
+import type { FastifyInstance } from 'fastify';
+
 import {
   requireAuthenticatedUser,
   requireHeadChef,

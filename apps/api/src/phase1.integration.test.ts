@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
+
 import {
   ChefRole,
   CollectionSystemType,
@@ -7,9 +8,11 @@ import {
   Prisma,
   RestaurantPlatform,
   SystemRole,
+  UserAccountStatus,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
+
 import { buildApp } from './app.js';
 import { prisma } from './lib/prisma.js';
 import { ensureDefaultCollections } from './services/collection-service.js';
@@ -48,6 +51,7 @@ before(async () => {
   await prisma.billAuditLog.deleteMany();
   await prisma.rootAdminTransferAudit.deleteMany();
   await prisma.roleAuditLog.deleteMany();
+  await prisma.userAccountStatusAudit.deleteMany();
   await prisma.billParticipant.deleteMany();
   await prisma.bill.deleteMany();
   await prisma.collection.deleteMany();
@@ -332,6 +336,253 @@ integrationTest('the database permits exactly one ROOT_ADMIN', async () => {
     1,
   );
 });
+
+integrationTest(
+  'ROOT_ADMIN block and restore transitions are audited and enforced everywhere',
+  async () => {
+    const target = await prisma.user.create({
+      data: {
+        username: 'blocked-account-int',
+        name: 'Blockable Account',
+        passwordHash: await bcrypt.hash('password123', 4),
+      },
+    });
+    const denied = await app.inject({
+      method: 'PATCH',
+      url: `/users/${target.id}/account-status`,
+      headers: auth(tokenFor(headId)),
+      payload: { accountStatus: UserAccountStatus.BLOCKED },
+    });
+    assert.equal(denied.statusCode, 403);
+    assert.equal(denied.json().code, 'ROOT_ADMIN_REQUIRED');
+
+    const rootSelfBlock = await app.inject({
+      method: 'PATCH',
+      url: `/users/${rootId}/account-status`,
+      headers: auth(tokenFor(rootId)),
+      payload: { accountStatus: UserAccountStatus.BLOCKED },
+    });
+    assert.equal(rootSelfBlock.statusCode, 403);
+    assert.equal(
+      rootSelfBlock.json().code,
+      'ROOT_ADMIN_ACCOUNT_STATUS_FORBIDDEN',
+    );
+
+    const resetRequest = await app.inject({
+      method: 'POST',
+      url: '/auth/password-reset-requests',
+      payload: { identifier: target.username },
+    });
+    assert.equal(resetRequest.statusCode, 202);
+    assert.ok(
+      await prisma.passwordResetRequest.findFirst({
+        where: { userId: target.id, activeKey: target.id },
+      }),
+    );
+    const historicalBill = await app.inject({
+      method: 'POST',
+      url: '/bills',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        occurredOn: '2025-07-02',
+        baseCost: 3000,
+        vat: 0,
+        shippingFee: 0,
+        participants: [
+          { memberId: target.id, originCost: 1000 },
+          { memberId: customerAId, originCost: 1000 },
+          { memberId: customerBId, originCost: 1000 },
+        ],
+      },
+    });
+    assert.equal(historicalBill.statusCode, 201);
+
+    const oldCustomerToken = tokenFor(target.id);
+    const blocked = await app.inject({
+      method: 'PATCH',
+      url: `/users/${target.id}/account-status`,
+      headers: auth(tokenFor(rootId)),
+      payload: { accountStatus: UserAccountStatus.BLOCKED },
+    });
+    assert.equal(blocked.statusCode, 200);
+    assert.equal(blocked.json().accountStatus, UserAccountStatus.BLOCKED);
+    const blockedUser = await prisma.user.findUniqueOrThrow({
+      where: { id: target.id },
+    });
+    assert.equal(blockedUser.sessionVersion, 1);
+    const supersededReset = await prisma.passwordResetRequest.findFirstOrThrow({
+      where: { userId: target.id },
+    });
+    assert.equal(supersededReset.activeKey, null);
+    assert.equal(supersededReset.status, 'SUPERSEDED');
+    const audit = await prisma.userAccountStatusAudit.findFirstOrThrow({
+      where: { userId: target.id },
+    });
+    assert.equal(audit.changedById, rootId);
+    assert.equal(audit.fromStatus, UserAccountStatus.ACTIVE);
+    assert.equal(audit.toStatus, UserAccountStatus.BLOCKED);
+
+    const repeated = await app.inject({
+      method: 'PATCH',
+      url: `/users/${target.id}/account-status`,
+      headers: auth(tokenFor(rootId)),
+      payload: { accountStatus: UserAccountStatus.BLOCKED },
+    });
+    assert.equal(repeated.statusCode, 200);
+    assert.equal(
+      await prisma.userAccountStatusAudit.count({
+        where: { userId: target.id },
+      }),
+      1,
+    );
+    assert.equal(
+      (await prisma.user.findUniqueOrThrow({ where: { id: target.id } }))
+        .sessionVersion,
+      1,
+    );
+
+    const invalidated = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: auth(oldCustomerToken),
+    });
+    assert.equal(invalidated.statusCode, 401);
+    assert.equal(invalidated.json().code, 'SESSION_INVALIDATED');
+    const blockedLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: target.username, password: 'password123' },
+    });
+    assert.equal(blockedLogin.statusCode, 401);
+    assert.equal(blockedLogin.json().code, 'INVALID_CREDENTIALS');
+
+    const members = await app.inject({
+      method: 'GET',
+      url: '/members?limit=100',
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(members.statusCode, 200);
+    assert.equal(
+      members
+        .json()
+        .items.some((member: { id: string }) => member.id === target.id),
+      false,
+    );
+    const users = await app.inject({
+      method: 'GET',
+      url: '/users?limit=100',
+      headers: auth(tokenFor(rootId)),
+    });
+    assert.equal(users.statusCode, 200);
+    assert.equal(
+      users
+        .json()
+        .items.find((member: { id: string }) => member.id === target.id)
+        .accountStatus,
+      UserAccountStatus.BLOCKED,
+    );
+
+    const invalidGroup = await app.inject({
+      method: 'POST',
+      url: '/participant-groups',
+      headers: auth(tokenFor(customerAId)),
+      payload: {
+        name: 'Blocked member group',
+        memberIds: [customerAId, target.id],
+      },
+    });
+    assert.equal(invalidGroup.statusCode, 400);
+    assert.equal(invalidGroup.json().code, 'INVALID_PARTICIPANTS');
+    const invalidBill = await app.inject({
+      method: 'POST',
+      url: '/bills',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        occurredOn: '2026-07-01',
+        baseCost: 1000,
+        vat: 0,
+        shippingFee: 0,
+        participants: [
+          { memberId: customerAId, originCost: 500 },
+          { memberId: target.id, originCost: 500 },
+        ],
+      },
+    });
+    assert.equal(invalidBill.statusCode, 400);
+    assert.equal(invalidBill.json().code, 'INVALID_PARTICIPANTS');
+    const historicalBillId = historicalBill.json().id;
+    const preservedHistoricalParticipant = await app.inject({
+      method: 'PUT',
+      url: `/bills/${historicalBillId}`,
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        occurredOn: '2025-07-02',
+        baseCost: 3000,
+        vat: 0,
+        shippingFee: 300,
+        participants: [
+          { memberId: target.id, originCost: 1000 },
+          { memberId: customerAId, originCost: 1000 },
+          { memberId: customerBId, originCost: 1000 },
+        ],
+      },
+    });
+    assert.equal(preservedHistoricalParticipant.statusCode, 200);
+    const removedHistoricalParticipant = await app.inject({
+      method: 'PUT',
+      url: `/bills/${historicalBillId}`,
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        occurredOn: '2025-07-02',
+        baseCost: 2000,
+        vat: 0,
+        shippingFee: 300,
+        participants: [
+          { memberId: customerAId, originCost: 1000 },
+          { memberId: customerBId, originCost: 1000 },
+        ],
+      },
+    });
+    assert.equal(removedHistoricalParticipant.statusCode, 200);
+    const invalidTransfer = await app.inject({
+      method: 'POST',
+      url: '/admin/root-transfer',
+      headers: auth(tokenFor(rootId)),
+      payload: {
+        currentPassword: 'password123',
+        targetUsername: target.username,
+        confirmationUsername: target.username,
+      },
+    });
+    assert.equal(invalidTransfer.statusCode, 400);
+    assert.equal(invalidTransfer.json().code, 'ROOT_TRANSFER_TARGET_INVALID');
+
+    const restored = await app.inject({
+      method: 'PATCH',
+      url: `/users/${target.id}/account-status`,
+      headers: auth(tokenFor(rootId)),
+      payload: { accountStatus: UserAccountStatus.ACTIVE },
+    });
+    assert.equal(restored.statusCode, 200);
+    assert.equal(restored.json().accountStatus, UserAccountStatus.ACTIVE);
+    assert.equal(
+      await prisma.userAccountStatusAudit.count({
+        where: { userId: target.id },
+      }),
+      2,
+    );
+    const restoredLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { identifier: target.username, password: 'password123' },
+    });
+    assert.equal(restoredLogin.statusCode, 200);
+  },
+);
 
 integrationTest(
   'server search and composable filters paginate deterministically within authorization scope',
@@ -935,6 +1186,16 @@ integrationTest(
     assert.equal(cuisineSearch.json().items[0].name, 'Vegan');
     assert.equal('nameKey' in cuisineSearch.json().items[0], false);
 
+    const partialCuisineUpdate = await app.inject({
+      method: 'PUT',
+      url: `/cuisines/${vegan.json().id}`,
+      headers: auth(tokenFor(sousId)),
+      payload: { description: 'Plant-based dishes' },
+    });
+    assert.equal(partialCuisineUpdate.statusCode, 200);
+    assert.equal(partialCuisineUpdate.json().name, 'Vegan');
+    assert.equal(partialCuisineUpdate.json().description, 'Plant-based dishes');
+
     const protectedCuisine = await app.inject({
       method: 'DELETE',
       url: `/cuisines/${vegan.json().id}`,
@@ -1053,6 +1314,7 @@ integrationTest(
       headers: auth(tokenFor(sousId)),
       payload: {
         restaurantId,
+        occurredOn: '2026-07-10',
         baseCost: 10001,
         vat: 1001,
         shippingFee: 501,
@@ -1067,7 +1329,16 @@ integrationTest(
     });
     assert.equal(create.statusCode, 201);
     billId = create.json().id;
+    assert.equal(create.json().occurredOn, '2026-07-10');
     assert.equal(JSON.stringify(create.json()).includes('passwordHash'), false);
+
+    const dateStats = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=custom&from=2026-07-10&to=2026-07-10',
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(dateStats.statusCode, 200);
+    assert.equal(dateStats.json().totals.totalObligation > 0, true);
 
     const waitingBill = await prisma.bill.create({
       data: {
@@ -1159,6 +1430,7 @@ integrationTest(
       },
     });
     assert.equal(safeEdit.statusCode, 200);
+    assert.equal(safeEdit.json().occurredOn, '2026-07-10');
     assert.equal(
       safeEdit
         .json()
@@ -1166,6 +1438,40 @@ integrationTest(
           (item: { memberId: string }) => item.memberId === customerAId,
         ).paymentStatus,
       PaymentStatus.PAID,
+    );
+
+    const dateEdit = await app.inject({
+      method: 'PUT',
+      url: `/bills/${billId}`,
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        occurredOn: '2026-07-11',
+        baseCost: 10001,
+        vat: 1001,
+        shippingFee: 501,
+        discounts: [{ type: 'FIXED', value: 500, label: 'Launch' }],
+        vouchers: [{ code: 'TEST', value: 100 }],
+        participants: [
+          { memberId: customerAId, originCost: 5000 },
+          { memberId: customerBId, originCost: 5001 },
+        ],
+      },
+    });
+    assert.equal(dateEdit.statusCode, 200);
+    assert.equal(dateEdit.json().occurredOn, '2026-07-11');
+
+    const dateFiltered = await app.inject({
+      method: 'GET',
+      url: '/bills?from=2026-07-11&to=2026-07-11',
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(dateFiltered.statusCode, 200);
+    assert.equal(
+      dateFiltered
+        .json()
+        .items.some((item: { id: string }) => item.id === billId),
+      true,
     );
 
     const riskyEdit = await app.inject({
@@ -1269,6 +1575,16 @@ integrationTest(
     assert.equal(
       JSON.stringify(activity.json()).includes('passwordHash'),
       false,
+    );
+    assert.equal(
+      activity
+        .json()
+        .some(
+          (event: { action: string; details?: { changes?: string[] } }) =>
+            event.action === 'UPDATED' &&
+            event.details?.changes?.includes('date'),
+        ),
+      true,
     );
   },
 );

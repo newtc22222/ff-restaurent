@@ -1,10 +1,13 @@
 import { z } from 'zod';
+
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 
 /**
  * Primitives shared across domain schemas: phone parsing, the Vietnam address
  * shape and its structural rule, and the URL schemas platform links build on.
  */
+
+export const isoDateOnlySchema = z.string().date();
 
 export const vietnamMobilePhoneSchema = z
   .union([z.string().max(40), z.null()])

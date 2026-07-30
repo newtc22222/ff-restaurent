@@ -4,3 +4,8 @@ apps/web/src/app/router.ts
 .agents/skills/vercel-react-view-transitions/
 .agents/skills/web-design-guidelines/
 .agents/skills/writing-guidelines/
+.claude/skills/vercel-react-best-practices/
+.claude/skills/vercel-react-native-skills/
+.claude/skills/vercel-react-view-transitions/
+.claude/skills/web-design-guidelines/
+.claude/skills/writing-guidelines/

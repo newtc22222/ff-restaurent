@@ -3,7 +3,7 @@
   "restaurants.subtitle": "Loại hình do người dùng tự định nghĩa.",
   "restaurants.filters": "Bộ lọc",
   "restaurants.addEntry": "Thêm địa điểm",
-  "restaurants.addEntrySubtitle": "SOUS_CHEF và HEAD_CHEF có thể quản lý danh sách.",
+  "restaurants.addEntrySubtitle": "Bếp trưởng và Bếp phó có thể tạo và chỉnh sửa mục nhà hàng. Bếp trưởng cũng có thể lưu trữ và khôi phục.",
   "restaurants.createEntry": "Tạo địa điểm",
   "restaurants.noEntries": "Chưa có nhà hàng",
   "restaurants.noEntriesDesc": "Xây dựng danh sách trước khi tạo hóa đơn. Đánh dấu các địa điểm yêu thích hoặc được đề xuất.",

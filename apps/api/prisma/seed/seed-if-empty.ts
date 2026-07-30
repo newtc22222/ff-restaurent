@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+
 import { disconnectSeedPrisma, seed } from './seed.js';
 
 if (process.env.NODE_ENV === 'production') {

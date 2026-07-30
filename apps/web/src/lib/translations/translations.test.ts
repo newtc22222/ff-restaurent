@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { translations, type Locale } from './index';
+
+import { type Locale, translations } from './index';
 
 /**
  * The `satisfies` clauses in each en/<domain>.ts module already make a missing
@@ -43,5 +44,14 @@ describe('translation dictionaries', () => {
       (key) => !key.includes('.'),
     );
     expect(unnamespaced).toEqual([]);
+  });
+
+  it('describes restaurant permissions accurately in both locales', () => {
+    expect(translations.en['restaurants.addEntrySubtitle']).toBe(
+      'Executive Chef and Sous Chef can create and edit restaurant entries. Executive Chef can also archive and restore them.',
+    );
+    expect(translations.vi['restaurants.addEntrySubtitle']).toBe(
+      'Bếp trưởng và Bếp phó có thể tạo và chỉnh sửa mục nhà hàng. Bếp trưởng cũng có thể lưu trữ và khôi phục.',
+    );
   });
 });

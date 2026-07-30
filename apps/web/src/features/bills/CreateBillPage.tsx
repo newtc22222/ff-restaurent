@@ -1,23 +1,37 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Plus, X } from 'lucide-react';
+import { FormEvent, useMemo, useState } from 'react';
 import CurrencyInput from 'react-currency-input-field';
-import { Navigate, useNavigate, useParams } from 'react-router';
+import {
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router';
+
 import {
   AdjustmentAllocation,
   AdjustmentType,
   calculateBillSplit,
+  todayInHoChiMinh,
 } from '@ff-restaurent/shared';
-import { money, type PaymentQrImage } from '../../lib/api';
-import { session } from '../../lib/session';
-import { canChef, uniqueUsers } from '../../lib/helpers';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import BackButton from '../../components/ui/BackButton';
-import AmountInput from '../../components/ui/AmountInput';
-import SummaryLine from '../../components/ui/SummaryLine';
-import Dropdown from '../../components/ui/Dropdown';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
+
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import AmountInput from '@/components/ui/AmountInput';
+import BackButton from '@/components/ui/BackButton';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import DatePicker from '@/components/ui/DatePicker';
+import Dropdown from '@/components/ui/Dropdown';
+import SummaryLine from '@/components/ui/SummaryLine';
+import {
+  billDetailPath,
+  billsReturnPath,
+} from '@/features/bills/bill-navigation';
+import { usePaymentQrImages } from '@/features/profile/profile-media.queries';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { money } from '@/lib/currency';
+import { canChef } from '@/lib/permissions';
+import { uniqueUsers } from '@/lib/user-display';
 
 interface ParticipantDraft {
   memberId: string;
@@ -41,19 +55,34 @@ interface VoucherDraft {
  */
 export default function CreateBillPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { billId } = useParams();
   const { user, users, bills, restaurants, participantGroups } =
     useAppContext();
   const { t } = useI18n();
 
-  const members = uniqueUsers(users, user);
   const editBill = billId
     ? bills.find((candidate) => candidate.id === billId)
     : undefined;
   const isEditing = !!editBill;
+  const members = uniqueUsers(
+    users.filter((candidate) => candidate.accountStatus !== 'BLOCKED'),
+    user,
+  );
+  const activeMemberIds = new Set(members.map((member) => member.id));
+  const usersById = new Map(users.map((member) => [member.id, member]));
+  const historicalParticipantMembers =
+    editBill?.participants.map(
+      (participant) =>
+        usersById.get(participant.memberId) ?? participant.member,
+    ) ?? [];
+  const billsReturnTo = billsReturnPath(null, searchParams.get('returnTo'));
 
   const [restaurantId, setRestaurantId] = useState(
     editBill?.restaurant?.id ?? '',
+  );
+  const [occurredOn, setOccurredOn] = useState(
+    editBill?.occurredOn ?? todayInHoChiMinh(),
   );
   const [vat, setVat] = useState(editBill?.vat ?? 0);
   const [shippingFee, setShippingFee] = useState(
@@ -77,7 +106,6 @@ export default function CreateBillPage() {
   const [paymentQrImageId, setPaymentQrImageId] = useState(
     editBill?.paymentQrImageId ?? editBill?.paymentQrImage?.id ?? '',
   );
-  const [paymentQrImages, setPaymentQrImages] = useState<PaymentQrImage[]>([]);
   const [participants, setParticipants] = useState<ParticipantDraft[]>(
     editBill?.participants?.map((p) => ({
       memberId: p.memberId,
@@ -87,30 +115,30 @@ export default function CreateBillPage() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [duplicateDetected, setDuplicateDetected] = useState(false);
-  const { mutate } = useMutation();
-  useEffect(() => {
-    let cancelled = false;
-    void session
-      .api()
-      .request<PaymentQrImage[]>(
-        isEditing && editBill
-          ? `/bills/${editBill.id}/payment-qr-options`
-          : '/me/payment-qr-images',
-      )
-      .then((images) => {
-        if (!cancelled) setPaymentQrImages(images);
-      })
-      .catch(() => {
-        if (!cancelled) setPaymentQrImages([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [editBill?.id, isEditing]);
+  const { mutate } = useRouteMutation();
+  const paymentQrImagesQuery = usePaymentQrImages(
+    canChef(user),
+    user.id,
+    isEditing ? editBill?.id : undefined,
+  );
+  const paymentQrImages = paymentQrImagesQuery.data ?? [];
   const activeRestaurants = restaurants.filter(
     (entry) => entry.status === 'ACTIVE' || entry.id === restaurantId,
   );
   const participantIds = new Set(participants.map((p) => p.memberId));
+  const participantMembers = new Map(
+    [...members, ...historicalParticipantMembers].map((member) => [
+      member.id,
+      member,
+    ]),
+  );
+  const participantOptions = [
+    ...members,
+    ...historicalParticipantMembers.filter(
+      (member) =>
+        participantIds.has(member.id) && !activeMemberIds.has(member.id),
+    ),
+  ];
   const availableMembers = members.filter((m) => !participantIds.has(m.id));
   const totalBase = participants.reduce((sum, p) => sum + p.originCost, 0);
   const preview = useMemo(() => {
@@ -148,6 +176,7 @@ export default function CreateBillPage() {
     );
   const isFormReady =
     restaurantId.length > 0 &&
+    occurredOn.length > 0 &&
     participants.length >= 2 &&
     participants.every((participant) => participant.originCost > 0) &&
     totalBase > 0 &&
@@ -157,7 +186,10 @@ export default function CreateBillPage() {
   if (!canChef(user)) return <Navigate to="/bills" replace />;
   if (billId && !editBill) return <Navigate to="/bills" replace />;
 
-  const onBack = () => navigate('/bills');
+  const onBack = () =>
+    navigate(
+      isEditing && billId ? billDetailPath(billId, billsReturnTo) : '/bills',
+    );
 
   const updateParticipant = (memberId: string, originCost: number) => {
     setParticipants((current) =>
@@ -172,6 +204,7 @@ export default function CreateBillPage() {
   const submitBill = (allowDuplicate: boolean) => {
     const payload = {
       restaurantId,
+      occurredOn,
       baseCost: totalBase,
       vat,
       shippingFee,
@@ -187,7 +220,11 @@ export default function CreateBillPage() {
     };
 
     void mutate(
-      { intent: isEditing ? 'update-bill' : 'create-bill', payload },
+      {
+        intent: isEditing ? 'update-bill' : 'create-bill',
+        payload,
+        ...(isEditing ? { billsReturnTo } : {}),
+      },
       {
         fallback: t(
           isEditing ? 'toast.billUpdateFailed' : 'toast.billCreateFailed',
@@ -206,6 +243,10 @@ export default function CreateBillPage() {
     setLocalError(null);
     if (participants.length < 2) {
       setLocalError('A bill requires at least two participants.');
+      return;
+    }
+    if (!occurredOn) {
+      setLocalError(t('createBill.occurredOnRequired'));
       return;
     }
     if (totalBase <= 0) {
@@ -232,11 +273,13 @@ export default function CreateBillPage() {
     const group = participantGroups.find(({ id }) => id === selectedGroupId);
     if (!group) return;
     setParticipants((current) =>
-      group.members.map(({ userId }) =>
-        current.find(({ memberId }) => memberId === userId)
-          ? { ...current.find(({ memberId }) => memberId === userId)! }
-          : { memberId: userId, originCost: 0 },
-      ),
+      group.members
+        .filter(({ userId }) => activeMemberIds.has(userId))
+        .map(({ userId }) =>
+          current.find(({ memberId }) => memberId === userId)
+            ? { ...current.find(({ memberId }) => memberId === userId)! }
+            : { memberId: userId, originCost: 0 },
+        ),
     );
   };
 
@@ -290,6 +333,11 @@ export default function CreateBillPage() {
                 emptyMessage={t('bills.noFilterResults')}
               />
             </div>
+
+            <label className="mb-5 block space-y-1.5">
+              <span className="label">{t('createBill.occurredOn')}</span>
+              <DatePicker value={occurredOn} onChange={setOccurredOn} />
+            </label>
 
             <div className="mb-6 grid grid-cols-2 gap-3">
               <AmountInput
@@ -519,7 +567,11 @@ export default function CreateBillPage() {
             <div className="mb-6 space-y-2">
               <span className="label">{t('bills.paymentQr')}</span>
               <Dropdown
-                label="No payment QR"
+                label={
+                  paymentQrImagesQuery.isPending
+                    ? t('common.loading')
+                    : 'No payment QR'
+                }
                 ariaLabel={t('bills.paymentQr')}
                 value={paymentQrImageId}
                 onChange={setPaymentQrImageId}
@@ -536,6 +588,15 @@ export default function CreateBillPage() {
                 }))}
                 allowClear
               />
+              {paymentQrImagesQuery.isError && (
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
+                  onClick={() => void paymentQrImagesQuery.refetch()}
+                >
+                  {t('common.retry')}
+                </button>
+              )}
               {paymentQrImageId && (
                 <img
                   src={
@@ -601,10 +662,11 @@ export default function CreateBillPage() {
                   </p>
                 )}
                 {participants.map((participant) => {
-                  const member = members.find(
-                    (candidate) => candidate.id === participant.memberId,
-                  );
+                  const member = participantMembers.get(participant.memberId);
                   if (!member) return null;
+                  const memberLabel = activeMemberIds.has(member.id)
+                    ? member.name
+                    : `${member.name} (${t('createBill.blockedParticipant')})`;
                   const calculated = calculatedPreview?.participants.find(
                     (item) => item.memberId === participant.memberId,
                   );
@@ -615,7 +677,7 @@ export default function CreateBillPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-semibold text-ink">
-                          {member.name}
+                          {memberLabel}
                         </p>
                         {calculated && (
                           <p className="mt-0.5 text-[11px] text-slate-500">
@@ -629,7 +691,7 @@ export default function CreateBillPage() {
                       </div>
                       <div className="relative">
                         <CurrencyInput
-                          aria-label={`Base amount for ${member.name}`}
+                          aria-label={`Base amount for ${memberLabel}`}
                           className="h-9 w-32 rounded-md border border-border bg-surface px-3 text-right text-[14px] text-ink outline-none transition-colors focus:border-ink"
                           value={
                             participant.originCost === 0
@@ -690,9 +752,11 @@ export default function CreateBillPage() {
                         ),
                       )
                     }
-                    options={members.map((member) => ({
+                    options={participantOptions.map((member) => ({
                       value: member.id,
-                      label: member.name,
+                      label: activeMemberIds.has(member.id)
+                        ? member.name
+                        : `${member.name} (${t('createBill.blockedParticipant')})`,
                       description: `@${member.username}`,
                       searchText: `${member.name} ${member.username}`,
                     }))}

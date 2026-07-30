@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import type { MultipartFile } from '@fastify/multipart';
-import {
-  gcsPublicUrl,
-  managedPublicPathFor,
-  validateImage,
-} from './storage.js';
+
+import { validateImage } from './storage.js';
 
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nCEAAAAASUVORK5CYII=',

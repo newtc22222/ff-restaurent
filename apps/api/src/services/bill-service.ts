@@ -1,9 +1,15 @@
 import { createHash } from 'node:crypto';
-import { EntryStatus, Prisma } from '@prisma/client';
+
+import { EntryStatus, Prisma, UserAccountStatus } from '@prisma/client';
+
 import {
   AdjustmentAllocation,
   calculateBillSplit,
+  formatIsoDateOnly,
+  parseIsoDateOnly,
+  todayInHoChiMinh,
 } from '@ff-restaurent/shared';
+
 import { prisma } from '../lib/prisma.js';
 import { billSchema } from '../schemas/index.js';
 
@@ -21,6 +27,7 @@ export const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
 
 type FingerprintBill = {
   restaurantId: string;
+  occurredOn?: string | Date;
   baseCost: number;
   vat: number;
   shippingFee: number;
@@ -41,6 +48,10 @@ type FingerprintBill = {
 export const createBillFingerprint = (bill: FingerprintBill) => {
   const canonical = {
     restaurantId: bill.restaurantId,
+    occurredOn:
+      bill.occurredOn instanceof Date
+        ? formatIsoDateOnly(bill.occurredOn)
+        : (bill.occurredOn ?? null),
     baseCost: bill.baseCost,
     vat: bill.vat,
     shippingFee: bill.shippingFee,
@@ -70,15 +81,24 @@ export const computeBillCreateData = (
   createdById: string,
   fallbackAllocation = AdjustmentAllocation.PROPORTIONAL,
   legacyPaymentUrl: string | null = null,
+  fallbackOccurredOn?: Date,
+  now = new Date(),
 ) => {
   const parsed = billSchema.parse(body);
   const adjustmentAllocation =
     parsed.adjustmentAllocation ?? fallbackAllocation;
+  const occurredOn = parseIsoDateOnly(
+    parsed.occurredOn ??
+      (fallbackOccurredOn
+        ? formatIsoDateOnly(fallbackOccurredOn)
+        : todayInHoChiMinh(now)),
+  );
   const split = calculateBillSplit({ ...parsed, adjustmentAllocation });
   return {
     allowDuplicate: parsed.allowDuplicate,
     bill: {
       restaurantId: parsed.restaurantId,
+      occurredOn,
       baseCost: parsed.baseCost,
       vat: parsed.vat,
       shippingFee: parsed.shippingFee,
@@ -91,6 +111,7 @@ export const computeBillCreateData = (
       createdById,
       duplicateFingerprint: createBillFingerprint({
         ...parsed,
+        occurredOn,
         adjustmentAllocation,
       }),
     },
@@ -161,7 +182,12 @@ export type BillServiceDb = {
     }) => Promise<{ id: string } | null>;
   };
   user: {
-    count: (args: { where: { id: { in: string[] } } }) => Promise<number>;
+    count: (args: {
+      where: {
+        id: { in: string[] };
+        accountStatus: UserAccountStatus;
+      };
+    }) => Promise<number>;
   };
 };
 
@@ -193,7 +219,10 @@ export const validateParticipantIds = async (
   db: BillServiceDb = prisma,
 ): Promise<BillValidationResult> => {
   const userCount = await db.user.count({
-    where: { id: { in: participantIds } },
+    where: {
+      id: { in: participantIds },
+      accountStatus: UserAccountStatus.ACTIVE,
+    },
   });
   if (userCount === participantIds.length) return VALID;
   return {

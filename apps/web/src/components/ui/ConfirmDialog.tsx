@@ -1,3 +1,6 @@
+import { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
+
 interface ConfirmDialogProps {
   /**
    * Title text of the confirmation modal.
@@ -33,19 +36,52 @@ export default function ConfirmDialog({
   t,
   pending = false,
 }: ConfirmDialogProps) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={() => !pending && onCancel()}
-    >
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCancelRef = useRef(onCancel);
+  const titleId = useId();
+  onCancelRef.current = onCancel;
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !pending) {
+        onCancelRef.current();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.body.style.overflow = 'hidden';
+    window.requestAnimationFrame(() => {
+      const focusable = dialogRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      focusable?.focus();
+    });
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = '';
+      previous?.focus();
+    };
+  }, [pending]);
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="overlay-backdrop" onClick={() => !pending && onCancel()}>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="mx-4 w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-2 text-[16px] font-bold text-ink">{title}</h3>
-        <p className="mb-5 text-[14px] text-slate-500">{message}</p>
+        <h3 id={titleId} className="mb-2 text-base font-bold text-ink">
+          {title}
+        </h3>
+        <p className="mb-5 text-sm text-slate-500">{message}</p>
         <div className="flex gap-3">
           <button
+            type="button"
             className="btn btn-soft flex-1"
             disabled={pending}
             onClick={onCancel}
@@ -53,6 +89,7 @@ export default function ConfirmDialog({
             {t('auth.cancel')}
           </button>
           <button
+            type="button"
             className="btn btn-primary flex-1"
             disabled={pending}
             onClick={onConfirm}
@@ -61,6 +98,7 @@ export default function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

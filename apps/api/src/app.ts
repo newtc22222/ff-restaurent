@@ -1,27 +1,36 @@
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
-import rateLimit from '@fastify/rate-limit';
 import multipart from '@fastify/multipart';
+import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import Fastify, { FastifyInstance } from 'fastify';
+import {
+  createJsonSchemaTransformObject,
+  jsonSchemaTransform,
+  serializerCompiler,
+  validatorCompiler,
+} from 'fastify-type-provider-zod';
+
 import { loadConfig } from './config/config.js';
+import { registerRouteContracts } from './contracts/route-contracts.js';
 import { registerErrorHandler } from './http/error-handler.js';
 import { prisma } from './lib/prisma.js';
-import { registerAuthRoutes } from './routes/auth-routes.js';
 import { registerAddressRoutes } from './routes/address-routes.js';
+import { registerAuthRoutes } from './routes/auth-routes.js';
 import { registerBillRoutes } from './routes/bill-routes.js';
 import { registerCatalogRoutes } from './routes/catalog-routes.js';
 import { registerCollectionRoutes } from './routes/collection-routes.js';
 import { registerFeedbackRoutes } from './routes/feedback-routes.js';
-import { registerMemberRoutes } from './routes/member-routes.js';
 import { registerMediaRoutes } from './routes/media-routes.js';
+import { registerMemberRoutes } from './routes/member-routes.js';
 import { registerNotificationRoutes } from './routes/notification-routes.js';
-import { registerPasswordResetRoutes } from './routes/password-reset-routes.js';
 import { registerParticipantGroupRoutes } from './routes/participant-group-routes.js';
+import { registerPasswordResetRoutes } from './routes/password-reset-routes.js';
 import { registerProfileRoutes } from './routes/profile-routes.js';
 import { registerRestaurantRoutes } from './routes/restaurant-routes.js';
 import { registerStatsRoutes } from './routes/stats-routes.js';
+import { openApiComponentSchemas } from './schemas/index.js';
 
 /**
  * Decorates the instance with the dependencies shared across routes, so they
@@ -57,6 +66,10 @@ const registerCorePlugins = async (app: FastifyInstance) => {
         securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer' } },
       },
     },
+    transform: jsonSchemaTransform,
+    transformObject: createJsonSchemaTransformObject({
+      schemas: openApiComponentSchemas,
+    }),
   });
   await app.register(swaggerUi, { routePrefix: '/api/docs' });
 };
@@ -94,11 +107,14 @@ const registerRoutes = (app: FastifyInstance) => {
  */
 export const buildApp = async (): Promise<FastifyInstance> => {
   const app = Fastify({ logger: true });
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
 
   // Configuration is validated here, so a bad environment fails at boot.
   registerDependencies(app);
   await registerCorePlugins(app);
   registerErrorHandler(app);
+  registerRouteContracts(app);
   registerRoutes(app);
 
   return app;

@@ -1,7 +1,7 @@
 import {
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CheckCircle2,
   Clock,
   Grid2X2,
   LayoutDashboard,
@@ -11,40 +11,36 @@ import {
   Table2,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import DatePicker from 'react-datepicker';
-import { enUS, vi } from 'date-fns/locale';
-import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
-import type { Bill, BillPage, BillParticipant, User } from '../../lib/api';
-import { money } from '../../lib/api';
-import { canChef, isHead, canManageBill } from '../../lib/helpers';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import Dropdown from '../../components/ui/Dropdown';
-import EmptyState from '../../components/ui/EmptyState';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import ScrollArea from '../../components/ui/ScrollArea';
+import {
+  useLoaderData,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router';
 
-const parseDateOnly = (value: string) => {
-  if (!value) return null;
-  const [year, month, day] = value.split('-').map(Number);
-  if (!year || !month || !day) return null;
-  return new Date(year, month - 1, day);
-};
+import type { Bill, BillPage, BillParticipant, User } from '@/api/types';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import DatePicker from '@/components/ui/DatePicker';
+import Dropdown from '@/components/ui/Dropdown';
+import EmptyState from '@/components/ui/EmptyState';
+import FilterBar from '@/components/ui/FilterBar';
+import ScrollArea from '@/components/ui/ScrollArea';
+import UserAvatar from '@/components/ui/UserAvatar';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { money } from '@/lib/currency';
+import { formatDateOnlyForLocale } from '@/lib/date-only';
+import { canChef, canManageBill, isHead } from '@/lib/permissions';
 
-const formatDateOnly = (value: Date | null) => {
-  if (!value) return undefined;
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const day = String(value.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+import { billsDetailNavigationState } from './bill-navigation';
 
 /**
  * BillsPage displays the list of bills with filters and action triggers for managing bills.
  */
 export default function BillsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, bills: snapshotBills } = useAppContext();
   const page = useLoaderData() as BillPage;
   const bills = page.items;
@@ -54,7 +50,7 @@ export default function BillsPage() {
     searchParamsRef.current = searchParams;
   }, [searchParams]);
   const { locale, t } = useI18n();
-  const { mutate } = useMutation();
+  const { mutate } = useRouteMutation();
   const filterRestaurant = searchParams.get('restaurantId') ?? '';
   const filterMembers = (searchParams.get('participantIds') ?? '')
     .split(',')
@@ -136,15 +132,17 @@ export default function BillsPage() {
       { intent, billId, ...(status ? { status } : {}) },
       { fallback, success },
     );
+  const viewBill = (billId: string) =>
+    navigate(`/bills/${billId}`, {
+      state: billsDetailNavigationState(location.pathname, location.search),
+    });
 
   return (
     <div className="w-full">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-[22px] font-bold text-ink">{t('bills.title')}</h2>
-          <p className="mt-1 text-[13px] text-slate-500">
-            {t('bills.scopeNote')}
-          </p>
+          <h2 className="text-xl font-bold text-ink">{t('bills.title')}</h2>
+          <p className="mt-1 text-sm text-slate-500">{t('bills.scopeNote')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-border bg-surface p-1">
@@ -182,144 +180,140 @@ export default function BillsPage() {
         </div>
       </div>
 
-      <section className="panel mb-5 space-y-3 p-3">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-          <Dropdown
-            label={t('bills.sort')}
-            ariaLabel={t('bills.sort')}
-            value={sort}
-            onChange={(value) => setQuery('sort', value)}
-            options={[
-              { value: 'created-desc', label: t('bills.newest') },
-              { value: 'created-asc', label: t('bills.oldest') },
-              { value: 'total-desc', label: t('bills.highestTotal') },
-              { value: 'total-asc', label: t('bills.lowestTotal') },
-            ]}
-          />
-          {isHead(user) ? (
-            <Dropdown
-              label={t('bills.status')}
-              ariaLabel={t('bills.status')}
-              value={filterArchive}
-              onChange={(value) => setQuery('archive', value)}
-              options={[
-                { value: 'active', label: t('bills.activeOnly') },
-                { value: 'archived', label: t('bills.archivedOnly') },
-                { value: 'all', label: t('bills.allStatuses') },
-              ]}
-            />
-          ) : !canChef(user) ? (
-            <Dropdown
-              label={t('bills.status')}
-              ariaLabel={t('bills.status')}
-              value={filterPayment}
-              onChange={(value) =>
-                setQuery('paymentStatus', value === 'all' ? undefined : value)
-              }
-              options={[
-                { value: 'all', label: t('bills.allStatuses') },
-                { value: 'PAID', label: t('bills.filterPaid') },
-                { value: 'WAITING', label: t('bills.filterUnpaid') },
-              ]}
-            />
-          ) : (
-            <div className="hidden xl:block" />
-          )}
-          <Dropdown
-            label={t('bills.filterRestaurant')}
-            value={filterRestaurant}
-            options={restaurantOptions}
-            onChange={(value) => setQuery('restaurantId', value)}
-            allowClear
-            clearLabel={t('bills.clearAll')}
-            searchable
-            searchPlaceholder={t('bills.searchRestaurants')}
-            emptyMessage={t('bills.noFilterResults')}
-          />
-          {canChef(user) && (
-            <Dropdown
-              multiple
-              label={t('bills.filterMember')}
-              values={filterMembers}
-              options={memberOptions}
-              onChange={(values) =>
-                setQuery('participantIds', values.join(','))
-              }
-              allowClear
-              clearLabel={t('bills.clearAll')}
-              formatSelection={(selected) =>
-                selected.length === 1
-                  ? (selected[0]?.label.split(' ')[0] ?? '')
-                  : `${selected.length} ${t('bills.filterMember')}`
-              }
-              searchable
-              searchPlaceholder={t('bills.searchMembers')}
-              emptyMessage={t('bills.noFilterResults')}
-            />
-          )}
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-          <button
-            type="button"
-            className="btn btn-soft h-9"
-            aria-expanded={advancedOpen}
-            onClick={() => setAdvancedOpen((current) => !current)}
-          >
-            <SlidersHorizontal size={14} /> {t('bills.advancedFilters')}
-            {(filterFrom || filterTo) && (
-              <span className="h-2 w-2 rounded-full bg-[#e9900c]" />
-            )}
-          </button>
-          {activeFilterCount > 0 && (
+      <FilterBar
+        label={t('common.filters')}
+        className="mb-5"
+        controlsClassName="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
+        headerActions={
+          activeFilterCount > 0 ? (
             <button
               type="button"
-              className="text-[12px] font-semibold text-slate-400 transition-colors hover:text-red-500"
+              className="text-xs font-semibold text-slate-400 transition-colors hover:text-chili"
               onClick={() => {
                 searchParamsRef.current = new URLSearchParams();
                 setSearchParams({});
               }}
             >
-              {t('bills.clearAll')}
+              {t('bills.clearAll')} ({activeFilterCount})
             </button>
-          )}
-        </div>
-        {advancedOpen && (
-          <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
-            <label className="space-y-1">
-              <span className="label">{t('bills.from')}</span>
-              <DatePicker
-                selected={parseDateOnly(filterFrom)}
-                onChange={(date: Date | null) =>
-                  setQuery('from', formatDateOnly(date))
-                }
-                maxDate={parseDateOnly(filterTo) ?? undefined}
-                locale={locale === 'vi' ? vi : enUS}
-                dateFormat="dd/MM/yyyy"
-                placeholderText={t('bills.chooseDate')}
-                className="field w-full"
-                wrapperClassName="w-full"
-                isClearable
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="label">{t('bills.to')}</span>
-              <DatePicker
-                selected={parseDateOnly(filterTo)}
-                onChange={(date: Date | null) =>
-                  setQuery('to', formatDateOnly(date))
-                }
-                minDate={parseDateOnly(filterFrom) ?? undefined}
-                locale={locale === 'vi' ? vi : enUS}
-                dateFormat="dd/MM/yyyy"
-                placeholderText={t('bills.chooseDate')}
-                className="field w-full"
-                wrapperClassName="w-full"
-                isClearable
-              />
-            </label>
-          </div>
+          ) : undefined
+        }
+        actions={
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+              <button
+                type="button"
+                className="btn btn-soft control-md text-compact"
+                aria-expanded={advancedOpen}
+                onClick={() => setAdvancedOpen((current) => !current)}
+              >
+                <SlidersHorizontal size={14} /> {t('bills.advancedFilters')}
+                {(filterFrom || filterTo) && (
+                  <span className="h-2 w-2 rounded-full bg-saffron" />
+                )}
+              </button>
+            </div>
+            {advancedOpen && (
+              <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
+                <label className="space-y-1">
+                  <span className="label">{t('bills.from')}</span>
+                  <DatePicker
+                    value={filterFrom}
+                    onChange={(dateStr) => setQuery('from', dateStr)}
+                    maxDate={filterTo}
+                    placeholderText={t('bills.chooseDate')}
+                    ariaLabel={t('bills.from')}
+                    isClearable
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="label">{t('bills.to')}</span>
+                  <DatePicker
+                    value={filterTo}
+                    onChange={(dateStr) => setQuery('to', dateStr)}
+                    minDate={filterFrom}
+                    placeholderText={t('bills.chooseDate')}
+                    ariaLabel={t('bills.to')}
+                    isClearable
+                  />
+                </label>
+              </div>
+            )}
+          </>
+        }
+      >
+        <Dropdown
+          label={t('bills.sort')}
+          ariaLabel={t('bills.sort')}
+          value={sort}
+          onChange={(value) => setQuery('sort', value)}
+          options={[
+            { value: 'created-desc', label: t('bills.newest') },
+            { value: 'created-asc', label: t('bills.oldest') },
+            { value: 'total-desc', label: t('bills.highestTotal') },
+            { value: 'total-asc', label: t('bills.lowestTotal') },
+          ]}
+        />
+        {isHead(user) ? (
+          <Dropdown
+            label={t('bills.status')}
+            ariaLabel={t('bills.status')}
+            value={filterArchive}
+            onChange={(value) => setQuery('archive', value)}
+            options={[
+              { value: 'active', label: t('bills.activeOnly') },
+              { value: 'archived', label: t('bills.archivedOnly') },
+              { value: 'all', label: t('bills.allStatuses') },
+            ]}
+          />
+        ) : !canChef(user) ? (
+          <Dropdown
+            label={t('bills.status')}
+            ariaLabel={t('bills.status')}
+            value={filterPayment}
+            onChange={(value) =>
+              setQuery('paymentStatus', value === 'all' ? undefined : value)
+            }
+            options={[
+              { value: 'all', label: t('bills.allStatuses') },
+              { value: 'PAID', label: t('bills.filterPaid') },
+              { value: 'WAITING', label: t('bills.filterUnpaid') },
+            ]}
+          />
+        ) : (
+          <div className="hidden xl:block" />
         )}
-      </section>
+        <Dropdown
+          label={t('bills.filterRestaurant')}
+          value={filterRestaurant}
+          options={restaurantOptions}
+          onChange={(value) => setQuery('restaurantId', value)}
+          allowClear
+          clearLabel={t('bills.clearAll')}
+          searchable
+          searchPlaceholder={t('bills.searchRestaurants')}
+          emptyMessage={t('bills.noFilterResults')}
+        />
+        {canChef(user) && (
+          <Dropdown
+            multiple
+            label={t('bills.filterMember')}
+            values={filterMembers}
+            options={memberOptions}
+            onChange={(values) => setQuery('participantIds', values.join(','))}
+            allowClear
+            clearLabel={t('bills.clearAll')}
+            formatSelection={(selected) =>
+              selected.length === 1
+                ? (selected[0]?.label.split(' ')[0] ?? '')
+                : `${selected.length} ${t('bills.filterMember')}`
+            }
+            searchable
+            searchPlaceholder={t('bills.searchMembers')}
+            emptyMessage={t('bills.noFilterResults')}
+          />
+        )}
+      </FilterBar>
 
       {bills.length === 0 && activeFilterCount === 0 && (
         <EmptyState
@@ -348,8 +342,9 @@ export default function BillsPage() {
             <BillCard
               key={bill.id}
               bill={bill}
+              locale={locale}
               user={user}
-              onView={() => navigate(`/bills/${bill.id}`)}
+              onView={() => viewBill(bill.id)}
               onRemind={() =>
                 runAction(
                   'bill-reminders',
@@ -388,7 +383,7 @@ export default function BillsPage() {
               key={bill.id}
               bill={bill}
               locale={locale}
-              onView={() => navigate(`/bills/${bill.id}`)}
+              onView={() => viewBill(bill.id)}
               t={t}
             />
           ))}
@@ -398,7 +393,7 @@ export default function BillsPage() {
         <BillTable
           bills={bills}
           locale={locale}
-          onView={(bill) => navigate(`/bills/${bill.id}`)}
+          onView={(bill) => viewBill(bill.id)}
           t={t}
         />
       )}
@@ -450,6 +445,7 @@ export default function BillsPage() {
 
 interface BillCardProps {
   bill: Bill;
+  locale: string;
   user: User;
   onView: () => void;
   onRemind: () => void;
@@ -478,10 +474,7 @@ function billPaymentSummary(bill: Bill) {
 
 function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
   const summary = billPaymentSummary(bill);
-  const createdAt = new Intl.DateTimeFormat(
-    locale === 'vi' ? 'vi-VN' : 'en-US',
-    { dateStyle: 'medium' },
-  ).format(new Date(bill.createdAt));
+  const occurredOn = formatDateOnlyForLocale(bill.occurredOn, locale);
 
   return (
     <button
@@ -505,7 +498,7 @@ function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
           </span>
         </div>
         <p className="mt-1 text-xs text-slate-500">
-          {createdAt} · {bill.createdBy.name} · {summary.paid} {t('bills.of')}{' '}
+          {occurredOn} · {bill.createdBy.name} · {summary.paid} {t('bills.of')}{' '}
           {summary.total} {t('bills.paidCount')}
         </p>
       </div>
@@ -525,10 +518,6 @@ interface BillTableProps {
 }
 
 function BillTable({ bills, locale, onView, t }: BillTableProps) {
-  const date = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', {
-    dateStyle: 'medium',
-  });
-
   return (
     <>
       <div className="space-y-2 md:hidden">
@@ -576,7 +565,7 @@ function BillTable({ bills, locale, onView, t }: BillTableProps) {
                     {bill.restaurant.name}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-500">
-                    {date.format(new Date(bill.createdAt))}
+                    {formatDateOnlyForLocale(bill.occurredOn, locale)}
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {bill.createdBy.name}
@@ -605,6 +594,7 @@ function BillTable({ bills, locale, onView, t }: BillTableProps) {
  */
 function BillCard({
   bill,
+  locale,
   user,
   onView,
   onRemind,
@@ -634,6 +624,10 @@ function BillCard({
             <p className="mt-0.5 text-[12px] text-slate-500">
               {bill.restaurant.type} / {bill.restaurant.cuisineType} / by{' '}
               {bill.createdBy.name}
+            </p>
+            <p className="mt-1 text-[12px] font-medium text-slate-500">
+              {t('bills.occurredOn')}:{' '}
+              {formatDateOnlyForLocale(bill.occurredOn, locale)}
             </p>
           </div>
           <div className="shrink-0 text-right">
@@ -739,12 +733,17 @@ function PaymentChip({ participant }: PaymentChipProps) {
   const paid = participant.paymentStatus === 'PAID';
   return (
     <div
-      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium ${
+      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium ${
         paid
           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
           : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
       }`}
     >
+      <UserAvatar
+        name={participant.member.name}
+        avatarUrl={participant.member.avatarUrl}
+        size={16}
+      />
       {paid ? <CheckCircle2 size={11} /> : <Clock size={11} />}
       {participant.member.name.split(' ')[0]} / {money(participant.finalPrice)}
     </div>

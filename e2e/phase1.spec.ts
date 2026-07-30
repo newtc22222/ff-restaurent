@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { type Page, expect, test } from '@playwright/test';
 import {
   ChefRole,
   CollectionSystemType,
@@ -26,6 +26,7 @@ test.beforeAll(async () => {
   await prisma.rootAdminTransferAudit.deleteMany();
   await prisma.billAuditLog.deleteMany();
   await prisma.roleAuditLog.deleteMany();
+  await prisma.userAccountStatusAudit.deleteMany();
   await prisma.billParticipant.deleteMany();
   await prisma.bill.deleteMany();
   await prisma.collection.deleteMany();
@@ -161,6 +162,88 @@ test('Customer views notifications, pays, corrects, and is denied chef actions',
   expect(denied.status()).toBe(403);
 });
 
+test('Customer manages an owned participant group from the app navigation', async ({
+  page,
+}) => {
+  const customer = await prisma.user.findUniqueOrThrow({
+    where: { username: 'e2e-customer' },
+  });
+  await prisma.participantGroup.deleteMany({
+    where: {
+      ownerId: customer.id,
+      name: { in: ['E2E Lunch Group', 'E2E Lunch Group Updated'] },
+    },
+  });
+
+  await login(page, 'e2e-customer');
+  const groupsLink = page.getByRole('link', { name: 'Participant groups' });
+  await expect(groupsLink).toBeVisible();
+  await groupsLink.click();
+  await expect(page).toHaveURL(/\/participant-groups$/);
+  await expect(
+    page.getByRole('heading', {
+      name: 'Reusable participant groups',
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Add group', exact: true }).click();
+  const createDialog = page.getByRole('dialog', { name: 'Add group' });
+  await createDialog.getByLabel('New group name').fill('E2E Lunch Group');
+  await createDialog.getByRole('button', { name: 'Choose members' }).click();
+  await page.getByRole('option', { name: /Customer E2E/ }).click();
+  await page.getByRole('option', { name: /Sous E2E/ }).click();
+  await page
+    .getByTestId('dropdown-backdrop')
+    .click({ position: { x: 1, y: 1 } });
+
+  const createResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/participant-groups') &&
+      response.request().method() === 'POST',
+  );
+  await createDialog
+    .getByRole('button', { name: 'Add group', exact: true })
+    .click();
+  const createResponse = await createResponsePromise;
+  expect(createResponse.status(), await createResponse.text()).toBe(201);
+
+  const group = page
+    .getByRole('article')
+    .filter({ hasText: 'E2E Lunch Group' });
+  await expect(group).toBeVisible();
+  await expect(group).toContainText('Customer E2E');
+  await expect(group).toContainText('Sous E2E');
+
+  await group.getByRole('button', { name: 'Edit group' }).click();
+  const editDialog = page.getByRole('dialog', { name: 'Edit group' });
+  await editDialog.getByLabel('New group name').fill('E2E Lunch Group Updated');
+  const updateResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/participant-groups/') &&
+      response.request().method() === 'PUT',
+  );
+  await editDialog.getByRole('button', { name: 'Save' }).click();
+  const updateResponse = await updateResponsePromise;
+  expect(updateResponse.status(), await updateResponse.text()).toBe(200);
+  await expect(page.getByText('E2E Lunch Group Updated')).toBeVisible();
+
+  const updatedGroup = page
+    .getByRole('article')
+    .filter({ hasText: 'E2E Lunch Group Updated' });
+  await updatedGroup.getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByText('Delete participant group')).toBeVisible();
+  const deleteResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/participant-groups/') &&
+      response.request().method() === 'DELETE',
+  );
+  await page.getByRole('button', { name: 'Confirm' }).click();
+  const deleteResponse = await deleteResponsePromise;
+  expect(deleteResponse.status()).toBe(204);
+  await expect(page.getByText('E2E Lunch Group Updated')).toHaveCount(0);
+});
+
 test('Sous Chef creates a restaurant and reconciled bill and is denied admin', async ({
   page,
 }) => {
@@ -266,15 +349,20 @@ test('server-backed directory filters survive direct links and reloads', async (
   await page.getByRole('button', { name: 'Sort bills' }).click();
   await page.getByRole('option', { name: 'Highest total' }).click();
   await page.getByRole('button', { name: 'Advanced filters' }).click();
-  await page.getByLabel('From').fill('01/01/2026');
-  await page.getByLabel('From').press('Tab');
+  await page.getByLabel('From').click();
+  for (let attempts = 0; attempts < 24; attempts += 1) {
+    if (await page.getByText('January 2026').isVisible()) break;
+    await page.getByRole('button', { name: 'Previous month' }).click();
+  }
+  await expect(page.getByText('January 2026')).toBeVisible();
+  await page.getByRole('button', { name: /^January 1st, 2026$/ }).click();
   await expect(page).toHaveURL(/sort=total-desc/);
   await expect(page).toHaveURL(/from=2026-01-01/);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Sort bills' })).toContainText(
     'Highest total',
   );
-  await expect(page.getByLabel('From')).toHaveValue('01/01/2026');
+  await expect(page.getByLabel('From')).toContainText('Jan 1, 2026');
 });
 
 test('member discovers, manages, shares, and reviews Collection places', async ({

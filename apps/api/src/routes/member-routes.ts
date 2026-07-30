@@ -1,18 +1,27 @@
+import { ChefRole, SystemRole, UserAccountStatus } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
-import { ChefRole, SystemRole } from '@prisma/client';
+
 import {
   requireAuthenticatedUser,
   requireRootAdmin,
 } from '../http/auth-guards.js';
-import { prisma } from '../lib/prisma.js';
-import { transferRootAdmin } from '../services/root-admin-service.js';
-import { sanitizeUser } from '../lib/roles.js';
-import { chefRoleSchema, rootAdminTransferSchema } from '../schemas/index.js';
-import { memberQuerySchema } from '../schemas/index.js';
-import { normalizeSearchQuery } from '../lib/search-normalization.js';
 import { cursorPageResult } from '../lib/pagination.js';
+import { prisma } from '../lib/prisma.js';
+import { sanitizeUser } from '../lib/roles.js';
+import { normalizeSearchQuery } from '../lib/search-normalization.js';
+import {
+  chefRoleSchema,
+  memberQuerySchema,
+  rootAdminTransferSchema,
+  userAccountStatusSchema,
+} from '../schemas/index.js';
+import { transferRootAdmin } from '../services/root-admin-service.js';
+import { updateUserAccountStatus } from '../services/user-account-service.js';
 
-const listMembers = async (queryValue: unknown) => {
+const listMembers = async (
+  queryValue: unknown,
+  accountStatus?: UserAccountStatus,
+) => {
   const query = memberQuerySchema.parse(queryValue);
   const orderBy =
     query.sort === 'name-desc'
@@ -22,9 +31,12 @@ const listMembers = async (queryValue: unknown) => {
         : [{ name: 'asc' as const }, { id: 'asc' as const }];
   const backward = query.direction === 'backward' && Boolean(query.cursor);
   const users = await prisma.user.findMany({
-    where: query.search
-      ? { searchText: { contains: normalizeSearchQuery(query.search) } }
-      : undefined,
+    where: {
+      ...(accountStatus ? { accountStatus } : {}),
+      ...(query.search
+        ? { searchText: { contains: normalizeSearchQuery(query.search) } }
+        : {}),
+    },
     orderBy,
     ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
     take: backward ? -(query.limit + 1) : query.limit + 1,
@@ -44,13 +56,36 @@ export const registerMemberRoutes = (app: FastifyInstance) => {
   app.get(
     '/members',
     { preHandler: requireAuthenticatedUser },
-    async (request) => listMembers(request.query),
+    async (request) => listMembers(request.query, UserAccountStatus.ACTIVE),
   );
 
   app.get(
     '/users',
     { preHandler: [requireAuthenticatedUser, requireRootAdmin] },
     async (request) => listMembers(request.query),
+  );
+
+  app.patch(
+    '/users/:id/account-status',
+    { preHandler: [requireAuthenticatedUser, requireRootAdmin] },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const body = userAccountStatusSchema.parse(request.body);
+      const result = await updateUserAccountStatus({
+        actorId: request.currentUser.id,
+        targetId: id,
+        accountStatus: body.accountStatus as UserAccountStatus,
+      });
+      if (result.changed) {
+        request.log.warn({
+          event: 'user_account_status_changed',
+          actorId: request.currentUser.id,
+          targetId: id,
+          accountStatus: result.user.accountStatus,
+        });
+      }
+      return sanitizeUser(result.user);
+    },
   );
 
   app.patch(
@@ -69,6 +104,12 @@ export const registerMemberRoutes = (app: FastifyInstance) => {
         return reply.code(403).send({
           code: 'ROOT_ADMIN_ROLE_CHANGE_FORBIDDEN',
           message: 'The ROOT_ADMIN cannot be changed through this endpoint',
+        });
+      }
+      if (target.accountStatus === UserAccountStatus.BLOCKED) {
+        return reply.code(400).send({
+          code: 'BLOCKED_USER_ROLE_CHANGE_FORBIDDEN',
+          message: 'Restore the account before changing its role',
         });
       }
       const updated = await prisma.$transaction(async (tx) => {

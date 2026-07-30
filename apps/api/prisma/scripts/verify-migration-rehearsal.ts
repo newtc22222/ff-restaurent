@@ -1,7 +1,9 @@
-import { readdir, mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import { PrismaClient } from '@prisma/client';
+
 import { planUserPhoneBackfill } from '../../src/services/phone-backfill.js';
 
 const prisma = new PrismaClient();
@@ -76,7 +78,6 @@ const run = async () => {
     (migration) => migration.rolledBack,
   ).length;
   const migrationInventoryMatches =
-    expectedMigrations.length === 17 &&
     completedMigrations.length === expectedMigrations.length &&
     expectedMigrations.every(
       (migration, index) => completedMigrations[index] === migration,
@@ -270,7 +271,7 @@ const run = async () => {
     migrationInventory: check(
       migrationInventoryMatches,
       completedMigrations.length,
-      17,
+      expectedMigrations.length,
     ),
     rolledBackMigrations: check(
       rolledBackMigrations === 0,

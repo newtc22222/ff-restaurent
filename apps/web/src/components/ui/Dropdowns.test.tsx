@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-
 import {
   act,
   cleanup,
@@ -10,6 +9,7 @@ import {
 } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import Dropdown, { type DropdownOption } from './Dropdown';
 
 const options: DropdownOption[] = [

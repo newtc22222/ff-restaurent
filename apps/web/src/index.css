@@ -8,6 +8,7 @@
   --color-ink: hsl(222 47% 11%);
   --color-surface: #ffffff;
   --color-bg: #faf8f5;
+  --color-success: hsl(151 55% 42%);
   --scrollbar-thumb: rgb(100 116 139 / 55%);
   --scrollbar-thumb-hover: rgb(71 85 105 / 75%);
 
@@ -29,6 +30,7 @@
   --color-ink: hsl(210 20% 92%);
   --color-surface: hsl(220 15% 13%);
   --color-bg: hsl(220 15% 9%);
+  --color-success: hsl(151 50% 50%);
   --scrollbar-thumb: rgb(148 163 184 / 55%);
   --scrollbar-thumb-hover: rgb(203 213 225 / 72%);
 }
@@ -45,12 +47,36 @@ select {
   font: inherit;
 }
 
+.overlay-backdrop {
+  @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm;
+}
+
+.overlay-subtle {
+  @apply bg-slate-950/25 backdrop-blur-[1px];
+}
+
+.control-sm {
+  @apply h-8;
+}
+
+.control-md {
+  @apply h-9;
+}
+
+.control-default {
+  @apply h-10;
+}
+
+.control-lg {
+  @apply h-12;
+}
+
 .field {
-  @apply h-10 rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition-colors focus:border-ink;
+  @apply control-default rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition-colors focus:border-ink;
 }
 
 .label {
-  @apply text-[11px] font-semibold uppercase tracking-[0.5px] text-slate-500;
+  @apply text-2xs font-semibold uppercase tracking-[0.5px] text-slate-500;
 }
 
 .dark .label {
@@ -108,7 +134,7 @@ select {
 /* Modifier for short, fixed system labels (Favorite/Recommended/ARCHIVED) —
    not for arbitrary user content like collection or cuisine names. */
 .chip-badge {
-  @apply text-[11px] font-bold uppercase tracking-[0.3px];
+  @apply text-2xs font-bold uppercase tracking-[0.3px];
 }
 
 .chip-saffron {
@@ -147,7 +173,7 @@ select {
 }
 
 .field-group-title {
-  @apply flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.6px];
+  @apply flex items-center gap-2 text-2xs font-bold uppercase tracking-[0.6px];
   color: hsl(33 80% 38%);
 }
 .dark .field-group-title {

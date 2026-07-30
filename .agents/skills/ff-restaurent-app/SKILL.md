@@ -11,12 +11,13 @@ description: Work on the FF RESTaurent monorepo, a React/Vite web app plus Fasti
 2. Read the relevant current files before editing. Prefer app-local patterns over new abstractions.
 3. For domain behavior, read `references/app-reference.md` when the task touches API routes, permissions, schema, bill splitting, commands, or data contracts.
 4. Keep money as integer cents end to end. Do not introduce float math for persisted or API values.
-5. Preserve role semantics:
+5. Run `npm run prettier:check` after every completed task in this repository. If it reports formatting drift, run `npm run format` or focused Prettier writes before handing work back.
+6. Preserve role semantics:
    - CUSTOMER: own participant bills, own stats, own notifications, own payment status.
    - SOUS_CHEF: create restaurants and manage owned bills.
    - HEAD_CHEF: global bill visibility and archive/restore admin actions.
    - ROOT_ADMIN: singleton highest role, member role governance, and system administration.
-6. Validate at the narrowest useful scope, then broaden when shared behavior changes.
+7. Validate at the narrowest useful scope, then broaden when shared behavior changes.
 
 ## Common Commands
 

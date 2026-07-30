@@ -1,4 +1,6 @@
 import { Prisma } from '@prisma/client';
+import type { z } from 'zod';
+
 import { conflict } from '../http/app-error.js';
 import {
   diningAreaKey,
@@ -14,7 +16,6 @@ import type {
   diningAreaSchema,
   diningAreaUpdateSchema,
 } from '../schemas/index.js';
-import type { z } from 'zod';
 
 /**
  * Cuisine and Dining Area catalogs.

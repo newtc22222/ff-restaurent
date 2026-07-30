@@ -1,5 +1,12 @@
-import type { FastifyInstance } from 'fastify';
 import { EntryStatus, PaymentStatus } from '@prisma/client';
+import type { FastifyInstance } from 'fastify';
+
+import {
+  formatIsoDateOnly,
+  parseIsoDateOnly,
+  todayInHoChiMinh,
+} from '@ff-restaurent/shared';
+
 import { requireAuthenticatedUser } from '../http/auth-guards.js';
 import { prisma } from '../lib/prisma.js';
 import { statsQuerySchema } from '../schemas/index.js';
@@ -8,18 +15,24 @@ type StatsQuery = ReturnType<typeof statsQuerySchema.parse>;
 
 export const resolveStatsDateRange = (query: StatsQuery, now = new Date()) => {
   if (query.range === 'custom') {
-    const start = new Date(`${query.from}T00:00:00.000Z`);
-    const end = new Date(`${query.to}T00:00:00.000Z`);
+    if (!query.from || !query.to) {
+      throw new Error('Custom statistics ranges require both dates');
+    }
+    const start = parseIsoDateOnly(query.from);
+    const end = parseIsoDateOnly(query.to);
     end.setUTCDate(end.getUTCDate() + 1);
     return { start, end };
   }
 
-  const start = new Date(now);
-  if (query.range === 'weekly') start.setUTCDate(start.getUTCDate() - 7);
+  const today = parseIsoDateOnly(todayInHoChiMinh(now));
+  const start = new Date(today);
+  if (query.range === 'weekly') start.setUTCDate(start.getUTCDate() - 6);
   else if (query.range === 'yearly')
     start.setUTCFullYear(start.getUTCFullYear() - 1);
   else start.setUTCMonth(start.getUTCMonth() - 1);
-  return { start, end: now };
+  const end = new Date(today);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { start, end };
 };
 
 const addAmountToBucket = (
@@ -44,7 +57,7 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
         where: {
           memberId: request.currentUser.id,
           bill: {
-            createdAt: { gte: start, lt: end },
+            occurredOn: { gte: start, lt: end },
             status: EntryStatus.ACTIVE,
           },
         },
@@ -93,7 +106,7 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
         );
         addAmountToBucket(
           byPeriod,
-          participant.bill.createdAt.toISOString().slice(0, 7),
+          formatIsoDateOnly(participant.bill.occurredOn).slice(0, 7),
           participant.finalPrice,
         );
         frequencyByRestaurant[participant.bill.restaurant.name] =

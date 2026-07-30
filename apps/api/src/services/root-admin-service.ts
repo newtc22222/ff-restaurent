@@ -1,5 +1,6 @@
+import { Prisma, SystemRole, UserAccountStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { Prisma, SystemRole } from '@prisma/client';
+
 import { prisma } from '../lib/prisma.js';
 
 export class RootAdminTransferError extends Error {
@@ -68,7 +69,11 @@ export const transferRootAdmin = async ({
         const target = await tx.user.findUnique({
           where: { username: targetUsername },
         });
-        if (!target || target.systemRole === SystemRole.ROOT_ADMIN) {
+        if (
+          !target ||
+          target.systemRole === SystemRole.ROOT_ADMIN ||
+          target.accountStatus !== UserAccountStatus.ACTIVE
+        ) {
           throw new RootAdminTransferError(
             'ROOT_TRANSFER_TARGET_INVALID',
             400,

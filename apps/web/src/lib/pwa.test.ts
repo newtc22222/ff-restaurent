@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-
 import { describe, expect, it } from 'vitest';
+
 import { canRegisterServiceWorker } from './pwa';
 
 describe('PWA registration policy', () => {
