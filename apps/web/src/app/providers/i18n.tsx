@@ -1,20 +1,21 @@
 import {
+  type ReactNode,
   createContext,
   useCallback,
   useContext,
   useMemo,
   useState,
-  type ReactNode,
 } from 'react';
+
 import {
-  getStoredLocale,
   LOCALE_STORAGE_KEY,
-  translations,
   type Locale,
   type TranslationKey,
-} from '../../lib/translations';
+  getStoredLocale,
+  translations,
+} from '@/lib/translations';
 
-export type { Locale } from '../../lib/translations';
+export type { Locale } from '@/lib/translations';
 
 interface I18nContextValue {
   locale: Locale;

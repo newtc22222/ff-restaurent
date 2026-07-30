@@ -1,6 +1,7 @@
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useI18n } from '../../app/providers/i18n';
+
+import { useI18n } from '@/app/providers/i18n';
 
 export default function ImagePicker({
   label,
@@ -46,7 +47,11 @@ export default function ImagePicker({
           {preview ? (
             <img className="h-full w-full object-cover" src={preview} alt="" />
           ) : (
-            <ImagePlus size={22} className="text-slate-400" aria-hidden="true" />
+            <ImagePlus
+              size={22}
+              className="text-slate-400"
+              aria-hidden="true"
+            />
           )}
         </div>
         <div className="min-w-0 flex-1">

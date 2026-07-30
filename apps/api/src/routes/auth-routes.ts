@@ -1,11 +1,13 @@
-import type { FastifyInstance } from 'fastify';
+import { UserAccountStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import type { FastifyInstance } from 'fastify';
+
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
-import { loadConfig } from '../config.js';
-import { prisma } from '../prisma.js';
-import { sanitizeUser } from '../roles.js';
-import { loginSchema, registerSchema } from '../schemas.js';
-import { ensureDefaultCollections } from '../collection-service.js';
+
+import { prisma } from '../lib/prisma.js';
+import { sanitizeUser } from '../lib/roles.js';
+import { loginSchema, registerSchema } from '../schemas/index.js';
+import { ensureDefaultCollections } from '../services/collection-service.js';
 
 /**
  * Authentication routes issue JWTs and return sanitized user profiles.
@@ -29,7 +31,13 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
           });
         }
       }
-      if (!user || !(await bcrypt.compare(body.password, user.passwordHash))) {
+      const passwordMatches =
+        user && (await bcrypt.compare(body.password, user.passwordHash));
+      if (
+        !user ||
+        !passwordMatches ||
+        user.accountStatus !== UserAccountStatus.ACTIVE
+      ) {
         return reply.code(401).send({
           code: 'INVALID_CREDENTIALS',
           message: 'Invalid credentials',
@@ -49,7 +57,7 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
     { config: { rateLimit: authRateLimit } },
     async (request, reply) => {
       const body = registerSchema.parse(request.body);
-      if (body.inviteCode !== loadConfig().registrationInviteCode) {
+      if (body.inviteCode !== app.config.registrationInviteCode) {
         return reply.code(403).send({
           code: 'REGISTRATION_NOT_AUTHORIZED',
           message: 'Registration is not authorized',

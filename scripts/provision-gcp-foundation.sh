@@ -367,8 +367,12 @@ ensure_wif() {
     log "GitHub OIDC provider present: ${WORKLOAD_PROVIDER}"
   fi
 
-  local principal="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WORKLOAD_POOL}/subject/repo:${GITHUB_REPOSITORY}:ref:refs/heads/main"
-  ensure_service_account_role "$DEPLOY_SERVICE_ACCOUNT" "$principal" roles/iam.workloadIdentityUser
+  local principal_main="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WORKLOAD_POOL}/subject/repo:${GITHUB_REPOSITORY}:ref:refs/heads/main"
+  local principal_develop="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WORKLOAD_POOL}/subject/repo:${GITHUB_REPOSITORY}:ref:refs/heads/develop"
+  local principal_repo="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WORKLOAD_POOL}/attribute.repository/${GITHUB_REPOSITORY}"
+  ensure_service_account_role "$DEPLOY_SERVICE_ACCOUNT" "$principal_main" roles/iam.workloadIdentityUser
+  ensure_service_account_role "$DEPLOY_SERVICE_ACCOUNT" "$principal_develop" roles/iam.workloadIdentityUser
+  ensure_service_account_role "$DEPLOY_SERVICE_ACCOUNT" "$principal_repo" roles/iam.workloadIdentityUser
 }
 
 ensure_cloud_run_service() {
@@ -475,10 +479,13 @@ apply_foundation() {
   ensure_service_account "$RUNTIME_SERVICE_ACCOUNT" 'FF RESTaurent runtime'
   ensure_service_account "$DEPLOY_SERVICE_ACCOUNT" 'FF RESTaurent GitHub deployer'
   ensure_project_role "$runtime_member" roles/cloudsql.client
+  ensure_project_role "$runtime_member" roles/run.invoker
   ensure_project_role "$deploy_member" roles/run.admin
+  ensure_project_role "$deploy_member" roles/run.invoker
   ensure_project_role "$deploy_member" roles/artifactregistry.writer
   ensure_project_role "$deploy_member" roles/cloudsql.viewer
   ensure_service_account_role "$RUNTIME_SERVICE_ACCOUNT" "$deploy_member" roles/iam.serviceAccountUser
+  ensure_service_account_role "$RUNTIME_SERVICE_ACCOUNT" "$deploy_member" roles/iam.serviceAccountTokenCreator
 
   ensure_sql_instance
 

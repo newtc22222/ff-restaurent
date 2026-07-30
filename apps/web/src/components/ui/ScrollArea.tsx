@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 
+import { cn } from '@/lib/cn';
+
 interface ScrollAreaProps {
   children: ReactNode;
   className?: string;
@@ -27,7 +29,7 @@ export default function ScrollArea({
     <div
       data-scroll-area
       data-axis={axis}
-      className={`scroll-area ${overflowClass} ${className}`}
+      className={cn('scroll-area', overflowClass, className)}
       style={style}
     >
       {contentClassName ? (

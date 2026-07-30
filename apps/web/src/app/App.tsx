@@ -2,39 +2,41 @@ import {
   BarChart2,
   FolderHeart,
   LayoutDashboard,
+  type LucideIcon,
   Store,
   UserRoundCheck,
   Users,
-  type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  isRouteErrorResponse,
   NavLink,
   Outlet,
+  isRouteErrorResponse,
   useLoaderData,
   useNavigate,
   useRouteError,
 } from 'react-router';
-import type { Notification } from '../lib/api';
+
+import type { Notification } from '@/api/types';
+import AppHeader from '@/components/layout/AppHeader';
+import Sidebar from '@/components/layout/Sidebar';
+import ScrollArea from '@/components/ui/ScrollArea';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { isRootAdmin } from '@/lib/permissions';
+
 import {
-  AppProvider,
   type AppLoaderData,
+  AppProvider,
   useAppContext,
 } from './providers/app-context';
 import { useI18n } from './providers/i18n';
-import { isRootAdmin } from '../lib/helpers';
-import { useMutation } from '../hooks/useMutation';
-import AppHeader from '../components/layout/AppHeader';
-import Sidebar from '../components/layout/Sidebar';
-import ScrollArea from '../components/ui/ScrollArea';
 
 function AppShellContent() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { user, notifications, warning, loading } = useAppContext();
-  const { mutate } = useMutation();
+  const { mutate } = useRouteMutation();
   const warned = useRef(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     typeof window === 'undefined'

@@ -1,0 +1,20 @@
+{
+  "groups.title": "Nhóm thành viên dùng lại",
+  "groups.choose": "Chọn nhóm",
+  "groups.apply": "Áp dụng nhóm",
+  "groups.name": "Tên nhóm mới",
+  "groups.save": "Lưu nhóm hiện tại",
+  "groups.subtitle": "Lưu các nhóm thường dùng để tạo hóa đơn nhanh hơn.",
+  "groups.create": "Thêm nhóm",
+  "groups.edit": "Sửa nhóm",
+  "groups.formHint": "Mỗi nhóm cần ít nhất hai thành viên.",
+  "groups.members": "thành viên",
+  "groups.chooseMembers": "Chọn thành viên",
+  "groups.membersSelected": "thành viên đã chọn",
+  "groups.search": "Tìm nhóm...",
+  "groups.empty": "Chưa có nhóm thành viên",
+  "groups.emptyHint": "Tạo nhóm để áp dụng nhanh khi lập hóa đơn.",
+  "groups.updated": "Đã cập nhật nhóm thành viên.",
+  "groups.delete": "Xóa nhóm thành viên",
+  "groups.confirmDelete": "Xóa nhóm này? Hành động này không ảnh hưởng các hóa đơn hiện có."
+}

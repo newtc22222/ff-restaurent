@@ -2,29 +2,31 @@ import { ExternalLink, Images, Layers, Pencil, Phone } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLoaderData, useNavigate, useRevalidator } from 'react-router';
-import { canChef, isHead } from '../../lib/helpers';
-import type { RestaurantDetailData, VietnamAddress } from '../../lib/api';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import BackButton from '../../components/ui/BackButton';
+
+import type { RestaurantDetailData, VietnamAddress } from '@/api/types';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import BackButton from '@/components/ui/BackButton';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import Dropdown from '@/components/ui/Dropdown';
+import ImagePicker from '@/components/ui/ImagePicker';
 import VietnamAddressFields, {
   isVietnamAddressComplete,
-} from '../../components/address/VietnamAddressFields';
-import RestaurantProfileFields, {
-  isRestaurantProfileValid,
-  type RestaurantProfileDraft,
-} from './RestaurantProfileFields';
-import RestaurantBanner from './RestaurantBanner';
+} from '@/features/address/VietnamAddressFields';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { canChef, isHead } from '@/lib/permissions';
+
 import { platformLabel } from './PlatformLinksEditor';
+import RestaurantBanner from './RestaurantBanner';
 import RestaurantCatalogFields, {
   type RestaurantCatalogValue,
 } from './RestaurantCatalogFields';
 import RestaurantFeedback from './RestaurantFeedback';
-import Dropdown from '../../components/ui/Dropdown';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import ImagePicker from '../../components/ui/ImagePicker';
-import { session } from '../../lib/session';
+import RestaurantProfileFields, {
+  type RestaurantProfileDraft,
+  isRestaurantProfileValid,
+} from './RestaurantProfileFields';
+import { useRestaurantMediaMutation } from './restaurant-media.mutations';
 
 /**
  * RestaurantDetailPage displays comprehensive information about a restaurant including its links,
@@ -34,8 +36,9 @@ export default function RestaurantDetailPage() {
   const navigate = useNavigate();
   const revalidator = useRevalidator();
   const { user } = useAppContext();
-  const { locale, t } = useI18n();
-  const { fetcher, mutate } = useMutation();
+  const { t } = useI18n();
+  const { fetcher, mutate } = useRouteMutation();
+  const restaurantMediaMutation = useRestaurantMediaMutation();
   const { restaurant, feedback, collections } =
     useLoaderData() as RestaurantDetailData;
   const [editingProfile, setEditingProfile] = useState(false);
@@ -102,11 +105,11 @@ export default function RestaurantDetailPage() {
         ['logo' | 'banner', File | null]
       >) {
         if (!file) continue;
-        const body = new FormData();
-        body.append('file', file);
-        await session.api().request(`/restaurants/${restaurant.id}/${kind}`, {
-          method: 'PUT',
-          body,
+        await restaurantMediaMutation.mutateAsync({
+          action: 'upload',
+          restaurantId: restaurant.id,
+          kind,
+          file,
         });
       }
       setMedia({ logo: null, banner: null });
@@ -119,8 +122,10 @@ export default function RestaurantDetailPage() {
 
   const removeMedia = async (kind: 'logo' | 'banner') => {
     try {
-      await session.api().request(`/restaurants/${restaurant.id}/${kind}`, {
-        method: 'DELETE',
+      await restaurantMediaMutation.mutateAsync({
+        action: 'remove',
+        restaurantId: restaurant.id,
+        kind,
       });
       void revalidator.revalidate();
     } catch {
@@ -147,14 +152,8 @@ export default function RestaurantDetailPage() {
         },
       },
       {
-        fallback:
-          locale === 'vi'
-            ? 'Không thể cập nhật hồ sơ địa điểm.'
-            : 'Could not update the restaurant profile.',
-        success:
-          locale === 'vi'
-            ? 'Đã cập nhật hồ sơ địa điểm.'
-            : 'Restaurant profile updated.',
+        fallback: t('restaurants.profileUpdateFailed'),
+        success: t('restaurants.profileUpdated'),
         onSuccess: () => void finishProfileSave(),
       },
     );
@@ -203,7 +202,7 @@ export default function RestaurantDetailPage() {
               onClick={() => setEditingProfile(true)}
             >
               <Pencil size={13} />
-              {locale === 'vi' ? 'Sửa hồ sơ' : 'Edit profile'}
+              {t('restaurants.editProfile')}
             </button>
           )}
 
@@ -214,11 +213,11 @@ export default function RestaurantDetailPage() {
               <div className="field-group">
                 <p className="field-group-title">
                   <Images size={13} aria-hidden="true" />
-                  {locale === 'vi' ? 'Hình ảnh' : 'Media'}
+                  {t('restaurants.media')}
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <ImagePicker
-                    label={locale === 'vi' ? 'Logo quán' : 'Restaurant logo'}
+                    label={t('restaurants.restaurantLogo')}
                     currentUrl={restaurant.avatarUrl}
                     maxSizeMb={5}
                     onFile={(logo) =>
@@ -227,7 +226,7 @@ export default function RestaurantDetailPage() {
                     onRemove={() => void removeMedia('logo')}
                   />
                   <ImagePicker
-                    label={locale === 'vi' ? 'Ảnh bìa' : 'Banner image'}
+                    label={t('restaurants.bannerImage')}
                     currentUrl={restaurant.bannerImageUrl}
                     maxSizeMb={5}
                     onFile={(banner) =>
@@ -273,7 +272,7 @@ export default function RestaurantDetailPage() {
                   className="btn btn-soft"
                   onClick={() => setEditingProfile(false)}
                 >
-                  {locale === 'vi' ? 'Hủy' : 'Cancel'}
+                  {t('common.cancel')}
                 </button>
                 <button
                   className="btn btn-primary"
@@ -285,7 +284,7 @@ export default function RestaurantDetailPage() {
                   }
                   onClick={() => void saveProfile()}
                 >
-                  {locale === 'vi' ? 'Lưu hồ sơ' : 'Save profile'}
+                  {t('restaurants.saveProfile')}
                 </button>
               </div>
             </div>
@@ -325,9 +324,7 @@ export default function RestaurantDetailPage() {
                   className={`chip ${item.isPrimary ? 'chip-saffron' : 'chip-muted'}`}
                 >
                   {item.cuisine.name}
-                  {item.isPrimary
-                    ? ` · ${locale === 'vi' ? 'Chính' : 'Primary'}`
-                    : ''}
+                  {item.isPrimary ? ` · ${t('restaurants.primaryLabel')}` : ''}
                 </span>
               ))}
             </div>

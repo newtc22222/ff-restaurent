@@ -1,42 +1,46 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
   Images,
   Layers,
   Plus,
-  SlidersHorizontal,
   Store,
 } from 'lucide-react';
+import { FormEvent, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useLoaderData, useNavigate, useSearchParams } from 'react-router';
-import type { RestaurantDirectoryData } from '../../lib/api';
-import {
-  TYPE_OPTIONS_VI,
-  TYPE_OPTIONS_EN,
-  canChef,
-  isHead,
-} from '../../lib/helpers';
-import { useAppContext } from '../../app/providers/app-context';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import SectionTitle from '../../components/ui/SectionTitle';
-import EmptyState from '../../components/ui/EmptyState';
-import Dropdown from '../../components/ui/Dropdown';
-import Modal from '../../components/ui/Modal';
+import { useLoaderData, useNavigate } from 'react-router';
+
+import type { RestaurantDirectoryData } from '@/api/types';
+import { useAppContext } from '@/app/providers/app-context';
+import { useI18n } from '@/app/providers/i18n';
+import Dropdown from '@/components/ui/Dropdown';
+import EmptyState from '@/components/ui/EmptyState';
+import FilterBar from '@/components/ui/FilterBar';
+import ImagePicker from '@/components/ui/ImagePicker';
+import Modal from '@/components/ui/Modal';
+import SectionTitle from '@/components/ui/SectionTitle';
 import VietnamAddressFields, {
   emptyVietnamAddress,
   isVietnamAddressComplete,
-} from '../../components/address/VietnamAddressFields';
+} from '@/features/address/VietnamAddressFields';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
+import { canChef, isHead } from '@/lib/permissions';
+
+import RestaurantCatalogFields, {
+  emptyRestaurantCatalogs,
+} from './RestaurantCatalogFields';
 import RestaurantProfileFields, {
   emptyRestaurantProfile,
   isRestaurantProfileValid,
 } from './RestaurantProfileFields';
-import RestaurantCatalogFields, {
-  emptyRestaurantCatalogs,
-} from './RestaurantCatalogFields';
-import ImagePicker from '../../components/ui/ImagePicker';
-import { session } from '../../lib/session';
+import {
+  type CuisineMatch,
+  readCuisineFilter,
+  updateCuisineFilter,
+  updateCuisineMatch,
+} from './restaurant-filters';
+import { useRestaurantMediaMutation } from './restaurant-media.mutations';
 
 /**
  * RestaurantsPage displays the list of restaurants, allows filtering by type/favorites/recommendations,
@@ -47,19 +51,28 @@ export default function RestaurantsPage() {
   const { user, restaurants: snapshotRestaurants } = useAppContext();
   const page = useLoaderData() as RestaurantDirectoryData;
   const restaurants = page.items;
-  const [searchParams, setSearchParams] = useSearchParams();
-  const searchParamsRef = useRef(searchParams);
-  useEffect(() => {
-    searchParamsRef.current = searchParams;
-  }, [searchParams]);
-  const { locale, t } = useI18n();
-  const { mutate } = useMutation();
-  const typeOptions = locale === 'vi' ? TYPE_OPTIONS_VI : TYPE_OPTIONS_EN;
-  const search = searchParams.get('search') ?? '';
+  const {
+    searchParams,
+    searchValue: search,
+    setSearchValue,
+    setQuery,
+    setPage,
+    replaceParams,
+    clearFilters,
+  } = useUrlFilters();
+  const { t } = useI18n();
+  const { mutate } = useRouteMutation();
+  const restaurantMediaMutation = useRestaurantMediaMutation();
+  const typeOptions = [
+    t('restaurants.typeRestaurant'),
+    t('restaurants.typeEatery'),
+    t('restaurants.typeCafe'),
+    t('restaurants.typeDrinkShop'),
+    t('restaurants.typeBakery'),
+  ];
   const sort = searchParams.get('sort') ?? 'name-asc';
-  const filterCuisine =
-    searchParams.get('primaryCuisineId') ?? searchParams.get('cuisineId') ?? '';
-  const cuisineMatch = searchParams.has('primaryCuisineId') ? 'primary' : 'all';
+  const { cuisineId: filterCuisine, match: cuisineMatch } =
+    readCuisineFilter(searchParams);
   const filterDiningArea = searchParams.get('diningAreaId') ?? '';
   const filterCollection = searchParams.get('collectionId') ?? '';
   const filterPlatform = searchParams.get('platform') ?? '';
@@ -80,34 +93,9 @@ export default function RestaurantsPage() {
     collectionIds: [] as string[],
   });
 
-  const setQuery = (key: string, value?: string) => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.delete('cursor');
-    next.delete('direction');
-    if (value) next.set(key, value);
-    else next.delete(key);
-    searchParamsRef.current = next;
-    setSearchParams(next);
-  };
-
-  const goToPage = (cursor: string, direction: 'forward' | 'backward') => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.set('cursor', cursor);
-    next.set('direction', direction);
-    searchParamsRef.current = next;
-    setSearchParams(next);
-  };
-
-  const cuisineOptions = Array.from(
-    new Map(
-      snapshotRestaurants.flatMap((entry) =>
-        (entry.cuisines ?? []).map(({ cuisine }) => [
-          cuisine.id,
-          { value: cuisine.id, label: cuisine.name },
-        ]),
-      ),
-    ).values(),
-  ).sort((left, right) => left.label.localeCompare(right.label));
+  const cuisineOptions = page.cuisines
+    .map((cuisine) => ({ value: cuisine.id, label: cuisine.name }))
+    .sort((left, right) => left.label.localeCompare(right.label));
 
   const activeFilterCount =
     (search ? 1 : 0) +
@@ -162,19 +150,15 @@ export default function RestaurantsPage() {
             : undefined,
     }));
 
+  const setCuisineFilter = (cuisineId: string) => {
+    replaceParams((current) =>
+      updateCuisineFilter(current, cuisineId, cuisineMatch),
+    );
+  };
+
   const changeCuisineMatch = (match: string) => {
-    const next = new URLSearchParams(searchParamsRef.current);
-    next.delete('cursor');
-    next.delete('cuisineId');
-    next.delete('primaryCuisineId');
-    if (filterCuisine) {
-      next.set(
-        match === 'primary' ? 'primaryCuisineId' : 'cuisineId',
-        filterCuisine,
-      );
-    }
-    searchParamsRef.current = next;
-    setSearchParams(next);
+    const nextMatch: CuisineMatch = match === 'primary' ? 'primary' : 'all';
+    replaceParams((current) => updateCuisineMatch(current, nextMatch));
   };
 
   const finishCreate = async (data: unknown) => {
@@ -188,11 +172,11 @@ export default function RestaurantsPage() {
         ['logo' | 'banner', File | null]
       >) {
         if (!file) continue;
-        const body = new FormData();
-        body.append('file', file);
-        await session.api().request(`/restaurants/${id}/${kind}`, {
-          method: 'PUT',
-          body,
+        await restaurantMediaMutation.mutateAsync({
+          action: 'upload',
+          restaurantId: id,
+          kind,
+          file,
         });
       }
     } catch {
@@ -243,17 +227,27 @@ export default function RestaurantsPage() {
             </button>
           )}
         </div>
-        <section className="panel w-full space-y-3 p-3">
-          <p className="field-group-title px-1">
-            <SlidersHorizontal size={13} aria-hidden="true" />
-            {t('restaurants.filters')}
-          </p>
+        <FilterBar
+          label={t('restaurants.filters')}
+          controlsClassName="block space-y-2"
+          headerActions={
+            activeFilterCount > 0 ? (
+              <button
+                type="button"
+                className="text-xs font-semibold text-slate-400 transition-colors hover:text-chili"
+                onClick={clearFilters}
+              >
+                {t('bills.clearAll')} ({activeFilterCount})
+              </button>
+            ) : undefined
+          }
+        >
           <div className="grid gap-2 md:grid-cols-3">
             <input
               className="field w-full"
               type="search"
               value={search}
-              onChange={(event) => setQuery('search', event.target.value)}
+              onChange={(event) => setSearchValue(event.target.value)}
               placeholder={t('restaurants.search')}
               aria-label={t('restaurants.search')}
             />
@@ -312,15 +306,7 @@ export default function RestaurantsPage() {
               <Dropdown
                 label={t('restaurants.filterCuisine')}
                 value={filterCuisine}
-                onChange={(value) => {
-                  if (cuisineMatch === 'primary') {
-                    setQuery('primaryCuisineId', value);
-                    if (value) setQuery('cuisineId');
-                  } else {
-                    setQuery('cuisineId', value);
-                    if (value) setQuery('primaryCuisineId');
-                  }
-                }}
+                onChange={setCuisineFilter}
                 options={cuisineOptions}
                 searchable
                 searchPlaceholder={t('restaurants.searchCuisine')}
@@ -348,16 +334,7 @@ export default function RestaurantsPage() {
               clearLabel={t('bills.clearAll')}
             />
           </div>
-          {activeFilterCount > 0 && (
-            <button
-              type="button"
-              className="text-[12px] text-slate-400 hover:text-red-400"
-              onClick={() => setSearchParams({})}
-            >
-              {t('bills.clearAll')}
-            </button>
-          )}
-        </section>
+        </FilterBar>
         {restaurants.length === 0 && activeFilterCount === 0 && (
           <EmptyState
             icon={Store}
@@ -436,7 +413,7 @@ export default function RestaurantsPage() {
               }
               onClick={() =>
                 page.pageInfo.startCursor &&
-                goToPage(page.pageInfo.startCursor, 'backward')
+                setPage(page.pageInfo.startCursor, 'backward')
               }
             >
               <ChevronLeft size={14} /> {t('common.previousPage')}
@@ -447,7 +424,7 @@ export default function RestaurantsPage() {
               disabled={!page.pageInfo.hasNextPage || !page.pageInfo.endCursor}
               onClick={() =>
                 page.pageInfo.endCursor &&
-                goToPage(page.pageInfo.endCursor, 'forward')
+                setPage(page.pageInfo.endCursor, 'forward')
               }
             >
               {t('common.nextPage')} <ChevronRight size={14} />
@@ -468,10 +445,10 @@ export default function RestaurantsPage() {
           <div className="field-group">
             <p className="field-group-title">
               <Store size={13} aria-hidden="true" />
-              {locale === 'vi' ? 'Tên địa điểm' : 'Identity'}
+              {t('restaurants.identity')}
             </p>
             <label className="block space-y-1">
-              <span className="label">{locale === 'vi' ? 'Tên' : 'Name'}</span>
+              <span className="label">{t('restaurants.name')}</span>
               <input
                 className="field w-full"
                 value={form.name}
@@ -491,16 +468,16 @@ export default function RestaurantsPage() {
           <div className="field-group">
             <p className="field-group-title">
               <Images size={13} aria-hidden="true" />
-              {locale === 'vi' ? 'Hình ảnh' : 'Media'}
+              {t('restaurants.media')}
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <ImagePicker
-                label={locale === 'vi' ? 'Logo quán' : 'Restaurant logo'}
+                label={t('restaurants.restaurantLogo')}
                 maxSizeMb={5}
                 onFile={(logo) => setMedia((current) => ({ ...current, logo }))}
               />
               <ImagePicker
-                label={locale === 'vi' ? 'Ảnh bìa' : 'Banner image'}
+                label={t('restaurants.bannerImage')}
                 maxSizeMb={5}
                 onFile={(banner) =>
                   setMedia((current) => ({ ...current, banner }))
@@ -518,18 +495,14 @@ export default function RestaurantsPage() {
           <div className="field-group">
             <p className="field-group-title">
               <Layers size={13} aria-hidden="true" />
-              {locale === 'vi'
-                ? 'Loại hình & bộ sưu tập'
-                : 'Type & collections'}
+              {t('restaurants.typeAndCollections')}
             </p>
             <div className="block space-y-1">
-              <span className="label">
-                {locale === 'vi' ? 'Loại hình' : 'Type'}
-              </span>
+              <span className="label">{t('restaurants.type')}</span>
               <Dropdown
                 fullWidth
-                label={locale === 'vi' ? 'Chọn...' : 'Choose...'}
-                ariaLabel={locale === 'vi' ? 'Loại hình' : 'Type'}
+                label={t('restaurants.chooseType')}
+                ariaLabel={t('restaurants.type')}
                 value={form.type}
                 onChange={(type) => setForm({ ...form, type })}
                 options={typeOptions.map((type) => ({

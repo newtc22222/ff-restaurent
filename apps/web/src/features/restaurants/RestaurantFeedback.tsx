@@ -1,10 +1,11 @@
 import { MessageSquare, Star } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { useI18n } from '../../app/providers/i18n';
-import { useMutation } from '../../hooks/useMutation';
-import type { RestaurantFeedbackPage } from '../../lib/api';
-import Dropdown from '../../components/ui/Dropdown';
+
+import type { RestaurantFeedbackPage } from '@/api/types';
+import { useI18n } from '@/app/providers/i18n';
+import Dropdown from '@/components/ui/Dropdown';
+import { useRouteMutation } from '@/hooks/useRouteMutation';
 
 const ratingOptions = Array.from({ length: 19 }, (_, index) => 1 + index / 2);
 
@@ -17,7 +18,7 @@ export default function RestaurantFeedback({
   data: RestaurantFeedbackPage;
 }) {
   const { locale, t } = useI18n();
-  const { fetcher, mutate } = useMutation();
+  const { fetcher, mutate } = useRouteMutation();
   const [selectedBillId, setSelectedBillId] = useState(
     data.eligibleBills[0]?.billId ?? '',
   );
@@ -127,7 +128,9 @@ export default function RestaurantFeedback({
                     value: bill.billId,
                     label: `${new Intl.DateTimeFormat(locale, {
                       dateStyle: 'medium',
-                    }).format(new Date(bill.billCreatedAt))}${bill.feedback ? ' · ✓' : ''}`,
+                    }).format(
+                      new Date(bill.billCreatedAt),
+                    )}${bill.feedback ? ' · ✓' : ''}`,
                   }))}
                   searchable
                 />

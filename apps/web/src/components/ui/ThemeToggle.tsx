@@ -1,5 +1,7 @@
-import { Monitor, Moon, Sun, type LucideIcon } from 'lucide-react';
-import type { Theme } from '../../app/providers/theme';
+import { type LucideIcon, Monitor, Moon, Sun } from 'lucide-react';
+
+import type { Theme } from '@/app/providers/theme';
+
 import Dropdown, { type DropdownOption } from './Dropdown';
 
 interface ThemeToggleProps {

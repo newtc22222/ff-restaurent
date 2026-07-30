@@ -1,13 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "jsx": "react-jsx",
     "noEmit": true,
+    "composite": true,
     "types": ["vite/client"],
-    "baseUrl": ".",
     "paths": {
-      "@ff-restaurent/shared": ["../../packages/shared/src/index.ts"]
+      "@/*": ["src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{ "path": "../../packages/shared" }]
 }

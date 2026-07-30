@@ -63,10 +63,11 @@ Return your findings as:
 ```
 
 web/
-  src/
-    ...
+src/
+...
 
 ```
+
 ```
 
 ## Constraints

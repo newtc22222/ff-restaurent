@@ -10,6 +10,14 @@ FF RESTaurent is a group bill-splitting and restaurant tracker for a shared team
 - `apps/web` — React SPA/PWA (Vite + Tailwind CSS) with EN/VI i18n and light/dark theming
 - `packages/shared` — TypeScript types, enums, bill-splitting math, and phone normalization shared across both apps
 
+## UI Development Instructions
+
+CRITICAL: Before touching, creating, or modifying any frontend/UI code:
+
+1. Read `.context/design-tokens.json` for color, spacing, and typography tokens.
+2. Read `.context/COMPONENTS.md` to prevent recreating existing components.
+3. Strictly follow `.context/ui-guidelines.md` (pay special attention to [MUST] tags).
+
 ## Commands
 
 ```bash
@@ -19,9 +27,9 @@ docker compose up --build
 # Install all workspace dependencies
 npm install
 
-# Build shared to dist/ — required for `npm run build` and the packaged API.
-# (Dev servers and typecheck alias @ff-restaurent/shared to its source, so this
-#  is not strictly needed just to start the dev servers.)
+# Build shared to dist/ — required before `npm run dev -w @ff-restaurent/api`
+# (tsx resolves the package to dist/). `npm run typecheck` and `npm run build`
+# rebuild it for you; the Vite dev server aliases straight to source.
 npm run build -w @ff-restaurent/shared
 
 # Run dev servers
@@ -47,7 +55,12 @@ npm test -w @ff-restaurent/shared
 # Lint and format
 npm run lint
 npm run format
+npm run prettier:check   # non-mutating; this is what CI enforces
 ```
+
+Every Claude/LLM task in this repository should finish by running
+`npm run prettier:check`. If it reports drift, run `npm run format` or a
+focused Prettier write before handing work back.
 
 API docs (Swagger UI): `http://localhost:4000/api/docs`
 
@@ -65,19 +78,21 @@ Two independent role fields on `User`:
   - **HEAD_CHEF**: + archive/restore bills and restaurants, change member roles, view all bills, manage the Recommended collection
 - `systemRole` (`null | 'ROOT_ADMIN'`) — exactly one holder (unique constraint). Passes every chef check and additionally handles root-admin transfer (audited) and password-reset approval. Bootstrap/recovery scripts live in `apps/api/prisma/`.
 
-Helpers `isRootAdmin`, `isSousChefOrAbove`, `isHeadChef` live in `apps/api/src/roles.ts`; auth guards in `apps/api/src/http/auth-guards.ts`. Login accepts username or phone; `sessionVersion` on `User` invalidates old JWTs. Registration requires `REGISTRATION_INVITE_CODE`. Password recovery is operator-approved (see `wiki/Password-Recovery-Operations`).
+Helpers `isRootAdmin`, `isSousChefOrAbove`, `isHeadChef` are defined in `@ff-restaurent/shared` and re-exported from `apps/api/src/lib/roles.ts`; auth guards in `apps/api/src/http/auth-guards.ts`. Login accepts username or phone; `sessionVersion` on `User` invalidates old JWTs. Registration requires `REGISTRATION_INVITE_CODE`. Password recovery is operator-approved (see `wiki/Password-Recovery-Operations`).
 
 ### Bill Splitting
 
 All money values are **integer cents** throughout the stack. The core math is in `packages/shared/src/bill-splitting.ts` (tested in `bill-splitting.test.ts`). `calculateBillSplit` distributes VAT, shipping, discounts, and vouchers across participants; `Bill.adjustmentAllocation` selects `EQUAL` or `PROPORTIONAL` allocation.
 
-The shared package compiles TypeScript to `dist/`. Both apps alias `@ff-restaurent/shared` to the package **source** (`packages/shared/src/index.ts`) — via the API/web tsconfigs and web's `vite.config.ts` — so the dev servers (`tsx watch`, Vite) and `typecheck` resolve source directly with no prior build. The `dist/` output is what the root `npm run build` and the API's esbuild bundle consume (the bundle marks the package `external` and resolves it at runtime), so build shared before those.
+The shared package compiles TypeScript to `dist/`. `apps/api` and `apps/web` consume it through **TypeScript project references** (`composite: true` on shared; `references` in each app tsconfig), so `npm run typecheck` is `tsc -b` — it rebuilds `packages/shared/dist/` before checking the apps, and `npm run build` compiles shared first. Neither needs a manual pre-build after a clean `npm ci`.
+
+One asymmetry to keep in mind: web's `vite.config.ts` still aliases `@ff-restaurent/shared` to the package **source**, so the Vite dev server and Vitest see shared edits immediately, while `tsc` validates against the regenerated declarations. The API's esbuild bundle marks the package `external` and resolves `dist/` at runtime, so `tsx` dev and the packaged API both need shared built.
 
 ### API Structure
 
-`apps/api/src/app.ts` is composition-only: it registers core plugins (CORS, JWT, rate limit in production, Swagger) and then one `register*Routes` function per module from `apps/api/src/routes/` (auth, address, catalog, collection, feedback, password-reset, participant-group, profile, member, media, restaurant, bill, notification, stats). `media` handles Supabase-backed image/QR upload, list, and delete endpoints. Services and helpers sit at `apps/api/src/` top level (`collection-service.ts`, `root-admin-service.ts`, `address-directory.ts`, `restaurant-contract.ts`, …). The `preHandler` chain is: `requireAuth` (populates `request.currentUser`) → optional `requireSousChef` / `requireHeadChef`.
+`apps/api/src/app.ts` is composition-only: it registers core plugins (CORS, JWT, rate limit in production, Swagger) and then one `register*Routes` function per module from `apps/api/src/routes/` (auth, address, catalog, collection, feedback, password-reset, participant-group, profile, member, media, restaurant, bill, notification, stats). `media` handles Supabase-backed image/QR upload, list, and delete endpoints. `apps/api/src/` is grouped by layer: `services/` (bill, collection, root-admin, storage, address-directory, seeds), `contracts/` (`restaurant-contract.ts`), `lib/` (`prisma.ts`, `roles.ts`, pagination, normalization), `config/`, `http/`, `routes/`, and `schemas/`. Only `app.ts` and `server.ts` sit at the root. The `preHandler` chain is: `requireAuth` (populates `request.currentUser`) → optional `requireSousChef` / `requireHeadChef`.
 
-Validation uses **Zod schemas** in `apps/api/src/schemas.ts`. Config comes from `loadConfig()` in `apps/api/src/config.ts`. After changing `apps/api/prisma/schema.prisma`, run `prisma:migrate` to generate a migration and regenerate the client.
+Validation uses **Zod schemas** in `apps/api/src/schemas/`, split by domain behind the `schemas/index.ts` barrel — import from the barrel. Config comes from `loadConfig()` in `apps/api/src/config/config.ts`. After changing `apps/api/prisma/schema.prisma`, run `prisma:migrate` to generate a migration and regenerate the client.
 
 Key domain models beyond users/bills: `Cuisine` + `RestaurantCuisine` (every restaurant has exactly one primary cuisine), `DiningArea`, `RestaurantPlatformLink` (typed Grab/ShopeeFood/BeFood/Gojek/… links), `Collection`/`CollectionShare`/`CollectionRestaurant` (per-user FAVORITES and one global RECOMMENDED system collection — favorites and recommendations flow through collections), `Feedback` (one per bill+user, decimal food/service ratings), `PaymentQrImage` (owner-scoped payment QR images stored in Supabase, referenced by `Bill.paymentQrImageId`), `ParticipantGroup`, and audit tables (`BillAuditLog`, `RoleAuditLog`, `RootAdminTransferAudit`). Denormalized `searchText` columns back list search.
 
@@ -85,22 +100,22 @@ Key domain models beyond users/bills: `Cuisine` + `RestaurantCuisine` (every res
 
 The normalized-restaurant contract shipped in v1.1.0. Migration `20260720000000_contract_phase2_normalized_restaurants` fails closed on the invariants (every restaurant has exactly one primary Cuisine; every user has exactly one FAVORITES collection; exactly one RECOMMENDED collection exists; all legacy favorites/recommendations/platform links have normalized equivalents) and then **drops** `UserFavorite` and the legacy `RestaurantEntry.cuisineType`, `links`, `isFavorite`, and `isRecommended` columns. Collections and normalized `Cuisine`/`RestaurantPlatformLink` relations are now the sole persistence authority — the dual-write phase is over.
 
-**Backward-compat surface still in place (don't break):** the API boundary continues to *serve* the legacy response aliases (`cuisineType`, `isFavorite`, `isRecommended`, plus `isFavoritedByMe`) derived in `restaurant-contract.ts`, and continues to *accept* the deprecated `links` write input (translated into `platformLinks`). These are contract guarantees for existing clients, not persisted state.
+**Backward-compat surface still in place (don't break):** the API boundary continues to _serve_ the legacy response aliases (`cuisineType`, `isFavorite`, `isRecommended`, plus `isFavoritedByMe`) derived in `restaurant-contract.ts`, and continues to _accept_ the deprecated `links` write input (translated into `platformLinks`). These are contract guarantees for existing clients, not persisted state.
 
-Verify the contract against a live DB with `npm run prisma:phase2:contract:verify -w @ff-restaurent/api` (`prisma/verify-phase2-contract.ts`); it checks the migration by name so it stays compatible with later migrations layered on top. See `wiki/Phase-2-Migration-Runbook`.
+Verify the contract against a live DB with `npm run prisma:phase2:contract:verify -w @ff-restaurent/api` (`prisma/scripts/verify-phase2-contract.ts`); it checks the migration by name so it stays compatible with later migrations layered on top. See `wiki/Phase-2-Migration-Runbook`.
 
 ### Web Structure
 
 `apps/web/src/` is organized as:
 
-- `app/` — `App.tsx`, the `react-router` route tree (`router.ts`: `createBrowserRouter` with per-route loaders/actions and lazy-loaded pages), and providers (`app-context`, `i18n`, `theme`)
-- `pages/` — one component per non-feature screen (Login, Bills, BillDetail, CreateBill, Collections, CollectionDetail, ParticipantGroups, Stats, Profile, Admin)
-- `features/` — domain-owned pages, components, and colocated tests; `restaurants/` contains the restaurant directory and detail feature
-- `components/` — shared `ui/` primitives, `layout/`, and `address/`
-- `lib/` — `api.ts` (`ApiClient` class, all API calls, local response types), `session.ts`, `translations.ts`, `pwa.ts`
-- `hooks/` — e.g. `useMutation`
+- `app/` — `App.tsx`, the declarative `react-router` route tree, shared mutation dispatcher, root loader, and providers (`app-context`, `i18n`, `query`, `theme`)
+- `api/` — the session-compatible client, application endpoint helpers, transport types, and generated OpenAPI artifacts
+- `features/` — all domain-owned pages, components, route loaders/actions, TanStack Query hooks, and colocated tests
+- `components/` — shared `ui/` primitives and `layout/`; address controls belong to the address feature
+- `hooks/` — cross-feature UI hooks such as `useRouteMutation`
+- `lib/` — focused currency, permission, display, session, translation, and PWA helpers
 
-Routing is `react-router` (v7), configured in `app/router.ts`; screens load data through per-route `loader`s and submit mutations through `action`s (`AppLoaderData` lives in `app-context`). `VITE_API_URL` controls the API base URL. Web tests are colocated `*.test.tsx` files.
+Routing is `react-router` (v7), configured in `app/router.ts`; route-entry data stays in feature-owned `loader`s and route mutations stay in feature-owned intent tables behind the shared action. Component-initiated reads use focused TanStack Query hooks with stable query keys. Cross-boundary imports use the `@/` alias. `AppLoaderData` lives in `app-context`, `VITE_API_URL` controls the API base URL, and web tests are colocated `*.test.tsx` files.
 
 ### Shared Package Exports
 

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import { expectOk, runSmoke } from './staging-smoke.mjs';
 
 test('smoke retries bounded transient failures', async () => {

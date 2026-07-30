@@ -10,7 +10,7 @@ export default function BackButton({ onClick, label }: BackButtonProps) {
   return (
     <button
       type="button"
-      className="mb-6 flex items-center gap-1.5 text-[13px] text-slate-500 transition-colors hover:text-ink"
+      className="mb-6 flex items-center gap-1.5 text-compact text-slate-500 transition-colors hover:text-ink"
       onClick={onClick}
     >
       <ArrowLeft size={14} /> {label}

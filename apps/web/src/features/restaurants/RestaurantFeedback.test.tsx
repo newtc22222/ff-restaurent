@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
-
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
-import { I18nProvider } from '../../app/providers/i18n';
-import type { RestaurantFeedbackPage } from '../../lib/api';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { RestaurantFeedbackPage } from '@/api/types';
+import { I18nProvider } from '@/app/providers/i18n';
+
 import RestaurantFeedback from './RestaurantFeedback';
 
 const mutate = vi.fn();
-vi.mock('../../hooks/useMutation', () => ({
-  useMutation: () => ({
+vi.mock('@/hooks/useRouteMutation', () => ({
+  useRouteMutation: () => ({
     fetcher: { state: 'idle' },
     mutate,
   }),

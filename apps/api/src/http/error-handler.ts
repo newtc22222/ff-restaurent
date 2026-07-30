@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
+import { hasZodFastifySchemaValidationErrors } from 'fastify-type-provider-zod';
 import { ZodError } from 'zod';
 
 function isPrismaClientKnownRequestError(
@@ -15,6 +16,17 @@ function isPrismaClientKnownRequestError(
 
 export const registerErrorHandler = (app: FastifyInstance) => {
   app.setErrorHandler((error: unknown, request, reply) => {
+    if (hasZodFastifySchemaValidationErrors(error)) {
+      return reply.code(400).send({
+        code: 'VALIDATION_ERROR',
+        message: 'Request validation failed',
+        issues: error.validation.map(({ params }) => ({
+          path: params.issue.path.join('.'),
+          message: params.issue.message,
+        })),
+      });
+    }
+
     if (error instanceof ZodError) {
       return reply.code(400).send({
         code: 'VALIDATION_ERROR',

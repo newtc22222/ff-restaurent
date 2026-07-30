@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
 import Modal from './Modal';
 
 afterEach(cleanup);
@@ -25,5 +25,36 @@ describe('Modal', () => {
     expect(scrollArea).toBeTruthy();
     expect(scrollArea?.className).toContain('overflow-y-auto');
     expect(scrollArea?.className).toContain('max-h-');
+  });
+
+  it('prevents closing on backdrop click by default', () => {
+    const onClose = vi.fn();
+    render(
+      <Modal open title="Create restaurant" onClose={onClose}>
+        <p>Form</p>
+      </Modal>,
+    );
+
+    const backdrop = screen.getByRole('dialog').parentElement!;
+    fireEvent.mouseDown(backdrop, { target: backdrop });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('allows closing on backdrop click when closeOnClickOutside is true', () => {
+    const onClose = vi.fn();
+    render(
+      <Modal
+        open
+        title="Create restaurant"
+        onClose={onClose}
+        closeOnClickOutside
+      >
+        <p>Form</p>
+      </Modal>,
+    );
+
+    const backdrop = screen.getByRole('dialog').parentElement!;
+    fireEvent.mouseDown(backdrop, { target: backdrop });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

@@ -6,7 +6,7 @@ RESTaurent.
 ## Current project stage
 
 Phase 2 is complete and FF RESTaurent `v1.1.0` is published. Read
-`.codex/PHASE_2_HANDOFF.md` and `wiki/RELEASE_1-1-0` before release,
+`.agents/PHASE_2_HANDOFF.md` and `wiki/RELEASE_1-1-0` before release,
 production, migration, or roadmap work. They record the shipped schema
 contracts, production verification and recovery evidence, and the branch
 boundary for later development.
@@ -21,14 +21,24 @@ a production regression is demonstrated. Phase 3 begins only after the Phase
 Before release, production, migration, or recovery work, read these records:
 
 - `wiki/RELEASE_1-1-0` - authoritative v1.1.0 scope and evidence.
-- `.codex/PHASE_2_HANDOFF.md` - Phase 2 implementation and contract-migration
+- `.agents/PHASE_2_HANDOFF.md` - Phase 2 implementation and contract-migration
   history. Treat unfinished checklist language there as historical when it
   conflicts with the final release record.
-- `.codex/PHASE_1_HANDOFF.md` - Phase 1 history only.
+- `.agents/PHASE_1_HANDOFF.md` - Phase 1 history only.
 
 Do not infer the next phase or ticket from an old handoff. Re-fetch Git and
 Linear, update a stale handoff when requested, and branch from the latest
 `origin/develop` unless the user explicitly defines another release boundary.
+
+## Agent skills system
+
+`.agents/` is the permanent, canonical, version-controlled home for all
+project agent skills, instructions, prompts, workflows, configurations,
+templates, metadata, and supporting assets. Create and maintain all such
+assets only under `.agents/`; do not create new project assets under `.codex/`.
+Run `npm run agents:verify` after changing agent-system assets. Because
+`.agents/` is tracked, every branch and Git worktree receives the same
+canonical system from its checked-out commit.
 
 The repository may contain user-owned uncommitted work. Preserve it. For broad
 or release work, use an isolated worktree rather than cleaning the user's
@@ -50,19 +60,33 @@ All packages are versioned `1.1.0`. The shipped database contains 17 Prisma
 migrations; the Phase 2 normalized-restaurant contract migration is
 `20260720000000_contract_phase2_normalized_restaurants`.
 
+## UI Development Instructions
+
+CRITICAL: Before touching, creating, or modifying any frontend/UI code:
+
+1. Read `.context/design-tokens.json` for color, spacing, and typography tokens.
+2. Read `.context/COMPONENTS.md` to prevent recreating existing components.
+3. Strictly follow `.context/ui-guidelines.md` (pay special attention to [MUST] tags).
+
 ## Common commands
 
 Run commands from the repository root.
 
 ```bash
 npm install
-npm run build -w @ff-restaurent/shared
+npm run prettier:check
 npm run lint
 npm run typecheck
 npm test
 npm run build
 npm run test:e2e
 ```
+
+`npm run typecheck` is `tsc -b` and `npm run build` compiles
+`@ff-restaurent/shared` first, so neither needs a manual shared pre-build after
+a clean `npm ci`. `npm run prettier:check` is the non-mutating counterpart to
+`npm run format` and is what CI enforces; the husky/lint-staged hook only covers
+staged files.
 
 Useful focused commands:
 
@@ -100,13 +124,20 @@ docker compose up --build
 `apps/api/src/app.ts` is composition-only. Domain routes are split under
 `apps/api/src/routes/`; do not put all endpoints back into `app.ts`.
 
-- Validation and request transforms: `apps/api/src/schemas.ts`
+`apps/api/src/` is grouped by layer. Add new code to the matching directory
+rather than the source root, which holds only `app.ts` and `server.ts`.
+
+- Validation and request transforms: `apps/api/src/schemas/` (import via the
+  `schemas/index.ts` barrel, not individual domain files)
 - Auth guards: `apps/api/src/http/auth-guards.ts`
 - Error mapping: `apps/api/src/http/error-handler.ts`
-- Role helpers and public user selection: `apps/api/src/roles.ts`
+- Role helpers and public user selection: `apps/api/src/lib/roles.ts`
+- Pure utilities and the Prisma client: `apps/api/src/lib/`
+- Environment and server configuration: `apps/api/src/config/`
+- Domain services: `apps/api/src/services/` (e.g. `bill-service.ts`,
+  `collection-service.ts`, `root-admin-service.ts`)
+- Restaurant compatibility serialization: `apps/api/src/contracts/restaurant-contract.ts`
 - Prisma schema and migrations: `apps/api/prisma/`
-- Restaurant compatibility serialization: `apps/api/src/restaurant-contract.ts`
-- Collection/favorite/recommendation rules: `apps/api/src/collection-service.ts`
 
 Use Prisma for persistence and Zod for request validation. When an API field or
 relation changes, update the Prisma migration, query select/include shape,
@@ -117,22 +148,35 @@ serializer, web API types, and focused tests together.
 The web application is route-based. Do not follow the obsolete single
 `App.tsx`/`tab`/`screen` architecture.
 
-- Router loaders/actions and route definitions: `apps/web/src/app/router.ts`
+- Route definitions: `apps/web/src/app/router.ts`; domain loaders/actions live
+  in `apps/web/src/features/<domain>/*.routes.ts`
 - App shell and route error boundary: `apps/web/src/app/App.tsx`
 - Providers: `apps/web/src/app/providers/`
-- Pages: `apps/web/src/pages/`
-- Restaurant feature UI: `apps/web/src/features/restaurants/`
-- API client/types: `apps/web/src/lib/api.ts`
+- Feature slices own pages, components, query hooks, loaders/actions, and
+  colocated tests under `apps/web/src/features/`
+- Shared route helpers: `apps/web/src/app/route-helpers.ts`
+- API client, application endpoints, transport types, and generated OpenAPI
+  artifacts: `apps/web/src/api/`
 - Session/token handling: `apps/web/src/lib/session.ts`
-- Role helpers: `apps/web/src/lib/helpers.ts`
+- Focused currency, permission, and display helpers: `apps/web/src/lib/`
 - Localized result mapping: `apps/web/src/lib/result-messages.ts`
-- Translations: `apps/web/src/lib/translations.ts`
+- Translations: `apps/web/src/lib/translations/` — JSON per locale and domain
+  (`{vi,en}/<domain>.json`) behind a typed barrel; add keys to Vietnamese first,
+  which is the source of truth for the key set
 
-Use the existing router loader/action patterns and `useMutation`. Mutation
-results, API failures, and background warnings use localized
+Route loaders are authoritative for route-entry data. Component-initiated reads
+use focused TanStack Query hooks with stable keys; do not call `session.api()`
+from components. Route-action submissions use `useRouteMutation`; media and
+other on-demand mutations use feature-owned TanStack mutations and explicitly
+invalidate query keys or revalidate route data. Mutation results, API failures,
+and background warnings use localized
 `react-hot-toast`; keep field validation inline, confirmations modal, and fatal
 route failures in the route error boundary. Avoid reintroducing page-level
 transient result banners.
+
+Use the `@/` alias for imports across module boundaries. The
+`apps/web/src/components/ui/index.ts` barrel exists for discoverability, but
+performance-sensitive modules may import a primitive directly.
 
 Use `apps/web/src/components/ui/Dropdown.tsx` for production selection controls;
 do not add native `<select>` elements. Use the app-owned `ScrollArea` CSS
@@ -143,8 +187,14 @@ overflow wrapper where scrolling is needed; do not add
 
 All persisted and API monetary values are integer cents. Core allocation logic
 is in `packages/shared/src/bill-splitting.ts`; never duplicate it in the API or
-web application. Rebuild the shared package after changes because consumers use
-its compiled output.
+web application.
+
+`apps/api` and `apps/web` consume `@ff-restaurent/shared` through TypeScript
+project references, so `npm run typecheck` (`tsc -b`) rebuilds
+`packages/shared/dist/` before checking the apps — no manual pre-build is
+needed. The one asymmetry to know about: web's `vite.config.ts` still aliases
+the package to its **source**, so the Vite dev server and Vitest pick up shared
+edits immediately, while `tsc` validates against the regenerated declarations.
 
 Vietnamese phone parsing is in `packages/shared/src/phone.ts`. The API is the
 authoritative validator and stores valid optional phones in E.164 form.
@@ -163,7 +213,7 @@ Effective permissions ascend as:
   administration, and other system controls.
 
 `chefRole` and `systemRole` are independent. HEAD_CHEF must never change member
-roles or ROOT_ADMIN ownership. Keep API checks in `apps/api/src/roles.ts` and web
+roles or ROOT_ADMIN ownership. Keep API checks in `apps/api/src/lib/roles.ts` and web
 checks in `apps/web/src/lib/helpers.ts` behaviorally aligned.
 
 JWTs carry `sessionVersion`. Password changes, assisted resets, and root
@@ -223,6 +273,9 @@ the same database snapshot as the dump.
   roadmap work; old plans and handoffs can be stale.
 - Preserve unrelated dirty-worktree changes and do not use destructive Git
   cleanup commands.
+- Run `npm run prettier:check` after every completed LLM task in this project,
+  and fix formatting with `npm run format` or focused Prettier writes before
+  handing work back.
 - Keep normalized Phase 2 contracts intact while implementing later phases.
 - Add indexes from measured final queries, not speculation.
 - Run focused tests first, then the applicable lint, typecheck, test, build,

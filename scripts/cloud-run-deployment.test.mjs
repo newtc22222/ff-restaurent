@@ -65,3 +65,13 @@ test('workflow passes only the public API URL into the web build', async () => {
     /DATABASE_URL=\$\{DATABASE_SECRET\}:latest.*JWT_SECRET=ff-jwt-secret:latest.*CORS_ORIGINS=\$\{CORS_SECRET\}:latest/s,
   );
 });
+
+test('deployment workflow supports staging deployment target for develop branch', async () => {
+  const workflow = await read('.github/workflows/gcp-deploy.yml');
+  assert.match(workflow, /branches:\s*\n\s*- main\s*\n\s*- develop/);
+  assert.match(workflow, /ff-restaurent-api-staging/);
+  assert.match(workflow, /ff-restaurent-web-staging/);
+  assert.match(workflow, /ff-restaurent-release-staging/);
+  assert.match(workflow, /ff-staging-database-url/);
+  assert.match(workflow, /ff-staging-cors-origins/);
+});

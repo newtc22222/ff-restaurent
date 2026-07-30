@@ -126,6 +126,7 @@ DATABASE_URL="$source_url" \
   BACKUP_PASSPHRASE="$passphrase" \
   DEPLOYED_GIT_SHA="${GITHUB_SHA:-2034a652cfa2707e11b88321e508cc5e05ed9801}" \
   SOURCE_DATABASE_ID=ff58-postgres16-fixture \
+  MIGRATION_INVENTORY_DIR="$repository_root/apps/api/prisma/migrations" \
   BASELINE_OUTPUT_DIR="$test_root/capture" \
   CAPTURE_OUTPUT_FILE="$capture_output" \
   bash "$test_root/capture-scripts/capture-production-baseline.sh" >/dev/null

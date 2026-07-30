@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
+import { publicUserSelect } from '../lib/roles.js';
+import { billActivityActorSelect } from '../services/bill-activity.js';
 import {
-  billActivityActorSelect,
   buildBillResponseInclude,
   paymentResponseInclude,
-} from './bill-routes.js';
-import { publicUserSelect } from '../roles.js';
+} from '../services/bill-serializers.js';
 
 const expectedPublicUserFields = [
-    'avatarUrl',
-    'chefRole',
+  'avatarUrl',
+  'chefRole',
   'createdAt',
   'id',
   'name',

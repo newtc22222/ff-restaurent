@@ -4,10 +4,10 @@ Web-first group bill-splitting and restaurant tracker for a single shared group.
 
 ## Stack
 
-- React + TypeScript + Vite + Tailwind CSS
+- React + React Router 7 + TypeScript + Vite + Tailwind CSS
 - Fastify + TypeScript API with JWT auth and Swagger at `/api/docs`
 - PostgreSQL + Prisma schema, migration, and seed data
-- Shared TypeScript package for enums, DTO-shaped types, and bill-splitting math
+- Shared TypeScript package for enums, DTO-shaped types, and bill-splitting math (Vite resolves `@ff-restaurent/shared` to source during web development, but API/root production builds require compiled output)
 - Docker Compose for Postgres, API, and static web frontend
 
 ## Run locally
@@ -28,9 +28,9 @@ locally so demo seeding remains enabled.
 
 Then open:
 
-- Web: http://localhost:5173
-- API health: http://localhost:4000/health
-- API docs: http://localhost:4000/api/docs
+- Web: <http://localhost:5173>
+- API health: <http://localhost:4000/health>
+- API docs: <http://localhost:4000/api/docs>
 
 Demo logins, all using `password123`:
 
@@ -40,9 +40,9 @@ Demo logins, all using `password123`:
 
 ### Manual npm setup
 
-Use this path when you want to run the API and Vite dev servers directly. Start
-a PostgreSQL 16-compatible database first, then create `.env` with a host URL
-reachable from your machine:
+Use this path when you want to run the API and Vite dev servers directly. The root `.env.example` is the canonical environment contract. No app-local `.env` files are required or supported.
+
+Start a PostgreSQL 16-compatible database first, then copy `.env.example` to `.env` at the project root and ensure it has a host URL reachable from your machine:
 
 ```env
 DATABASE_URL=postgresql://ff:ff@localhost:5432/ff_restaurent?schema=public
@@ -78,6 +78,14 @@ This command is idempotent: it inserts missing normalized cuisine names and
 does not update or delete existing catalog entries. API container deployments
 run it automatically after Prisma migrations and before the API starts.
 
+To test locally as `ROOT_ADMIN` using one of your own accounts instead of the
+seeded `head` user, register or seed that user first, set
+`ROOT_ADMIN_USERNAME` in `.env` to its username, then promote it:
+
+```bash
+npm run prisma:root:bootstrap -w @ff-restaurent/api
+```
+
 Run the API and web app in separate terminals:
 
 ```bash
@@ -89,6 +97,22 @@ npm run dev -w @ff-restaurent/web
 ```
 
 Open the same local URLs listed above.
+
+If the web app throws `Invalid hook call` / `Cannot read properties of null
+(reading 'useContext')` after pulling changes that add or update npm
+dependencies, the Vite dev server's dependency pre-bundle cache is stale.
+Clear it and restart (clean cache on browser, too):
+
+```bash
+rm -rf apps/web/node_modules/.vite
+
+# PowerShell
+Remove-Item -Recurse -Force apps/web/node_modules/.vite
+```
+
+```powershell
+Remove-Item -Recurse -Force apps\web\node_modules\.vite -ErrorAction SilentlyContinue
+```
 
 ### Supabase Storage setup
 
@@ -120,12 +144,13 @@ and remapped by province and ward name when edited.
 ## Verification
 
 ```bash
+npm run prettier:check
 npm run typecheck
 npm test
 npm run build
 ```
 
-The highest-risk bill math lives in `packages/shared/src/bill-splitting.ts` and is covered by Vitest tests for even splits, explicit origin costs, percentage discounts, and validation.
+The highest-risk bill math lives in `packages/shared/src/bill-splitting.ts` and is covered by Vitest tests for even splits, explicit origin costs, percentage discounts, and validation. The API intentionally uses `node:test` for its test runner, while the web and shared packages use Vitest.
 
 ## Key Features & Permissions
 

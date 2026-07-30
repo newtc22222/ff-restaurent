@@ -31,12 +31,19 @@ Prisma/PostgreSQL data layer, and Supabase-backed file storage. It serves
   `stats`. `media-routes.ts` handles Supabase image/QR upload/list/delete.
 - `src/http/` — `auth-guards.ts` (`requireAuth`, `requireSousChef`,
   `requireHeadChef`) and `error-handler.ts` (global error mapping).
-- `src/*.ts` (top level) — services & helpers: `schemas.ts` (Zod), `config.ts`
-  (`loadConfig()`), `prisma.ts` (client singleton), `roles.ts` (`isRootAdmin`,
-  `isSousChefOrAbove`, `isHeadChef`), `restaurant-contract.ts`,
-  `collection-service.ts`, `root-admin-service.ts`, `address-directory.ts`,
-  `pagination.ts`, `storage.ts`, `catalog-normalization.ts`,
-  `search-normalization.ts`, plus colocated `*.test.ts`.
+- `src/schemas/` — Zod request validation split by domain behind an
+  `index.ts` barrel. Import from the barrel.
+- `src/services/` — domain behaviour: `bill-service.ts`, `bill-activity.ts`,
+  `bill-serializers.ts`, `collection-service.ts`, `root-admin-service.ts`,
+  `storage.ts`, `address-directory.ts`, `phone-backfill.ts`,
+  `popular-cuisine-seed.ts`.
+- `src/contracts/` — API-boundary response shaping (`restaurant-contract.ts`).
+- `src/lib/` — `prisma.ts` (client singleton), `roles.ts` (`isRootAdmin`,
+  `isSousChefOrAbove`, `isHeadChef`), `pagination.ts`,
+  `catalog-normalization.ts`, `search-normalization.ts`.
+- `src/config/` — `config.ts` (`loadConfig()`), `server-config.ts`, `types.d.ts`.
+- Only `app.ts` and `server.ts` sit at the source root. Tests are colocated with
+  their subject.
 - `src/data/` — bundled datasets (e.g. the validated Vietnam province/ward
   directory backing `address-directory.ts`).
 - `prisma/` — `schema.prisma`, `migrations/`, seeds (`seed.ts`,
@@ -48,7 +55,7 @@ Prisma/PostgreSQL data layer, and Supabase-backed file storage. It serves
 
 - **New endpoint** → add/extend the matching `src/routes/<domain>-routes.ts`, and
   register the module in `src/app.ts` if it's new. Keep `app.ts` composition-only.
-- **Request validation** → define/extend a **Zod** schema in `src/schemas.ts`;
+- **Request validation** → define/extend a **Zod** schema in the matching `src/schemas/<domain>.ts` and import it through `src/schemas/index.ts`;
   parse at the route boundary. Don't hand-roll validation in handlers.
 - **Auth** → the `preHandler` chain is `requireAuth` (populates
   `request.currentUser`) → optional `requireSousChef` / `requireHeadChef`. Use the
@@ -88,9 +95,9 @@ Prisma/PostgreSQL data layer, and Supabase-backed file storage. It serves
    `RestaurantEntry.cuisineType` / `links` / `isFavorite` / `isRecommended`
    columns are **dropped**; Collections + normalized `Cuisine`/
    `RestaurantPlatformLink` relations are the sole persistence authority.
-   **However**, the API boundary still *serves* the legacy response aliases
+   **However**, the API boundary still _serves_ the legacy response aliases
    (`cuisineType`, `isFavorite`, `isRecommended`, `isFavoritedByMe`, derived in
-   `restaurant-contract.ts`) and still *accepts* the deprecated `links` write
+   `restaurant-contract.ts`) and still _accepts_ the deprecated `links` write
    input (translated to `platformLinks`) for client compatibility. Don't remove
    that compat surface, and don't try to write the dropped columns.
 3. **Global error handling.** `src/http/error-handler.ts` maps `ZodError` → 400

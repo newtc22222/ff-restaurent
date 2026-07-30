@@ -1,220 +1,34 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { createHash } from 'node:crypto';
 import { EntryStatus, PaymentStatus, Prisma } from '@prisma/client';
-import {
-  AdjustmentAllocation,
-  calculateBillSplit,
-} from '@ff-restaurent/shared';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
+
+import { AdjustmentAllocation, parseIsoDateOnly } from '@ff-restaurent/shared';
+
 import {
   requireAuthenticatedUser,
   requireHeadChef,
   requireSousChefOrHeadChef,
 } from '../http/auth-guards.js';
-import { prisma } from '../prisma.js';
-import { isHeadChef, isSousChefOrAbove, publicUserSelect } from '../roles.js';
+import { prisma } from '../lib/prisma.js';
+import { isHeadChef, isSousChefOrAbove } from '../lib/roles.js';
+import { billListQuerySchema, paymentStatusSchema } from '../schemas/index.js';
 import {
-  billListQuerySchema,
-  billSchema,
-  paymentStatusSchema,
-} from '../schemas.js';
+  billActivityActorSelect,
+  buildBillActivityTimeline,
+} from '../services/bill-activity.js';
 import {
-  type PublicRestaurantRecord,
-  buildPublicRestaurantSelect,
-  serializePublicRestaurant,
-} from '../restaurant-contract.js';
-import { signedQrUrl } from '../storage.js';
-
-const REMINDER_COOLDOWN_MS = 15 * 60 * 1000;
-
-export const buildBillResponseInclude = (userId: string) => ({
-  restaurant: { select: buildPublicRestaurantSelect(userId) },
-  createdBy: { select: publicUserSelect },
-  participants: {
-    include: { member: { select: publicUserSelect } },
-    orderBy: { member: { name: 'asc' as const } },
-  },
-  paymentQrImage: {
-    select: {
-      id: true,
-      label: true,
-      storagePath: true,
-      status: true,
-    },
-  },
-});
-
-const serializeBill = async <
-  T extends {
-    restaurant: PublicRestaurantRecord;
-    paymentQrImage?: null | {
-      id: string;
-      label: string;
-      storagePath: string;
-      status: EntryStatus;
-    };
-  },
->(
-  bill: T,
-  userId: string,
-) => ({
-  ...bill,
-  restaurant: serializePublicRestaurant(bill.restaurant, userId),
-  paymentQrImage: bill.paymentQrImage
-    ? {
-        id: bill.paymentQrImage.id,
-        label: bill.paymentQrImage.label,
-        status: bill.paymentQrImage.status,
-        imageUrl: await signedQrUrl(bill.paymentQrImage.storagePath),
-      }
-    : null,
-});
-
-export const paymentResponseInclude = {
-  member: { select: publicUserSelect },
-  bill: true,
-};
-
-export const billActivityActorSelect = {
-  id: true,
-  username: true,
-  name: true,
-} satisfies Prisma.UserSelect;
-
-type BillActivityActor = Prisma.UserGetPayload<{
-  select: typeof billActivityActorSelect;
-}>;
-
-type BillActivityDetails = {
-  changes?: string[];
-  memberId?: string;
-  memberName?: string;
-  fromStatus?: string;
-  toStatus?: string;
-  sent?: number;
-  skipped?: number;
-};
-
-type BillActivitySource = {
-  id: string;
-  createdAt: Date;
-  createdBy: BillActivityActor;
-  participants: Array<{ memberId: string; member: BillActivityActor }>;
-  auditLogs: Array<{
-    id: string;
-    action: string;
-    before: Prisma.JsonValue | null;
-    after: Prisma.JsonValue | null;
-    createdAt: Date;
-    user: BillActivityActor;
-  }>;
-};
-
-const isJsonObject = (
-  value: Prisma.JsonValue | null,
-): value is Prisma.JsonObject =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const valueChanged = (before: unknown, after: unknown) =>
-  JSON.stringify(before) !== JSON.stringify(after);
-
-const updatedFields = (
-  before: Prisma.JsonValue | null,
-  after: Prisma.JsonValue | null,
-) => {
-  if (!isJsonObject(before) || !isJsonObject(after)) return [];
-  const changes = new Set<string>();
-  if (valueChanged(before.restaurantId, after.restaurantId))
-    changes.add('restaurant');
-  if (
-    ['baseCost', 'vat', 'shippingFee', 'totalCost'].some((field) =>
-      valueChanged(before[field], after[field]),
-    )
-  )
-    changes.add('costs');
-  if (
-    valueChanged(before.discounts, after.discounts) ||
-    valueChanged(before.vouchers, after.vouchers) ||
-    valueChanged(before.adjustmentAllocation, after.adjustmentAllocation)
-  )
-    changes.add('adjustments');
-  if (
-    valueChanged(before.paymentUrl, after.paymentUrl) ||
-    valueChanged(before.paymentQrImageId, after.paymentQrImageId)
-  )
-    changes.add('paymentLink');
-  if (valueChanged(before.participants, after.participants))
-    changes.add('participants');
-  return [...changes];
-};
-
-const activityDetails = (
-  log: BillActivitySource['auditLogs'][number],
-  participantNames: Map<string, string>,
-): BillActivityDetails | undefined => {
-  if (log.action === 'UPDATED') {
-    return { changes: updatedFields(log.before, log.after) };
-  }
-  if (log.action === 'PAYMENT_STATUS_CHANGED' && isJsonObject(log.after)) {
-    const before = isJsonObject(log.before) ? log.before : {};
-    const memberId =
-      typeof log.after.memberId === 'string' ? log.after.memberId : undefined;
-    return {
-      memberId,
-      memberName: memberId ? participantNames.get(memberId) : undefined,
-      fromStatus:
-        typeof before.paymentStatus === 'string'
-          ? before.paymentStatus
-          : undefined,
-      toStatus:
-        typeof log.after.paymentStatus === 'string'
-          ? log.after.paymentStatus
-          : undefined,
-    };
-  }
-  if (log.action === 'REMINDERS_SENT' && isJsonObject(log.after)) {
-    return {
-      sent: typeof log.after.sent === 'number' ? log.after.sent : 0,
-      skipped: typeof log.after.skipped === 'number' ? log.after.skipped : 0,
-    };
-  }
-  return undefined;
-};
-
-const visibleActivityActions = new Set([
-  'UPDATED',
-  'PAYMENT_STATUS_CHANGED',
-  'REMINDERS_SENT',
-  'ARCHIVED',
-  'RESTORED',
-]);
-
-export const buildBillActivityTimeline = (bill: BillActivitySource) => {
-  const participantNames = new Map(
-    bill.participants.map((participant) => [
-      participant.memberId,
-      participant.member.name,
-    ]),
-  );
-  const events = bill.auditLogs
-    .filter((log) => visibleActivityActions.has(log.action))
-    .map((log) => ({
-      id: log.id,
-      action: log.action,
-      actor: log.user,
-      details: activityDetails(log, participantNames),
-      createdAt: log.createdAt,
-    }));
-  events.push({
-    id: `created-${bill.id}`,
-    action: 'CREATED',
-    actor: bill.createdBy,
-    details: undefined,
-    createdAt: bill.createdAt,
-  });
-  return events.sort(
-    (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
-  );
-};
+  buildBillResponseInclude,
+  paymentResponseInclude,
+  serializeBill,
+} from '../services/bill-serializers.js';
+import {
+  REMINDER_COOLDOWN_MS,
+  computeBillCreateData,
+  createBillFingerprint,
+  participantAllocationsChanged,
+  participantCreateData,
+  validateParticipantIds,
+  validatePaymentQr,
+} from '../services/bill-service.js';
 
 const canManageBill = (
   bill: { createdById: string },
@@ -232,154 +46,6 @@ const canViewBill = (
   bill.participants.some(
     (participant) => participant.memberId === request.currentUser.id,
   );
-
-type FingerprintBill = {
-  restaurantId: string;
-  baseCost: number;
-  vat: number;
-  shippingFee: number;
-  paymentUrl?: string | null;
-  paymentQrImageId?: string | null;
-  discounts?: unknown[];
-  vouchers?: unknown[];
-  adjustmentAllocation?: AdjustmentAllocation | 'EQUAL' | 'PROPORTIONAL';
-  participants: Array<{ memberId: string; originCost?: number }>;
-};
-
-export const createBillFingerprint = (bill: FingerprintBill) => {
-  const canonical = {
-    restaurantId: bill.restaurantId,
-    baseCost: bill.baseCost,
-    vat: bill.vat,
-    shippingFee: bill.shippingFee,
-    paymentUrl: bill.paymentUrl ?? null,
-    paymentQrImageId: bill.paymentQrImageId ?? null,
-    discounts: [...(bill.discounts ?? [])].sort((left, right) =>
-      JSON.stringify(left).localeCompare(JSON.stringify(right)),
-    ),
-    vouchers: [...(bill.vouchers ?? [])].sort((left, right) =>
-      JSON.stringify(left).localeCompare(JSON.stringify(right)),
-    ),
-    adjustmentAllocation:
-      bill.adjustmentAllocation ?? AdjustmentAllocation.PROPORTIONAL,
-    participants: bill.participants
-      .map(({ memberId, originCost }) => ({ memberId, originCost }))
-      .sort((left, right) => left.memberId.localeCompare(right.memberId)),
-  };
-  return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
-};
-
-const computeBillCreateData = (
-  body: unknown,
-  createdById: string,
-  fallbackAllocation = AdjustmentAllocation.PROPORTIONAL,
-  legacyPaymentUrl: string | null = null,
-) => {
-  const parsed = billSchema.parse(body);
-  const adjustmentAllocation =
-    parsed.adjustmentAllocation ?? fallbackAllocation;
-  const split = calculateBillSplit({ ...parsed, adjustmentAllocation });
-  return {
-    allowDuplicate: parsed.allowDuplicate,
-    bill: {
-      restaurantId: parsed.restaurantId,
-      baseCost: parsed.baseCost,
-      vat: parsed.vat,
-      shippingFee: parsed.shippingFee,
-      paymentUrl: legacyPaymentUrl,
-      paymentQrImageId: parsed.paymentQrImageId ?? null,
-      discounts: (parsed.discounts ?? []) as Prisma.InputJsonValue,
-      vouchers: (parsed.vouchers ?? []) as Prisma.InputJsonValue,
-      adjustmentAllocation,
-      totalCost: split.totalCost,
-      createdById,
-      duplicateFingerprint: createBillFingerprint({
-        ...parsed,
-        adjustmentAllocation,
-      }),
-    },
-    participants: split.participants,
-  };
-};
-
-const validatePaymentQr = async (
-  paymentQrImageId: string | null | undefined,
-  ownerId: string,
-  reply: FastifyReply,
-) => {
-  if (!paymentQrImageId) return true;
-  const qr = await prisma.paymentQrImage.findFirst({
-    where: {
-      id: paymentQrImageId,
-      ownerId,
-      status: EntryStatus.ACTIVE,
-    },
-    select: { id: true },
-  });
-  if (qr) return true;
-  reply.code(400).send({
-    code: 'PAYMENT_QR_INVALID',
-    message: 'Payment QR must be active and owned by the bill creator',
-  });
-  return false;
-};
-
-const participantCreateData = (
-  participants: ReturnType<typeof computeBillCreateData>['participants'],
-) =>
-  participants.map((participant) => ({
-    memberId: participant.memberId,
-    originCost: participant.originCost,
-    allocatedVat: participant.allocatedVat,
-    allocatedShipping: participant.allocatedShipping,
-    discountApplied: participant.discountApplied,
-    finalPrice: participant.finalPrice,
-  }));
-
-type PersistedParticipant = {
-  memberId: string;
-  originCost: number;
-  allocatedVat: number;
-  allocatedShipping: number;
-  discountApplied: number;
-  finalPrice: number;
-};
-
-const participantAllocationsChanged = (
-  existing: PersistedParticipant[],
-  next: PersistedParticipant[],
-) => {
-  if (existing.length !== next.length) return true;
-  const byMember = new Map(existing.map((item) => [item.memberId, item]));
-  return next.some((participant) => {
-    const previous = byMember.get(participant.memberId);
-    return (
-      !previous ||
-      previous.originCost !== participant.originCost ||
-      previous.allocatedVat !== participant.allocatedVat ||
-      previous.allocatedShipping !== participant.allocatedShipping ||
-      previous.discountApplied !== participant.discountApplied ||
-      previous.finalPrice !== participant.finalPrice
-    );
-  });
-};
-
-const validateParticipantIds = async (
-  participantIds: string[],
-  reply: FastifyReply,
-) => {
-  const userCount = await prisma.user.count({
-    where: { id: { in: participantIds } },
-  });
-  if (userCount !== participantIds.length) {
-    reply.code(400).send({
-      code: 'INVALID_PARTICIPANTS',
-      message: 'One or more participants do not exist',
-    });
-    return false;
-  }
-  return true;
-};
 
 /**
  * Bill routes keep shared bill math close to bill persistence and permissions.
@@ -443,23 +109,16 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         .map((value) => value.trim())
         .filter(Boolean)
         .slice(0, 100);
-      const to = query.to
-        ? new Date(
-            query.to.getUTCHours() === 0 &&
-              query.to.getUTCMinutes() === 0 &&
-              query.to.getUTCSeconds() === 0
-              ? query.to.getTime() + 86_400_000 - 1
-              : query.to.getTime(),
-          )
-        : undefined;
+      const from = query.from ? parseIsoDateOnly(query.from) : undefined;
+      const to = query.to ? parseIsoDateOnly(query.to) : undefined;
       const orderBy: Prisma.BillOrderByWithRelationInput[] =
         query.sort === 'created-asc'
-          ? [{ createdAt: 'asc' }, { id: 'asc' }]
+          ? [{ occurredOn: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }]
           : query.sort === 'total-desc'
             ? [{ totalCost: 'desc' }, { id: 'desc' }]
             : query.sort === 'total-asc'
               ? [{ totalCost: 'asc' }, { id: 'asc' }]
-              : [{ createdAt: 'desc' }, { id: 'desc' }];
+              : [{ occurredOn: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }];
       const backward = query.direction === 'backward' && Boolean(query.cursor);
       const queriedRows = await prisma.bill.findMany({
         where: {
@@ -473,8 +132,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
               status,
               restaurantId: query.restaurantId,
               createdById: query.ownerId,
-              createdAt:
-                query.from || to ? { gte: query.from, lte: to } : undefined,
+              occurredOn: from || to ? { gte: from, lte: to } : undefined,
             },
           ],
         },
@@ -571,18 +229,25 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         request.body,
         request.currentUser.id,
       );
-      if (
-        !(await validatePaymentQr(
-          computed.bill.paymentQrImageId,
-          request.currentUser.id,
-          reply,
-        ))
-      )
-        return;
+      const qrCheck = await validatePaymentQr(
+        computed.bill.paymentQrImageId,
+        request.currentUser.id,
+      );
+      if (!qrCheck.ok) {
+        return reply
+          .code(400)
+          .send({ code: qrCheck.code, message: qrCheck.message });
+      }
       const participantIds = computed.participants.map(
         (participant) => participant.memberId,
       );
-      if (!(await validateParticipantIds(participantIds, reply))) return;
+      const participantCheck = await validateParticipantIds(participantIds);
+      if (!participantCheck.ok) {
+        return reply.code(400).send({
+          code: participantCheck.code,
+          message: participantCheck.message,
+        });
+      }
       const created = await prisma.$transaction(async (tx) => {
         if (!computed.allowDuplicate) {
           const lockKey = `${request.currentUser.id}:${computed.bill.duplicateFingerprint}`;
@@ -593,16 +258,20 @@ export const registerBillRoutes = (app: FastifyInstance) => {
               duplicateFingerprint: computed.bill.duplicateFingerprint,
               status: EntryStatus.ACTIVE,
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [
+              { occurredOn: 'desc' },
+              { createdAt: 'desc' },
+              { id: 'desc' },
+            ],
             select: { id: true },
           });
           if (!duplicate) {
             const legacyCandidates = await tx.bill.findMany({
               where: {
                 createdById: request.currentUser.id,
-                duplicateFingerprint: null,
                 status: EntryStatus.ACTIVE,
                 restaurantId: computed.bill.restaurantId,
+                occurredOn: computed.bill.occurredOn,
                 baseCost: computed.bill.baseCost,
                 vat: computed.bill.vat,
                 shippingFee: computed.bill.shippingFee,
@@ -684,19 +353,34 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         existing.createdById,
         existing.adjustmentAllocation as AdjustmentAllocation,
         existing.paymentUrl,
+        existing.occurredOn,
       );
-      if (
-        !(await validatePaymentQr(
-          computed.bill.paymentQrImageId,
-          existing.createdById,
-          reply,
-        ))
-      )
-        return;
+      const qrCheck = await validatePaymentQr(
+        computed.bill.paymentQrImageId,
+        existing.createdById,
+      );
+      if (!qrCheck.ok) {
+        return reply
+          .code(400)
+          .send({ code: qrCheck.code, message: qrCheck.message });
+      }
       const participantIds = computed.participants.map(
         (participant) => participant.memberId,
       );
-      if (!(await validateParticipantIds(participantIds, reply))) return;
+      const existingParticipantIds = new Set(
+        existing.participants.map((participant) => participant.memberId),
+      );
+      const participantCheck = await validateParticipantIds(
+        participantIds.filter(
+          (participantId) => !existingParticipantIds.has(participantId),
+        ),
+      );
+      if (!participantCheck.ok) {
+        return reply.code(400).send({
+          code: participantCheck.code,
+          message: participantCheck.message,
+        });
+      }
       const nextParticipants = participantCreateData(computed.participants);
       const hasPaidParticipant = existing.participants.some(
         (participant) => participant.paymentStatus === PaymentStatus.PAID,

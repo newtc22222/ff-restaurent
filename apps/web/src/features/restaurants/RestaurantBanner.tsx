@@ -1,6 +1,6 @@
 import { ImageOff } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 export default function RestaurantBanner({
   name,
