@@ -466,13 +466,61 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    get: operations['getDining-areasById'];
     put: operations['putDining-areasById'];
     post?: never;
     delete: operations['deleteDining-areasById'];
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  '/dining-areas/{id}/images': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['postDining-areasByIdImages'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/dining-areas/{id}/images/{imageId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations['deleteDining-areasByIdImagesByImageId'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/dining-areas/{id}/images/{imageId}/default': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['patchDining-areasByIdImagesByImageIdDefault'];
     trace?: never;
   };
   '/feedback/{id}': {
@@ -2459,6 +2507,7 @@ export interface operations {
     parameters: {
       query?: {
         cursor?: string;
+        direction?: 'forward' | 'backward';
         limit?: number;
         provinceCode?: string;
         search?: string;
@@ -2780,6 +2829,7 @@ export interface operations {
     parameters: {
       query?: {
         cursor?: string;
+        direction?: 'forward' | 'backward';
         limit?: number;
         provinceCode?: string;
         search?: string;
@@ -2941,6 +2991,7 @@ export interface operations {
     parameters: {
       query?: {
         cursor?: string;
+        direction?: 'forward' | 'backward';
         limit?: number;
         provinceCode?: string;
         search?: string;
@@ -3107,6 +3158,7 @@ export interface operations {
     parameters: {
       query?: {
         cursor?: string;
+        direction?: 'forward' | 'backward';
         limit?: number;
         provinceCode?: string;
         search?: string;
@@ -3328,6 +3380,7 @@ export interface operations {
     parameters: {
       query?: {
         cursor?: string;
+        direction?: 'forward' | 'backward';
         limit?: number;
         provinceCode?: string;
         search?: string;
@@ -3442,6 +3495,56 @@ export interface operations {
       };
     };
   };
+  'getDining-areasById': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Default Response */
+      '2XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+      /** @description Default Response */
+      '4XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Default Response */
+      '5XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
   'putDining-areasById': {
     parameters: {
       query?: never;
@@ -3511,6 +3614,158 @@ export interface operations {
       header?: never;
       path: {
         id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Default Response */
+      '2XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+      /** @description Default Response */
+      '4XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Default Response */
+      '5XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  'postDining-areasByIdImages': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Default Response */
+      '2XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+      /** @description Default Response */
+      '4XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Default Response */
+      '5XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  'deleteDining-areasByIdImagesByImageId': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        imageId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Default Response */
+      '2XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+      /** @description Default Response */
+      '4XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Default Response */
+      '5XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  'patchDining-areasByIdImagesByImageIdDefault': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        imageId: string;
       };
       cookie?: never;
     };

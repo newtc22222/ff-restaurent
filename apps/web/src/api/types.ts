@@ -49,6 +49,23 @@ export type DiningArea = {
   wardCode?: string | null;
   wardName?: string | null;
   description?: string | null;
+  defaultImage?: DiningAreaImage | null;
+  images?: DiningAreaImage[];
+};
+
+export type DiningAreaImage = {
+  id: string;
+  mimeType: string;
+  sizeBytes: number;
+  sortOrder: number;
+  imageUrl: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DiningAreaDetailData = DiningArea & {
+  images: DiningAreaImage[];
+  restaurants: CatalogPage<RestaurantEntry>;
 };
 
 export type CatalogPage<T> = {

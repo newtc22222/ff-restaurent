@@ -11,17 +11,20 @@ import {
   diningAreaSchema,
   diningAreaUpdateSchema,
   normalizeVietnamAddressSnapshot,
+  restaurantListQuerySchema,
 } from '../schemas/index.js';
 import {
   createCuisine,
   createDiningArea,
   deleteCuisine,
   deleteDiningArea,
+  getDiningArea,
   listCuisines,
   listDiningAreas,
   updateCuisine,
   updateDiningArea,
 } from '../services/catalog-service.js';
+import { listRestaurants } from '../services/restaurant-service.js';
 
 /** Catalog routes: parsing and status codes; persistence in catalog-service. */
 export const registerCatalogRoutes = (app: FastifyInstance) => {
@@ -55,6 +58,24 @@ export const registerCatalogRoutes = (app: FastifyInstance) => {
     '/dining-areas',
     { preHandler: requireAuthenticatedUser },
     async (request) => listDiningAreas(catalogQuerySchema.parse(request.query)),
+  );
+
+  app.get(
+    '/dining-areas/:id',
+    { preHandler: requireAuthenticatedUser },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const area = await getDiningArea(id);
+      const restaurants = await listRestaurants(
+        restaurantListQuerySchema.parse({
+          diningAreaId: id,
+          limit: 25,
+          sort: 'name-asc',
+        }),
+        request.currentUser,
+      );
+      return { ...area, restaurants };
+    },
   );
 
   app.post('/dining-areas', manage, async (request, reply) => {

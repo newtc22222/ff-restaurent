@@ -18,6 +18,7 @@ export type MutationBody = {
   accountStatus?: string;
   requestId?: string;
   notificationId?: string;
+  catalogId?: string;
   billsReturnTo?: string;
 };
 

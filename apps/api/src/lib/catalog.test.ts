@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { restaurantSchema } from '../schemas/index.js';
+import { catalogQuerySchema, restaurantSchema } from '../schemas/index.js';
 import {
   diningAreaKey,
   normalizeCatalogKey,
@@ -58,4 +58,13 @@ test('restaurant catalog selections require one included primary cuisine', () =>
     }).success,
     false,
   );
+});
+
+test('catalog queries support deterministic backward cursor navigation', () => {
+  const query = catalogQuerySchema.parse({
+    cursor: 'cuisine-25',
+    direction: 'backward',
+  });
+  assert.equal(query.direction, 'backward');
+  assert.equal(query.limit, 25);
 });

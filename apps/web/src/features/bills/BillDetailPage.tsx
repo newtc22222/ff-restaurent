@@ -1,9 +1,11 @@
+import { toBlob } from 'html-to-image';
 import {
   Archive as ArchiveIcon,
   BellRing,
   CheckCircle2,
   CirclePlus,
   Clock,
+  Copy,
   Edit3,
   ExternalLink,
   History,
@@ -11,7 +13,8 @@ import {
   RotateCcw,
   WalletCards,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import {
   Navigate,
   useLoaderData,
@@ -87,6 +90,7 @@ export default function BillDetailPage() {
     memberId: string;
     current: 'PAID' | 'WAITING';
   } | null>(null);
+  const billCaptureRef = useRef<HTMLDivElement>(null);
 
   const bill = bills.find((candidate) => candidate.id === billId);
   if (!bill) return <Navigate to="/bills" replace />;
@@ -105,6 +109,50 @@ export default function BillDetailPage() {
   const allPaid =
     bill.participants.length > 0 && paid === bill.participants.length;
   const canManage = canManageBill(bill, user);
+  const downloadBillScreenshot = (blob: Blob) => {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `bill-${bill.id}.png`;
+    anchor.click();
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+  };
+
+  const copyBillScreenshot = async () => {
+    try {
+      const node = billCaptureRef.current;
+      if (!node) throw new Error('Bill capture target is unavailable');
+      const blob = await toBlob(node, {
+        cacheBust: true,
+        pixelRatio: 2,
+        filter: (element) =>
+          !(
+            element instanceof HTMLElement &&
+            'billCaptureIgnore' in element.dataset
+          ),
+      });
+      if (!blob) throw new Error('Bill capture did not produce an image');
+      if (
+        typeof window.ClipboardItem === 'undefined' ||
+        !window.navigator.clipboard?.write
+      ) {
+        downloadBillScreenshot(blob);
+        toast.success(t('toast.billDownloaded'));
+        return;
+      }
+      try {
+        await window.navigator.clipboard.write([
+          new window.ClipboardItem({ 'image/png': blob }),
+        ]);
+        toast.success(t('toast.billCopied'));
+      } catch {
+        downloadBillScreenshot(blob);
+        toast.success(t('toast.billDownloaded'));
+      }
+    } catch {
+      toast.error(t('toast.billCopyFailed'));
+    }
+  };
   const pieData = bill.participants.map((p) => ({
     name: p.member.name.split(' ')[0],
     value: p.finalPrice,
@@ -154,7 +202,11 @@ export default function BillDetailPage() {
       <div className="mx-auto w-full max-w-6xl py-2">
         <BackButton onClick={onBack} label={t('bills.backToBills')} />
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] lg:items-start">
+        <div
+          ref={billCaptureRef}
+          data-bill-capture
+          className="mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:items-start"
+        >
           <div className="space-y-4">
             <section className="rounded-xl border border-border bg-surface p-6 shadow-sm">
               <div className="mb-4 flex items-start justify-between gap-4">
@@ -171,17 +223,25 @@ export default function BillDetailPage() {
                     {formatDateOnlyForLocale(bill.occurredOn, locale)}
                   </p>
                 </div>
-                <div className="shrink-0 text-right">
+                <div className="flex shrink-0 flex-col items-end gap-2 text-right">
                   <p className="text-[28px] font-bold leading-none text-ink">
                     {money(bill.totalCost)}
                   </p>
                   <span
-                    className={`mt-1 inline-block text-[11px] font-semibold uppercase tracking-wide ${
+                    className={`text-[11px] font-semibold uppercase tracking-wide ${
                       allPaid ? 'text-emerald-500' : 'text-[#e9900c]'
                     }`}
                   >
                     {allPaid ? t('bills.settled') : bill.status}
                   </span>
+                  <button
+                    type="button"
+                    className="btn btn-soft h-8 px-2.5 text-xs"
+                    data-bill-capture-ignore
+                    onClick={() => void copyBillScreenshot()}
+                  >
+                    <Copy size={13} /> {t('bills.copyScreenshot')}
+                  </button>
                 </div>
               </div>
 
@@ -204,7 +264,7 @@ export default function BillDetailPage() {
 
             {(bill.discounts.length > 0 || bill.vouchers.length > 0) && (
               <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-                <h3 className="label mb-3">Adjustments</h3>
+                <h3 className="label mb-3">{t('bills.adjustments')}</h3>
                 <div className="space-y-2 text-sm">
                   {bill.discounts.map((discount, index) => (
                     <div
@@ -212,8 +272,9 @@ export default function BillDetailPage() {
                       className="flex justify-between"
                     >
                       <span>
-                        {discount.label || `Discount ${index + 1}`} (
-                        {discount.type})
+                        {discount.label ||
+                          `${t('bills.discount')} ${index + 1}`}{' '}
+                        ({discount.type})
                       </span>
                       <span className="font-semibold text-emerald-600">
                         −
@@ -225,7 +286,9 @@ export default function BillDetailPage() {
                   ))}
                   {bill.vouchers.map((voucher) => (
                     <div key={voucher.code} className="flex justify-between">
-                      <span>Voucher {voucher.code}</span>
+                      <span>
+                        {t('bills.voucher')} {voucher.code}
+                      </span>
                       <span className="font-semibold text-emerald-600">
                         −{money(voucher.value)}
                       </span>
@@ -237,7 +300,7 @@ export default function BillDetailPage() {
 
             {pieData.length > 1 && (
               <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-                <h3 className="label mb-3">Bill share breakdown</h3>
+                <h3 className="label mb-3">{t('bills.shareBreakdown')}</h3>
                 <div className="flex items-center justify-center">
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
@@ -299,12 +362,15 @@ export default function BillDetailPage() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Open secure payment link <ExternalLink size={14} />
+                {t('bills.openPaymentLink')} <ExternalLink size={14} />
               </a>
             ) : null}
 
             {canManage && canChef(user) && (
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div
+                className="flex flex-col gap-3 sm:flex-row"
+                data-bill-capture-ignore
+              >
                 <button
                   className="btn btn-soft flex-1"
                   onClick={() =>
@@ -365,8 +431,9 @@ export default function BillDetailPage() {
                         )}
                       </div>
                       <p className="mt-0.5 text-[12px] text-slate-500">
-                        Base {money(participant.originCost)} / VAT{' '}
-                        {money(participant.allocatedVat)} / Ship{' '}
+                        {t('bills.base')} {money(participant.originCost)} /{' '}
+                        {t('bills.vat')} {money(participant.allocatedVat)} /{' '}
+                        {t('bills.shipping')}{' '}
                         {money(participant.allocatedShipping)}
                       </p>
                     </div>
@@ -395,6 +462,7 @@ export default function BillDetailPage() {
                     </div>
                     {(canManage || participant.memberId === user.id) && (
                       <button
+                        data-bill-capture-ignore
                         className="btn btn-soft h-8 px-3 text-[12px]"
                         onClick={() =>
                           setPendingPayment({
@@ -405,7 +473,7 @@ export default function BillDetailPage() {
                       >
                         {participant.paymentStatus === 'WAITING'
                           ? t('bills.markPaid')
-                          : 'Correct'}
+                          : t('bills.correctPaymentStatus')}
                       </button>
                     )}
                   </div>
@@ -415,9 +483,10 @@ export default function BillDetailPage() {
 
             {canManage && canChef(user) && (
               <button
+                data-bill-capture-ignore
                 className="btn btn-soft w-full"
                 disabled={allPaid}
-                title={allPaid ? 'All members have paid' : undefined}
+                title={allPaid ? t('bills.allPaid') : undefined}
                 onClick={() =>
                   void mutate(
                     { intent: 'bill-reminders' },
@@ -432,7 +501,7 @@ export default function BillDetailPage() {
               </button>
             )}
 
-            <section className="panel overflow-hidden">
+            <section className="panel overflow-hidden" data-bill-capture-ignore>
               <div className="flex items-start gap-3 border-b border-border px-5 py-4">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-ink">
                   <History size={17} />

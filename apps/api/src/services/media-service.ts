@@ -138,6 +138,146 @@ export const clearUserAvatar = async (userId: string, logger: Logger) => {
 
 export type RestaurantImageKind = 'logo' | 'banner';
 
+type DiningAreaImageRecord = {
+  id: string;
+  storagePath: string;
+  mimeType: string;
+  sizeBytes: number;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+const serializeDiningAreaImage = (image: DiningAreaImageRecord) => ({
+  id: image.id,
+  mimeType: image.mimeType,
+  sizeBytes: image.sizeBytes,
+  sortOrder: image.sortOrder,
+  imageUrl: publicImageUrl(image.storagePath),
+  createdAt: image.createdAt,
+  updatedAt: image.updatedAt,
+});
+
+const diningAreaImageSelect = {
+  id: true,
+  storagePath: true,
+  mimeType: true,
+  sizeBytes: true,
+  sortOrder: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+export const uploadDiningAreaImage = async (
+  diningAreaId: string,
+  readPart: () => Promise<MultipartFile>,
+) => {
+  const area = await prisma.diningArea.findUnique({
+    where: { id: diningAreaId },
+    select: { id: true },
+  });
+  if (!area) return null;
+  const part = await readPart();
+  const uploaded = await uploadImage({
+    part,
+    bucket: storageBuckets().publicBucket,
+    folder: `dining-areas/${diningAreaId}`,
+    limit: PUBLIC_IMAGE_LIMIT,
+  });
+  const image = await persistOrRollback(
+    storageBuckets().publicBucket,
+    uploaded.path,
+    () =>
+      prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${diningAreaId}))::text AS lock`;
+        const last = await tx.diningAreaImage.aggregate({
+          where: { diningAreaId },
+          _max: { sortOrder: true },
+        });
+        const created = await tx.diningAreaImage.create({
+          data: {
+            diningAreaId,
+            storagePath: uploaded.path,
+            mimeType: uploaded.mimeType,
+            sizeBytes: uploaded.sizeBytes,
+            sortOrder: (last._max.sortOrder ?? -1) + 1,
+          },
+          select: diningAreaImageSelect,
+        });
+        const count = await tx.diningAreaImage.count({
+          where: { diningAreaId },
+        });
+        if (count === 1) {
+          await tx.diningArea.update({
+            where: { id: diningAreaId },
+            data: { defaultImageId: created.id },
+          });
+        }
+        return created;
+      }),
+  );
+  return serializeDiningAreaImage(image);
+};
+
+export const setDiningAreaDefaultImage = async (
+  diningAreaId: string,
+  imageId: string,
+) => {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${diningAreaId}))::text AS lock`;
+    const image = await tx.diningAreaImage.findFirst({
+      where: { id: imageId, diningAreaId },
+      select: { id: true },
+    });
+    if (!image) return null;
+    await tx.diningArea.update({
+      where: { id: diningAreaId },
+      data: { defaultImageId: imageId },
+    });
+    return { defaultImageId: imageId };
+  });
+};
+
+export const deleteDiningAreaImage = async (
+  diningAreaId: string,
+  imageId: string,
+) => {
+  const image = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${diningAreaId}))::text AS lock`;
+    const selectedImage = await tx.diningAreaImage.findFirst({
+      where: { id: imageId, diningAreaId },
+      select: {
+        ...diningAreaImageSelect,
+        defaultFor: { select: { id: true } },
+      },
+    });
+    if (!selectedImage) return null;
+    const nextDefault = selectedImage.defaultFor
+      ? await tx.diningAreaImage.findFirst({
+          where: { diningAreaId, id: { not: imageId } },
+          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+          select: { id: true },
+        })
+      : null;
+    if (selectedImage.defaultFor) {
+      await tx.diningArea.update({
+        where: { id: diningAreaId },
+        data: { defaultImageId: nextDefault?.id ?? null },
+      });
+    }
+    await tx.diningAreaImage.delete({ where: { id: imageId } });
+    return selectedImage;
+  });
+  if (!image) return null;
+  try {
+    await removeObject(storageBuckets().publicBucket, image.storagePath);
+  } catch {
+    // The database state is authoritative; failed cleanup is an object leak,
+    // not a reason to report that the already-completed deletion failed.
+  }
+  return { deleted: true };
+};
+
 const imageField = (kind: RestaurantImageKind) =>
   kind === 'logo' ? ('avatarUrl' as const) : ('bannerImageUrl' as const);
 

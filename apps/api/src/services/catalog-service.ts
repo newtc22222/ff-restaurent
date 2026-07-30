@@ -1,13 +1,13 @@
 import { Prisma } from '@prisma/client';
 import type { z } from 'zod';
 
-import { conflict } from '../http/app-error.js';
+import { conflict, notFound } from '../http/app-error.js';
 import {
   diningAreaKey,
   normalizeCatalogKey,
   normalizeDisplayText,
 } from '../lib/catalog-normalization.js';
-import { pageResult } from '../lib/pagination.js';
+import { cursorPageResult } from '../lib/pagination.js';
 import { prisma } from '../lib/prisma.js';
 import { normalizeSearchQuery } from '../lib/search-normalization.js';
 import type {
@@ -16,6 +16,7 @@ import type {
   diningAreaSchema,
   diningAreaUpdateSchema,
 } from '../schemas/index.js';
+import { publicImageUrl, removeObject, storageBuckets } from './storage.js';
 
 /**
  * Cuisine and Dining Area catalogs.
@@ -43,12 +44,70 @@ const diningAreaSelect = {
   wardCode: true,
   wardName: true,
   description: true,
+  defaultImage: {
+    select: {
+      id: true,
+      storagePath: true,
+      mimeType: true,
+      sizeBytes: true,
+      sortOrder: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  },
+} satisfies Prisma.DiningAreaSelect;
+
+const diningAreaDetailSelect = {
+  ...diningAreaSelect,
+  images: {
+    orderBy: [{ sortOrder: 'asc' as const }, { id: 'asc' as const }],
+    select: {
+      id: true,
+      storagePath: true,
+      mimeType: true,
+      sizeBytes: true,
+      sortOrder: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  },
 } satisfies Prisma.DiningAreaSelect;
 
 type CatalogQuery = z.infer<typeof catalogQuerySchema>;
 type CuisineInput = z.infer<typeof cuisineSchema>;
 type DiningAreaInput = z.infer<typeof diningAreaSchema>;
 type DiningAreaUpdate = z.infer<typeof diningAreaUpdateSchema>;
+
+const serializeDiningAreaImage = (image: {
+  id: string;
+  storagePath: string;
+  mimeType: string;
+  sizeBytes: number;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+}) => ({
+  id: image.id,
+  mimeType: image.mimeType,
+  sizeBytes: image.sizeBytes,
+  sortOrder: image.sortOrder,
+  imageUrl: publicImageUrl(image.storagePath),
+  createdAt: image.createdAt,
+  updatedAt: image.updatedAt,
+});
+
+const serializeDiningArea = <
+  T extends {
+    defaultImage: Parameters<typeof serializeDiningAreaImage>[0] | null;
+  },
+>(
+  area: T,
+) => ({
+  ...area,
+  defaultImage: area.defaultImage
+    ? serializeDiningAreaImage(area.defaultImage)
+    : null,
+});
 
 export const listCuisines = async (query: CatalogQuery) => {
   const orderBy: Prisma.CuisineOrderByWithRelationInput[] =
@@ -59,6 +118,7 @@ export const listCuisines = async (query: CatalogQuery) => {
         : query.sort === 'created-asc'
           ? [{ createdAt: 'asc' }, { id: 'asc' }]
           : [{ nameKey: 'asc' }, { id: 'asc' }];
+  const backward = query.direction === 'backward' && Boolean(query.cursor);
   const items = await prisma.cuisine.findMany({
     where: {
       searchText: query.search
@@ -70,10 +130,11 @@ export const listCuisines = async (query: CatalogQuery) => {
     },
     orderBy,
     ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-    take: query.limit + 1,
+    take: backward ? -(query.limit + 1) : query.limit + 1,
     select: cuisineSelect,
   });
-  return pageResult(items, query.limit);
+  const page = cursorPageResult(items, query.limit, backward, query.cursor);
+  return page;
 };
 
 export const createCuisine = (body: CuisineInput) =>
@@ -127,6 +188,7 @@ export const listDiningAreas = async (query: CatalogQuery) => {
         : query.sort === 'created-asc'
           ? [{ createdAt: 'asc' }, { id: 'asc' }]
           : [{ normalizedKey: 'asc' }, { id: 'asc' }];
+  const backward = query.direction === 'backward' && Boolean(query.cursor);
   const items = await prisma.diningArea.findMany({
     where: {
       searchText: query.search
@@ -136,23 +198,29 @@ export const listDiningAreas = async (query: CatalogQuery) => {
     },
     orderBy,
     ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-    take: query.limit + 1,
+    take: backward ? -(query.limit + 1) : query.limit + 1,
     select: diningAreaSelect,
   });
-  return pageResult(items, query.limit);
+  const page = cursorPageResult(items, query.limit, backward, query.cursor);
+  return {
+    ...page,
+    items: await Promise.all(page.items.map(serializeDiningArea)),
+  };
 };
 
 export const createDiningArea = (body: DiningAreaInput) => {
   const name = normalizeDisplayText(body.name);
-  return prisma.diningArea.create({
-    data: {
-      ...body,
-      name,
-      description: body.description || null,
-      normalizedKey: diningAreaKey(name, body.address),
-    },
-    select: diningAreaSelect,
-  });
+  return prisma.diningArea
+    .create({
+      data: {
+        ...body,
+        name,
+        description: body.description || null,
+        normalizedKey: diningAreaKey(name, body.address),
+      },
+      select: diningAreaSelect,
+    })
+    .then(serializeDiningArea);
 };
 
 /**
@@ -163,21 +231,39 @@ export const updateDiningArea = async (id: string, body: DiningAreaUpdate) => {
   const existing = await prisma.diningArea.findUniqueOrThrow({ where: { id } });
   const name = normalizeDisplayText(body.name ?? existing.name);
   const address = body.address ?? existing.address;
-  return prisma.diningArea.update({
+  return prisma.diningArea
+    .update({
+      where: { id },
+      data: {
+        ...body,
+        name,
+        normalizedKey: diningAreaKey(name, address),
+        ...(body.description !== undefined
+          ? { description: body.description || null }
+          : {}),
+      },
+      select: diningAreaSelect,
+    })
+    .then(serializeDiningArea);
+};
+
+export const getDiningArea = async (id: string) => {
+  const area = await prisma.diningArea.findUnique({
     where: { id },
-    data: {
-      ...body,
-      name,
-      normalizedKey: diningAreaKey(name, address),
-      ...(body.description !== undefined
-        ? { description: body.description || null }
-        : {}),
-    },
-    select: diningAreaSelect,
+    select: diningAreaDetailSelect,
   });
+  if (!area) throw notFound('DINING_AREA_NOT_FOUND', 'Dining Area not found');
+  return {
+    ...serializeDiningArea(area),
+    images: area.images.map(serializeDiningAreaImage),
+  };
 };
 
 export const deleteDiningArea = async (id: string) => {
+  const images = await prisma.diningAreaImage.findMany({
+    where: { diningAreaId: id },
+    select: { storagePath: true },
+  });
   const references = await prisma.restaurantEntry.count({
     where: { diningAreaId: id },
   });
@@ -188,4 +274,17 @@ export const deleteDiningArea = async (id: string) => {
     );
   }
   await prisma.diningArea.delete({ where: { id } });
+  if (images.length > 0) {
+    try {
+      const { publicBucket } = storageBuckets();
+      await Promise.all(
+        images.map(({ storagePath }) =>
+          removeObject(publicBucket, storagePath).catch(() => undefined),
+        ),
+      );
+    } catch {
+      // The catalog deletion has committed. Storage cleanup remains best
+      // effort so an unavailable provider cannot turn success into a 5xx.
+    }
+  }
 };

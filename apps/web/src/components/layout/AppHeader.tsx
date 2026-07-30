@@ -109,6 +109,8 @@ export default function AppHeader({
         <div className="hidden min-w-0 flex-1 md:block" />
 
         <div className="ml-auto hidden items-center gap-2 md:flex">
+          <LocaleToggle {...localeControlProps} />
+          <ThemeToggle {...themeControlProps} />
           {onOpenNotification && (
             <button
               type="button"
@@ -125,8 +127,6 @@ export default function AppHeader({
               )}
             </button>
           )}
-          <LocaleToggle {...localeControlProps} />
-          <ThemeToggle {...themeControlProps} />
           <div className="relative">
             <button
               type="button"
@@ -230,6 +230,15 @@ export default function AppHeader({
                 </span>
               </button>
 
+              <div className="my-1 border-t border-border" />
+              <div className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium text-ink">
+                <span>{t('nav.language')}</span>
+                <LocaleToggle {...localeControlProps} />
+              </div>
+              <div className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium text-ink">
+                <span>{t('nav.theme')}</span>
+                <ThemeToggle {...themeControlProps} />
+              </div>
               {onOpenNotification && (
                 <button
                   type="button"
@@ -250,16 +259,6 @@ export default function AppHeader({
                   )}
                 </button>
               )}
-
-              <div className="my-1 border-t border-border" />
-              <div className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium text-ink">
-                <span>{t('nav.language')}</span>
-                <LocaleToggle {...localeControlProps} />
-              </div>
-              <div className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium text-ink">
-                <span>{t('nav.theme')}</span>
-                <ThemeToggle {...themeControlProps} />
-              </div>
               <div className="my-1 border-t border-border" />
               <button
                 type="button"
