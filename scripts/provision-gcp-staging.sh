@@ -208,7 +208,6 @@ apply_staging() {
     fi
   fi
   ensure_secret_version "$STAGING_ROOT_ADMIN_PASSWORD_SECRET" "$root_password"
-  ensure_secret_version "$STAGING_CORS_SECRET" "https://${STAGING_WEB_DOMAIN}"
 
   # Populate staging database URL with percent-encoded password
   local db_password connection_name encoded_password staging_db_url
@@ -262,6 +261,11 @@ PY
   else
     log "Cloud Run service present: ${STAGING_WEB_SERVICE}"
   fi
+
+  local staging_web_url
+  staging_web_url="$(gcloud_cmd run services describe "$STAGING_WEB_SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)' --quiet)"
+  [[ -n "$staging_web_url" ]] || die "staging web service URL is unavailable"
+  ensure_secret_version "$STAGING_CORS_SECRET" "https://${STAGING_WEB_DOMAIN},${staging_web_url}"
 
   if ! resource_exists run jobs describe "$STAGING_RELEASE_JOB" --project "$PROJECT_ID" --region "$REGION" --quiet; then
     log "Reconciling Cloud Run release job placeholder: ${STAGING_RELEASE_JOB}"

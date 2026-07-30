@@ -31,6 +31,9 @@ import {
   parseLocalDateOnly,
 } from '@/lib/date-only';
 
+const focusableDialogSelector =
+  'button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
 export interface DatePickerProps {
   value?: string;
   onChange: (value: string) => void;
@@ -69,6 +72,7 @@ export default function DatePicker({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   const datePickerId = useId();
   const elementId = id || datePickerId;
 
@@ -111,6 +115,11 @@ export default function DatePicker({
   const handleOpen = () => {
     if (disabled) return;
     updatePosition();
+    const activeElement = document.activeElement as HTMLElement | null;
+    previousFocusRef.current =
+      activeElement && activeElement !== document.body
+        ? activeElement
+        : triggerRef.current;
     setViewDate(selectedDate || new Date());
     setOpen(true);
   };
@@ -118,9 +127,48 @@ export default function DatePicker({
   useEffect(() => {
     if (!open) return;
     updatePosition();
+    window.requestAnimationFrame(() => {
+      const selectedDay = popoverRef.current?.querySelector<HTMLElement>(
+        '[data-selected="true"]',
+      );
+      const firstFocusable = popoverRef.current?.querySelector<HTMLElement>(
+        focusableDialogSelector,
+      );
+      (selectedDay || firstFocusable || popoverRef.current)?.focus();
+    });
+
     const handleScrollOrResize = () => updatePosition();
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        return;
+      }
+
+      if (e.key !== 'Tab' || !popoverRef.current) return;
+      const focusable = Array.from(
+        popoverRef.current.querySelectorAll<HTMLElement>(
+          focusableDialogSelector,
+        ),
+      ).filter((element) => !element.hasAttribute('disabled'));
+      if (focusable.length === 0) {
+        e.preventDefault();
+        popoverRef.current.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      } else if (!popoverRef.current.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -142,6 +190,11 @@ export default function DatePicker({
       window.removeEventListener('scroll', handleScrollOrResize, true);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('mousedown', handleClickOutside);
+      const previous = previousFocusRef.current;
+      if (previous && document.contains(previous)) {
+        previous.focus({ preventScroll: true });
+      }
+      previousFocusRef.current = null;
     };
   }, [open]);
 
@@ -237,6 +290,7 @@ export default function DatePicker({
             role="dialog"
             aria-modal="true"
             aria-label={ariaLabel || placeholder}
+            tabIndex={-1}
             style={{
               position: 'absolute',
               top: `${popoverPos.top}px`,
@@ -310,6 +364,7 @@ export default function DatePicker({
                     key={day.toISOString()}
                     type="button"
                     aria-label={format(day, 'PPP', { locale: activeLocale })}
+                    data-selected={selected ? 'true' : undefined}
                     disabled={dayDisabled}
                     onClick={() => handleSelectDay(day)}
                     className={cellStyle}
