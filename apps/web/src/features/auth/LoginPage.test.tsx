@@ -40,6 +40,30 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('LoginPage', () => {
+  it('stacks demo roles on mobile and restores the desktop columns', () => {
+    vi.mocked(useFetcher).mockReturnValue({
+      state: 'idle',
+      data: undefined,
+      submit: vi.fn(),
+    } as never);
+
+    render(
+      <ThemeProvider>
+        <I18nProvider>
+          <LoginPage />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+
+    const roles = screen.getByTestId('demo-role-grid');
+    expect(roles.className).toContain('grid-cols-1');
+    expect(roles.className).toContain('sm:grid-cols-3');
+    for (const button of roles.querySelectorAll('button')) {
+      expect(button.className).toContain('w-full');
+      expect(button.className).toContain('whitespace-normal');
+    }
+  });
+
   it('shows handled fetcher action errors once as localized toasts', async () => {
     vi.mocked(useFetcher).mockReturnValue({
       state: 'idle',

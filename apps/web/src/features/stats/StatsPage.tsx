@@ -104,10 +104,10 @@ export default function StatsPage() {
   const hasData = stats.totals.totalObligation > 0;
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-5">
       <SectionTitle title={t('stats.title')} subtitle={t('stats.subtitle')} />
 
-      <section className="panel p-4" aria-label={t('stats.range')}>
+      <section className="panel min-w-0 p-4" aria-label={t('stats.range')}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="w-full sm:w-56">
             <div className="label mb-1.5">{t('stats.range')}</div>
@@ -122,7 +122,7 @@ export default function StatsPage() {
           </div>
 
           {range === 'custom' && (
-            <div className="grid w-full gap-3 sm:grid-cols-[1fr_1fr_auto] lg:max-w-2xl">
+            <div className="grid w-full min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:max-w-2xl">
               <label>
                 <span className="label mb-1.5 block">{t('stats.from')}</span>
                 <DatePicker value={from} onChange={setFrom} />
@@ -133,7 +133,7 @@ export default function StatsPage() {
               </label>
               <button
                 type="button"
-                className="btn btn-primary self-end"
+                className="btn btn-primary w-full self-end sm:w-auto"
                 disabled={customRangeInvalid}
                 onClick={applyCustomRange}
               >
@@ -149,8 +149,8 @@ export default function StatsPage() {
         )}
       </section>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <article className="panel flex items-center gap-3 p-4">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-3">
+        <article className="panel flex min-w-0 items-center gap-3 p-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-basil text-white">
             <WalletCards size={19} />
           </div>
@@ -161,7 +161,7 @@ export default function StatsPage() {
             </div>
           </div>
         </article>
-        <article className="panel flex items-center gap-3 p-4">
+        <article className="panel flex min-w-0 items-center gap-3 p-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-saffron text-white">
             <Clock3 size={19} />
           </div>
@@ -172,7 +172,7 @@ export default function StatsPage() {
             </div>
           </div>
         </article>
-        <article className="panel flex items-center gap-3 p-4">
+        <article className="panel flex min-w-0 items-center gap-3 p-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]">
             <CircleDollarSign size={19} />
           </div>
@@ -201,9 +201,9 @@ export default function StatsPage() {
           />
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
           {paymentData.length > 0 && (
-            <article className="panel p-4">
+            <article className="panel min-w-0 p-4">
               <h3 className="mb-3 font-bold">{t('stats.paymentStatus')}</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
@@ -247,7 +247,7 @@ export default function StatsPage() {
           )}
 
           {cuisineData.length > 0 && (
-            <article className="panel p-4">
+            <article className="panel min-w-0 p-4">
               <h3 className="mb-3 font-bold">{t('stats.cuisineType')}</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart
@@ -279,7 +279,7 @@ export default function StatsPage() {
           )}
 
           {periodData.length > 0 && (
-            <article className="panel p-4 md:col-span-2">
+            <article className="panel min-w-0 p-4 md:col-span-2">
               <h3 className="mb-3 font-bold">{t('stats.spendingTrend')}</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart
@@ -304,7 +304,7 @@ export default function StatsPage() {
           )}
 
           {freqRestaurant.length > 0 && (
-            <article className="panel p-4">
+            <article className="panel min-w-0 p-4">
               <h3 className="mb-3 font-bold">
                 {t('stats.frequencyRestaurant')}
               </h3>
@@ -312,9 +312,10 @@ export default function StatsPage() {
                 {freqRestaurant.slice(0, 8).map(([name, count]) => (
                   <div
                     key={name}
-                    className="flex items-center justify-between text-sm"
+                    className="flex min-w-0 items-center justify-between gap-3 text-sm"
+                    data-testid="restaurant-frequency-row"
                   >
-                    <span className="truncate">{name}</span>
+                    <span className="min-w-0 flex-1 truncate">{name}</span>
                     <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
                       {count}×
                     </span>
@@ -325,15 +326,16 @@ export default function StatsPage() {
           )}
 
           {freqCuisine.length > 0 && (
-            <article className="panel p-4">
+            <article className="panel min-w-0 p-4">
               <h3 className="mb-3 font-bold">{t('stats.frequencyCuisine')}</h3>
               <div className="space-y-2">
                 {freqCuisine.slice(0, 8).map(([name, count]) => (
                   <div
                     key={name}
-                    className="flex items-center justify-between text-sm"
+                    className="flex min-w-0 items-center justify-between gap-3 text-sm"
+                    data-testid="cuisine-frequency-row"
                   >
-                    <span className="truncate">{name}</span>
+                    <span className="min-w-0 flex-1 truncate">{name}</span>
                     <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
                       {count}×
                     </span>

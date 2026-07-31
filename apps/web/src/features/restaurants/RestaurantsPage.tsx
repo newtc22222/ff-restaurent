@@ -211,9 +211,9 @@ export default function RestaurantsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="min-w-0 space-y-4">
+      <div className="min-w-0 space-y-4">
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <SectionTitle
             title={t('restaurants.title')}
             subtitle={t('restaurants.subtitle')}
@@ -243,7 +243,7 @@ export default function RestaurantsPage() {
             ) : undefined
           }
         >
-          <div className="grid gap-2 md:grid-cols-3">
+          <div className="grid min-w-0 gap-2 md:grid-cols-3">
             <input
               className="field w-full"
               type="search"
@@ -280,7 +280,7 @@ export default function RestaurantsPage() {
               ]}
             />
           </div>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-4">
             <Dropdown
               label={t('restaurants.filterDiningArea')}
               value={filterDiningArea}
@@ -303,7 +303,7 @@ export default function RestaurantsPage() {
               allowClear
               clearLabel={t('bills.clearAll')}
             />
-            <div className="grid grid-cols-[1fr_auto] gap-2">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2">
               <Dropdown
                 label={t('restaurants.filterCuisine')}
                 value={filterCuisine}
@@ -356,7 +356,10 @@ export default function RestaurantsPage() {
             steps={[]}
           />
         )}
-        <div className="grid gap-3 md:grid-cols-2">
+        <div
+          className="grid min-w-0 gap-3 md:grid-cols-2"
+          data-testid="restaurants-grid"
+        >
           {restaurants.map((entry) => (
             <RestaurantCard
               key={entry.id}
@@ -365,7 +368,7 @@ export default function RestaurantsPage() {
             />
           ))}
         </div>
-        <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="w-28">
             <Dropdown
               label={t('common.rows')}
@@ -378,10 +381,13 @@ export default function RestaurantsPage() {
               }))}
             />
           </div>
-          <div className="flex gap-2">
+          <div
+            className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:w-auto"
+            data-testid="restaurants-pagination-actions"
+          >
             <button
               type="button"
-              className="btn btn-soft"
+              className="btn btn-soft min-w-0 w-full sm:w-auto"
               disabled={
                 !page.pageInfo.hasPreviousPage || !page.pageInfo.startCursor
               }
@@ -394,7 +400,7 @@ export default function RestaurantsPage() {
             </button>
             <button
               type="button"
-              className="btn btn-soft"
+              className="btn btn-soft min-w-0 w-full sm:w-auto"
               disabled={!page.pageInfo.hasNextPage || !page.pageInfo.endCursor}
               onClick={() =>
                 page.pageInfo.endCursor &&

@@ -161,4 +161,16 @@ describe('RestaurantsPage Cuisine filters', () => {
       expect(params.has('primaryCuisineId')).toBe(false);
     });
   });
+
+  it('uses full-width two-column pagination actions on mobile', () => {
+    renderPage('/restaurants');
+
+    const pagination = screen.getByTestId('restaurants-pagination-actions');
+    expect(pagination.className).toContain('grid-cols-2');
+    expect(pagination.className).toContain('sm:flex');
+    for (const button of pagination.querySelectorAll('button')) {
+      expect(button.className).toContain('w-full');
+      expect(button.className).toContain('sm:w-auto');
+    }
+  });
 });

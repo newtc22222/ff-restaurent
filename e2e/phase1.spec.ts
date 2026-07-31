@@ -1,3 +1,5 @@
+import { mkdir } from 'node:fs/promises';
+
 import { type Page, expect, test } from '@playwright/test';
 import {
   ChefRole,
@@ -9,6 +11,20 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 const apiUrl = `http://127.0.0.1:${process.env.E2E_API_PORT ?? 4000}`;
+const reviewDir = 'test-results/ff-83-review';
+
+const expectNoPageOverflow = async (page: Page) => {
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+};
+
+const captureReview = async (page: Page, name: string) => {
+  await mkdir(reviewDir, { recursive: true });
+  await page.screenshot({ path: `${reviewDir}/${name}.png`, fullPage: true });
+};
 
 const login = async (page: Page, username: string) => {
   await page.addInitScript(() => localStorage.setItem('ff-locale', 'en'));
@@ -619,7 +635,27 @@ test('Root Admin archives, restores, administers roles, and cannot alter root th
   expect(denied.status()).toBe(403);
 });
 
-test('mobile app shell and bill list fit without page overflow', async ({
+test('mobile login stacks demo roles without page overflow', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem('ff-locale', 'en'));
+  await page.goto('/');
+
+  const roleGrid = page.getByTestId('demo-role-grid');
+  await expect(roleGrid).toBeVisible();
+  const roleButtons = roleGrid.getByRole('button');
+  await expect(roleButtons).toHaveCount(3);
+  const boxes = await roleButtons.evaluateAll((buttons) =>
+    buttons.map((button) => button.getBoundingClientRect().toJSON()),
+  );
+  expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y);
+  expect(boxes[2]!.y).toBeGreaterThan(boxes[1]!.y);
+  await expectNoPageOverflow(page);
+  await captureReview(page, 'mobile-login');
+});
+
+test('mobile list pages keep actions reachable without page overflow', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -656,16 +692,75 @@ test('mobile app shell and bill list fit without page overflow', async ({
   const restaurantsLink = mobileNavigation.getByRole('link', {
     name: 'Restaurants',
   });
+
+  await page.getByRole('button', { name: 'Table' }).click();
+  await expect(page.getByTestId('bill-mobile-table')).toBeVisible();
+  await expect(page.getByRole('table')).toBeHidden();
+  await expect(page.getByTestId('bills-pagination-actions')).toBeVisible();
+  await expectNoPageOverflow(page);
+  await captureReview(page, 'mobile-bills-table');
+
   await expect(restaurantsLink).toBeVisible();
   await restaurantsLink.click();
   await expect(page).toHaveURL(/\/restaurants$/);
   await expect(restaurantsLink).toHaveAttribute('aria-current', 'page');
+  await expect(
+    page.getByRole('searchbox', {
+      name: 'Search restaurants without accents...',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('restaurants-pagination-actions'),
+  ).toBeVisible();
   await expect(page.locator('main')).toHaveCount(1);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
+  await expectNoPageOverflow(page);
+  await captureReview(page, 'mobile-restaurants');
+
+  await mobileNavigation.getByRole('link', { name: 'Collections' }).click();
+  await expect(page).toHaveURL(/\/collections$/);
+  await expect(
+    page.getByRole('button', { name: 'Create Collection' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('searchbox', { name: 'Search Collections' }),
+  ).toBeVisible();
+  await expectNoPageOverflow(page);
+  await captureReview(page, 'mobile-collections');
+
+  await mobileNavigation.getByRole('link', { name: 'Stats' }).click();
+  await expect(page).toHaveURL(/\/stats$/);
+  await expect(page.getByRole('heading', { name: 'Statistics' })).toBeVisible();
+  await page.goto('/stats?range=custom&from=2026-07-01&to=2026-07-31');
+  await expect(page.getByRole('button', { name: 'Apply' })).toBeVisible();
+  await expectNoPageOverflow(page);
+  await captureReview(page, 'mobile-stats');
+});
+
+test('desktop list and table density remains intact', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await login(page, 'e2e-customer');
+
+  await page.getByRole('button', { name: 'Table' }).click();
+  await expect(page.getByTestId('bill-mobile-table')).toBeHidden();
+  await expect(page.getByRole('table')).toBeVisible();
+  await expectNoPageOverflow(page);
+  await captureReview(page, 'desktop-bills-table');
+
+  await page.goto('/restaurants');
+  await expect(page.getByTestId('restaurants-grid')).toHaveCSS(
+    'grid-template-columns',
+    /\S+\s+\S+/,
+  );
+  await expectNoPageOverflow(page);
+  await captureReview(page, 'desktop-restaurants');
+
+  await page.goto('/collections');
+  await expect(page.getByTestId('collections-grid')).toHaveCSS(
+    'grid-template-columns',
+    /\S+\s+\S+\s+\S+/,
+  );
+  await expectNoPageOverflow(page);
+  await captureReview(page, 'desktop-collections');
 });
 
 test('member changes password while older sessions are invalidated', async ({

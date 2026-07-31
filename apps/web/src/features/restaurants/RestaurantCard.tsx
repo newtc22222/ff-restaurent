@@ -27,14 +27,14 @@ export default function RestaurantCard({
 
   return (
     <article
-      className={`ticket-edge panel overflow-hidden transition-shadow hover:shadow-md ${cardTone}`}
+      className={`ticket-edge panel min-w-0 overflow-hidden transition-shadow hover:shadow-md ${cardTone}`}
     >
       <button
         type="button"
-        className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chili focus-visible:ring-inset"
+        className="block w-full min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chili focus-visible:ring-inset"
         onClick={onOpen}
       >
-        <div className="flex gap-3 p-4 pb-3">
+        <div className="flex min-w-0 gap-3 p-4 pb-3">
           {restaurant.avatarUrl ? (
             <img
               src={restaurant.avatarUrl}
@@ -76,7 +76,7 @@ export default function RestaurantCard({
         {restaurant.cuisines?.slice(0, 4).map(({ cuisine, isPrimary }) => (
           <span
             key={cuisine.id}
-            className={`chip ${isPrimary ? 'chip-saffron' : 'chip-muted'}`}
+            className={`chip max-w-full truncate ${isPrimary ? 'chip-saffron' : 'chip-muted'}`}
           >
             {cuisine.name}
           </span>
@@ -84,7 +84,7 @@ export default function RestaurantCard({
         {restaurant.platformLinks?.slice(0, 3).map((link) => (
           <span
             key={link.id ?? `${link.platform}-${link.url}`}
-            className="chip chip-muted"
+            className="chip chip-muted max-w-full truncate"
           >
             {link.label?.trim() || link.platform}
           </span>
@@ -105,7 +105,9 @@ export default function RestaurantCard({
           </span>
         )}
         {actions && (
-          <div className="ml-auto flex items-center gap-1">{actions}</div>
+          <div className="ml-auto flex min-w-0 flex-wrap items-center gap-1">
+            {actions}
+          </div>
         )}
       </div>
     </article>
