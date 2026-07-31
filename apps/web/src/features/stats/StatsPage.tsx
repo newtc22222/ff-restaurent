@@ -151,7 +151,7 @@ export default function StatsPage() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <article className="panel flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-basil text-white">
             <WalletCards size={19} />
           </div>
           <div className="min-w-0">
@@ -162,7 +162,7 @@ export default function StatsPage() {
           </div>
         </article>
         <article className="panel flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#e9900c] text-white">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-saffron text-white">
             <Clock3 size={19} />
           </div>
           <div className="min-w-0">

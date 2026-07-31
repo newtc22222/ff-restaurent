@@ -180,7 +180,7 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <section className="panel p-6">
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#e9900c] text-xl font-bold text-white">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-saffron text-xl font-bold text-white">
                 {user.avatarUrl ? (
                   <img
                     className="h-full w-full object-cover"

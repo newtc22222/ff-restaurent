@@ -28,39 +28,6 @@ vi.mock('react-router', async (importOriginal) => {
   };
 });
 
-vi.mock('@/components/ui/Dropdown', () => ({
-  default: ({
-    ariaLabel,
-    value = '',
-    values = [],
-    options,
-    multiple,
-    onChange,
-  }: any) => (
-    <select
-      aria-label={ariaLabel}
-      multiple={multiple}
-      value={multiple ? values : value}
-      onChange={(event) =>
-        onChange(
-          multiple
-            ? Array.from(event.currentTarget.selectedOptions).map(
-                (option) => option.value,
-              )
-            : event.currentTarget.value,
-        )
-      }
-    >
-      <option value="">Choose</option>
-      {options.map((option: any) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  ),
-}));
-
 vi.mock('@/hooks/useRouteMutation', () => ({
   useRouteMutation: () => ({ mutate }),
 }));
@@ -184,25 +151,23 @@ describe('CreateBillPage repeat workflows', () => {
       </QueryProvider>,
     );
 
-    expect(screen.getAllByText('Blocked Bob (blocked account)')).toHaveLength(
-      2,
-    );
-    const participantPicker = screen.getByLabelText(
-      'Add participant',
-    ) as HTMLSelectElement;
+    expect(screen.getByText('Blocked Bob (blocked account)')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Add participant' }));
     expect(
-      Array.from(participantPicker.options).some(
-        (option) => option.text === 'Blocked Bob (blocked account)',
-      ),
-    ).toBe(true);
+      screen.getByRole('option', {
+        name: /Blocked Bob \(blocked account\)/,
+      }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByTestId('dropdown-backdrop'));
 
     fireEvent.click(screen.getAllByTitle('Remove')[0]!);
     expect(screen.queryByText('Blocked Bob (blocked account)')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Add participant' }));
     expect(
-      Array.from(participantPicker.options).some(
-        (option) => option.text === 'Blocked Bob (blocked account)',
-      ),
-    ).toBe(false);
+      screen.queryByRole('option', {
+        name: /Blocked Bob \(blocked account\)/,
+      }),
+    ).toBeNull();
   });
 
   it('applies an owner participant group without managing it inline', () => {
@@ -214,9 +179,8 @@ describe('CreateBillPage repeat workflows', () => {
       </QueryProvider>,
     );
 
-    fireEvent.change(screen.getByLabelText('Choose a group'), {
-      target: { value: 'group-1' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a group' }));
+    fireEvent.click(screen.getByRole('option', { name: /Lunch crew/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply group' }));
     expect(screen.getByLabelText('Base amount for Alice')).toBeTruthy();
     expect(screen.getByLabelText('Base amount for Bob')).toBeTruthy();
@@ -235,17 +199,17 @@ describe('CreateBillPage repeat workflows', () => {
         </I18nProvider>
       </QueryProvider>,
     );
-    fireEvent.change(screen.getByLabelText('Restaurant / Eatery'), {
-      target: { value: 'restaurant-1' },
-    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Restaurant / Eatery' }),
+    );
+    fireEvent.click(screen.getByRole('option', { name: /Lunch Place/ }));
     fireEvent.click(screen.getByLabelText('Bill date'));
     const day15 = screen
       .getAllByRole('button', { name: /July 15.*2026/i })
       .find((btn) => !btn.hasAttribute('disabled'));
     if (day15) fireEvent.click(day15);
-    fireEvent.change(screen.getByLabelText('Choose a group'), {
-      target: { value: 'group-1' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a group' }));
+    fireEvent.click(screen.getByRole('option', { name: /Lunch crew/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply group' }));
     fireEvent.change(screen.getByLabelText('Base amount for Alice'), {
       target: { value: '6000' },
@@ -284,9 +248,8 @@ describe('CreateBillPage repeat workflows', () => {
     const value = screen.getByLabelText('Discount 1 value');
     fireEvent.change(value, { target: { value: '500' } });
     expect((value as HTMLInputElement).value).toContain('500');
-    fireEvent.change(screen.getByLabelText('Discount 1 type'), {
-      target: { value: 'PERCENTAGE' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Discount 1 type' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Percent' }));
     expect((value as HTMLInputElement).value).toBe('');
   });
 });
