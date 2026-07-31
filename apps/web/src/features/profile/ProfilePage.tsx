@@ -505,7 +505,6 @@ export default function ProfilePage() {
           pending={mediaBusy}
           onCancel={() => setDeletingQr(null)}
           onConfirm={() => void removeQr()}
-          t={t}
         />
       )}
     </div>

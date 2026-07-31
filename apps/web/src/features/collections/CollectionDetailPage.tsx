@@ -419,7 +419,6 @@ export default function CollectionDetailPage() {
               },
             );
           }}
-          t={t}
         />
       )}
     </div>

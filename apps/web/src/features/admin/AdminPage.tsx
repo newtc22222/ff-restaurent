@@ -605,7 +605,6 @@ export default function AdminPage() {
           )} ${statusTarget.name} (@${statusTarget.username}).`}
           onConfirm={() => updateAccountStatus(statusTarget)}
           onCancel={() => setStatusTarget(null)}
-          t={t}
           pending={fetcher.state !== 'idle'}
         />
       )}

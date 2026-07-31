@@ -264,7 +264,6 @@ export default function DiningAreaDetailPage() {
           message={t('catalog.diningAreas.confirmRemoveImage')}
           onCancel={() => setDeleteImageId(null)}
           onConfirm={() => void removeImage()}
-          t={t}
         />
       )}
     </div>

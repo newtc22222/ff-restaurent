@@ -61,13 +61,12 @@ This document serves as the authoritative component registry for the **FF RESTau
 - **Framework System**: React web component
 - **Source File**: [ConfirmDialog.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ConfirmDialog.tsx)
 - **Export**: `default export ConfirmDialog`
-- **Description**: Accessible modal confirmation dialog rendered at `document.body` via `createPortal`. Implements `.overlay-backdrop`, `role="dialog"`, `aria-modal="true"`, focus management, Escape key listener, and confirm/cancel action buttons.
+- **Description**: Accessible modal confirmation dialog rendered at `document.body` via `createPortal`. Implements `.overlay-backdrop`, `role="dialog"`, `aria-modal="true"`, focus management, Escape key listener, locally translated labels from `useI18n`, and confirm/cancel action buttons.
 - **Props**:
   - `title`: `string`
   - `message`: `string`
   - `onConfirm`: `() => void`
   - `onCancel`: `() => void`
-  - `t`: `(key: string) => string`
   - `pending?`: `boolean` (default: `false`)
 - **Equivalent in Other Frameworks**: N/A in repository.
 
