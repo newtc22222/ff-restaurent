@@ -1,87 +1,65 @@
-import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { NavLink } from 'react-router';
 
 import ScrollArea from '../ui/ScrollArea';
+import type { NavigationItem } from './navigation';
 
 interface SidebarProps {
   /**
    * List of navigation options [path, icon, label].
    */
-  nav: readonly (readonly [string, LucideIcon, string])[];
+  nav: readonly NavigationItem[];
   collapsed: boolean;
   onToggle: () => void;
-  onNavigate: () => void;
 }
 
-/**
- * Sidebar renders an expandable desktop navigation and a collapsed mobile icon rail.
- */
-export default function Sidebar({
-  nav,
-  collapsed,
-  onToggle,
-  onNavigate,
-}: SidebarProps) {
+/** Expandable desktop navigation sidebar. */
+export default function Sidebar({ nav, collapsed, onToggle }: SidebarProps) {
   return (
-    <>
-      {!collapsed && (
-        <button
-          type="button"
-          className="overlay-subtle fixed inset-x-0 bottom-0 top-14 z-30 md:hidden"
-          aria-label="Collapse navigation"
-          onClick={onToggle}
-        />
-      )}
-      <aside
-        className={`z-40 flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-surface transition-[width] duration-200 ${
-          collapsed
-            ? 'relative w-14'
-            : 'absolute inset-y-0 left-0 w-56 shadow-panel md:relative md:shadow-none'
+    <aside
+      className={`z-40 hidden h-full shrink-0 flex-col overflow-hidden border-r border-border bg-surface transition-[width] duration-200 md:flex ${
+        collapsed ? 'w-14' : 'w-56'
+      }`}
+    >
+      <div
+        className={`flex control-lg items-center border-b border-border px-2 ${
+          collapsed ? 'justify-center' : 'justify-end'
         }`}
       >
-        <div
-          className={`hidden control-lg items-center border-b border-border px-2 md:flex ${
-            collapsed ? 'justify-center' : 'justify-end'
-          }`}
+        <button
+          type="button"
+          className="flex control-sm w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-muted hover:text-ink"
+          onClick={onToggle}
+          aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+          aria-expanded={!collapsed}
         >
-          <button
-            type="button"
-            className="flex control-sm w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-muted hover:text-ink"
-            onClick={onToggle}
-            aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-            aria-expanded={!collapsed}
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+      </div>
+      <ScrollArea
+        className="min-h-0 w-full flex-1"
+        contentClassName="flex flex-col gap-1 p-2"
+      >
+        {nav.map(([path, Icon, label]) => (
+          <NavLink
+            key={path}
+            to={path}
+            title={collapsed ? label : undefined}
+            className={({ isActive }) =>
+              `flex control-default shrink-0 items-center rounded-lg text-sm font-semibold transition-all ${
+                collapsed ? 'justify-center px-2' : 'gap-3 px-3'
+              } ${
+                isActive
+                  ? 'bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
+                  : 'text-slate-500 hover:bg-muted hover:text-ink'
+              }`
+            }
           >
-            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </button>
-        </div>
-        <ScrollArea
-          className="min-h-0 w-full flex-1"
-          contentClassName="flex flex-col gap-1 p-2"
-        >
-          {nav.map(([path, Icon, label]) => (
-            <NavLink
-              key={path}
-              to={path}
-              title={collapsed ? label : undefined}
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                `flex control-default shrink-0 items-center rounded-lg text-sm font-semibold transition-all ${
-                  collapsed ? 'justify-center px-2' : 'gap-3 px-3'
-                } ${
-                  isActive
-                    ? 'bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
-                    : 'text-slate-500 hover:bg-muted hover:text-ink'
-                }`
-              }
-            >
-              <Icon size={17} className="shrink-0" />
-              <span className={collapsed ? 'sr-only' : 'truncate'}>
-                {label}
-              </span>
-            </NavLink>
-          ))}
-        </ScrollArea>
-      </aside>
-    </>
+            <Icon size={17} className="shrink-0" />
+            <span className={collapsed ? 'sr-only' : 'truncate'}>{label}</span>
+          </NavLink>
+        ))}
+      </ScrollArea>
+    </aside>
   );
 }

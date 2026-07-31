@@ -266,8 +266,19 @@ This document serves as the authoritative component registry for the **FF RESTau
   - `notifications?`: `Notification[]`
   - `onOpenNotification?`: `(notification: Notification) => void`
   - `onMarkAllNotificationsRead?`: `() => void`
-  - `sidebarCollapsed?`: `boolean`
-  - `onToggleSidebar?`: `() => void`
+- **Equivalent in Other Frameworks**: N/A in repository.
+
+---
+
+### MobileNav
+
+- **Framework System**: React web component
+- **Source File**: [MobileNav.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/layout/MobileNav.tsx)
+- **Export**: `default export MobileNav`
+- **Description**: Mobile-only, horizontally scrollable navigation strip that renders every role-authorized route and keeps the active route visible.
+- **Props**:
+  - `nav`: `readonly NavigationItem[]`
+  - `label`: `string`
 - **Equivalent in Other Frameworks**: N/A in repository.
 
 ---
@@ -277,12 +288,11 @@ This document serves as the authoritative component registry for the **FF RESTau
 - **Framework System**: React web component
 - **Source File**: [Sidebar.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/layout/Sidebar.tsx)
 - **Export**: `default export Sidebar`
-- **Description**: Expandable desktop sidebar and mobile navigation drawer using `.overlay-subtle` backdrop.
+- **Description**: Expandable desktop-only sidebar navigation.
 - **Props**:
-  - `nav`: `readonly (readonly [string, LucideIcon, string])[]`
+  - `nav`: `readonly NavigationItem[]`
   - `collapsed`: `boolean`
   - `onToggle`: `() => void`
-  - `onNavigate`: `() => void`
 - **Equivalent in Other Frameworks**: N/A in repository.
 
 ---

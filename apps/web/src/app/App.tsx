@@ -2,7 +2,6 @@ import {
   BarChart2,
   FolderHeart,
   LayoutDashboard,
-  type LucideIcon,
   MapPinned,
   Store,
   UserRoundCheck,
@@ -22,7 +21,9 @@ import {
 
 import type { Notification } from '@/api/types';
 import AppHeader from '@/components/layout/AppHeader';
+import MobileNav from '@/components/layout/MobileNav';
 import Sidebar from '@/components/layout/Sidebar';
+import type { NavigationItem } from '@/components/layout/navigation';
 import ScrollArea from '@/components/ui/ScrollArea';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { isRootAdmin } from '@/lib/permissions';
@@ -40,18 +41,7 @@ function AppShellContent() {
   const { user, notifications, warning, loading } = useAppContext();
   const { mutate } = useRouteMutation();
   const warned = useRef(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
-    typeof window === 'undefined'
-      ? false
-      : window.matchMedia('(max-width: 767px)').matches,
-  );
-
-  useEffect(() => {
-    const query = window.matchMedia('(max-width: 767px)');
-    const syncSidebar = () => setSidebarCollapsed(query.matches);
-    query.addEventListener('change', syncSidebar);
-    return () => query.removeEventListener('change', syncSidebar);
-  }, []);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (warning && !warned.current) {
@@ -84,7 +74,7 @@ function AppShellContent() {
       },
     );
 
-  const nav: readonly (readonly [string, LucideIcon, string])[] = [
+  const nav: readonly NavigationItem[] = [
     ['/bills', LayoutDashboard, t('nav.bills')],
     ['/restaurants', Store, t('nav.restaurants')],
     ['/cuisines', Utensils, t('nav.cuisines')],
@@ -93,11 +83,7 @@ function AppShellContent() {
     ['/participant-groups', UserRoundCheck, t('nav.participantGroups')],
     ['/stats', BarChart2, t('nav.stats')],
     ...(isRootAdmin(user)
-      ? ([['/admin', Users, t('nav.members')]] as [
-          string,
-          LucideIcon,
-          string,
-        ][])
+      ? ([['/admin', Users, t('nav.members')]] as NavigationItem[])
       : []),
   ];
 
@@ -108,19 +94,13 @@ function AppShellContent() {
         notifications={notifications}
         onOpenNotification={openNotification}
         onMarkAllNotificationsRead={markAllNotificationsRead}
-        sidebarCollapsed={sidebarCollapsed}
-        onToggleSidebar={() => setSidebarCollapsed((current) => !current)}
       />
+      <MobileNav nav={nav} label={t('nav.primaryNavigation')} />
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <Sidebar
           nav={nav}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((current) => !current)}
-          onNavigate={() => {
-            if (window.matchMedia('(max-width: 767px)').matches) {
-              setSidebarCollapsed(true);
-            }
-          }}
         />
         <main className="min-h-0 flex-1 overflow-hidden py-3">
           <ScrollArea className="h-full">

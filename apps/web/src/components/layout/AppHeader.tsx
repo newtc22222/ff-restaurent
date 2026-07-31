@@ -2,7 +2,6 @@ import {
   Bell,
   ChevronDown,
   LogOut,
-  Menu,
   MoreVertical,
   UserCircle,
 } from 'lucide-react';
@@ -26,8 +25,6 @@ interface AppHeaderProps {
   notifications?: Notification[];
   onOpenNotification?: (notification: Notification) => void;
   onMarkAllNotificationsRead?: () => void;
-  sidebarCollapsed?: boolean;
-  onToggleSidebar?: () => void;
 }
 
 /** Shared app header with desktop actions and a compact mobile context menu. */
@@ -36,8 +33,6 @@ export default function AppHeader({
   notifications = [],
   onOpenNotification,
   onMarkAllNotificationsRead,
-  sidebarCollapsed = false,
-  onToggleSidebar,
 }: AppHeaderProps) {
   const { user, logout } = useAppContext();
   const { locale, setLocale, t } = useI18n();
@@ -78,24 +73,6 @@ export default function AppHeader({
   return (
     <>
       <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center border-b border-border bg-surface px-3 md:px-5">
-        {onToggleSidebar && (
-          <button
-            type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-muted hover:text-ink md:hidden"
-            onClick={() => {
-              setShowMenu(false);
-              setShowNotifications(false);
-              onToggleSidebar();
-            }}
-            aria-label={
-              sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'
-            }
-            aria-expanded={!sidebarCollapsed}
-          >
-            <Menu size={19} />
-          </button>
-        )}
-
         <div
           className="absolute left-1/2 flex -translate-x-1/2 items-center gap-2 md:static md:translate-x-0"
           data-testid="app-brand"
@@ -199,7 +176,6 @@ export default function AppHeader({
             className="flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-muted hover:text-ink"
             onClick={() => {
               setShowNotifications(false);
-              if (!sidebarCollapsed) onToggleSidebar?.();
               setShowMenu((current) => !current);
             }}
             aria-label={t('nav.menu')}
