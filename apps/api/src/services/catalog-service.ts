@@ -260,20 +260,26 @@ export const getDiningArea = async (id: string) => {
 };
 
 export const deleteDiningArea = async (id: string) => {
-  const images = await prisma.diningAreaImage.findMany({
-    where: { diningAreaId: id },
-    select: { storagePath: true },
+  const images = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${id}))::text AS lock`;
+
+    const storedImages = await tx.diningAreaImage.findMany({
+      where: { diningAreaId: id },
+      select: { storagePath: true },
+    });
+    const references = await tx.restaurantEntry.count({
+      where: { diningAreaId: id },
+    });
+    if (references > 0) {
+      throw conflict(
+        'DINING_AREA_IN_USE',
+        'Dining Area cannot be deleted while restaurants reference it',
+      );
+    }
+    await tx.diningArea.delete({ where: { id } });
+    return storedImages;
   });
-  const references = await prisma.restaurantEntry.count({
-    where: { diningAreaId: id },
-  });
-  if (references > 0) {
-    throw conflict(
-      'DINING_AREA_IN_USE',
-      'Dining Area cannot be deleted while restaurants reference it',
-    );
-  }
-  await prisma.diningArea.delete({ where: { id } });
+
   if (images.length > 0) {
     try {
       const { publicBucket } = storageBuckets();

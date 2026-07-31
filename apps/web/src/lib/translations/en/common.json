@@ -83,6 +83,7 @@
   "catalog.diningAreas.galleryImage": "Gallery",
   "catalog.diningAreas.restaurants": "Restaurants in this Dining Area",
   "catalog.diningAreas.restaurantsHint": "Active restaurants currently assigned to this area.",
+  "catalog.diningAreas.viewAllRestaurants": "View all restaurants",
   "catalog.diningAreas.noRestaurants": "No restaurants assigned",
   "catalog.diningAreas.noRestaurantsHint": "Restaurants assigned to this Dining Area will appear here.",
   "catalog.diningAreas.removeImage": "Remove image",

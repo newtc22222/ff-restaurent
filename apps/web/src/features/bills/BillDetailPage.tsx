@@ -211,24 +211,24 @@ export default function BillDetailPage() {
             <section className="rounded-xl border border-border bg-surface p-6 shadow-sm">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <h2 className="truncate text-[22px] font-bold text-ink">
+                  <h2 className="truncate text-xl font-bold text-ink">
                     {bill.restaurant.name}
                   </h2>
-                  <p className="mt-0.5 text-[13px] text-slate-500">
+                  <p className="mt-0.5 text-compact text-slate-500">
                     {bill.restaurant.type} / {bill.restaurant.cuisineType} /
                     {t('bills.createdBy')} {bill.createdBy.name}
                   </p>
-                  <p className="mt-1 text-[13px] font-medium text-slate-500">
+                  <p className="mt-1 text-compact font-medium text-slate-500">
                     {t('bills.occurredOn')}:{' '}
                     {formatDateOnlyForLocale(bill.occurredOn, locale)}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2 text-right">
-                  <p className="text-[28px] font-bold leading-none text-ink">
+                  <p className="text-xl font-bold leading-none text-ink">
                     {money(bill.totalCost)}
                   </p>
                   <span
-                    className={`text-[11px] font-semibold uppercase tracking-wide ${
+                    className={`text-2xs font-semibold uppercase tracking-wide ${
                       allPaid ? 'text-emerald-500' : 'text-[#e9900c]'
                     }`}
                   >
@@ -246,7 +246,7 @@ export default function BillDetailPage() {
               </div>
 
               <div>
-                <div className="mb-1.5 flex justify-between text-[12px] text-slate-500">
+                <div className="mb-1.5 flex justify-between text-xs text-slate-500">
                   <span>
                     {paid} {t('bills.of')} {bill.participants.length}{' '}
                     {t('bills.paidCount')}
@@ -328,7 +328,7 @@ export default function BillDetailPage() {
                   {pieData.map((d, i) => (
                     <div
                       key={d.name}
-                      className="flex items-center gap-1.5 text-[12px]"
+                      className="flex items-center gap-1.5 text-xs"
                     >
                       <div
                         className="h-2.5 w-2.5 rounded-full"
@@ -421,7 +421,7 @@ export default function BillDetailPage() {
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="truncate text-[14px] font-semibold text-ink">
+                        <p className="truncate text-sm font-semibold text-ink">
                           {participant.member.name}
                         </p>
                         {participant.memberId === user.id && (
@@ -430,7 +430,7 @@ export default function BillDetailPage() {
                           </span>
                         )}
                       </div>
-                      <p className="mt-0.5 text-[12px] text-slate-500">
+                      <p className="mt-0.5 text-xs text-slate-500">
                         {t('bills.base')} {money(participant.originCost)} /{' '}
                         {t('bills.vat')} {money(participant.allocatedVat)} /{' '}
                         {t('bills.shipping')}{' '}
@@ -440,11 +440,11 @@ export default function BillDetailPage() {
                   </div>
                   <div className="flex items-center justify-between gap-3 sm:justify-end">
                     <div className="text-right">
-                      <p className="text-[14px] font-bold">
+                      <p className="text-sm font-bold">
                         {money(participant.finalPrice)}
                       </p>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
                           participant.paymentStatus === 'PAID'
                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                             : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
@@ -463,7 +463,7 @@ export default function BillDetailPage() {
                     {(canManage || participant.memberId === user.id) && (
                       <button
                         data-bill-capture-ignore
-                        className="btn btn-soft h-8 px-3 text-[12px]"
+                        className="btn btn-soft h-8 px-3 text-xs"
                         onClick={() =>
                           setPendingPayment({
                             memberId: participant.memberId,

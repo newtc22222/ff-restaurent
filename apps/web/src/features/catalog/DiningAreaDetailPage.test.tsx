@@ -152,4 +152,33 @@ describe('DiningAreaDetailPage', () => {
     });
     expect(revalidate).toHaveBeenCalled();
   });
+
+  it('refreshes the gallery when part of a batch upload succeeds', async () => {
+    mutateAsync
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('upload failed'));
+    const { container } = render(<DiningAreaDetailPage />);
+    const first = new File(['first'], 'first.jpg', { type: 'image/jpeg' });
+    const second = new File(['second'], 'second.png', { type: 'image/png' });
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="file"][multiple]',
+    );
+
+    fireEvent.change(input!, { target: { files: [first, second] } });
+
+    await vi.waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(2));
+    expect(revalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the paginated Restaurant directory filtered to this area', () => {
+    render(<DiningAreaDetailPage />);
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'catalog.diningAreas.viewAllRestaurants',
+      }),
+    );
+
+    expect(navigate).toHaveBeenCalledWith('/restaurants?diningAreaId=area-1');
+  });
 });

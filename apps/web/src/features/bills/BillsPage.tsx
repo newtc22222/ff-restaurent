@@ -171,7 +171,7 @@ export default function BillsPage() {
           </div>
           {canChef(user) && (
             <button
-              className="btn btn-primary h-10 px-4 text-[13px]"
+              className="btn btn-primary h-10 px-4 text-compact"
               onClick={() => navigate('/bills/new')}
             >
               <Plus size={14} /> {t('bills.createBill')}
@@ -488,7 +488,7 @@ function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
             {bill.restaurant.name}
           </h3>
           <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+            className={`rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wide ${
               summary.allPaid
                 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                 : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
@@ -618,24 +618,24 @@ function BillCard({
       <article className="rounded-xl border border-border bg-surface p-5 transition-shadow hover:shadow-sm">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-[16px] font-bold text-ink">
+            <h3 className="truncate text-base font-bold text-ink">
               {bill.restaurant.name}
             </h3>
-            <p className="mt-0.5 text-[12px] text-slate-500">
+            <p className="mt-0.5 text-xs text-slate-500">
               {bill.restaurant.type} / {bill.restaurant.cuisineType} / by{' '}
               {bill.createdBy.name}
             </p>
-            <p className="mt-1 text-[12px] font-medium text-slate-500">
+            <p className="mt-1 text-xs font-medium text-slate-500">
               {t('bills.occurredOn')}:{' '}
               {formatDateOnlyForLocale(bill.occurredOn, locale)}
             </p>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-[20px] font-bold text-ink">
+            <p className="text-xl font-bold text-ink">
               {money(bill.totalCost)}
             </p>
             <span
-              className={`text-[11px] font-semibold uppercase tracking-wide ${
+              className={`text-2xs font-semibold uppercase tracking-wide ${
                 allPaid ? 'text-emerald-500' : 'text-[#e9900c]'
               }`}
             >
@@ -645,7 +645,7 @@ function BillCard({
         </div>
 
         <div className="mb-3">
-          <div className="mb-1 flex justify-between text-[12px] text-slate-500">
+          <div className="mb-1 flex justify-between text-xs text-slate-500">
             <span>
               {paid} {t('bills.of')} {total} {t('bills.paidCount')}
             </span>
@@ -667,14 +667,14 @@ function BillCard({
 
         <div className="flex gap-2 border-t border-muted pt-3">
           <button
-            className="btn btn-primary h-8 flex-1 px-3 text-[13px]"
+            className="btn btn-primary h-8 flex-1 px-3 text-compact"
             onClick={onView}
           >
             {t('bills.viewDetail')} <ChevronRight size={13} />
           </button>
           {canManage && canChef(user) && (
             <button
-              className="btn btn-soft h-8 px-3 text-[13px]"
+              className="btn btn-soft h-8 px-3 text-compact"
               onClick={onRemind}
             >
               {t('bills.remind')}
@@ -682,7 +682,7 @@ function BillCard({
           )}
           {isHead(user) && bill.status === 'ACTIVE' && (
             <button
-              className="btn btn-soft h-8 px-3 text-[13px]"
+              className="btn btn-soft h-8 px-3 text-compact"
               onClick={() => setConfirmAction('archive')}
             >
               {t('bills.archive')}
@@ -690,7 +690,7 @@ function BillCard({
           )}
           {isHead(user) && bill.status === 'ARCHIVED' && (
             <button
-              className="btn btn-soft h-8 px-3 text-[13px]"
+              className="btn btn-soft h-8 px-3 text-compact"
               onClick={() => setConfirmAction('restore')}
             >
               {t('bills.restore')}
@@ -733,7 +733,7 @@ function PaymentChip({ participant }: PaymentChipProps) {
   const paid = participant.paymentStatus === 'PAID';
   return (
     <div
-      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium ${
+      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
         paid
           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
           : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'

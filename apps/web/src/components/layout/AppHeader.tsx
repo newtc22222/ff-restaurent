@@ -101,7 +101,7 @@ export default function AppHeader({
           data-testid="app-brand"
         >
           <BrandIcon size={32} />
-          <span className="whitespace-nowrap text-[15px] font-bold text-ink">
+          <span className="whitespace-nowrap text-sm font-bold text-ink">
             {t('app.name')}
           </span>
         </div>

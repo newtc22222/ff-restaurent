@@ -180,7 +180,7 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <section className="panel p-6">
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#e9900c] text-[24px] font-bold text-white">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#e9900c] text-xl font-bold text-white">
                 {user.avatarUrl ? (
                   <img
                     className="h-full w-full object-cover"
@@ -192,14 +192,14 @@ export default function ProfilePage() {
                 )}
               </div>
               <div className="min-w-0">
-                <h2 className="truncate text-[20px] font-bold text-ink">
+                <h2 className="truncate text-xl font-bold text-ink">
                   {user.name}
                 </h2>
-                <p className="text-[13px] text-slate-500">
+                <p className="text-compact text-slate-500">
                   @{user.username} / {roleLabel(user, t)}
                 </p>
                 {user.phone && (
-                  <p className="text-[13px] text-slate-500">{user.phone}</p>
+                  <p className="text-compact text-slate-500">{user.phone}</p>
                 )}
               </div>
             </div>

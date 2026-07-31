@@ -27,6 +27,7 @@ export default function DiningAreaDetailPage() {
   const manageable = canChef(user);
 
   const uploadImages = async (files: File[]) => {
+    let uploadedCount = 0;
     try {
       for (const file of files) {
         await mediaMutation.mutateAsync({
@@ -34,11 +35,13 @@ export default function DiningAreaDetailPage() {
           diningAreaId: area.id,
           file,
         });
+        uploadedCount += 1;
       }
       toast.success(t('toast.diningAreaImagesUploaded'));
-      void revalidator.revalidate();
     } catch {
       toast.error(t('toast.diningAreaImagesUploadFailed'));
+    } finally {
+      if (uploadedCount > 0) void revalidator.revalidate();
     }
   };
 
@@ -218,10 +221,23 @@ export default function DiningAreaDetailPage() {
       </section>
 
       <section className="space-y-3">
-        <SectionTitle
-          title={t('catalog.diningAreas.restaurants')}
-          subtitle={t('catalog.diningAreas.restaurantsHint')}
-        />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionTitle
+            title={t('catalog.diningAreas.restaurants')}
+            subtitle={t('catalog.diningAreas.restaurantsHint')}
+          />
+          <button
+            type="button"
+            className="btn btn-soft"
+            onClick={() =>
+              navigate(
+                `/restaurants?diningAreaId=${encodeURIComponent(area.id)}`,
+              )
+            }
+          >
+            {t('catalog.diningAreas.viewAllRestaurants')}
+          </button>
+        </div>
         {area.restaurants.items.length === 0 ? (
           <EmptyState
             icon={MapPin}

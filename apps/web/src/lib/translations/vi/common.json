@@ -83,6 +83,7 @@
   "catalog.diningAreas.galleryImage": "Thư viện",
   "catalog.diningAreas.restaurants": "Địa điểm trong khu vực này",
   "catalog.diningAreas.restaurantsHint": "Các địa điểm đang được gán cho khu vực ăn uống này.",
+  "catalog.diningAreas.viewAllRestaurants": "Xem tất cả địa điểm",
   "catalog.diningAreas.noRestaurants": "Chưa có địa điểm",
   "catalog.diningAreas.noRestaurantsHint": "Địa điểm được gán cho khu vực này sẽ hiển thị ở đây.",
   "catalog.diningAreas.removeImage": "Xóa ảnh",
