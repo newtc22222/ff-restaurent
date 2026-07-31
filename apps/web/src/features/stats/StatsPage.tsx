@@ -230,7 +230,7 @@ export default function StatsPage() {
                 {paymentData.map((item, index) => (
                   <div
                     key={item.name}
-                    className="flex items-center gap-1.5 text-[12px]"
+                    className="flex items-center gap-1.5 text-xs"
                   >
                     <div
                       className="h-2.5 w-2.5 rounded-full"
@@ -315,7 +315,7 @@ export default function StatsPage() {
                     className="flex items-center justify-between text-sm"
                   >
                     <span className="truncate">{name}</span>
-                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[12px] font-bold">
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
                       {count}×
                     </span>
                   </div>
@@ -334,7 +334,7 @@ export default function StatsPage() {
                     className="flex items-center justify-between text-sm"
                   >
                     <span className="truncate">{name}</span>
-                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[12px] font-bold">
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
                       {count}×
                     </span>
                   </div>

@@ -269,7 +269,7 @@ function RatingSummary({
         <Star size={14} fill="currentColor" aria-hidden="true" />
         {formatRating(value)}
       </div>
-      <p className="text-[11px] font-medium text-slate-500">{label}</p>
+      <p className="text-2xs font-medium text-slate-500">{label}</p>
     </div>
   );
 }

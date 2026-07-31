@@ -45,6 +45,8 @@ before(async () => {
   process.env.JWT_SECRET ??=
     'integration-secret-that-is-at-least-32-characters';
   process.env.REGISTRATION_INVITE_CODE ??= 'integration-invite';
+  process.env.SUPABASE_URL ??= 'http://127.0.0.1:9';
+  process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'integration-service-role-key';
   app = await buildApp();
   await prisma.passwordResetRequest.deleteMany();
   await prisma.notification.deleteMany();
@@ -1176,6 +1178,89 @@ integrationTest(
     assert.equal(restaurant.json().cuisines[0].isPrimary, true);
     assert.equal(restaurant.json().cuisines[0].cuisine.name, 'Vegan');
     assert.equal(restaurant.json().diningArea.name, 'Downtown');
+
+    const firstAreaImage = await prisma.diningAreaImage.create({
+      data: {
+        diningAreaId: diningArea.json().id,
+        storagePath: 'dining-areas/integration/first.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 100,
+        sortOrder: 0,
+      },
+    });
+    const secondAreaImage = await prisma.diningAreaImage.create({
+      data: {
+        diningAreaId: diningArea.json().id,
+        storagePath: 'dining-areas/integration/second.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 200,
+        sortOrder: 1,
+      },
+    });
+    await prisma.diningArea.update({
+      where: { id: diningArea.json().id },
+      data: { defaultImageId: firstAreaImage.id },
+    });
+
+    const areaDetail = await app.inject({
+      method: 'GET',
+      url: `/dining-areas/${diningArea.json().id}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(areaDetail.statusCode, 200);
+    assert.equal(areaDetail.json().images.length, 2);
+    assert.equal(areaDetail.json().defaultImage.id, firstAreaImage.id);
+    assert.equal(
+      areaDetail.json().restaurants.items[0].id,
+      restaurant.json().id,
+    );
+
+    const deniedDefaultUpdate = await app.inject({
+      method: 'PATCH',
+      url: `/dining-areas/${diningArea.json().id}/images/${secondAreaImage.id}/default`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(deniedDefaultUpdate.statusCode, 403);
+
+    const defaultUpdate = await app.inject({
+      method: 'PATCH',
+      url: `/dining-areas/${diningArea.json().id}/images/${secondAreaImage.id}/default`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(defaultUpdate.statusCode, 200);
+    assert.equal(defaultUpdate.json().defaultImageId, secondAreaImage.id);
+
+    const deleteDefault = await app.inject({
+      method: 'DELETE',
+      url: `/dining-areas/${diningArea.json().id}/images/${secondAreaImage.id}`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(deleteDefault.statusCode, 204);
+    assert.equal(
+      (
+        await prisma.diningArea.findUniqueOrThrow({
+          where: { id: diningArea.json().id },
+          select: { defaultImageId: true },
+        })
+      ).defaultImageId,
+      firstAreaImage.id,
+    );
+
+    const deleteLastImage = await app.inject({
+      method: 'DELETE',
+      url: `/dining-areas/${diningArea.json().id}/images/${firstAreaImage.id}`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(deleteLastImage.statusCode, 204);
+    assert.equal(
+      (
+        await prisma.diningArea.findUniqueOrThrow({
+          where: { id: diningArea.json().id },
+          select: { defaultImageId: true },
+        })
+      ).defaultImageId,
+      null,
+    );
 
     const cuisineSearch = await app.inject({
       method: 'GET',

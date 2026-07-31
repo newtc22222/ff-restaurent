@@ -144,16 +144,14 @@ export default function LoginPage() {
         >
           <div className="mb-7">
             <BrandIcon size={48} />
-            <h1 className="mt-3 text-[24px] font-bold leading-tight text-ink">
+            <h1 className="mt-3 text-xl font-bold leading-tight text-ink">
               {title}
             </h1>
             {mode === 'login' && (
-              <p className="mt-1 text-[14px] text-slate-500">
-                {t('app.tagline')}
-              </p>
+              <p className="mt-1 text-sm text-slate-500">{t('app.tagline')}</p>
             )}
             {mode.startsWith('forgot') && (
-              <p className="mt-1 text-[14px] text-slate-500">
+              <p className="mt-1 text-sm text-slate-500">
                 {t('auth.resetHelp')}
               </p>
             )}
@@ -211,7 +209,7 @@ export default function LoginPage() {
                   </div>
                 </div>
               )}
-              <div className="text-center text-[13px] text-slate-500">
+              <div className="text-center text-compact text-slate-500">
                 {t('auth.noAccount')}{' '}
                 <button
                   type="button"
@@ -288,7 +286,7 @@ export default function LoginPage() {
               >
                 {busy ? t('auth.registering') : t('auth.register')}
               </button>
-              <div className="text-center text-[13px] text-slate-500">
+              <div className="text-center text-compact text-slate-500">
                 {t('auth.haveAccount')}{' '}
                 <button
                   type="button"

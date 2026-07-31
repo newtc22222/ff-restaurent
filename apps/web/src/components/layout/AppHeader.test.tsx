@@ -25,6 +25,11 @@ vi.mock('@/app/providers/i18n', () => ({
     setLocale: vi.fn(),
     t: (key: string) =>
       ({
+        'nav.language': 'Language',
+        'nav.menu': 'Menu',
+        'language.english': 'English',
+        'nav.theme': 'Theme',
+        'theme.light': 'Light',
         'nav.notifications': 'Notifications',
         'notifications.markAllRead': 'Mark all read',
         'auth.cancel': 'Cancel',
@@ -39,6 +44,45 @@ vi.mock('@/app/providers/theme', () => ({
 afterEach(cleanup);
 
 describe('AppHeader notification controls', () => {
+  it('places notifications after the theme control in the desktop actions', () => {
+    render(<AppHeader onOpenNotification={vi.fn()} />);
+
+    const buttons = screen.getAllByRole('button');
+    const localeIndex = buttons.findIndex((button) =>
+      button.getAttribute('aria-label')?.startsWith('Language:'),
+    );
+    const themeIndex = buttons.findIndex((button) =>
+      button.getAttribute('aria-label')?.startsWith('Theme:'),
+    );
+    const notificationIndex = buttons.findIndex(
+      (button) => button.getAttribute('aria-label') === 'Notifications',
+    );
+
+    expect(localeIndex).toBeGreaterThanOrEqual(0);
+    expect(themeIndex).toBeGreaterThan(localeIndex);
+    expect(notificationIndex).toBeGreaterThan(themeIndex);
+  });
+
+  it('places notifications below the theme control in the mobile menu', () => {
+    render(<AppHeader onOpenNotification={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
+
+    const themeButtons = screen.getAllByRole('button', { name: /Theme:/ });
+    const notificationButtons = screen.getAllByRole('button', {
+      name: 'Notifications',
+    });
+    const mobileTheme = themeButtons.at(-1);
+    const mobileNotification = notificationButtons.at(-1);
+
+    expect(mobileTheme).toBeDefined();
+    expect(mobileNotification).toBeDefined();
+    expect(
+      mobileTheme!.compareDocumentPosition(mobileNotification!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('offers a bulk read action when unread notifications exist', () => {
     const markAllRead = vi.fn();
     render(

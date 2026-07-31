@@ -104,5 +104,17 @@
   "createBill.blockedParticipant": "tài khoản bị chặn",
   "duplicate.title": "Phát hiện hóa đơn trùng",
   "duplicate.message": "Một hóa đơn đang hoạt động có cùng ngày, địa điểm, chi phí, điều chỉnh và thành viên. Bạn vẫn muốn tạo bản trùng?",
-  "bills.paymentQr": "Ảnh QR thanh toán"
+  "bills.paymentQr": "Ảnh QR thanh toán",
+  "bills.copyDetail": "Sao chép ảnh chụp",
+  "bills.copyScreenshot": "Sao chép ảnh chụp",
+  "bills.adjustments": "Điều chỉnh",
+  "bills.discount": "Giảm giá",
+  "bills.voucher": "Voucher",
+  "bills.shareBreakdown": "Phân bổ hóa đơn",
+  "bills.openPaymentLink": "Mở liên kết thanh toán an toàn",
+  "bills.base": "Giá gốc",
+  "bills.vat": "VAT",
+  "bills.shipping": "Phí vận chuyển",
+  "bills.correctPaymentStatus": "Điều chỉnh",
+  "bills.allPaid": "Tất cả thành viên đã thanh toán"
 }

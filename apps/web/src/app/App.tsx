@@ -3,9 +3,11 @@ import {
   FolderHeart,
   LayoutDashboard,
   type LucideIcon,
+  MapPinned,
   Store,
   UserRoundCheck,
   Users,
+  Utensils,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -85,6 +87,8 @@ function AppShellContent() {
   const nav: readonly (readonly [string, LucideIcon, string])[] = [
     ['/bills', LayoutDashboard, t('nav.bills')],
     ['/restaurants', Store, t('nav.restaurants')],
+    ['/cuisines', Utensils, t('nav.cuisines')],
+    ['/dining-areas', MapPinned, t('nav.diningAreas')],
     ['/collections', FolderHeart, t('nav.collections')],
     ['/participant-groups', UserRoundCheck, t('nav.participantGroups')],
     ['/stats', BarChart2, t('nav.stats')],

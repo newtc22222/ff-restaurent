@@ -140,7 +140,7 @@ export default function CollectionsPage() {
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-300">
                     <Icon size={19} />
                   </span>
-                  <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                  <span className="flex items-center gap-1 text-2xs font-semibold text-slate-500">
                     <VisibilityIcon size={11} /> {visibilityLabel}
                   </span>
                 </div>

@@ -171,11 +171,11 @@ export default function RestaurantDetailPage() {
             overlay={
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="truncate text-[22px] font-bold text-white [text-shadow:0_1px_6px_rgb(0_0_0_/_45%)]">
+                  <h2 className="truncate text-xl font-bold text-white [text-shadow:0_1px_6px_rgb(0_0_0_/_45%)]">
                     {restaurant.name}
                   </h2>
                   <span
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wide ${
                       restaurant.status === 'ACTIVE'
                         ? 'bg-basil text-white'
                         : 'bg-white/20 text-white backdrop-blur-sm'
@@ -184,7 +184,7 @@ export default function RestaurantDetailPage() {
                     {restaurant.status}
                   </span>
                 </div>
-                <p className="mt-0.5 truncate text-[13px] font-medium text-white/85">
+                <p className="mt-0.5 truncate text-compact font-medium text-white/85">
                   {restaurant.type} ·{' '}
                   {restaurant.cuisines
                     ?.filter((item) => item.isPrimary)
@@ -194,7 +194,7 @@ export default function RestaurantDetailPage() {
               </div>
             }
           />
-          <p className="mb-4 text-[14px]">{restaurant.address}</p>
+          <p className="mb-4 text-sm">{restaurant.address}</p>
 
           {canChef(user) && !editingProfile && (
             <button
@@ -347,7 +347,7 @@ export default function RestaurantDetailPage() {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-[13px] font-medium text-ink transition-colors hover:border-saffron hover:bg-muted"
+                    className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-compact font-medium text-ink transition-colors hover:border-saffron hover:bg-muted"
                   >
                     <ExternalLink aria-hidden="true" size={12} />{' '}
                     {link.label || platformLabel(link.platform)}

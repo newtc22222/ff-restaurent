@@ -118,6 +118,14 @@ select {
   background: hsl(36 90% 48%);
 }
 
+.ticket-edge-chili::before {
+  @apply bg-chili;
+}
+
+.ticket-edge-basil::before {
+  @apply bg-basil;
+}
+
 .title-mark {
   display: inline-block;
   width: 26px;

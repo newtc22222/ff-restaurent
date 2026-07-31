@@ -192,20 +192,41 @@ model RestaurantCuisine {
 }
 
 model DiningArea {
-  id            String            @id @default(cuid())
-  name          String
-  normalizedKey String            @unique
-  searchText    String            @default("")
-  address       String
-  addressLine   String?
-  provinceCode  String?
-  provinceName  String?
-  wardCode      String?
-  wardName      String?
-  description   String?
-  restaurants   RestaurantEntry[]
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  id             String            @id @default(cuid())
+  name           String
+  normalizedKey  String            @unique
+  searchText     String            @default("")
+  address        String
+  addressLine    String?
+  provinceCode   String?
+  provinceName   String?
+  wardCode       String?
+  wardName       String?
+  description    String?
+  restaurants    RestaurantEntry[]
+  images         DiningAreaImage[] @relation("DiningAreaImages")
+  defaultImageId String?           @unique
+  defaultImage   DiningAreaImage?  @relation("DiningAreaDefaultImage", fields: [defaultImageId], references: [id], onDelete: SetNull)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([defaultImageId])
+}
+
+model DiningAreaImage {
+  id           String      @id @default(cuid())
+  diningAreaId String
+  storagePath  String      @unique
+  mimeType     String
+  sizeBytes    Int
+  sortOrder    Int
+  diningArea   DiningArea  @relation("DiningAreaImages", fields: [diningAreaId], references: [id], onDelete: Cascade)
+  defaultFor   DiningArea? @relation("DiningAreaDefaultImage")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([diningAreaId, sortOrder])
+  @@index([diningAreaId, createdAt])
 }
 
 model RestaurantPlatformLink {

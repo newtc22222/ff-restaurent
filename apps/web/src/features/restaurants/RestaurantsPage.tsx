@@ -27,6 +27,7 @@ import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { canChef, isHead } from '@/lib/permissions';
 
+import RestaurantCard from './RestaurantCard';
 import RestaurantCatalogFields, {
   emptyRestaurantCatalogs,
 } from './RestaurantCatalogFields';
@@ -357,38 +358,11 @@ export default function RestaurantsPage() {
         )}
         <div className="grid gap-3 md:grid-cols-2">
           {restaurants.map((entry) => (
-            <article
+            <RestaurantCard
               key={entry.id}
-              className="ticket-edge panel cursor-pointer p-4 pt-5 transition-shadow hover:shadow-md"
-              onClick={() => navigate(`/restaurants/${entry.id}`)}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h3 className="truncate text-[15px] font-bold text-ink">
-                    {entry.name}
-                  </h3>
-                  <p className="ticket-figure mt-0.5 text-[13px] font-medium text-slate-500">
-                    {entry.type} · {entry.cuisineType}
-                  </p>
-                  <p className="mt-1.5 truncate text-sm">{entry.address}</p>
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {entry.isFavoritedByMe && (
-                  <span className="chip chip-badge chip-chili">
-                    ♥ {t('restaurants.favorite')}
-                  </span>
-                )}
-                {entry.isRecommended && (
-                  <span className="chip chip-badge chip-basil">
-                    {t('restaurants.recommended')}
-                  </span>
-                )}
-                {entry.status === 'ARCHIVED' && (
-                  <span className="chip chip-badge chip-muted">ARCHIVED</span>
-                )}
-              </div>
-            </article>
+              restaurant={entry}
+              onOpen={() => navigate(`/restaurants/${entry.id}`)}
+            />
           ))}
         </div>
         <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">

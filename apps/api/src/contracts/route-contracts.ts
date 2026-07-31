@@ -56,6 +56,7 @@ const requestContracts: Record<string, RequestContract> = {
   'POST /cuisines': { body: cuisineSchema },
   'PUT /cuisines/:id': { body: cuisineUpdateSchema },
   'GET /dining-areas': { querystring: catalogQuerySchema },
+  'GET /dining-areas/:id': {},
   'POST /dining-areas': { body: diningAreaSchema },
   'PUT /dining-areas/:id': { body: diningAreaUpdateSchema },
   'GET /collections': { querystring: catalogQuerySchema },

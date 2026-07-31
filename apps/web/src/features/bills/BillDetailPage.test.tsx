@@ -6,6 +6,17 @@ import { I18nProvider } from '@/app/providers/i18n';
 
 import BillDetailPage from './BillDetailPage';
 
+const { toBlob } = vi.hoisted(() => ({
+  toBlob: vi.fn(
+    async (
+      _node: HTMLElement,
+      _options?: { filter?: (element: HTMLElement) => boolean },
+    ) => new Blob(['receipt'], { type: 'image/png' }),
+  ),
+}));
+
+vi.mock('html-to-image', () => ({ toBlob }));
+
 const { navigate, routerState } = vi.hoisted(() => ({
   navigate: vi.fn(),
   routerState: {
@@ -104,6 +115,11 @@ afterEach(() => {
   cleanup();
   localStorage.clear();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
+  Object.defineProperty(window.navigator, 'clipboard', {
+    configurable: true,
+    value: undefined,
+  });
 });
 
 describe('BillDetailPage back navigation', () => {
@@ -166,5 +182,67 @@ describe('BillDetailPage member breakdown identity', () => {
   it('renders participant avatar and localized You marker for the current user', () => {
     renderPage();
     expect(screen.getByText('You')).toBeTruthy();
+  });
+});
+
+describe('BillDetailPage screenshot capture', () => {
+  it('falls back to downloading the captured receipt when image clipboard is unavailable', async () => {
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const createObjectURL = vi.fn(() => 'blob:bill-capture');
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(window.URL, 'createObjectURL', {
+      configurable: true,
+      value: createObjectURL,
+    });
+    Object.defineProperty(window.URL, 'revokeObjectURL', {
+      configurable: true,
+      value: revokeObjectURL,
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy screenshot' }));
+
+    await vi.waitFor(() => expect(toBlob).toHaveBeenCalled());
+    await vi.waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    expect(click).toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:bill-capture'),
+    );
+
+    click.mockRestore();
+    const urlWithObjectUrls = window.URL as unknown as {
+      createObjectURL?: typeof createObjectURL;
+      revokeObjectURL?: typeof revokeObjectURL;
+    };
+    delete urlWithObjectUrls.createObjectURL;
+    delete urlWithObjectUrls.revokeObjectURL;
+  });
+
+  it('copies a PNG ClipboardItem and excludes management controls from the receipt', async () => {
+    class ClipboardItemStub {
+      constructor(readonly data: Record<string, Blob>) {}
+    }
+    const write = vi.fn(async (_items: ClipboardItemStub[]) => undefined);
+    vi.stubGlobal('ClipboardItem', ClipboardItemStub);
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: { write },
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy screenshot' }));
+
+    await vi.waitFor(() => expect(write).toHaveBeenCalledOnce());
+    const [clipboardItem] = write.mock.calls[0]![0];
+    expect(clipboardItem.data['image/png']).toBeInstanceOf(Blob);
+
+    const options = toBlob.mock.calls[0][1];
+    const managementControl = document.createElement('button');
+    managementControl.dataset.billCaptureIgnore = '';
+    const receiptContent = document.createElement('section');
+    expect(options?.filter?.(managementControl)).toBe(false);
+    expect(options?.filter?.(receiptContent)).toBe(true);
   });
 });
