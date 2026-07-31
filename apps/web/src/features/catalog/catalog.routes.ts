@@ -8,8 +8,23 @@ import type {
   DiningAreaDetailData,
 } from '@/api/types';
 import type { IntentMap } from '@/app/mutation-types';
+import { getActiveQueryClient } from '@/app/providers/query';
 import { forwardListQuery } from '@/app/route-helpers';
+import { restaurantCatalogQueryKeys } from '@/features/restaurants/restaurant-catalog.queries';
 import { session } from '@/lib/session';
+
+/**
+ * FF-65: catalog GETs are always-revalidated (ETag, no browser-cache
+ * freshness window) at the HTTP layer, and `useCuisineCatalog`/
+ * `useDiningAreaCatalog` (used outside the route loaders, e.g. the
+ * restaurant form picker) hold their own TanStack Query cache. Route loaders
+ * auto-revalidate after an action; this cache doesn't, so authorized catalog
+ * writes must invalidate it explicitly.
+ */
+const invalidateCatalogQueries = () =>
+  getActiveQueryClient()?.invalidateQueries({
+    queryKey: restaurantCatalogQueryKeys.all,
+  });
 
 const catalogQueryKeys = new Set([
   'cursor',
@@ -68,28 +83,50 @@ export async function diningAreaLoader({ params }: LoaderFunctionArgs) {
 }
 
 export const catalogIntents = {
-  'create-cuisine': ({ api, body }) =>
-    api.request('/cuisines', {
+  'create-cuisine': async ({ api, body }) => {
+    const result = await api.request('/cuisines', {
       method: 'POST',
       body: JSON.stringify(body.payload),
-    }),
-  'update-cuisine': ({ api, body }) =>
-    api.request(`/cuisines/${body.catalogId}`, {
+    });
+    await invalidateCatalogQueries();
+    return result;
+  },
+  'update-cuisine': async ({ api, body }) => {
+    const result = await api.request(`/cuisines/${body.catalogId}`, {
       method: 'PUT',
       body: JSON.stringify(body.payload),
-    }),
-  'delete-cuisine': ({ api, body }) =>
-    api.request(`/cuisines/${body.catalogId}`, { method: 'DELETE' }),
-  'create-dining-area': ({ api, body }) =>
-    api.request('/dining-areas', {
+    });
+    await invalidateCatalogQueries();
+    return result;
+  },
+  'delete-cuisine': async ({ api, body }) => {
+    const result = await api.request(`/cuisines/${body.catalogId}`, {
+      method: 'DELETE',
+    });
+    await invalidateCatalogQueries();
+    return result;
+  },
+  'create-dining-area': async ({ api, body }) => {
+    const result = await api.request('/dining-areas', {
       method: 'POST',
       body: JSON.stringify(body.payload),
-    }),
-  'update-dining-area': ({ api, body }) =>
-    api.request(`/dining-areas/${body.catalogId}`, {
+    });
+    await invalidateCatalogQueries();
+    return result;
+  },
+  'update-dining-area': async ({ api, body }) => {
+    const result = await api.request(`/dining-areas/${body.catalogId}`, {
       method: 'PUT',
       body: JSON.stringify(body.payload),
-    }),
-  'delete-dining-area': ({ api, body }) =>
-    api.request(`/dining-areas/${body.catalogId}`, { method: 'DELETE' }),
+    });
+    await invalidateCatalogQueries();
+    return result;
+  },
+  'delete-dining-area': async ({ api, body }) => {
+    const result = await api.request(`/dining-areas/${body.catalogId}`, {
+      method: 'DELETE',
+    });
+    await invalidateCatalogQueries();
+    return result;
+  },
 } satisfies IntentMap;
