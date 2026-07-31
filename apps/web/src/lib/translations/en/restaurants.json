@@ -67,6 +67,8 @@
   "restaurants.editProfile": "Edit profile",
   "restaurants.viewBanner": "View banner for",
   "restaurants.viewLogo": "View logo for",
+  "restaurants.bannerLabel": "Banner",
+  "restaurants.logoLabel": "Logo",
   "restaurants.saveProfile": "Save profile",
   "restaurants.primaryLabel": "Primary",
   "restaurants.contact": "Contact",

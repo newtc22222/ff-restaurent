@@ -436,16 +436,16 @@ export default function RestaurantDetailPage() {
               ? restaurant.avatarUrl
               : null
         }
-        title={
+        title={`${restaurant.name} — ${
           bannerPreview === 'logo'
-            ? `${restaurant.name} logo`
-            : `${restaurant.name} banner`
-        }
-        alt={
+            ? t('restaurants.logoLabel')
+            : t('restaurants.bannerLabel')
+        }`}
+        alt={`${restaurant.name} — ${
           bannerPreview === 'logo'
-            ? `${restaurant.name} logo`
-            : `${restaurant.name} banner`
-        }
+            ? t('restaurants.logoLabel')
+            : t('restaurants.bannerLabel')
+        }`}
       />
     </div>
   );

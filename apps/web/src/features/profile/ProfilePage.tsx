@@ -43,10 +43,11 @@ export default function ProfilePage() {
   const [qrFile, setQrFile] = useState<File | null>(null);
   const [deletingQr, setDeletingQr] = useState<PaymentQrImage | null>(null);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
-  const [previewQr, setPreviewQr] = useState<PaymentQrImage | null>(null);
+  const [previewQrId, setPreviewQrId] = useState<string | null>(null);
   const { mutate } = useRouteMutation();
   const qrImagesQuery = usePaymentQrImages(canChef(user), user.id);
   const qrImages = qrImagesQuery.data ?? [];
+  const previewQr = qrImages.find((qr) => qr.id === previewQrId) ?? null;
   const {
     uploadAvatar: uploadAvatarMutation,
     removeAvatar: removeAvatarMutation,
@@ -361,7 +362,7 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       className="block w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron"
-                      onClick={() => setPreviewQr(qr)}
+                      onClick={() => setPreviewQrId(qr.id)}
                     >
                       <img
                         src={qr.imageUrl}
@@ -533,7 +534,7 @@ export default function ProfilePage() {
       />
       <ImagePreviewDialog
         open={previewQr !== null}
-        onClose={() => setPreviewQr(null)}
+        onClose={() => setPreviewQrId(null)}
         src={previewQr?.imageUrl}
         title={previewQr?.label ?? ''}
         alt={previewQr?.label ?? ''}
