@@ -181,24 +181,27 @@ export default function CatalogDirectoryPage({ kind }: { kind: CatalogKind }) {
               aria-label={t('catalog.layout')}
               role="group"
             >
-              <button
-                type="button"
-                className={`grid h-8 w-8 place-items-center rounded-md ${cuisineLayout === 'table' ? 'bg-ink text-white' : 'text-slate-500 hover:bg-muted'}`}
-                aria-label={t('catalog.tableLayout')}
-                aria-pressed={cuisineLayout === 'table'}
-                onClick={() => setCuisineLayout('table')}
-              >
-                <Table2 size={15} />
-              </button>
-              <button
-                type="button"
-                className={`grid h-8 w-8 place-items-center rounded-md ${cuisineLayout === 'card' ? 'bg-ink text-white' : 'text-slate-500 hover:bg-muted'}`}
-                aria-label={t('catalog.cardLayout')}
-                aria-pressed={cuisineLayout === 'card'}
-                onClick={() => setCuisineLayout('card')}
-              >
-                <Grid2X2 size={15} />
-              </button>
+              {(
+                [
+                  ['card', Grid2X2, 'catalog.cardLayout'],
+                  ['table', Table2, 'catalog.tableLayout'],
+                ] as const
+              ).map(([value, Icon, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`grid h-8 w-9 place-items-center rounded-md transition-colors ${
+                    cuisineLayout === value
+                      ? 'bg-ink text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'text-slate-500 hover:bg-muted hover:text-ink'
+                  }`}
+                  aria-label={t(label)}
+                  aria-pressed={cuisineLayout === value}
+                  onClick={() => setCuisineLayout(value)}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              ))}
             </div>
           )}
           {manageable && (

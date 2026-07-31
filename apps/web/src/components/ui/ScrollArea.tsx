@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { type CSSProperties, type ReactNode, forwardRef } from 'react';
 
 import { cn } from '@/lib/cn';
 
@@ -11,32 +11,34 @@ interface ScrollAreaProps {
 }
 
 /** Shared native scroll container with consistent CSS-only styling. */
-export default function ScrollArea({
-  children,
-  className = '',
-  contentClassName = '',
-  axis = 'y',
-  style,
-}: ScrollAreaProps) {
-  const overflowClass =
-    axis === 'x'
-      ? 'overflow-x-auto overflow-y-hidden'
-      : axis === 'both'
-        ? 'overflow-auto'
-        : 'overflow-y-auto overflow-x-hidden';
+const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
+  function ScrollArea(
+    { children, className = '', contentClassName = '', axis = 'y', style },
+    ref,
+  ) {
+    const overflowClass =
+      axis === 'x'
+        ? 'overflow-x-auto'
+        : axis === 'both'
+          ? 'overflow-auto'
+          : 'overflow-y-auto overflow-x-hidden';
 
-  return (
-    <div
-      data-scroll-area
-      data-axis={axis}
-      className={cn('scroll-area', overflowClass, className)}
-      style={style}
-    >
-      {contentClassName ? (
-        <div className={contentClassName}>{children}</div>
-      ) : (
-        children
-      )}
-    </div>
-  );
-}
+    return (
+      <div
+        ref={ref}
+        data-scroll-area
+        data-axis={axis}
+        className={cn('scroll-area', overflowClass, className)}
+        style={style}
+      >
+        {contentClassName ? (
+          <div className={contentClassName}>{children}</div>
+        ) : (
+          children
+        )}
+      </div>
+    );
+  },
+);
+
+export default ScrollArea;
