@@ -138,7 +138,10 @@ beforeEach(() => {
   routerState.params = {};
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('CreateBillPage repeat workflows', () => {
   it('keeps a blocked historical participant visible and removable while editing', () => {
@@ -192,6 +195,11 @@ describe('CreateBillPage repeat workflows', () => {
   });
 
   it('requires explicit confirmation before overriding an exact duplicate', () => {
+    // The date picker defaults to "today" and this test needs July 15, 2026
+    // to be the visible, selectable month — pin the clock instead of
+    // depending on which month the suite happens to run in.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-07-20T04:00:00.000Z'));
     render(
       <QueryProvider>
         <I18nProvider>
