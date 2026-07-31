@@ -18,10 +18,21 @@ export default function MobileNav({ nav, label }: MobileNavProps) {
   )?.[0];
 
   useEffect(() => {
-    activeLinkRef.current?.scrollIntoView?.({
-      block: 'nearest',
-      inline: 'center',
-    });
+    const mobileBreakpoint = window.matchMedia('(max-width: 767px)');
+    const centerActiveLink = () =>
+      activeLinkRef.current?.scrollIntoView?.({
+        block: 'nearest',
+        inline: 'center',
+      });
+    const handleBreakpointChange = (event: MediaQueryListEvent) => {
+      if (event.matches) centerActiveLink();
+    };
+
+    if (mobileBreakpoint.matches) centerActiveLink();
+    mobileBreakpoint.addEventListener('change', handleBreakpointChange);
+
+    return () =>
+      mobileBreakpoint.removeEventListener('change', handleBreakpointChange);
   }, [activePath]);
 
   return (

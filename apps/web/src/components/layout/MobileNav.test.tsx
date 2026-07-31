@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -20,12 +21,39 @@ const customerNav: readonly NavigationItem[] = [
 ];
 
 const scrollIntoView = vi.fn();
+let mobileBreakpointMatches = true;
+let breakpointChangeListener:
+  ((event: MediaQueryListEvent) => void) | undefined;
 
 beforeEach(() => {
   scrollIntoView.mockClear();
+  mobileBreakpointMatches = true;
+  breakpointChangeListener = undefined;
   Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
     configurable: true,
     value: scrollIntoView,
+  });
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: vi.fn((query: string) => ({
+      matches: mobileBreakpointMatches,
+      media: query,
+      onchange: null,
+      addEventListener: (
+        eventName: string,
+        listener: (event: MediaQueryListEvent) => void,
+      ) => {
+        if (eventName === 'change') breakpointChangeListener = listener;
+      },
+      removeEventListener: (
+        eventName: string,
+        listener: (event: MediaQueryListEvent) => void,
+      ) => {
+        if (eventName === 'change' && breakpointChangeListener === listener) {
+          breakpointChangeListener = undefined;
+        }
+      },
+    })),
   });
 });
 
@@ -50,6 +78,26 @@ describe('MobileNav', () => {
         .getByRole('link', { name: 'Restaurants' })
         .getAttribute('aria-current'),
     ).toBe('page');
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: 'nearest',
+      inline: 'center',
+    });
+  });
+
+  it('centers the active route when navigation becomes visible on mobile', () => {
+    mobileBreakpointMatches = false;
+    render(
+      <MemoryRouter initialEntries={['/cuisines']}>
+        <MobileNav nav={customerNav} label="Primary navigation" />
+      </MemoryRouter>,
+    );
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    act(() => {
+      breakpointChangeListener?.({ matches: true } as MediaQueryListEvent);
+    });
+
     expect(scrollIntoView).toHaveBeenCalledWith({
       block: 'nearest',
       inline: 'center',
