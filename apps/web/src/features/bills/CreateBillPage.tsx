@@ -853,7 +853,6 @@ export default function CreateBillPage() {
             setDuplicateDetected(false);
             submitBill(true);
           }}
-          t={t}
         />
       )}
     </div>

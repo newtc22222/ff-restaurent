@@ -596,7 +596,6 @@ export default function BillDetailPage() {
             );
           }}
           onCancel={() => setConfirmAction(null)}
-          t={t}
         />
       )}
       {pendingPayment && (
@@ -620,7 +619,6 @@ export default function BillDetailPage() {
             );
           }}
           onCancel={() => setPendingPayment(null)}
-          t={t}
         />
       )}
     </>

@@ -410,7 +410,6 @@ export default function RestaurantDetailPage() {
               ),
             );
           }}
-          t={t}
         />
       )}
     </div>

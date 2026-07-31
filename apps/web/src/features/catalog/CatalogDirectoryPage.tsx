@@ -473,7 +473,6 @@ export default function CatalogDirectoryPage({ kind }: { kind: CatalogKind }) {
           message={`${t('catalog.confirmDelete')} ${deleteTarget.name}`}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={confirmDelete}
-          t={t}
         />
       )}
     </div>

@@ -326,7 +326,6 @@ export default function AppHeader({
             logout();
           }}
           onCancel={() => setShowConfirm(false)}
-          t={t}
         />
       )}
     </>

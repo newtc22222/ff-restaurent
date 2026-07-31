@@ -371,7 +371,6 @@ export default function BillsPage() {
                   'restore',
                 )
               }
-              t={t}
             />
           ))}
         </div>
@@ -384,7 +383,6 @@ export default function BillsPage() {
               bill={bill}
               locale={locale}
               onView={() => viewBill(bill.id)}
-              t={t}
             />
           ))}
         </div>
@@ -394,7 +392,6 @@ export default function BillsPage() {
           bills={bills}
           locale={locale}
           onView={(bill) => viewBill(bill.id)}
-          t={t}
         />
       )}
 
@@ -454,14 +451,12 @@ interface BillCardProps {
   onRemind: () => void;
   onArchive: () => void;
   onRestore: () => void;
-  t: (key: string) => string;
 }
 
 interface CompactBillProps {
   bill: Bill;
   locale: string;
   onView: () => void;
-  t: (key: string) => string;
 }
 
 function billPaymentSummary(bill: Bill) {
@@ -475,7 +470,8 @@ function billPaymentSummary(bill: Bill) {
   };
 }
 
-function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
+function BillListRow({ bill, locale, onView }: CompactBillProps) {
+  const { t } = useI18n();
   const summary = billPaymentSummary(bill);
   const occurredOn = formatDateOnlyForLocale(bill.occurredOn, locale);
 
@@ -519,10 +515,10 @@ interface BillTableProps {
   bills: Bill[];
   locale: string;
   onView: (bill: Bill) => void;
-  t: (key: string) => string;
 }
 
-function BillTable({ bills, locale, onView, t }: BillTableProps) {
+function BillTable({ bills, locale, onView }: BillTableProps) {
+  const { t } = useI18n();
   return (
     <>
       <div className="space-y-2 md:hidden" data-testid="bill-mobile-table">
@@ -532,7 +528,6 @@ function BillTable({ bills, locale, onView, t }: BillTableProps) {
             bill={bill}
             locale={locale}
             onView={() => onView(bill)}
-            t={t}
           />
         ))}
       </div>
@@ -605,8 +600,8 @@ function BillCard({
   onRemind,
   onArchive,
   onRestore,
-  t,
 }: BillCardProps) {
+  const { t } = useI18n();
   const [confirmAction, setConfirmAction] = useState<
     'archive' | 'restore' | null
   >(null);
@@ -720,7 +715,6 @@ function BillCard({
             confirmAction === 'archive' ? onArchive() : onRestore();
           }}
           onCancel={() => setConfirmAction(null)}
-          t={t}
         />
       )}
     </>
