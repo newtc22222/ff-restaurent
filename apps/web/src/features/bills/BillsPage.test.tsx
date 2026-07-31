@@ -129,4 +129,22 @@ describe('BillsPage detail navigation', () => {
       });
     },
   );
+
+  it('keeps table mode compact on mobile and pagination actions responsive', () => {
+    renderLayout('table');
+
+    const mobileTable = screen.getByTestId('bill-mobile-table');
+    expect(mobileTable.className).toContain('md:hidden');
+    expect(
+      screen.getByRole('table').closest('[data-scroll-area]')?.className,
+    ).toContain('hidden md:block');
+
+    const pagination = screen.getByTestId('bills-pagination-actions');
+    expect(pagination.className).toContain('grid-cols-2');
+    expect(pagination.className).toContain('sm:flex');
+    for (const button of pagination.querySelectorAll('button')) {
+      expect(button.className).toContain('w-full');
+      expect(button.className).toContain('sm:w-auto');
+    }
+  });
 });

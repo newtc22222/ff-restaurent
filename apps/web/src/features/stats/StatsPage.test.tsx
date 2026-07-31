@@ -21,11 +21,19 @@ vi.mock('react-router', async (importOriginal) => {
       totals: { paid: 100_000, waiting: 50_000, totalObligation: 150_000 },
       total: 150_000,
       byPaymentStatus: { PAID: 100_000, WAITING: 50_000 },
-      byCuisineType: {},
-      byEntry: {},
+      byCuisineType: {
+        'A deliberately long cuisine category that must stay contained': 50_000,
+      },
+      byEntry: {
+        'A deliberately long restaurant name that must truncate before its value': 150_000,
+      },
       byPeriod: {},
-      frequencyByRestaurant: {},
-      frequencyByCuisine: {},
+      frequencyByRestaurant: {
+        'A deliberately long restaurant frequency label that must truncate': 7,
+      },
+      frequencyByCuisine: {
+        'A deliberately long cuisine frequency label that must truncate': 5,
+      },
     }),
     useSearchParams: () => [searchParams, setSearchParams],
   };
@@ -106,5 +114,34 @@ describe('StatsPage ranges and obligations', () => {
       (screen.getByRole('button', { name: 'Apply' }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
+  });
+
+  it('contains long category and frequency labels before fixed values', () => {
+    render(
+      <I18nProvider>
+        <StatsPage />
+      </I18nProvider>,
+    );
+
+    const apply = screen.getByRole('button', { name: 'Apply' });
+    expect(apply.className).toContain('w-full');
+    expect(apply.className).toContain('sm:w-auto');
+
+    for (const row of [
+      screen.getByTestId('restaurant-frequency-row'),
+      screen.getByTestId('cuisine-frequency-row'),
+    ]) {
+      expect(row.className).toContain('min-w-0');
+      expect(row.firstElementChild?.className).toContain('flex-1');
+      expect(row.firstElementChild?.className).toContain('truncate');
+      expect(row.lastElementChild?.className).toContain('shrink-0');
+    }
+
+    const spendLabel = screen.getByText(
+      'A deliberately long restaurant name that must truncate before its value',
+    );
+    expect(spendLabel.className).toContain('flex-1');
+    expect(spendLabel.className).toContain('truncate');
+    expect(spendLabel.nextElementSibling?.className).toContain('ticket-figure');
   });
 });

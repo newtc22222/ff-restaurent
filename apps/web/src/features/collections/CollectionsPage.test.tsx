@@ -148,6 +148,12 @@ describe('Collection discovery', () => {
     expect(screen.getByLabelText('Visibility')).toBeTruthy();
     expect(screen.getByText('Shared by me')).toBeTruthy();
     expect(screen.getByText('3 places')).toBeTruthy();
+    const visibility = screen.getAllByTestId('collection-visibility')[0]!;
+    expect(visibility.className).toContain('min-w-0');
+    expect(visibility.querySelector('span')?.className).toContain('truncate');
+    expect(
+      screen.getByText('Team lunches').closest('button')?.className,
+    ).toContain('min-w-0');
     fireEvent.click(screen.getByRole('button', { name: 'Create Collection' }));
     fireEvent.change(screen.getByLabelText('Name'), {
       target: { value: 'Client dinner' },
