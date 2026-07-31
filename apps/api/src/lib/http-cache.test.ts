@@ -35,7 +35,7 @@ test('computeEtag is stable for identical payloads and differs when the payload 
   assert.notEqual(computeEtag(payload), computeEtag(other));
 });
 
-test('applyCatalogCache sets a private, short-lived validator and returns false on a fresh request', () => {
+test('applyCatalogCache sets a private, always-revalidated validator and returns false on a fresh request', () => {
   const reply = fakeReply();
   const request = fakeRequest();
   const payload = {
@@ -48,7 +48,7 @@ test('applyCatalogCache sets a private, short-lived validator and returns false 
   assert.equal(short, false);
   assert.equal(reply.statusCode, 200);
   const cacheControl = reply.headers.find(([name]) => name === 'Cache-Control');
-  assert.equal(cacheControl?.[1], 'private, max-age=30, must-revalidate');
+  assert.equal(cacheControl?.[1], 'private, no-cache');
   const etagHeader = reply.headers.find(([name]) => name === 'ETag');
   assert.equal(etagHeader?.[1], computeEtag(payload));
 });
@@ -84,12 +84,22 @@ test('applyCatalogCache does not short-circuit when If-None-Match is stale', () 
   assert.equal(reply.statusCode, 200);
 });
 
-test('applyCatalogCache honors a custom max-age', () => {
-  const reply = fakeReply();
-  const request = fakeRequest();
+test('applyCatalogCache returns a fresh ETag reflecting a changed payload (mutation immediately visible)', () => {
+  const before = { items: [{ id: 'c', name: 'Old name' }], pageInfo: {} };
+  const after = { items: [{ id: 'c', name: 'New name' }], pageInfo: {} };
+  const beforeReply = fakeReply();
+  applyCatalogCache(fakeRequest() as never, beforeReply as never, before);
+  const previousEtag = beforeReply.headers.find(
+    ([name]) => name === 'ETag',
+  )?.[1];
 
-  applyCatalogCache(request as never, reply as never, { items: [] }, 5);
+  const afterReply = fakeReply();
+  const notModified = applyCatalogCache(
+    fakeRequest(previousEtag) as never,
+    afterReply as never,
+    after,
+  );
 
-  const cacheControl = reply.headers.find(([name]) => name === 'Cache-Control');
-  assert.equal(cacheControl?.[1], 'private, max-age=5, must-revalidate');
+  assert.equal(notModified, false);
+  assert.equal(afterReply.statusCode, 200);
 });

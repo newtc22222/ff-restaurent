@@ -8,20 +8,23 @@ import type {
   DiningAreaDetailData,
 } from '@/api/types';
 import type { IntentMap } from '@/app/mutation-types';
-import { queryClient } from '@/app/providers/query';
+import { getActiveQueryClient } from '@/app/providers/query';
 import { forwardListQuery } from '@/app/route-helpers';
 import { restaurantCatalogQueryKeys } from '@/features/restaurants/restaurant-catalog.queries';
 import { session } from '@/lib/session';
 
 /**
- * FF-65: catalog GETs are cached (private, short-lived) at the HTTP layer,
- * and `useCuisineCatalog`/`useDiningAreaCatalog` (used outside the route
- * loaders, e.g. the restaurant form picker) hold their own TanStack Query
- * cache. Route loaders auto-revalidate after an action; this cache doesn't,
- * so authorized catalog writes must invalidate it explicitly.
+ * FF-65: catalog GETs are always-revalidated (ETag, no browser-cache
+ * freshness window) at the HTTP layer, and `useCuisineCatalog`/
+ * `useDiningAreaCatalog` (used outside the route loaders, e.g. the
+ * restaurant form picker) hold their own TanStack Query cache. Route loaders
+ * auto-revalidate after an action; this cache doesn't, so authorized catalog
+ * writes must invalidate it explicitly.
  */
 const invalidateCatalogQueries = () =>
-  queryClient.invalidateQueries({ queryKey: restaurantCatalogQueryKeys.all });
+  getActiveQueryClient()?.invalidateQueries({
+    queryKey: restaurantCatalogQueryKeys.all,
+  });
 
 const catalogQueryKeys = new Set([
   'cursor',

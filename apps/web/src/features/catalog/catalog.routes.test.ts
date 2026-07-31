@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { queryClient } from '@/app/providers/query';
+import * as queryProvider from '@/app/providers/query';
 
 import { restaurantCatalogQueryKeys } from '../restaurants/restaurant-catalog.queries';
 import { catalogIntents } from './catalog.routes';
@@ -14,10 +14,11 @@ afterEach(() => {
 });
 
 describe('catalogIntents', () => {
-  it('invalidates the shared restaurant-catalog query cache after each catalog mutation', async () => {
-    const invalidateSpy = vi
-      .spyOn(queryClient, 'invalidateQueries')
-      .mockResolvedValue(undefined);
+  it('invalidates the active query client after each catalog mutation', async () => {
+    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(queryProvider, 'getActiveQueryClient').mockReturnValue({
+      invalidateQueries,
+    } as never);
 
     const cases: Array<[keyof typeof catalogIntents, unknown]> = [
       ['create-cuisine', { payload: { name: 'Drinks', type: 'Beverage' } }],
@@ -35,7 +36,7 @@ describe('catalogIntents', () => {
     ];
 
     for (const [intentName, body] of cases) {
-      invalidateSpy.mockClear();
+      invalidateQueries.mockClear();
       const api = fakeApi({ id: 'result' });
       await catalogIntents[intentName]({
         api: api as never,
@@ -44,16 +45,17 @@ describe('catalogIntents', () => {
       });
 
       expect(api.request).toHaveBeenCalledTimes(1);
-      expect(invalidateSpy).toHaveBeenCalledWith({
+      expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: restaurantCatalogQueryKeys.all,
       });
     }
   });
 
   it('does not invalidate the cache when the request fails', async () => {
-    const invalidateSpy = vi
-      .spyOn(queryClient, 'invalidateQueries')
-      .mockResolvedValue(undefined);
+    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(queryProvider, 'getActiveQueryClient').mockReturnValue({
+      invalidateQueries,
+    } as never);
     const api = {
       request: vi.fn().mockRejectedValue(new Error('network error')),
     };
@@ -66,6 +68,19 @@ describe('catalogIntents', () => {
       }),
     ).rejects.toThrow('network error');
 
-    expect(invalidateSpy).not.toHaveBeenCalled();
+    expect(invalidateQueries).not.toHaveBeenCalled();
+  });
+
+  it('tolerates no active query client (e.g. between provider mounts) without throwing', async () => {
+    vi.spyOn(queryProvider, 'getActiveQueryClient').mockReturnValue(null);
+    const api = fakeApi({ id: 'result' });
+
+    await expect(
+      catalogIntents['delete-cuisine']({
+        api: api as never,
+        body: { catalogId: 'c1' } as never,
+        params: {},
+      }),
+    ).resolves.toBeDefined();
   });
 });
