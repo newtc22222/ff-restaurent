@@ -65,6 +65,8 @@
   "restaurants.profileUpdateFailed": "Could not update the restaurant profile.",
   "restaurants.profileUpdated": "Restaurant profile updated.",
   "restaurants.editProfile": "Edit profile",
+  "restaurants.viewBanner": "View banner for",
+  "restaurants.viewLogo": "View logo for",
   "restaurants.saveProfile": "Save profile",
   "restaurants.primaryLabel": "Primary",
   "restaurants.contact": "Contact",

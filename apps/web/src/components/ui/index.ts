@@ -6,6 +6,7 @@ export { default as DatePicker } from './DatePicker';
 export { default as Dropdown } from './Dropdown';
 export { default as EmptyState } from './EmptyState';
 export { default as ImagePicker } from './ImagePicker';
+export { default as ImagePreviewDialog } from './ImagePreviewDialog';
 export { default as LocaleToggle } from './LocaleToggle';
 export { default as Modal } from './Modal';
 export { default as ScrollArea } from './ScrollArea';

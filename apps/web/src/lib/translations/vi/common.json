@@ -32,6 +32,8 @@
   "common.step": "Bước",
   "common.remove": "Xóa",
   "common.retry": "Thử lại",
+  "common.imagePreviewLoading": "Đang tải ảnh…",
+  "common.imagePreviewError": "Không thể tải ảnh. Vui lòng thử lại.",
   "common.confirm": "Xác nhận",
   "common.yes": "Có",
   "common.no": "Không",

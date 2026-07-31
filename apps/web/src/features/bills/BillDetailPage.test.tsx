@@ -55,7 +55,11 @@ const bill = {
   },
   discounts: [],
   vouchers: [],
-  paymentQrImage: null,
+  paymentQrImage: null as {
+    id: string;
+    imageUrl: string;
+    label: string;
+  } | null,
   paymentUrl: null,
   participants: [
     {
@@ -87,10 +91,13 @@ vi.mock('react-router', async (importOriginal) => {
   };
 });
 
+const refresh = vi.fn();
+
 vi.mock('@/app/providers/app-context', () => ({
   useAppContext: () => ({
     user,
     bills: [bill],
+    refresh,
   }),
 }));
 
@@ -116,6 +123,7 @@ afterEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
   vi.unstubAllGlobals();
+  bill.paymentQrImage = null;
   Object.defineProperty(window.navigator, 'clipboard', {
     configurable: true,
     value: undefined,
@@ -182,6 +190,27 @@ describe('BillDetailPage member breakdown identity', () => {
   it('renders participant avatar and localized You marker for the current user', () => {
     renderPage();
     expect(screen.getByText('You')).toBeTruthy();
+  });
+});
+
+describe('BillDetailPage payment QR preview', () => {
+  it('opens the full-size preview dialog when the QR thumbnail is activated', () => {
+    bill.paymentQrImage = {
+      id: 'qr-1',
+      imageUrl: 'https://example.com/qr.png',
+      label: 'Chef QR',
+    };
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Chef QR' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeTruthy();
+    expect(
+      screen
+        .getAllByAltText('Chef QR')
+        .some((img) => img.closest('[role="dialog"]')),
+    ).toBe(true);
   });
 });
 

@@ -30,6 +30,7 @@ import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { PIE_COLORS } from '@/lib/charts';
@@ -80,7 +81,7 @@ export default function BillDetailPage() {
   const [searchParams] = useSearchParams();
   const { billId } = useParams();
   const activity = useLoaderData<BillActivityEvent[]>();
-  const { user, bills } = useAppContext();
+  const { user, bills, refresh } = useAppContext();
   const { locale, t } = useI18n();
   const { mutate } = useRouteMutation();
   const [confirmAction, setConfirmAction] = useState<
@@ -90,6 +91,7 @@ export default function BillDetailPage() {
     memberId: string;
     current: 'PAID' | 'WAITING';
   } | null>(null);
+  const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
   const billCaptureRef = useRef<HTMLDivElement>(null);
 
   const bill = bills.find((candidate) => candidate.id === billId);
@@ -349,10 +351,26 @@ export default function BillDetailPage() {
                 <p className="label mb-3">
                   {t('bills.paymentQr')} · {bill.paymentQrImage.label}
                 </p>
-                <img
+                <button
+                  type="button"
+                  className="mx-auto block w-full max-w-56 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron"
+                  onClick={() => setQrPreviewOpen(true)}
+                >
+                  <img
+                    src={bill.paymentQrImage.imageUrl}
+                    alt={bill.paymentQrImage.label}
+                    className="mx-auto aspect-square w-full max-w-56 rounded-lg bg-white object-contain p-2"
+                  />
+                </button>
+                <ImagePreviewDialog
+                  open={qrPreviewOpen}
+                  onClose={() => setQrPreviewOpen(false)}
                   src={bill.paymentQrImage.imageUrl}
+                  title={bill.paymentQrImage.label}
                   alt={bill.paymentQrImage.label}
-                  className="mx-auto aspect-square w-full max-w-56 rounded-lg bg-white object-contain p-2"
+                  onRetry={refresh}
+                  isSignedUrl
+                  imageClassName="bg-white p-3"
                 />
               </section>
             ) : bill.paymentUrl ? (

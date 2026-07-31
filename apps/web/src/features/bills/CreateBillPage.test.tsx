@@ -17,6 +17,18 @@ const mutate = vi.fn();
 const routerState = vi.hoisted(() => ({
   params: {} as { billId?: string },
 }));
+const { qrQueryState, qrRefetch } = vi.hoisted(() => ({
+  qrQueryState: {
+    data: [] as { id: string; imageUrl: string; label: string }[],
+    isPending: false,
+    isError: false,
+  },
+  qrRefetch: vi.fn(),
+}));
+
+vi.mock('@/features/profile/profile-media.queries', () => ({
+  usePaymentQrImages: () => ({ ...qrQueryState, refetch: qrRefetch }),
+}));
 
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>();
@@ -105,6 +117,33 @@ vi.mock('@/app/providers/app-context', () => ({
           },
         ],
       },
+      {
+        id: 'bill-with-qr',
+        restaurant: { id: 'restaurant-1' },
+        occurredOn: '2026-07-15',
+        vat: 0,
+        shippingFee: 0,
+        discounts: [],
+        vouchers: [],
+        adjustmentAllocation: 'PROPORTIONAL',
+        paymentQrImageId: null,
+        paymentQrImage: {
+          id: 'qr-1',
+          imageUrl: 'https://example.com/qr.png',
+          label: 'Chef QR',
+        },
+        participants: [
+          {
+            memberId: 'user-1',
+            member: {
+              id: 'user-1',
+              username: 'alice',
+              name: 'Alice',
+            },
+            originCost: 7000,
+          },
+        ],
+      },
     ],
     restaurants: [
       {
@@ -136,6 +175,10 @@ beforeEach(() => {
   localStorage.setItem('ff-locale', 'en');
   mutate.mockClear();
   routerState.params = {};
+  qrQueryState.data = [];
+  qrQueryState.isPending = false;
+  qrQueryState.isError = false;
+  qrRefetch.mockClear();
 });
 
 afterEach(() => {
@@ -241,6 +284,24 @@ describe('CreateBillPage repeat workflows', () => {
         }),
       }),
     );
+  });
+
+  it('opens the full-size preview dialog for the selected payment QR', () => {
+    routerState.params = { billId: 'bill-with-qr' };
+    render(
+      <QueryProvider>
+        <I18nProvider>
+          <CreateBillPage />
+        </I18nProvider>
+      </QueryProvider>,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Selected payment QR' }),
+    );
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByText('Chef QR')).toBeTruthy();
   });
 
   it('resets a discount value when its type changes', () => {

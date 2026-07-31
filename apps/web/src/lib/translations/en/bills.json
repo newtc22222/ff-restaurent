@@ -102,6 +102,7 @@
   "createBill.allocationEqual": "Split equally",
   "createBill.allocationEqualHint": "Give every member an equal adjustment share.",
   "createBill.blockedParticipant": "blocked account",
+  "createBill.selectedPaymentQr": "Selected payment QR",
   "duplicate.title": "Duplicate bill detected",
   "duplicate.message": "An active bill has the same date, restaurant, costs, adjustments, and participants. Create the duplicate anyway?",
   "bills.paymentQr": "Payment QR image",

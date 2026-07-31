@@ -141,6 +141,25 @@ This document serves as the authoritative component registry for the **FF RESTau
 
 ---
 
+### ImagePreviewDialog
+
+- **Framework System**: React web component
+- **Source File**: [ImagePreviewDialog.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ImagePreviewDialog.tsx)
+- **Export**: `default export ImagePreviewDialog`
+- **Description**: Reusable full-size preview dialog for managed images and payment QR codes, built on `Modal` (`size="lg"`, `closeOnClickOutside`). Preserves aspect ratio via `object-contain`, shows a loading spinner and a resilient error state with retry. For signed/expiring QR URLs (`isSignedUrl`), auto-retries once via `onRetry` (re-running the caller's existing data fetch to obtain a fresh signed URL) before falling back to a manual-retry terminal error state; for non-expiring public-bucket images, retry simply remounts the same URL.
+- **Props**:
+  - `open`: `boolean`
+  - `onClose`: `() => void`
+  - `src`: `string | null | undefined`
+  - `title`: `string`
+  - `alt`: `string`
+  - `onRetry?`: `() => void | Promise<void>`
+  - `isSignedUrl?`: `boolean`
+  - `imageClassName?`: `string`
+- **Equivalent in Other Frameworks**: N/A in repository.
+
+---
+
 ### LocaleToggle
 
 - **Framework System**: React web component

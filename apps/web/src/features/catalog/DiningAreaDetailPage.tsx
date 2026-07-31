@@ -9,6 +9,7 @@ import { useI18n } from '@/app/providers/i18n';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import EmptyState from '@/components/ui/EmptyState';
+import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
 import SectionTitle from '@/components/ui/SectionTitle';
 import { canChef } from '@/lib/permissions';
 
@@ -24,6 +25,10 @@ export default function DiningAreaDetailPage() {
   const mediaMutation = useDiningAreaMediaMutation();
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [deleteImageId, setDeleteImageId] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<{
+    imageUrl: string;
+    index: number;
+  } | null>(null);
   const manageable = canChef(user);
 
   const uploadImages = async (files: File[]) => {
@@ -163,7 +168,7 @@ export default function DiningAreaDetailPage() {
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {area.images.map((image) => {
+            {area.images.map((image, index) => {
               if (failedImages[image.id]) return null;
               const isDefault = area.defaultImage?.id === image.id;
               return (
@@ -171,17 +176,25 @@ export default function DiningAreaDetailPage() {
                   key={image.id}
                   className="overflow-hidden rounded-xl border border-border bg-muted"
                 >
-                  <img
-                    src={image.imageUrl}
-                    alt={area.name}
-                    className="aspect-[4/3] w-full object-cover"
-                    onError={() =>
-                      setFailedImages((current) => ({
-                        ...current,
-                        [image.id]: true,
-                      }))
+                  <button
+                    type="button"
+                    className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-saffron"
+                    onClick={() =>
+                      setPreviewImage({ imageUrl: image.imageUrl, index })
                     }
-                  />
+                  >
+                    <img
+                      src={image.imageUrl}
+                      alt={area.name}
+                      className="aspect-[4/3] w-full object-cover"
+                      onError={() =>
+                        setFailedImages((current) => ({
+                          ...current,
+                          [image.id]: true,
+                        }))
+                      }
+                    />
+                  </button>
                   <div className="flex items-center justify-between gap-2 p-3">
                     <span
                       className={`chip ${isDefault ? 'chip-saffron' : 'chip-muted'}`}
@@ -266,6 +279,18 @@ export default function DiningAreaDetailPage() {
           onConfirm={() => void removeImage()}
         />
       )}
+
+      <ImagePreviewDialog
+        open={previewImage !== null}
+        onClose={() => setPreviewImage(null)}
+        src={previewImage?.imageUrl}
+        title={
+          previewImage
+            ? `${area.name} — ${t('catalog.diningAreas.galleryImage')} ${previewImage.index + 1}`
+            : area.name
+        }
+        alt={area.name}
+      />
     </div>
   );
 }

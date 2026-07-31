@@ -32,6 +32,8 @@
   "common.step": "Step",
   "common.remove": "Remove",
   "common.retry": "Retry",
+  "common.imagePreviewLoading": "Loading image…",
+  "common.imagePreviewError": "Couldn't load the image. Please try again.",
   "common.confirm": "Confirm",
   "common.yes": "Yes",
   "common.no": "No",

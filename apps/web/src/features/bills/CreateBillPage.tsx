@@ -22,6 +22,7 @@ import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import DatePicker from '@/components/ui/DatePicker';
 import Dropdown from '@/components/ui/Dropdown';
+import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
 import SummaryLine from '@/components/ui/SummaryLine';
 import {
   billDetailPath,
@@ -115,6 +116,7 @@ export default function CreateBillPage() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [duplicateDetected, setDuplicateDetected] = useState(false);
+  const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
   const { mutate } = useRouteMutation();
   const paymentQrImagesQuery = usePaymentQrImages(
     canChef(user),
@@ -597,16 +599,45 @@ export default function CreateBillPage() {
                   {t('common.retry')}
                 </button>
               )}
-              {paymentQrImageId && (
-                <img
-                  src={
-                    paymentQrImages.find((qr) => qr.id === paymentQrImageId)
-                      ?.imageUrl ?? editBill?.paymentQrImage?.imageUrl
-                  }
-                  alt="Selected payment QR"
-                  className="h-32 w-32 rounded-lg border border-border bg-white object-contain p-2"
-                />
-              )}
+              {paymentQrImageId &&
+                (() => {
+                  const selectedQr = paymentQrImages.find(
+                    (qr) => qr.id === paymentQrImageId,
+                  );
+                  const selectedQrUrl =
+                    selectedQr?.imageUrl ?? editBill?.paymentQrImage?.imageUrl;
+                  const selectedQrLabel =
+                    selectedQr?.label ??
+                    editBill?.paymentQrImage?.label ??
+                    t('createBill.selectedPaymentQr');
+                  return (
+                    <>
+                      <button
+                        type="button"
+                        className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron"
+                        onClick={() => setQrPreviewOpen(true)}
+                      >
+                        <img
+                          src={selectedQrUrl}
+                          alt={t('createBill.selectedPaymentQr')}
+                          className="h-32 w-32 rounded-lg border border-border bg-white object-contain p-2"
+                        />
+                      </button>
+                      <ImagePreviewDialog
+                        open={qrPreviewOpen}
+                        onClose={() => setQrPreviewOpen(false)}
+                        src={selectedQrUrl}
+                        title={selectedQrLabel}
+                        alt={t('createBill.selectedPaymentQr')}
+                        onRetry={() => {
+                          void paymentQrImagesQuery.refetch();
+                        }}
+                        isSignedUrl
+                        imageClassName="bg-white p-3"
+                      />
+                    </>
+                  );
+                })()}
               {!paymentQrImageId && editBill?.paymentUrl && (
                 <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
                   This bill keeps its legacy payment link as read-only until a
