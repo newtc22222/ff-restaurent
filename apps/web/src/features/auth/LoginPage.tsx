@@ -132,14 +132,14 @@ export default function LoginPage() {
           : t('app.name');
 
   return (
-    <main className="grid min-h-screen place-items-center bg-bg px-4 py-10 font-sans">
-      <div className="w-full max-w-[440px]">
+    <main className="grid min-h-screen min-w-0 place-items-center bg-bg px-4 py-10 font-sans">
+      <div className="w-full min-w-0 max-w-[440px]">
         <div className="mb-4 flex items-center justify-end gap-2">
           <LocaleToggle locale={locale} setLocale={setLocale} />
           <ThemeToggle theme={theme} setTheme={setTheme} />
         </div>
         <form
-          className="rounded-xl border border-border bg-surface p-8 shadow-panel"
+          className="min-w-0 rounded-xl border border-border bg-surface p-8 shadow-panel"
           onSubmit={submit}
         >
           <div className="mb-7">
@@ -195,12 +195,15 @@ export default function LoginPage() {
               {showDemoUsers && (
                 <div className="mb-4">
                   <div className="label mb-2">{t('auth.role')}</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div
+                    className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3"
+                    data-testid="demo-role-grid"
+                  >
                     {seededUsers.map(([seedId, labelKey]) => (
                       <button
                         key={seedId}
                         type="button"
-                        className={`btn px-2 ${activeSeed === seedId ? 'border border-ink bg-ink text-surface' : 'btn-soft'}`}
+                        className={`btn min-w-0 w-full whitespace-normal px-2 text-center ${activeSeed === seedId ? 'border border-ink bg-ink text-surface' : 'btn-soft'}`}
                         onClick={() => setIdentifier(seedId)}
                       >
                         {t(labelKey)}

@@ -138,9 +138,9 @@ export default function BillsPage() {
     });
 
   return (
-    <div className="w-full">
+    <div className="min-w-0 w-full">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <h2 className="text-xl font-bold text-ink">{t('bills.title')}</h2>
           <p className="mt-1 text-sm text-slate-500">{t('bills.scopeNote')}</p>
         </div>
@@ -398,7 +398,7 @@ export default function BillsPage() {
         />
       )}
 
-      <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-5 flex min-w-0 flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
         <Dropdown
           label={t('bills.rowsPerPage')}
           ariaLabel={t('bills.rowsPerPage')}
@@ -412,10 +412,13 @@ export default function BillsPage() {
           }))}
           fullWidth={false}
         />
-        <div className="flex gap-2">
+        <div
+          className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:w-auto"
+          data-testid="bills-pagination-actions"
+        >
           <button
             type="button"
-            className="btn btn-soft"
+            className="btn btn-soft min-w-0 w-full sm:w-auto"
             disabled={
               !page.pageInfo.hasPreviousPage || !page.pageInfo.startCursor
             }
@@ -428,7 +431,7 @@ export default function BillsPage() {
           </button>
           <button
             type="button"
-            className="btn btn-soft"
+            className="btn btn-soft min-w-0 w-full sm:w-auto"
             disabled={!page.pageInfo.hasNextPage || !page.pageInfo.endCursor}
             onClick={() =>
               page.pageInfo.endCursor &&
@@ -479,7 +482,7 @@ function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
   return (
     <button
       type="button"
-      className="panel flex w-full flex-col gap-3 p-4 text-left transition hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center"
+      className="panel flex w-full min-w-0 flex-col gap-3 p-4 text-left transition hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center"
       onClick={onView}
     >
       <div className="min-w-0 flex-1">
@@ -502,8 +505,10 @@ function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
           {summary.total} {t('bills.paidCount')}
         </p>
       </div>
-      <div className="flex items-center justify-between gap-4 sm:justify-end">
-        <p className="text-base font-bold text-ink">{money(bill.totalCost)}</p>
+      <div className="flex min-w-0 items-center justify-between gap-4 sm:justify-end">
+        <p className="ticket-figure shrink-0 text-base font-bold text-ink">
+          {money(bill.totalCost)}
+        </p>
         <ChevronRight size={16} className="text-slate-400" aria-hidden="true" />
       </div>
     </button>
@@ -520,7 +525,7 @@ interface BillTableProps {
 function BillTable({ bills, locale, onView, t }: BillTableProps) {
   return (
     <>
-      <div className="space-y-2 md:hidden">
+      <div className="space-y-2 md:hidden" data-testid="bill-mobile-table">
         {bills.map((bill) => (
           <BillListRow
             key={bill.id}
