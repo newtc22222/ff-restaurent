@@ -147,4 +147,15 @@ describe('BillsPage detail navigation', () => {
       expect(button.className).toContain('sm:w-auto');
     }
   });
+
+  it('renders table copy from the local i18n hook', () => {
+    renderLayout('table');
+
+    expect(
+      screen.getByRole('columnheader', { name: 'Restaurant / Eatery' }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('columnheader', { name: 'Payment progress' }),
+    ).toBeTruthy();
+  });
 });
