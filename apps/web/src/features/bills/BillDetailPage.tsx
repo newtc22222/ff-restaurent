@@ -229,7 +229,7 @@ export default function BillDetailPage() {
                   </p>
                   <span
                     className={`text-2xs font-semibold uppercase tracking-wide ${
-                      allPaid ? 'text-emerald-500' : 'text-[#e9900c]'
+                      allPaid ? 'text-basil' : 'text-saffron'
                     }`}
                   >
                     {allPaid ? t('bills.settled') : bill.status}

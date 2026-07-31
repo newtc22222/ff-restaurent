@@ -75,3 +75,11 @@ test('deployment workflow supports staging deployment target for develop branch'
   assert.match(workflow, /ff-staging-database-url/);
   assert.match(workflow, /ff-staging-cors-origins/);
 });
+
+test('deployment workflow uses Node 24-compatible artifact and Buildx actions', async () => {
+  const workflow = await read('.github/workflows/gcp-deploy.yml');
+  assert.match(workflow, /docker\/setup-buildx-action@v4/);
+  assert.match(workflow, /actions\/upload-artifact@v6/);
+  assert.doesNotMatch(workflow, /docker\/setup-buildx-action@v3/);
+  assert.doesNotMatch(workflow, /actions\/upload-artifact@v4/);
+});

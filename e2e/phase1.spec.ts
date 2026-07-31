@@ -592,6 +592,11 @@ test('Root Admin archives, restores, administers roles, and cannot alter root th
   await expect(customerRow).toContainText('Sous Chef');
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Primary navigation' })
+      .getByRole('link', { name: 'Members' }),
+  ).toBeVisible();
   await expect(page.getByLabel('Member cards')).toBeVisible();
   await expect(
     page.getByLabel('Member cards').getByRole('article').filter({
@@ -639,11 +644,22 @@ test('mobile app shell and bill list fit without page overflow', async ({
   await expect(
     page.getByRole('button', { name: 'Notifications' }),
   ).toBeVisible();
+  await page.getByRole('button', { name: 'Options' }).click();
 
-  await page.getByRole('button', { name: 'Expand navigation' }).click();
-  const restaurantsLink = page.getByRole('link', { name: 'Restaurants' });
+  const mobileNavigation = page.getByRole('navigation', {
+    name: 'Primary navigation',
+  });
+  await expect(mobileNavigation).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Expand navigation' }),
+  ).toHaveCount(0);
+  const restaurantsLink = mobileNavigation.getByRole('link', {
+    name: 'Restaurants',
+  });
   await expect(restaurantsLink).toBeVisible();
-  await expect(restaurantsLink.locator('span')).not.toHaveClass(/sr-only/);
+  await restaurantsLink.click();
+  await expect(page).toHaveURL(/\/restaurants$/);
+  await expect(restaurantsLink).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('main')).toHaveCount(1);
   expect(
     await page.evaluate(

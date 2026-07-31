@@ -66,6 +66,7 @@ describe('AppHeader notification controls', () => {
   it('places notifications below the theme control in the mobile menu', () => {
     render(<AppHeader onOpenNotification={vi.fn()} />);
 
+    expect(screen.queryByRole('button', { name: /navigation/i })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
 
     const themeButtons = screen.getAllByRole('button', { name: /Theme:/ });
