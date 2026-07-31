@@ -4,6 +4,7 @@ import {
   requireAuthenticatedUser,
   requireSousChefOrHeadChef,
 } from '../http/auth-guards.js';
+import { applyCatalogCache } from '../lib/http-cache.js';
 import {
   catalogQuerySchema,
   cuisineSchema,
@@ -35,7 +36,11 @@ export const registerCatalogRoutes = (app: FastifyInstance) => {
   app.get(
     '/cuisines',
     { preHandler: requireAuthenticatedUser },
-    async (request) => listCuisines(catalogQuerySchema.parse(request.query)),
+    async (request, reply) => {
+      const page = await listCuisines(catalogQuerySchema.parse(request.query));
+      if (applyCatalogCache(request, reply, page)) return reply.send();
+      return page;
+    },
   );
 
   app.post('/cuisines', manage, async (request, reply) => {
@@ -57,7 +62,13 @@ export const registerCatalogRoutes = (app: FastifyInstance) => {
   app.get(
     '/dining-areas',
     { preHandler: requireAuthenticatedUser },
-    async (request) => listDiningAreas(catalogQuerySchema.parse(request.query)),
+    async (request, reply) => {
+      const page = await listDiningAreas(
+        catalogQuerySchema.parse(request.query),
+      );
+      if (applyCatalogCache(request, reply, page)) return reply.send();
+      return page;
+    },
   );
 
   app.get(

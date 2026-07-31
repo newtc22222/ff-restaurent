@@ -15,9 +15,14 @@ const queryConfig: QueryClientConfig = {
   },
 };
 
+/**
+ * A module-level singleton so route actions (which run outside the React
+ * tree) can invalidate query data after a mutation, e.g. catalog writes in
+ * `features/catalog/catalog.routes.ts`.
+ */
+export const queryClient = new QueryClient(queryConfig);
+
 export function QueryProvider({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient(queryConfig));
-  return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  const [client] = useState(() => queryClient);
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
