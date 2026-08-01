@@ -289,10 +289,20 @@ select {
 }
 
 .scroll-area {
-  overscroll-behavior: contain;
   scrollbar-color: var(--scrollbar-thumb) transparent;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
+}
+
+.scroll-area[data-axis='y'],
+.scroll-area[data-axis='both'],
+.scroll-area:not([data-axis]) {
+  overscroll-behavior: contain;
+}
+
+.scroll-area[data-axis='x'] {
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
 }
 
 .scroll-area::-webkit-scrollbar {

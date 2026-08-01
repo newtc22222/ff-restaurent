@@ -72,7 +72,12 @@ test('publisher applies channel defaults, excludes the actor, and localizes push
       },
       send: async (...args) => {
         sends.push(args);
-        return { sent: 1, pruned: 0 };
+        return {
+          sent: 1,
+          pruned: 0,
+          attempted: true,
+          successfulTokens: ['token-en'],
+        };
       },
     },
   );
@@ -139,7 +144,12 @@ test('publisher swallows its own failures', async () => {
       createNotifications: async () => [],
       findSubscriptions: async () => [],
       updateDelivery: async () => undefined,
-      send: async () => ({ sent: 0, pruned: 0 }),
+      send: async () => ({
+        sent: 0,
+        pruned: 0,
+        attempted: false,
+        successfulTokens: [],
+      }),
     },
   );
 
@@ -172,11 +182,59 @@ test('publisher does not resend push when deduplication inserts no rows', async 
       updateDelivery: async () => undefined,
       send: async () => {
         sends += 1;
-        return { sent: 1, pruned: 0 };
+        return {
+          sent: 1,
+          pruned: 0,
+          attempted: true,
+          successfulTokens: ['token-1'],
+        };
       },
     },
   );
 
   assert.deepEqual(result, { created: 0, pushed: 0 });
   assert.equal(sends, 0);
+});
+
+test('publisher records delivery outcomes for each recipient', async () => {
+  const deliveries: unknown[] = [];
+  const result = await publishProductEvent(
+    {
+      category: 'RESTAURANT_CREATED',
+      actorId: 'actor-1',
+      actorName: 'An',
+      targetUrl: '/restaurants/restaurant-1',
+      deduplicationKey: 'restaurant-created:restaurant-1',
+      data: { actorName: 'An', restaurantName: 'Bep Moi' },
+      fallbackMessage: 'An added Bep Moi.',
+    },
+    { warn: () => undefined },
+    {
+      findAudience: async () => ['user-sent', 'user-failed'],
+      findPreferences: async () => [
+        { userId: 'user-sent', inAppEnabled: true, pushEnabled: true },
+        { userId: 'user-failed', inAppEnabled: true, pushEnabled: true },
+      ],
+      createNotifications: async (items) => items.map((item) => item.userId),
+      findSubscriptions: async () => [
+        { userId: 'user-sent', fcmToken: 'token-sent', locale: 'EN' },
+        { userId: 'user-failed', fcmToken: 'token-failed', locale: 'EN' },
+      ],
+      updateDelivery: async (...args) => {
+        deliveries.push(args);
+      },
+      send: async () => ({
+        sent: 1,
+        pruned: 0,
+        attempted: true,
+        successfulTokens: ['token-sent'],
+      }),
+    },
+  );
+
+  assert.deepEqual(result, { created: 2, pushed: 1 });
+  assert.deepEqual(deliveries, [
+    [['user-sent'], 'restaurant-created:restaurant-1', 'SENT'],
+    [['user-failed'], 'restaurant-created:restaurant-1', 'FAILED'],
+  ]);
 });

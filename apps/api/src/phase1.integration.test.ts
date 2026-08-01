@@ -2661,6 +2661,24 @@ integrationTest(
       }
       assert.fail(`Timed out waiting for ${deduplicationKey}`);
     };
+    const waitForCollectionCount = async (
+      collectionId: string,
+      count: number,
+    ) => {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const current = await prisma.notification.count({
+          where: {
+            category: NotificationCategory.COLLECTION_PUBLISHED,
+            deduplicationKey: {
+              startsWith: `collection-published:${collectionId}:`,
+            },
+          },
+        });
+        if (current >= count) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.fail(`Timed out waiting for Collection ${collectionId}`);
+    };
 
     const published = await app.inject({
       method: 'POST',
@@ -2673,7 +2691,7 @@ integrationTest(
       },
     });
     assert.equal(published.statusCode, 201);
-    const collectionKey = `collection-published:${published.json().id}`;
+    const collectionKey = `collection-published:${published.json().id}:${published.json().updatedAt}`;
     await waitForCount(
       NotificationCategory.COLLECTION_PUBLISHED,
       collectionKey,
@@ -2700,19 +2718,53 @@ integrationTest(
       }),
       expectedAudience,
     );
-    const republished = await app.inject({
+    const repeatedPublication = await app.inject({
       method: 'PUT',
       url: `/collections/${published.json().id}`,
       headers: auth(sousToken),
       payload: { isPublic: true },
     });
-    assert.equal(republished.statusCode, 200);
+    assert.equal(repeatedPublication.statusCode, 200);
     await new Promise((resolve) => setTimeout(resolve, 50));
     assert.equal(
       await prisma.notification.count({
         where: { deduplicationKey: collectionKey },
       }),
       expectedAudience,
+    );
+    const unpublished = await app.inject({
+      method: 'PUT',
+      url: `/collections/${published.json().id}`,
+      headers: auth(sousToken),
+      payload: { isPublic: false },
+    });
+    assert.equal(unpublished.statusCode, 200);
+    const republished = await Promise.all(
+      ['Concurrent publication A', 'Concurrent publication B'].map((name) =>
+        app.inject({
+          method: 'PUT',
+          url: `/collections/${published.json().id}`,
+          headers: auth(sousToken),
+          payload: { name, isPublic: true },
+        }),
+      ),
+    );
+    assert.deepEqual(
+      republished.map((response) => response.statusCode),
+      [200, 200],
+    );
+    await waitForCollectionCount(published.json().id, expectedAudience * 2);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(
+      await prisma.notification.count({
+        where: {
+          category: NotificationCategory.COLLECTION_PUBLISHED,
+          deduplicationKey: {
+            startsWith: `collection-published:${published.json().id}:`,
+          },
+        },
+      }),
+      expectedAudience * 2,
     );
 
     const cuisine = await prisma.cuisine.findFirstOrThrow();

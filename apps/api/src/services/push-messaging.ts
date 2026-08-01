@@ -5,6 +5,10 @@ import { prisma } from '../lib/prisma.js';
 
 type PushPayload = { title: string; body: string; url: string };
 type PushResult = { sent: number; pruned: number };
+export type PushDeliveryResult = PushResult & {
+  attempted: boolean;
+  successfulTokens: string[];
+};
 type PushLogger = { warn: (...args: unknown[]) => void };
 
 type ReminderPushDependencies = {
@@ -51,11 +55,17 @@ export const sendReminderPush = async (
   tokens: string[],
   payload: PushPayload,
   logger?: PushLogger,
-): Promise<PushResult> => {
-  if (tokens.length === 0) return { sent: 0, pruned: 0 };
+): Promise<PushDeliveryResult> => {
+  if (tokens.length === 0) {
+    return { sent: 0, pruned: 0, attempted: false, successfulTokens: [] };
+  }
+  let attempted = false;
   try {
     const client = await getMessagingClient();
-    if (!client) return { sent: 0, pruned: 0 };
+    if (!client) {
+      return { sent: 0, pruned: 0, attempted: false, successfulTokens: [] };
+    }
+    attempted = true;
     const response = await client.sendEachForMulticast({
       tokens,
       notification: { title: payload.title, body: payload.body },
@@ -67,10 +77,17 @@ export const sendReminderPush = async (
         where: { fcmToken: { in: staleTokens } },
       });
     }
-    return { sent: response.successCount, pruned: staleTokens.length };
+    return {
+      sent: response.successCount,
+      pruned: staleTokens.length,
+      attempted: true,
+      successfulTokens: tokens.filter(
+        (_, index) => response.responses[index]?.success,
+      ),
+    };
   } catch (error) {
     logger?.warn({ err: error, event: 'push_send_failed' }, 'Push send failed');
-    return { sent: 0, pruned: 0 };
+    return { sent: 0, pruned: 0, attempted, successfulTokens: [] };
   }
 };
 
@@ -93,7 +110,8 @@ export const sendReminderPushForUsers = async (
 ): Promise<PushResult> => {
   try {
     const tokens = await dependencies.findTokens(userIds);
-    return await dependencies.send(tokens, payload, logger);
+    const result = await dependencies.send(tokens, payload, logger);
+    return { sent: result.sent, pruned: result.pruned };
   } catch (error) {
     logger.warn(
       { err: error, event: 'push_fanout_failed' },

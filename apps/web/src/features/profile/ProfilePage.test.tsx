@@ -7,13 +7,24 @@ import { QueryProvider } from '@/app/providers/query';
 
 import ProfilePage from './ProfilePage';
 
-const { mutate, toastError } = vi.hoisted(() => ({
+const {
+  mutate,
+  toastError,
+  toastSuccess,
+  pushSubscriptionState,
+  registerPushSubscription,
+  removePushSubscription,
+} = vi.hoisted(() => ({
   mutate: vi.fn(),
   toastError: vi.fn(),
+  toastSuccess: vi.fn(),
+  pushSubscriptionState: { id: null as string | null },
+  registerPushSubscription: vi.fn(),
+  removePushSubscription: vi.fn(),
 }));
 
 vi.mock('react-hot-toast', () => ({
-  default: { error: toastError },
+  default: { error: toastError, success: toastSuccess },
 }));
 
 vi.mock('react-router', async (importOriginal) => {
@@ -32,6 +43,22 @@ vi.mock('@/app/providers/app-context', () => ({
       roles: ['CUSTOMER'],
       paymentRemindersEnabled: true,
     },
+    notificationPreferences: {
+      paymentRemindersEnabled: true,
+      categories: [
+        {
+          category: 'RESTAURANT_CREATED',
+          inAppEnabled: true,
+          pushEnabled: false,
+        },
+        {
+          category: 'COLLECTION_PUBLISHED',
+          inAppEnabled: true,
+          pushEnabled: false,
+        },
+      ],
+      pushSubscriptions: [{ id: 'other-device', locale: 'en' }],
+    },
   }),
 }));
 
@@ -39,18 +66,24 @@ vi.mock('@/hooks/useRouteMutation', () => ({
   useRouteMutation: () => ({ mutate }),
 }));
 
-const { requestPushToken } = vi.hoisted(() => ({
-  requestPushToken: vi.fn(),
+vi.mock('@/features/notifications/push-subscription.queries', () => ({
+  usePushSubscription: () => ({
+    subscriptionId: pushSubscriptionState.id,
+    register: registerPushSubscription,
+    remove: removePushSubscription,
+    busy: false,
+  }),
 }));
-
-vi.mock('@/lib/push', () => ({ requestPushToken }));
 
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('ff-locale', 'en');
   mutate.mockClear();
   toastError.mockClear();
-  requestPushToken.mockReset();
+  toastSuccess.mockClear();
+  pushSubscriptionState.id = null;
+  registerPushSubscription.mockReset();
+  removePushSubscription.mockReset();
 });
 
 afterEach(cleanup);
@@ -166,9 +199,10 @@ describe('ProfilePage account forms', () => {
   });
 
   it('subscribes to push notifications when permission and a token are granted', async () => {
-    requestPushToken.mockResolvedValue({
+    registerPushSubscription.mockResolvedValue({
       status: 'registered',
       token: 'fcm-token-abc',
+      subscriptionId: 'current-device',
     });
     render(
       <QueryProvider>
@@ -181,23 +215,17 @@ describe('ProfilePage account forms', () => {
     const pushToggle = screen.getByRole('checkbox', {
       name: 'Push alerts',
     });
+    expect((pushToggle as HTMLInputElement).checked).toBe(false);
     fireEvent.click(pushToggle);
 
     await vi.waitFor(() => {
-      expect(mutate).toHaveBeenCalledWith(
-        {
-          intent: 'push-subscribe',
-          payload: { fcmToken: 'fcm-token-abc', locale: 'en' },
-        },
-        expect.objectContaining({
-          success: 'Push notifications enabled.',
-        }),
-      );
+      expect(registerPushSubscription).toHaveBeenCalled();
+      expect(toastSuccess).toHaveBeenCalledWith('Push notifications enabled.');
     });
   });
 
   it('shows an error toast when push permission is denied', async () => {
-    requestPushToken.mockResolvedValue({ status: 'denied' });
+    registerPushSubscription.mockResolvedValue({ status: 'denied' });
     render(
       <QueryProvider>
         <I18nProvider>
@@ -212,7 +240,6 @@ describe('ProfilePage account forms', () => {
     fireEvent.click(pushToggle);
 
     await vi.waitFor(() => {
-      expect(mutate).not.toHaveBeenCalled();
       expect(toastError).toHaveBeenCalledWith(
         'The browser denied notification permission.',
       );
@@ -220,7 +247,7 @@ describe('ProfilePage account forms', () => {
   });
 
   it('silently skips push registration when unavailable', async () => {
-    requestPushToken.mockResolvedValue({ status: 'unavailable' });
+    registerPushSubscription.mockResolvedValue({ status: 'unavailable' });
     render(
       <QueryProvider>
         <I18nProvider>
@@ -232,15 +259,17 @@ describe('ProfilePage account forms', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Push alerts' }));
 
     await vi.waitFor(() => {
-      expect(mutate).not.toHaveBeenCalled();
+      expect(registerPushSubscription).toHaveBeenCalled();
       expect(toastError).not.toHaveBeenCalled();
+      expect(toastSuccess).not.toHaveBeenCalled();
     });
   });
 
   it('registers the device before enabling a product push category', async () => {
-    requestPushToken.mockResolvedValue({
+    registerPushSubscription.mockResolvedValue({
       status: 'registered',
       token: 'fcm-token-category',
+      subscriptionId: 'current-device',
     });
     render(
       <QueryProvider>
@@ -257,13 +286,7 @@ describe('ProfilePage account forms', () => {
     );
 
     await vi.waitFor(() => {
-      expect(mutate).toHaveBeenCalledWith(
-        {
-          intent: 'push-subscribe',
-          payload: { fcmToken: 'fcm-token-category', locale: 'en' },
-        },
-        expect.anything(),
-      );
+      expect(registerPushSubscription).toHaveBeenCalled();
       expect(mutate).toHaveBeenCalledWith(
         {
           intent: 'notification-preferences',
@@ -279,6 +302,27 @@ describe('ProfilePage account forms', () => {
         },
         expect.anything(),
       );
+    });
+  });
+
+  it('unsubscribes only the current browser device', async () => {
+    pushSubscriptionState.id = 'current-device';
+    removePushSubscription.mockResolvedValue(undefined);
+    render(
+      <QueryProvider>
+        <I18nProvider>
+          <ProfilePage />
+        </I18nProvider>
+      </QueryProvider>,
+    );
+
+    const pushToggle = screen.getByRole('checkbox', { name: 'Push alerts' });
+    expect((pushToggle as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(pushToggle);
+
+    await vi.waitFor(() => {
+      expect(removePushSubscription).toHaveBeenCalled();
+      expect(toastSuccess).toHaveBeenCalledWith('Push notifications disabled.');
     });
   });
 });

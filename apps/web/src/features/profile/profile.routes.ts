@@ -20,14 +20,4 @@ export const profileIntents = {
       method: 'PATCH',
       body: JSON.stringify(body.payload),
     }),
-  'push-subscribe': ({ api, body }) =>
-    api.request('/me/push-subscriptions', {
-      method: 'POST',
-      body: JSON.stringify(body.payload),
-    }),
-  'push-unsubscribe': ({ api, body }) =>
-    api.request(
-      `/me/push-subscriptions/${(body.payload as { subscriptionId: string }).subscriptionId}`,
-      { method: 'DELETE' },
-    ),
 } satisfies IntentMap;

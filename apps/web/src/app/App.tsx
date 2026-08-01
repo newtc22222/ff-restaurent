@@ -15,6 +15,7 @@ import {
   Outlet,
   isRouteErrorResponse,
   useLoaderData,
+  useLocation,
   useNavigate,
   useRouteError,
 } from 'react-router';
@@ -29,10 +30,9 @@ import {
   notificationMessage,
   notificationTarget,
 } from '@/features/notifications/notification-message';
+import { usePushSubscription } from '@/features/notifications/push-subscription.queries';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { isRootAdmin } from '@/lib/permissions';
-import { requestPushToken } from '@/lib/push';
-import { session } from '@/lib/session';
 
 import {
   type AppLoaderData,
@@ -44,10 +44,19 @@ import { useI18n } from './providers/i18n';
 function AppShellContent() {
   const { locale, t } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, notifications, warning, loading } = useAppContext();
   const { mutate } = useRouteMutation();
   const warned = useRef(false);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  usePushSubscription(locale);
+
+  useEffect(() => {
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (warning && !warned.current) {
@@ -56,20 +65,6 @@ function AppShellContent() {
     }
     if (!warning) warned.current = false;
   }, [t, warning]);
-
-  useEffect(() => {
-    void requestPushToken({ prompt: false }).then(async (result) => {
-      if (result.status !== 'registered') return;
-      try {
-        await session.api().request('/me/push-subscriptions', {
-          method: 'POST',
-          body: JSON.stringify({ fcmToken: result.token, locale }),
-        });
-      } catch {
-        return;
-      }
-    });
-  }, [locale]);
 
   const localizedNotifications = notifications.map((notification) => ({
     ...notification,
@@ -129,7 +124,7 @@ function AppShellContent() {
           onToggle={() => setSidebarCollapsed((current) => !current)}
         />
         <main className="min-h-0 flex-1 overflow-hidden py-3">
-          <ScrollArea className="h-full">
+          <ScrollArea ref={mainScrollRef} className="h-full">
             <div className="px-3 pb-3 sm:px-4 md:px-6 md:pb-6">
               <div className="mx-auto w-full max-w-[1500px]">
                 {loading && (

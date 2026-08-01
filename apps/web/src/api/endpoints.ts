@@ -95,6 +95,19 @@ export const profileMediaEndpoints = {
     api.request(`/me/payment-qr-images/${id}`, { method: 'DELETE' }),
 };
 
+export const pushSubscriptionEndpoints = {
+  register: (
+    api: ApiClient,
+    payload: { fcmToken: string; locale: 'vi' | 'en' },
+  ) =>
+    api.request<{ id: string }>('/me/push-subscriptions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  remove: (api: ApiClient, id: string) =>
+    api.request(`/me/push-subscriptions/${id}`, { method: 'DELETE' }),
+};
+
 export const restaurantMediaEndpoints = {
   upload: (
     api: ApiClient,

@@ -17,9 +17,9 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import ImagePicker from '@/components/ui/ImagePicker';
 import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
 import Modal from '@/components/ui/Modal';
+import { usePushSubscription } from '@/features/notifications/push-subscription.queries';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { canChef, roleLabel } from '@/lib/permissions';
-import { requestPushToken } from '@/lib/push';
 import { initials } from '@/lib/user-display';
 
 import {
@@ -88,48 +88,29 @@ export default function ProfilePage() {
   const [notificationPreferences, setNotificationPreferences] = useState(
     initialNotificationPreferences,
   );
-  const [pushSubscriptionId, setPushSubscriptionId] = useState<string | null>(
-    initialNotificationPreferences.pushSubscriptions[0]?.id ?? null,
-  );
-  const [pushBusy, setPushBusy] = useState(false);
+  const {
+    subscriptionId: pushSubscriptionId,
+    register: registerPushSubscription,
+    remove: removePushSubscription,
+    busy: pushBusy,
+  } = usePushSubscription(locale);
 
   const handlePushToggle = async (enabled: boolean) => {
-    setPushBusy(true);
     try {
       if (enabled) {
-        const result = await requestPushToken();
+        const result = await registerPushSubscription();
         if (result.status === 'denied') {
           toast.error(t('toast.pushPermissionDenied'));
           return;
         }
         if (result.status !== 'registered') return;
-        await mutate(
-          {
-            intent: 'push-subscribe',
-            payload: { fcmToken: result.token, locale },
-          },
-          {
-            fallback: t('toast.pushSubscribeFailed'),
-            success: t('toast.pushSubscribeUpdated'),
-            onSuccess: (data) =>
-              setPushSubscriptionId((data as { id: string }).id),
-          },
-        );
+        toast.success(t('toast.pushSubscribeUpdated'));
       } else if (pushSubscriptionId) {
-        await mutate(
-          {
-            intent: 'push-unsubscribe',
-            payload: { subscriptionId: pushSubscriptionId },
-          },
-          {
-            fallback: t('toast.pushSubscribeFailed'),
-            success: t('toast.pushUnsubscribeUpdated'),
-            onSuccess: () => setPushSubscriptionId(null),
-          },
-        );
+        await removePushSubscription();
+        toast.success(t('toast.pushUnsubscribeUpdated'));
       }
-    } finally {
-      setPushBusy(false);
+    } catch {
+      toast.error(t('toast.pushSubscribeFailed'));
     }
   };
 
@@ -139,23 +120,17 @@ export default function ProfilePage() {
     enabled: boolean,
   ) => {
     if (channel === 'pushEnabled' && enabled) {
-      const result = await requestPushToken();
-      if (result.status === 'denied') {
-        toast.error(t('toast.pushPermissionDenied'));
+      try {
+        const result = await registerPushSubscription();
+        if (result.status === 'denied') {
+          toast.error(t('toast.pushPermissionDenied'));
+          return;
+        }
+        if (result.status !== 'registered') return;
+      } catch {
+        toast.error(t('toast.pushSubscribeFailed'));
         return;
       }
-      if (result.status !== 'registered') return;
-      await mutate(
-        {
-          intent: 'push-subscribe',
-          payload: { fcmToken: result.token, locale },
-        },
-        {
-          fallback: t('toast.pushSubscribeFailed'),
-          onSuccess: (data) =>
-            setPushSubscriptionId((data as { id: string }).id),
-        },
-      );
     }
     const current = notificationPreferences.categories.find(
       (preference) => preference.category === category,

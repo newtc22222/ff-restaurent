@@ -24,7 +24,7 @@ import {
 import { publishProductEvent } from '../services/notification-service.js';
 
 const publishCollection = (
-  collection: { id: string; name: string },
+  collection: { id: string; name: string; updatedAt: Date },
   actor: { id: string; name: string },
   logger: Parameters<typeof publishProductEvent>[1],
 ) => {
@@ -34,7 +34,7 @@ const publishCollection = (
       actorId: actor.id,
       actorName: actor.name,
       targetUrl: `/collections/${collection.id}`,
-      deduplicationKey: `collection-published:${collection.id}`,
+      deduplicationKey: `collection-published:${collection.id}:${collection.updatedAt.toISOString()}`,
       data: {
         actorName: actor.name,
         collectionName: collection.name,
@@ -76,8 +76,12 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
   app.put('/collections/:id', auth, async (request) => {
     const { id } = request.params as { id: string };
     const body = collectionUpdateSchema.parse(request.body);
-    const collection = await updateCollection(id, body, request.currentUser.id);
-    if (body.isPublic === true) {
+    const { collection, becamePublic } = await updateCollection(
+      id,
+      body,
+      request.currentUser.id,
+    );
+    if (becamePublic) {
       publishCollection(collection, request.currentUser, request.log);
     }
     return collection;

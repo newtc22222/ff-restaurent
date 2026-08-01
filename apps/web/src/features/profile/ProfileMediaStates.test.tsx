@@ -41,6 +41,15 @@ vi.mock('@/hooks/useRouteMutation', () => ({
   useRouteMutation: () => ({ mutate: vi.fn() }),
 }));
 
+vi.mock('@/features/notifications/push-subscription.queries', () => ({
+  usePushSubscription: () => ({
+    subscriptionId: null,
+    register: vi.fn(),
+    remove: vi.fn(),
+    busy: false,
+  }),
+}));
+
 vi.mock('./profile-media.queries', () => ({
   usePaymentQrImages: () => ({ ...queryState, refetch }),
   useProfileMediaMutations: () => ({
