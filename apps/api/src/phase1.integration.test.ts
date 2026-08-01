@@ -2431,6 +2431,39 @@ integrationTest(
       0,
     );
 
+    await prisma.pushSubscription.create({
+      data: { userId: customerAId, fcmToken: 'fcm-token-reminder-test' },
+    });
+    const secondReminderBill = await prisma.bill.create({
+      data: {
+        restaurantId,
+        createdById: sousId,
+        baseCost: 5000,
+        vat: 0,
+        shippingFee: 0,
+        totalCost: 5000,
+        participants: {
+          create: [
+            {
+              memberId: customerAId,
+              originCost: 5000,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 5000,
+            },
+          ],
+        },
+      },
+    });
+    const remindersWithPushSubscriber = await app.inject({
+      method: 'POST',
+      url: `/bills/${secondReminderBill.id}/reminders`,
+      headers: auth(sousToken),
+    });
+    assert.equal(remindersWithPushSubscriber.statusCode, 200);
+    assert.equal(remindersWithPushSubscriber.json().sent, 1);
+
     const duplicatePayload = {
       restaurantId,
       baseCost: 12345,
@@ -2477,5 +2510,75 @@ integrationTest(
       payload: { ...duplicatePayload, allowDuplicate: true },
     });
     assert.equal(override.statusCode, 201);
+  },
+);
+
+integrationTest(
+  'push subscriptions are registered, upserted by token, and owner-scoped to delete',
+  async () => {
+    const freshTokenFor = async (id: string) => {
+      const user = await prisma.user.findUniqueOrThrow({ where: { id } });
+      return tokenFor(id, '8h', user.sessionVersion);
+    };
+    const [customerAToken, customerBToken] = await Promise.all([
+      freshTokenFor(customerAId),
+      freshTokenFor(customerBId),
+    ]);
+
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/me/push-subscriptions',
+      headers: auth(customerAToken),
+      payload: { fcmToken: 'fcm-token-integration-1' },
+    });
+    assert.equal(registered.statusCode, 200);
+    const subscriptionId = registered.json().id;
+    assert.ok(subscriptionId);
+    assert.equal(
+      await prisma.pushSubscription.count({
+        where: { userId: customerAId, fcmToken: 'fcm-token-integration-1' },
+      }),
+      1,
+    );
+
+    const reRegistered = await app.inject({
+      method: 'POST',
+      url: '/me/push-subscriptions',
+      headers: auth(customerAToken),
+      payload: { fcmToken: 'fcm-token-integration-1' },
+    });
+    assert.equal(reRegistered.statusCode, 200);
+    assert.equal(
+      await prisma.pushSubscription.count({
+        where: { fcmToken: 'fcm-token-integration-1' },
+      }),
+      1,
+    );
+
+    const foreignDelete = await app.inject({
+      method: 'DELETE',
+      url: `/me/push-subscriptions/${subscriptionId}`,
+      headers: auth(customerBToken),
+    });
+    assert.equal(foreignDelete.statusCode, 404);
+    assert.equal(
+      await prisma.pushSubscription.count({
+        where: { id: subscriptionId },
+      }),
+      1,
+    );
+
+    const ownerDelete = await app.inject({
+      method: 'DELETE',
+      url: `/me/push-subscriptions/${subscriptionId}`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(ownerDelete.statusCode, 204);
+    assert.equal(
+      await prisma.pushSubscription.count({
+        where: { id: subscriptionId },
+      }),
+      0,
+    );
   },
 );

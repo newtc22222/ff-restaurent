@@ -29,6 +29,7 @@ import {
   validateParticipantIds,
   validatePaymentQr,
 } from '../services/bill-service.js';
+import { sendReminderPushForUsers } from '../services/push-messaging.js';
 
 const canManageBill = (
   bill: { createdById: string },
@@ -655,6 +656,15 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           },
         });
       });
+      await sendReminderPushForUsers(
+        eligible.map((participant) => participant.memberId),
+        {
+          title: 'Payment reminder',
+          body: `Payment reminder for ${bill.restaurant.name}`,
+          url: `/bills/${bill.id}`,
+        },
+        request.log,
+      );
       return result;
     },
   );

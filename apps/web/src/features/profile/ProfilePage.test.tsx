@@ -7,7 +7,14 @@ import { QueryProvider } from '@/app/providers/query';
 
 import ProfilePage from './ProfilePage';
 
-const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }));
+const { mutate, toastError } = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  toastError: vi.fn(),
+}));
+
+vi.mock('react-hot-toast', () => ({
+  default: { error: toastError },
+}));
 
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>();
@@ -32,10 +39,18 @@ vi.mock('@/hooks/useRouteMutation', () => ({
   useRouteMutation: () => ({ mutate }),
 }));
 
+const { requestPushToken } = vi.hoisted(() => ({
+  requestPushToken: vi.fn(),
+}));
+
+vi.mock('@/lib/push', () => ({ requestPushToken }));
+
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('ff-locale', 'en');
   mutate.mockClear();
+  toastError.mockClear();
+  requestPushToken.mockReset();
 });
 
 afterEach(cleanup);
@@ -148,5 +163,77 @@ describe('ProfilePage account forms', () => {
         success: 'Notification preferences updated.',
       }),
     );
+  });
+
+  it('subscribes to push notifications when permission and a token are granted', async () => {
+    requestPushToken.mockResolvedValue({
+      status: 'registered',
+      token: 'fcm-token-abc',
+    });
+    render(
+      <QueryProvider>
+        <I18nProvider>
+          <ProfilePage />
+        </I18nProvider>
+      </QueryProvider>,
+    );
+
+    const pushToggle = screen.getByRole('checkbox', {
+      name: 'Push alerts',
+    });
+    fireEvent.click(pushToggle);
+
+    await vi.waitFor(() => {
+      expect(mutate).toHaveBeenCalledWith(
+        {
+          intent: 'push-subscribe',
+          payload: { fcmToken: 'fcm-token-abc' },
+        },
+        expect.objectContaining({
+          success: 'Push notifications enabled.',
+        }),
+      );
+    });
+  });
+
+  it('shows an error toast when push permission is denied', async () => {
+    requestPushToken.mockResolvedValue({ status: 'denied' });
+    render(
+      <QueryProvider>
+        <I18nProvider>
+          <ProfilePage />
+        </I18nProvider>
+      </QueryProvider>,
+    );
+
+    const pushToggle = screen.getByRole('checkbox', {
+      name: 'Push alerts',
+    });
+    fireEvent.click(pushToggle);
+
+    await vi.waitFor(() => {
+      expect(mutate).not.toHaveBeenCalled();
+      expect(toastError).toHaveBeenCalledWith(
+        'The browser denied notification permission.',
+      );
+    });
+  });
+
+  it('silently skips push registration when unavailable', async () => {
+    requestPushToken.mockResolvedValue({ status: 'unavailable' });
+    render(
+      <QueryProvider>
+        <I18nProvider>
+          <ProfilePage />
+        </I18nProvider>
+      </QueryProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Push alerts' }));
+
+    await vi.waitFor(() => {
+      expect(mutate).not.toHaveBeenCalled();
+      expect(toastError).not.toHaveBeenCalled();
+    });
   });
 });

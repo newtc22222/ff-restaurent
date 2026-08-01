@@ -15,6 +15,7 @@ import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
 import Modal from '@/components/ui/Modal';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { canChef, roleLabel } from '@/lib/permissions';
+import { requestPushToken } from '@/lib/push';
 import { initials } from '@/lib/user-display';
 
 import {
@@ -59,6 +60,50 @@ export default function ProfilePage() {
     removeAvatarMutation.isPending ||
     savePaymentQrMutation.isPending ||
     removePaymentQrMutation.isPending;
+  const [pushSubscriptionId, setPushSubscriptionId] = useState<string | null>(
+    null,
+  );
+  const [pushBusy, setPushBusy] = useState(false);
+
+  const handlePushToggle = async (enabled: boolean) => {
+    setPushBusy(true);
+    try {
+      if (enabled) {
+        const result = await requestPushToken();
+        if (result.status === 'denied') {
+          toast.error(t('toast.pushPermissionDenied'));
+          return;
+        }
+        if (result.status !== 'registered') return;
+        await mutate(
+          {
+            intent: 'push-subscribe',
+            payload: { fcmToken: result.token },
+          },
+          {
+            fallback: t('toast.pushSubscribeFailed'),
+            success: t('toast.pushSubscribeUpdated'),
+            onSuccess: (data) =>
+              setPushSubscriptionId((data as { id: string }).id),
+          },
+        );
+      } else if (pushSubscriptionId) {
+        await mutate(
+          {
+            intent: 'push-unsubscribe',
+            payload: { subscriptionId: pushSubscriptionId },
+          },
+          {
+            fallback: t('toast.pushSubscribeFailed'),
+            success: t('toast.pushUnsubscribeUpdated'),
+            onSuccess: () => setPushSubscriptionId(null),
+          },
+        );
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  };
   const parsedPhone = parseVietnamMobilePhone(form.phone);
   const phoneError =
     form.phone.trim() && !parsedPhone.success
@@ -313,6 +358,19 @@ export default function ProfilePage() {
                       success: t('toast.notificationPreferencesUpdated'),
                     },
                   )
+                }
+              />
+            </label>
+            <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-4">
+              <span className="text-sm font-semibold text-ink">
+                {t('profile.pushNotifications')}
+              </span>
+              <input
+                type="checkbox"
+                checked={pushSubscriptionId !== null}
+                disabled={pushBusy}
+                onChange={(event) =>
+                  void handlePushToggle(event.target.checked)
                 }
               />
             </label>

@@ -47,6 +47,7 @@ const envSchema = z.object({
   SUPABASE_SIGNED_URL_TTL_SECONDS: positiveIntegerWithDefault(
     DEFAULT_SIGNED_URL_TTL_SECONDS,
   ),
+  FIREBASE_PROJECT_ID: z.string().optional(),
 });
 
 type ParsedEnv = z.infer<typeof envSchema>;
@@ -62,6 +63,7 @@ export type AppConfig = {
   supabasePublicBucket: string;
   supabaseQrBucket: string;
   supabaseSignedUrlTtlSeconds: number;
+  firebaseProjectId?: string;
 };
 
 /*
@@ -104,6 +106,7 @@ const toConfig = (env: ParsedEnv): AppConfig => ({
   supabasePublicBucket: env.SUPABASE_PUBLIC_BUCKET,
   supabaseQrBucket: env.SUPABASE_QR_BUCKET,
   supabaseSignedUrlTtlSeconds: env.SUPABASE_SIGNED_URL_TTL_SECONDS,
+  firebaseProjectId: env.FIREBASE_PROJECT_ID,
 });
 
 let cached: AppConfig | undefined;
