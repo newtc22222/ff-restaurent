@@ -144,6 +144,79 @@ const publisherDependencies: PublisherDependencies = {
   send: sendReminderPush,
 };
 
+const updatePushDelivery = async (
+  attempts: Array<{
+    subscriptions: PushSubscription[];
+    result: Awaited<ReturnType<typeof sendReminderPush>>;
+  }>,
+  deduplicationKey: string,
+  updateDelivery: PublisherDependencies['updateDelivery'],
+) => {
+  const subscriptions = attempts.flatMap((attempt) => attempt.subscriptions);
+  const successfulTokens = new Set(
+    attempts.flatMap((attempt) => attempt.result.successfulTokens),
+  );
+  const attemptedUsers = new Set(
+    attempts
+      .filter((attempt) => attempt.result.attempted)
+      .flatMap((attempt) =>
+        attempt.subscriptions.map((subscription) => subscription.userId),
+      ),
+  );
+  const sentUsers = [
+    ...new Set(
+      subscriptions
+        .filter((subscription) => successfulTokens.has(subscription.fcmToken))
+        .map((subscription) => subscription.userId),
+    ),
+  ];
+  const sentUserSet = new Set(sentUsers);
+  const failedUsers = [
+    ...new Set(
+      subscriptions
+        .filter(
+          (subscription) =>
+            !sentUserSet.has(subscription.userId) &&
+            attemptedUsers.has(subscription.userId),
+        )
+        .map((subscription) => subscription.userId),
+    ),
+  ];
+  const failedUserSet = new Set(failedUsers);
+  const skippedUsers = [
+    ...new Set(
+      subscriptions
+        .filter(
+          (subscription) =>
+            !sentUserSet.has(subscription.userId) &&
+            !failedUserSet.has(subscription.userId),
+        )
+        .map((subscription) => subscription.userId),
+    ),
+  ];
+  if (sentUsers.length > 0) {
+    await updateDelivery(
+      sentUsers,
+      deduplicationKey,
+      NotificationDeliveryStatus.SENT,
+    );
+  }
+  if (failedUsers.length > 0) {
+    await updateDelivery(
+      failedUsers,
+      deduplicationKey,
+      NotificationDeliveryStatus.FAILED,
+    );
+  }
+  if (skippedUsers.length > 0) {
+    await updateDelivery(
+      skippedUsers,
+      deduplicationKey,
+      NotificationDeliveryStatus.SKIPPED,
+    );
+  }
+};
+
 export const publishProductEvent = async (
   event: ProductNotificationEvent,
   logger: PushLogger,
@@ -214,6 +287,7 @@ export const publishProductEvent = async (
     }
 
     let pushed = 0;
+    const attempts: Parameters<typeof updatePushDelivery>[0] = [];
     for (const locale of [NotificationLocale.VI, NotificationLocale.EN]) {
       const localized = subscriptions.filter(
         (subscription) => subscription.locale === locale,
@@ -226,14 +300,13 @@ export const publishProductEvent = async (
         logger,
       );
       pushed += result.sent;
-      await dependencies.updateDelivery(
-        [...new Set(localized.map((subscription) => subscription.userId))],
-        event.deduplicationKey,
-        result.sent > 0
-          ? NotificationDeliveryStatus.SENT
-          : NotificationDeliveryStatus.SKIPPED,
-      );
+      attempts.push({ subscriptions: localized, result });
     }
+    await updatePushDelivery(
+      attempts,
+      event.deduplicationKey,
+      dependencies.updateDelivery,
+    );
     return { created: createdUserIds.length, pushed };
   } catch (error) {
     logger.warn(
@@ -269,6 +342,7 @@ export const deliverPaymentReminderPush = async (
         NotificationDeliveryStatus.SKIPPED,
       );
     }
+    const attempts: Parameters<typeof updatePushDelivery>[0] = [];
     for (const locale of [NotificationLocale.VI, NotificationLocale.EN]) {
       const localized = subscriptions.filter(
         (subscription) => subscription.locale === locale,
@@ -289,14 +363,13 @@ export const deliverPaymentReminderPush = async (
             },
         logger,
       );
-      await publisherDependencies.updateDelivery(
-        [...new Set(localized.map((subscription) => subscription.userId))],
-        deduplicationKey,
-        result.sent > 0
-          ? NotificationDeliveryStatus.SENT
-          : NotificationDeliveryStatus.SKIPPED,
-      );
+      attempts.push({ subscriptions: localized, result });
     }
+    await updatePushDelivery(
+      attempts,
+      deduplicationKey,
+      publisherDependencies.updateDelivery,
+    );
   } catch (error) {
     logger.warn(
       { err: error, event: 'payment_reminder_push_failed' },

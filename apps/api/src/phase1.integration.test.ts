@@ -2673,7 +2673,7 @@ integrationTest(
       },
     });
     assert.equal(published.statusCode, 201);
-    const collectionKey = `collection-published:${published.json().id}`;
+    const collectionKey = `collection-published:${published.json().id}:${published.json().updatedAt}`;
     await waitForCount(
       NotificationCategory.COLLECTION_PUBLISHED,
       collectionKey,
@@ -2700,6 +2700,27 @@ integrationTest(
       }),
       expectedAudience,
     );
+    const repeatedPublication = await app.inject({
+      method: 'PUT',
+      url: `/collections/${published.json().id}`,
+      headers: auth(sousToken),
+      payload: { isPublic: true },
+    });
+    assert.equal(repeatedPublication.statusCode, 200);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(
+      await prisma.notification.count({
+        where: { deduplicationKey: collectionKey },
+      }),
+      expectedAudience,
+    );
+    const unpublished = await app.inject({
+      method: 'PUT',
+      url: `/collections/${published.json().id}`,
+      headers: auth(sousToken),
+      payload: { isPublic: false },
+    });
+    assert.equal(unpublished.statusCode, 200);
     const republished = await app.inject({
       method: 'PUT',
       url: `/collections/${published.json().id}`,
@@ -2707,11 +2728,11 @@ integrationTest(
       payload: { isPublic: true },
     });
     assert.equal(republished.statusCode, 200);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    assert.equal(
-      await prisma.notification.count({
-        where: { deduplicationKey: collectionKey },
-      }),
+    const republishedKey = `collection-published:${republished.json().id}:${republished.json().updatedAt}`;
+    assert.notEqual(republishedKey, collectionKey);
+    await waitForCount(
+      NotificationCategory.COLLECTION_PUBLISHED,
+      republishedKey,
       expectedAudience,
     );
 

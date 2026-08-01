@@ -29,10 +29,9 @@ import {
   notificationMessage,
   notificationTarget,
 } from '@/features/notifications/notification-message';
+import { usePushSubscription } from '@/features/notifications/push-subscription.queries';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { isRootAdmin } from '@/lib/permissions';
-import { requestPushToken } from '@/lib/push';
-import { session } from '@/lib/session';
 
 import {
   type AppLoaderData,
@@ -48,6 +47,7 @@ function AppShellContent() {
   const { mutate } = useRouteMutation();
   const warned = useRef(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  usePushSubscription(locale);
 
   useEffect(() => {
     if (warning && !warned.current) {
@@ -56,20 +56,6 @@ function AppShellContent() {
     }
     if (!warning) warned.current = false;
   }, [t, warning]);
-
-  useEffect(() => {
-    void requestPushToken({ prompt: false }).then(async (result) => {
-      if (result.status !== 'registered') return;
-      try {
-        await session.api().request('/me/push-subscriptions', {
-          method: 'POST',
-          body: JSON.stringify({ fcmToken: result.token, locale }),
-        });
-      } catch {
-        return;
-      }
-    });
-  }, [locale]);
 
   const localizedNotifications = notifications.map((notification) => ({
     ...notification,

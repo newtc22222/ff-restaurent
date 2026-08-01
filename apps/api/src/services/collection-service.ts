@@ -388,6 +388,11 @@ export type CollectionInput = {
   isPublic: boolean;
 };
 
+export const isCollectionPublicationTransition = (
+  currentIsPublic: boolean,
+  requestedIsPublic: boolean | undefined,
+) => !currentIsPublic && requestedIsPublic === true;
+
 export const createCollection = (body: CollectionInput, ownerId: string) =>
   prisma.collection.create({
     data: {
@@ -404,8 +409,8 @@ export const updateCollection = async (
   body: Partial<CollectionInput>,
   userId: string,
 ) => {
-  await requireCustomOwner(id, userId);
-  return prisma.collection.update({
+  const current = await requireCustomOwner(id, userId);
+  const collection = await prisma.collection.update({
     where: { id },
     data: {
       ...body,
@@ -415,6 +420,13 @@ export const updateCollection = async (
     },
     select: collectionSelect,
   });
+  return {
+    collection,
+    becamePublic: isCollectionPublicationTransition(
+      current.isPublic,
+      body.isPublic,
+    ),
+  };
 };
 
 export const deleteCollection = async (id: string, userId: string) => {
