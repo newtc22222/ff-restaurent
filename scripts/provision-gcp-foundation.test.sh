@@ -42,14 +42,17 @@ case "$args" in
   "config get-value account"*) echo phi.vo.tech@gmail.com ;;
   "projects describe ff-restaurent"*) echo 192523226156 ;;
   "billing projects describe ff-restaurent"*) printf 'True\tbillingAccounts/01D2B2-BCD7E8-002699\n' ;;
-  "services list"*) printf '%s\n' run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com iamcredentials.googleapis.com sts.googleapis.com billingbudgets.googleapis.com logging.googleapis.com monitoring.googleapis.com ;;
+  "services list"*) printf '%s\n' run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com iamcredentials.googleapis.com sts.googleapis.com billingbudgets.googleapis.com logging.googleapis.com monitoring.googleapis.com fcm.googleapis.com ;;
   *"projects get-iam-policy"*|*"service-accounts get-iam-policy"*|*"secrets get-iam-policy"*)
     case "$args" in
       *roles/cloudsql.client*) echo roles/cloudsql.client ;;
+      *roles/firebasecloudmessaging.admin*) echo roles/firebasecloudmessaging.admin ;;
       *roles/run.admin*) echo roles/run.admin ;;
+      *roles/run.invoker*) echo roles/run.invoker ;;
       *roles/artifactregistry.writer*) echo roles/artifactregistry.writer ;;
       *roles/cloudsql.viewer*) echo roles/cloudsql.viewer ;;
       *roles/iam.serviceAccountUser*) echo roles/iam.serviceAccountUser ;;
+      *roles/iam.serviceAccountTokenCreator*) echo roles/iam.serviceAccountTokenCreator ;;
       *roles/iam.workloadIdentityUser*) echo roles/iam.workloadIdentityUser ;;
       *roles/secretmanager.secretAccessor*) echo roles/secretmanager.secretAccessor ;;
     esac
