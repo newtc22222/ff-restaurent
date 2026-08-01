@@ -110,6 +110,11 @@ const popularCuisineDefinitions = [
     type: 'Tráng miệng',
     description: 'Món tráng miệng ngọt với nhiều loại đậu, trái cây và thạch.',
   },
+  {
+    name: 'Drinks',
+    type: 'Đồ uống',
+    description: 'Đồ uống, cà phê, trà và các món giải khát.',
+  },
 ] as const;
 
 export const popularVietnamCuisines: Prisma.CuisineCreateManyInput[] =
