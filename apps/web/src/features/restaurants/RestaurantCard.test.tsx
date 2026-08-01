@@ -56,4 +56,24 @@ describe('RestaurantCard collection tones', () => {
       'ticket-edge-basil',
     );
   });
+
+  it('uses the platform-specific badge token for directory links', () => {
+    render(
+      <RestaurantCard
+        restaurant={
+          {
+            ...(restaurant as unknown as Record<string, unknown>),
+            platformLinks: [
+              { platform: 'GOJEK', url: 'https://gojek.test', label: null },
+            ],
+          } as never
+        }
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Gojek').className).toContain(
+      'platform-badge-gojek',
+    );
+  });
 });

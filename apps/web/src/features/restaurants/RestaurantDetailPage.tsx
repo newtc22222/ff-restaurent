@@ -17,7 +17,6 @@ import VietnamAddressFields, {
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { canChef, isHead } from '@/lib/permissions';
 
-import { platformLabel } from './PlatformLinksEditor';
 import RestaurantBanner from './RestaurantBanner';
 import RestaurantCatalogFields, {
   type RestaurantCatalogValue,
@@ -27,6 +26,7 @@ import RestaurantProfileFields, {
   type RestaurantProfileDraft,
   isRestaurantProfileValid,
 } from './RestaurantProfileFields';
+import { platformBadgeClassName, platformLabel } from './platform-link-tokens';
 import { useRestaurantMediaMutation } from './restaurant-media.mutations';
 
 /**
@@ -361,7 +361,7 @@ export default function RestaurantDetailPage() {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-compact font-medium text-ink transition-colors hover:border-saffron hover:bg-muted"
+                    className={`platform-badge ${platformBadgeClassName(link.platform)} gap-1.5 px-3 py-1.5 transition-opacity hover:opacity-80`}
                   >
                     <ExternalLink aria-hidden="true" size={12} />{' '}
                     {link.label || platformLabel(link.platform)}

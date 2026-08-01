@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import type { RestaurantEntry } from '@/api/types';
 import { useI18n } from '@/app/providers/i18n';
 
+import PlatformLinkBadge from './PlatformLinkBadge';
+
 interface RestaurantCardProps {
   restaurant: RestaurantEntry;
   onOpen: () => void;
@@ -82,12 +84,12 @@ export default function RestaurantCard({
           </span>
         ))}
         {restaurant.platformLinks?.slice(0, 3).map((link) => (
-          <span
+          <PlatformLinkBadge
             key={link.id ?? `${link.platform}-${link.url}`}
-            className="chip chip-muted max-w-full truncate"
-          >
-            {link.label?.trim() || link.platform}
-          </span>
+            platform={link.platform}
+            label={link.label}
+            className="max-w-full truncate"
+          />
         ))}
         {(restaurant.isFavoritedByMe ?? restaurant.isFavorite) && (
           <span className="chip chip-badge chip-chili">

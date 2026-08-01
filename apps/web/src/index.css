@@ -9,6 +9,34 @@
   --color-surface: #ffffff;
   --color-bg: #faf8f5;
   --color-success: hsl(151 55% 42%);
+  --color-platform-grab-bg: hsl(30 90% 92%);
+  --color-platform-grab-text: hsl(24 80% 35%);
+  --color-platform-grab-dark-bg: hsl(30 80% 32% / 35%);
+  --color-platform-grab-dark-text: hsl(30 100% 82%);
+  --color-platform-shopee-food-bg: hsl(13 90% 92%);
+  --color-platform-shopee-food-text: hsl(7 75% 38%);
+  --color-platform-shopee-food-dark-bg: hsl(13 80% 34% / 35%);
+  --color-platform-shopee-food-dark-text: hsl(13 100% 82%);
+  --color-platform-be-food-bg: hsl(46 95% 89%);
+  --color-platform-be-food-text: hsl(40 80% 32%);
+  --color-platform-be-food-dark-bg: hsl(42 80% 35% / 35%);
+  --color-platform-be-food-dark-text: hsl(46 100% 82%);
+  --color-platform-gojek-bg: hsl(145 48% 90%);
+  --color-platform-gojek-text: hsl(150 55% 26%);
+  --color-platform-gojek-dark-bg: hsl(145 45% 28% / 35%);
+  --color-platform-gojek-dark-text: hsl(145 60% 76%);
+  --color-platform-website-bg: hsl(210 80% 92%);
+  --color-platform-website-text: hsl(214 70% 34%);
+  --color-platform-website-dark-bg: hsl(210 65% 30% / 35%);
+  --color-platform-website-dark-text: hsl(210 90% 80%);
+  --color-platform-facebook-bg: hsl(222 80% 92%);
+  --color-platform-facebook-text: hsl(222 68% 36%);
+  --color-platform-facebook-dark-bg: hsl(222 60% 30% / 35%);
+  --color-platform-facebook-dark-text: hsl(222 90% 82%);
+  --color-platform-other-bg: hsl(210 25% 91%);
+  --color-platform-other-text: hsl(215 28% 35%);
+  --color-platform-other-dark-bg: hsl(215 20% 28% / 55%);
+  --color-platform-other-dark-text: hsl(210 20% 82%);
   --scrollbar-thumb: rgb(100 116 139 / 55%);
   --scrollbar-thumb-hover: rgb(71 85 105 / 75%);
 
@@ -174,6 +202,73 @@ select {
 
 .chip-muted {
   @apply bg-muted text-slate-600 dark:text-slate-300;
+}
+
+.platform-badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+
+.platform-badge-grab {
+  background: var(--color-platform-grab-bg);
+  color: var(--color-platform-grab-text);
+}
+.dark .platform-badge-grab {
+  background: var(--color-platform-grab-dark-bg);
+  color: var(--color-platform-grab-dark-text);
+}
+
+.platform-badge-shopee-food {
+  background: var(--color-platform-shopee-food-bg);
+  color: var(--color-platform-shopee-food-text);
+}
+.dark .platform-badge-shopee-food {
+  background: var(--color-platform-shopee-food-dark-bg);
+  color: var(--color-platform-shopee-food-dark-text);
+}
+
+.platform-badge-be-food {
+  background: var(--color-platform-be-food-bg);
+  color: var(--color-platform-be-food-text);
+}
+.dark .platform-badge-be-food {
+  background: var(--color-platform-be-food-dark-bg);
+  color: var(--color-platform-be-food-dark-text);
+}
+
+.platform-badge-gojek {
+  background: var(--color-platform-gojek-bg);
+  color: var(--color-platform-gojek-text);
+}
+.dark .platform-badge-gojek {
+  background: var(--color-platform-gojek-dark-bg);
+  color: var(--color-platform-gojek-dark-text);
+}
+
+.platform-badge-website {
+  background: var(--color-platform-website-bg);
+  color: var(--color-platform-website-text);
+}
+.dark .platform-badge-website {
+  background: var(--color-platform-website-dark-bg);
+  color: var(--color-platform-website-dark-text);
+}
+
+.platform-badge-facebook {
+  background: var(--color-platform-facebook-bg);
+  color: var(--color-platform-facebook-text);
+}
+.dark .platform-badge-facebook {
+  background: var(--color-platform-facebook-dark-bg);
+  color: var(--color-platform-facebook-dark-text);
+}
+
+.platform-badge-other {
+  background: var(--color-platform-other-bg);
+  color: var(--color-platform-other-text);
+}
+.dark .platform-badge-other {
+  background: var(--color-platform-other-dark-bg);
+  color: var(--color-platform-other-dark-text);
 }
 
 .field-group {

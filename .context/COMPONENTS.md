@@ -328,8 +328,15 @@ This document serves as the authoritative component registry for the **FF RESTau
 
 - **Framework System**: React web component
 - **Source File**: [PlatformLinksEditor.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/features/restaurants/PlatformLinksEditor.tsx)
-- **Export**: `default export PlatformLinksEditor`, `platformLabel`, `arePlatformLinksValid`
+- **Export**: `default export PlatformLinksEditor`, `arePlatformLinksValid`
 - **Description**: Interactive list editor for reordering, adding, and validating external restaurant delivery platform links (Grab, ShopeeFood, Gojek, Website, etc.).
+
+### PlatformLinkBadge
+
+- **Framework System**: React web component
+- **Source File**: [PlatformLinkBadge.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/features/restaurants/PlatformLinkBadge.tsx)
+- **Export**: `default export PlatformLinkBadge`
+- **Description**: Reusable themed badge for normalized restaurant platform links, using the canonical light/dark platform token mapping.
 
 ### RestaurantBanner
 
