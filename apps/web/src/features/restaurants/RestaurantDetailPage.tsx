@@ -10,6 +10,7 @@ import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Dropdown from '@/components/ui/Dropdown';
 import ImagePicker from '@/components/ui/ImagePicker';
+import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
 import VietnamAddressFields, {
   isVietnamAddressComplete,
 } from '@/features/address/VietnamAddressFields';
@@ -49,6 +50,9 @@ export default function RestaurantDetailPage() {
   const [confirmStatus, setConfirmStatus] = useState<
     'archive' | 'restore' | null
   >(null);
+  const [bannerPreview, setBannerPreview] = useState<'banner' | 'logo' | null>(
+    null,
+  );
   const [address, setAddress] = useState<VietnamAddress>(() => ({
     address: restaurant.address,
     addressLine: restaurant.addressLine ?? null,
@@ -168,6 +172,16 @@ export default function RestaurantDetailPage() {
             name={restaurant.name}
             url={restaurant.bannerImageUrl}
             logoUrl={restaurant.avatarUrl}
+            onBannerClick={
+              restaurant.bannerImageUrl
+                ? () => setBannerPreview('banner')
+                : undefined
+            }
+            onLogoClick={
+              restaurant.avatarUrl ? () => setBannerPreview('logo') : undefined
+            }
+            bannerAriaLabel={`${t('restaurants.viewBanner')} ${restaurant.name}`}
+            logoAriaLabel={`${t('restaurants.viewLogo')} ${restaurant.name}`}
             overlay={
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -412,6 +426,27 @@ export default function RestaurantDetailPage() {
           }}
         />
       )}
+      <ImagePreviewDialog
+        open={bannerPreview !== null}
+        onClose={() => setBannerPreview(null)}
+        src={
+          bannerPreview === 'banner'
+            ? restaurant.bannerImageUrl
+            : bannerPreview === 'logo'
+              ? restaurant.avatarUrl
+              : null
+        }
+        title={`${restaurant.name} — ${
+          bannerPreview === 'logo'
+            ? t('restaurants.logoLabel')
+            : t('restaurants.bannerLabel')
+        }`}
+        alt={`${restaurant.name} — ${
+          bannerPreview === 'logo'
+            ? t('restaurants.logoLabel')
+            : t('restaurants.bannerLabel')
+        }`}
+      />
     </div>
   );
 }

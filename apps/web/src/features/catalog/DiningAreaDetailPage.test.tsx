@@ -170,6 +170,18 @@ describe('DiningAreaDetailPage', () => {
     expect(revalidate).toHaveBeenCalledTimes(1);
   });
 
+  it('opens the full-size preview dialog for a gallery image', () => {
+    render(<DiningAreaDetailPage />);
+
+    const triggers = screen.getAllByRole('button', { name: 'Rooftop' });
+    fireEvent.click(triggers[0]!);
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(
+      screen.getByText('Rooftop — catalog.diningAreas.galleryImage 1'),
+    ).toBeTruthy();
+  });
+
   it('opens the paginated Restaurant directory filtered to this area', () => {
     render(<DiningAreaDetailPage />);
 

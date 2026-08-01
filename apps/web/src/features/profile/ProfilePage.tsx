@@ -11,6 +11,7 @@ import { useI18n } from '@/app/providers/i18n';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import ImagePicker from '@/components/ui/ImagePicker';
+import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
 import Modal from '@/components/ui/Modal';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { canChef, roleLabel } from '@/lib/permissions';
@@ -41,9 +42,12 @@ export default function ProfilePage() {
   const [qrLabel, setQrLabel] = useState('');
   const [qrFile, setQrFile] = useState<File | null>(null);
   const [deletingQr, setDeletingQr] = useState<PaymentQrImage | null>(null);
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
+  const [previewQrId, setPreviewQrId] = useState<string | null>(null);
   const { mutate } = useRouteMutation();
   const qrImagesQuery = usePaymentQrImages(canChef(user), user.id);
   const qrImages = qrImagesQuery.data ?? [];
+  const previewQr = qrImages.find((qr) => qr.id === previewQrId) ?? null;
   const {
     uploadAvatar: uploadAvatarMutation,
     removeAvatar: removeAvatarMutation,
@@ -182,11 +186,18 @@ export default function ProfilePage() {
             <div className="mb-6 flex items-center gap-4">
               <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-saffron text-xl font-bold text-white">
                 {user.avatarUrl ? (
-                  <img
-                    className="h-full w-full object-cover"
-                    src={user.avatarUrl}
-                    alt=""
-                  />
+                  <button
+                    type="button"
+                    className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-saffron"
+                    aria-label={t('profile.viewAvatar')}
+                    onClick={() => setAvatarPreviewOpen(true)}
+                  >
+                    <img
+                      className="h-full w-full object-cover"
+                      src={user.avatarUrl}
+                      alt=""
+                    />
+                  </button>
                 ) : (
                   initials(user.name)
                 )}
@@ -348,11 +359,17 @@ export default function ProfilePage() {
                     key={qr.id}
                     className="rounded-lg border border-border p-3"
                   >
-                    <img
-                      src={qr.imageUrl}
-                      alt={qr.label}
-                      className="aspect-square w-full rounded-md bg-white object-contain"
-                    />
+                    <button
+                      type="button"
+                      className="block w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron"
+                      onClick={() => setPreviewQrId(qr.id)}
+                    >
+                      <img
+                        src={qr.imageUrl}
+                        alt={qr.label}
+                        className="aspect-square w-full rounded-md bg-white object-contain"
+                      />
+                    </button>
                     <p className="mt-2 truncate text-sm font-semibold text-ink">
                       {qr.label}
                     </p>
@@ -507,6 +524,26 @@ export default function ProfilePage() {
           onConfirm={() => void removeQr()}
         />
       )}
+
+      <ImagePreviewDialog
+        open={avatarPreviewOpen}
+        onClose={() => setAvatarPreviewOpen(false)}
+        src={user.avatarUrl}
+        title={`${user.name} — ${t('profile.avatar')}`}
+        alt={t('profile.avatar')}
+      />
+      <ImagePreviewDialog
+        open={previewQr !== null}
+        onClose={() => setPreviewQrId(null)}
+        src={previewQr?.imageUrl}
+        title={previewQr?.label ?? ''}
+        alt={previewQr?.label ?? ''}
+        onRetry={() => {
+          void qrImagesQuery.refetch();
+        }}
+        isSignedUrl
+        imageClassName="bg-white p-3"
+      />
     </div>
   );
 }

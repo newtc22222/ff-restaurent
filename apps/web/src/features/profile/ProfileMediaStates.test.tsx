@@ -27,6 +27,7 @@ vi.mock('@/app/providers/app-context', () => ({
       name: 'Sous Chef',
       username: 'sous',
       phone: null,
+      avatarUrl: 'https://example.com/avatar.png',
       chefRole: 'SOUS_CHEF',
       systemRole: null,
       roles: ['CUSTOMER', 'SOUS_CHEF'],
@@ -85,5 +86,74 @@ describe('Profile payment QR query states', () => {
     renderProfile();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens a full-size preview dialog for a saved QR image', () => {
+    queryState.data = [
+      { id: 'qr-1', imageUrl: 'https://example.com/qr.png', label: 'My QR' },
+    ];
+    renderProfile();
+
+    fireEvent.click(screen.getByAltText('My QR'));
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeTruthy();
+    expect(
+      screen
+        .getAllByAltText('My QR')
+        .some((img) => img.closest('[role="dialog"]')),
+    ).toBe(true);
+  });
+
+  it('reflects a refreshed signed URL for the previewed QR instead of keeping a stale snapshot', () => {
+    queryState.data = [
+      {
+        id: 'qr-1',
+        imageUrl: 'https://example.com/qr-stale.png',
+        label: 'My QR',
+      },
+    ];
+    const { rerender } = render(
+      <I18nProvider>
+        <ProfilePage />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByAltText('My QR'));
+    const dialogImg = screen
+      .getAllByAltText('My QR')
+      .find((img) => img.closest('[role="dialog"]')) as HTMLImageElement;
+    expect(dialogImg.src).toBe('https://example.com/qr-stale.png');
+
+    // Simulate what a successful refetch (triggered by the dialog's
+    // auto-retry on an expired signed URL) would eventually produce: a
+    // fresh signed URL for the same QR id.
+    queryState.data = [
+      {
+        id: 'qr-1',
+        imageUrl: 'https://example.com/qr-fresh.png',
+        label: 'My QR',
+      },
+    ];
+    rerender(
+      <I18nProvider>
+        <ProfilePage />
+      </I18nProvider>,
+    );
+
+    const refreshedImg = screen
+      .getAllByAltText('My QR')
+      .find((img) => img.closest('[role="dialog"]')) as HTMLImageElement;
+    expect(refreshedImg.src).toBe('https://example.com/qr-fresh.png');
+  });
+});
+
+describe('Profile avatar preview', () => {
+  it('opens a full-size preview dialog for the current avatar', () => {
+    renderProfile();
+
+    fireEvent.click(screen.getByLabelText('View avatar'));
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
   });
 });
