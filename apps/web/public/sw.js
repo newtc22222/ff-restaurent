@@ -78,10 +78,18 @@ export const parsePushPayload = (event) => {
   if (!event.data) return fallback;
   try {
     const data = event.data.json();
+    const notification = data.notification ?? data;
+    const metadata = data.data ?? data;
+    const rawUrl = metadata.url ?? fallback.url;
     return {
-      title: data.title ?? fallback.title,
-      body: data.body ?? fallback.body,
-      url: data.url ?? fallback.url,
+      title: notification.title ?? fallback.title,
+      body: notification.body ?? fallback.body,
+      url:
+        typeof rawUrl === 'string' &&
+        rawUrl.startsWith('/') &&
+        !rawUrl.startsWith('//')
+          ? rawUrl
+          : fallback.url,
     };
   } catch {
     return fallback;

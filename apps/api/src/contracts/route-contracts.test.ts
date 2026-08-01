@@ -33,7 +33,7 @@ test('every application operation exposes runtime responses and a stable operati
     }
   }
 
-  assert.equal(operationCount, 86);
+  assert.equal(operationCount, 88);
   assert.deepEqual(Object.keys(document.components?.schemas ?? {}).sort(), [
     'AdjustmentAllocation',
     'AdjustmentType',

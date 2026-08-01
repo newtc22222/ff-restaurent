@@ -3,38 +3,68 @@ export const canRequestPushPermission = (
   notificationSupported: boolean,
 ) => serviceWorkerSupported && notificationSupported;
 
-export async function requestPushToken(): Promise<string | null> {
+export const pushRegistrationState = (
+  serviceWorkerSupported: boolean,
+  notificationSupported: boolean,
+  configured: boolean,
+  permission: NotificationPermission,
+): 'unavailable' | 'denied' | 'ready' | 'prompt' => {
   if (
-    !canRequestPushPermission(
-      'serviceWorker' in window.navigator,
-      'Notification' in window,
-    )
+    !canRequestPushPermission(serviceWorkerSupported, notificationSupported) ||
+    !configured
   ) {
-    return null;
+    return 'unavailable';
   }
-  if (Notification.permission === 'default') {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return null;
-  } else if (Notification.permission !== 'granted') {
-    return null;
+  if (permission === 'denied') return 'denied';
+  if (permission === 'granted') return 'ready';
+  return 'prompt';
+};
+
+export type PushTokenResult =
+  | { status: 'registered'; token: string }
+  | { status: 'denied' }
+  | { status: 'unavailable' };
+
+export async function requestPushToken(): Promise<PushTokenResult> {
+  const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  };
+  const configured =
+    Object.values(firebaseConfig).every((value) => Boolean(value?.trim())) &&
+    Boolean(import.meta.env.VITE_FIREBASE_VAPID_KEY?.trim());
+  let state = pushRegistrationState(
+    'serviceWorker' in window.navigator,
+    'Notification' in window,
+    configured,
+    'Notification' in window ? Notification.permission : 'default',
+  );
+  if (state === 'unavailable') return { status: 'unavailable' };
+  if (state === 'denied') return { status: 'denied' };
+  if (state === 'prompt') {
+    try {
+      const permission = await Notification.requestPermission();
+      state = pushRegistrationState(true, true, true, permission);
+    } catch {
+      return { status: 'unavailable' };
+    }
+    if (state === 'denied') return { status: 'denied' };
+    if (state !== 'ready') return { status: 'unavailable' };
   }
   try {
-    const { initializeApp } = await import('firebase/app');
+    const { getApps, initializeApp } = await import('firebase/app');
     const { getMessaging, getToken } = await import('firebase/messaging');
-    const app = initializeApp({
-      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-      appId: import.meta.env.VITE_FIREBASE_APP_ID,
-    });
+    const app = getApps()[0] ?? initializeApp(firebaseConfig);
     const messaging = getMessaging(app);
     const registration = await window.navigator.serviceWorker.ready;
-    return await getToken(messaging, {
+    const token = await getToken(messaging, {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
       serviceWorkerRegistration: registration,
     });
-  } catch (error) {
-    console.warn('Push token request failed', error);
-    return null;
+    return token ? { status: 'registered', token } : { status: 'unavailable' };
+  } catch {
+    return { status: 'unavailable' };
   }
 }

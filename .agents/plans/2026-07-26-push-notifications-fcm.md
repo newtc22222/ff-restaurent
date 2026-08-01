@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- All money/business logic in this plan is unaffected — this feature only adds notification delivery, per [`docs/superpowers/specs/2026-07-26-push-notifications-fcm-design.md`](../specs/2026-07-26-push-notifications-fcm-design.md).
+- All money/business logic in this plan is unaffected — this feature only adds notification delivery, per [`.agents/specs/2026-07-26-push-notifications-fcm-design.md`](../specs/2026-07-26-push-notifications-fcm-design.md).
 - Push send must never block or fail the reminder request — the in-app `Notification` row stays the source of truth (spec: "Error handling").
 - `paymentRemindersEnabled` on `User` remains the single on/off switch for reminder notifications, in-app or push — no new preference field.
 - Client registration and server push-send must silently no-op (not throw) when unsupported/unconfigured, matching the existing `canRegisterServiceWorker` (`apps/web/src/lib/pwa.ts:1`) and `storage()` "not configured" patterns.
@@ -24,10 +24,12 @@
 ### Task 1: `PushSubscription` Prisma model and migration
 
 **Files:**
+
 - Modify: `apps/api/prisma/schema.prisma`
 - Create: `apps/api/prisma/migrations/20260727000000_add_push_subscriptions/migration.sql`
 
 **Interfaces:**
+
 - Produces: Prisma model `PushSubscription { id, userId, fcmToken, createdAt, lastSeenAt }`, unique on `fcmToken`, cascade-deletes with `User`.
 
 - [ ] **Step 1: Add the model to the schema**
@@ -69,11 +71,13 @@ git commit -m "feat(api): add PushSubscription model for FCM token storage"
 ### Task 2: API — push subscription registration and unregistration endpoints
 
 **Files:**
+
 - Modify: `apps/api/src/schemas.ts`
 - Modify: `apps/api/src/routes/notification-routes.ts`
 - Modify: `apps/api/src/phase1.integration.test.ts` (append new `integrationTest` block at end of file, after line 2080)
 
 **Interfaces:**
+
 - Consumes: `prisma.pushSubscription` (Task 1), `requireAuthenticatedUser` (`apps/api/src/http/auth-guards.ts:11`).
 - Produces: `POST /me/push-subscriptions` → `{ id: string }`; `DELETE /me/push-subscriptions/:id` → 204. Both auth-guarded and user-scoped.
 
@@ -82,7 +86,6 @@ git commit -m "feat(api): add PushSubscription model for FCM token storage"
 Append to the end of `apps/api/src/phase1.integration.test.ts` (after the final `);` on line 2080):
 
 ```ts
-
 integrationTest(
   'push subscriptions are registered, upserted by token, and owner-scoped to delete',
   async () => {
@@ -183,38 +186,38 @@ import {
 Then add these two routes inside `registerNotificationRoutes`, after the `PATCH /notifications/:id/read` route (after line 77, before the closing `};`):
 
 ```ts
-  app.post(
-    '/me/push-subscriptions',
-    { preHandler: requireAuthenticatedUser },
-    async (request) => {
-      const body = pushSubscriptionSchema.parse(request.body);
-      return prisma.pushSubscription.upsert({
-        where: { fcmToken: body.fcmToken },
-        create: { userId: request.currentUser.id, fcmToken: body.fcmToken },
-        update: { userId: request.currentUser.id, lastSeenAt: new Date() },
-        select: { id: true },
-      });
-    },
-  );
+app.post(
+  '/me/push-subscriptions',
+  { preHandler: requireAuthenticatedUser },
+  async (request) => {
+    const body = pushSubscriptionSchema.parse(request.body);
+    return prisma.pushSubscription.upsert({
+      where: { fcmToken: body.fcmToken },
+      create: { userId: request.currentUser.id, fcmToken: body.fcmToken },
+      update: { userId: request.currentUser.id, lastSeenAt: new Date() },
+      select: { id: true },
+    });
+  },
+);
 
-  app.delete(
-    '/me/push-subscriptions/:id',
-    { preHandler: requireAuthenticatedUser },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const subscription = await prisma.pushSubscription.findFirst({
-        where: { id, userId: request.currentUser.id },
+app.delete(
+  '/me/push-subscriptions/:id',
+  { preHandler: requireAuthenticatedUser },
+  async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const subscription = await prisma.pushSubscription.findFirst({
+      where: { id, userId: request.currentUser.id },
+    });
+    if (!subscription) {
+      return reply.code(404).send({
+        code: 'NOT_FOUND',
+        message: 'Push subscription not found',
       });
-      if (!subscription) {
-        return reply.code(404).send({
-          code: 'NOT_FOUND',
-          message: 'Push subscription not found',
-        });
-      }
-      await prisma.pushSubscription.delete({ where: { id: subscription.id } });
-      return reply.code(204).send();
-    },
-  );
+    }
+    await prisma.pushSubscription.delete({ where: { id: subscription.id } });
+    return reply.code(204).send();
+  },
+);
 ```
 
 The upsert-by-`fcmToken` is intentional: an FCM token identifies one browser/device instance, so if it re-registers under a different signed-in user (shared device), ownership transfers rather than erroring.
@@ -236,10 +239,12 @@ git commit -m "feat(api): add push subscription registration endpoints"
 ### Task 3: Web — dormant service-worker push handler
 
 **Files:**
+
 - Modify: `apps/web/public/sw.js`
 - Modify: `apps/web/src/lib/service-worker-policy.test.js`
 
 **Interfaces:**
+
 - Produces: `parsePushPayload(event): { title: string; body: string; url: string }`, exported for testing, same pattern as the existing `cacheStrategyFor`.
 
 - [ ] **Step 1: Write the failing test**
@@ -253,7 +258,6 @@ import { cacheStrategyFor, parsePushPayload } from '../../public/sw.js';
 Then append this new `describe` block after the closing `});` of the existing `describe('service worker cache policy', ...)` (after line 47):
 
 ```js
-
 describe('push payload parsing', () => {
   it('extracts title, body, and target url from a JSON push payload', () => {
     const event = {
@@ -301,7 +305,6 @@ Expected: FAIL — `parsePushPayload` is not exported from `sw.js`.
 Append to `apps/web/public/sw.js`, after the existing `fetch` listener (after line 74):
 
 ```js
-
 export const parsePushPayload = (event) => {
   const fallback = { title: 'FF RESTaurent', body: '', url: '/' };
   if (!event.data) return fallback;
@@ -356,12 +359,14 @@ git commit -m "feat(web): add dormant push and notificationclick handlers to the
 ### Task 4: Web — Firebase Web SDK client module
 
 **Files:**
+
 - Create: `apps/web/src/lib/push.ts`
 - Create: `apps/web/src/lib/push.test.ts`
 - Modify: `apps/web/package.json`
 - Modify: `.env.example`
 
 **Interfaces:**
+
 - Produces: `canRequestPushPermission(serviceWorkerSupported: boolean, notificationSupported: boolean): boolean` (pure, tested); `requestPushToken(): Promise<string | null>` (impure, not unit tested — same split as `pwa.ts`'s `canRegisterServiceWorker`/`registerServiceWorker`).
 - Consumes later by: Task 5 (`ProfilePage.tsx`).
 
@@ -376,8 +381,8 @@ Create `apps/web/src/lib/push.test.ts`:
 
 ```ts
 // @vitest-environment jsdom
-
 import { describe, expect, it } from 'vitest';
+
 import { canRequestPushPermission } from './push';
 
 describe('push permission policy', () => {
@@ -471,12 +476,14 @@ git commit -m "feat(web): add Firebase Web SDK push-token client module"
 ### Task 5: Web — profile opt-in toggle
 
 **Files:**
+
 - Modify: `apps/web/src/app/router.ts`
 - Modify: `apps/web/src/pages/ProfilePage.tsx`
 - Modify: `apps/web/src/pages/ProfilePage.test.tsx`
 - Modify: `apps/web/src/lib/translations.ts`
 
 **Interfaces:**
+
 - Consumes: `requestPushToken` (Task 4), `mutate` from `useMutation()` (`apps/web/src/hooks/useMutation.ts:39`).
 - Produces: router action intents `push-subscribe` (body: `{ fcmToken: string }` → `{ id: string }`) and `push-unsubscribe` (body: `{ subscriptionId: string }`).
 
@@ -606,63 +613,63 @@ import { requestPushToken } from '../lib/push';
 Add state after the existing `mediaBusy` state (after line 38):
 
 ```tsx
-  const [pushSubscriptionId, setPushSubscriptionId] = useState<string | null>(
-    null,
-  );
-  const [pushBusy, setPushBusy] = useState(false);
+const [pushSubscriptionId, setPushSubscriptionId] = useState<string | null>(
+  null,
+);
+const [pushBusy, setPushBusy] = useState(false);
 ```
 
 Add the handler near the top of the component body, after the state declarations:
 
 ```tsx
-  const handlePushToggle = async (enabled: boolean) => {
-    setPushBusy(true);
-    try {
-      if (enabled) {
-        const fcmToken = await requestPushToken();
-        if (!fcmToken) {
-          toast.error(t('toast.pushPermissionDenied'));
-          return;
-        }
-        await mutate(
-          { intent: 'push-subscribe', fcmToken },
-          {
-            fallback: t('toast.pushSubscribeFailed'),
-            success: t('toast.pushSubscribeUpdated'),
-            onSuccess: (data) =>
-              setPushSubscriptionId((data as { id: string }).id),
-          },
-        );
-      } else if (pushSubscriptionId) {
-        await mutate(
-          { intent: 'push-unsubscribe', subscriptionId: pushSubscriptionId },
-          {
-            fallback: t('toast.pushSubscribeFailed'),
-            success: t('toast.pushUnsubscribeUpdated'),
-            onSuccess: () => setPushSubscriptionId(null),
-          },
-        );
+const handlePushToggle = async (enabled: boolean) => {
+  setPushBusy(true);
+  try {
+    if (enabled) {
+      const fcmToken = await requestPushToken();
+      if (!fcmToken) {
+        toast.error(t('toast.pushPermissionDenied'));
+        return;
       }
-    } finally {
-      setPushBusy(false);
+      await mutate(
+        { intent: 'push-subscribe', fcmToken },
+        {
+          fallback: t('toast.pushSubscribeFailed'),
+          success: t('toast.pushSubscribeUpdated'),
+          onSuccess: (data) =>
+            setPushSubscriptionId((data as { id: string }).id),
+        },
+      );
+    } else if (pushSubscriptionId) {
+      await mutate(
+        { intent: 'push-unsubscribe', subscriptionId: pushSubscriptionId },
+        {
+          fallback: t('toast.pushSubscribeFailed'),
+          success: t('toast.pushUnsubscribeUpdated'),
+          onSuccess: () => setPushSubscriptionId(null),
+        },
+      );
     }
-  };
+  } finally {
+    setPushBusy(false);
+  }
+};
 ```
 
 Add the toggle markup inside the notification-preferences `<section>`, immediately after the closing `</label>` of the existing payment-reminders toggle (after line 268):
 
 ```tsx
-            <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-4">
-              <span className="text-sm font-semibold text-ink">
-                {t('profile.pushNotifications')}
-              </span>
-              <input
-                type="checkbox"
-                checked={pushSubscriptionId !== null}
-                disabled={pushBusy}
-                onChange={(event) => void handlePushToggle(event.target.checked)}
-              />
-            </label>
+<label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-4">
+  <span className="text-sm font-semibold text-ink">
+    {t('profile.pushNotifications')}
+  </span>
+  <input
+    type="checkbox"
+    checked={pushSubscriptionId !== null}
+    disabled={pushBusy}
+    onChange={(event) => void handlePushToggle(event.target.checked)}
+  />
+</label>
 ```
 
 - [ ] **Step 6: Run the test to verify it passes**
@@ -700,12 +707,14 @@ Phase 2.5's client code (Tasks 4-5) will run and no-op safely without this, per 
 ### Task 6: API — FCM Admin SDK send module
 
 **Files:**
+
 - Modify: `apps/api/src/config.ts`
 - Create: `apps/api/src/push-messaging.ts`
 - Create: `apps/api/src/push-messaging.test.ts`
 - Modify: `apps/api/package.json`
 
 **Interfaces:**
+
 - Produces: `sendReminderPush(tokens: string[], payload: { title: string; body: string; url: string }): Promise<{ sent: number; pruned: number }>` (never throws); `tokensToPrune(tokens: string[], responses: Array<{ success: boolean; error?: { code?: string } }>): string[]` (pure, tested).
 - Consumes: `loadConfig().firebaseProjectId` (this task), `prisma.pushSubscription` (Task 1).
 
@@ -721,6 +730,7 @@ Create `apps/api/src/push-messaging.test.ts`:
 ```ts
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import { tokensToPrune } from './push-messaging.js';
 
 test('tokensToPrune keeps only unregistered tokens for removal', () => {
@@ -737,10 +747,7 @@ test('tokensToPrune keeps only unregistered tokens for removal', () => {
 });
 
 test('tokensToPrune returns an empty array when nothing is stale', () => {
-  assert.deepEqual(
-    tokensToPrune(['token-ok'], [{ success: true }]),
-    [],
-  );
+  assert.deepEqual(tokensToPrune(['token-ok'], [{ success: true }]), []);
 });
 ```
 
@@ -769,14 +776,17 @@ Create `apps/api/src/push-messaging.ts`:
 
 ```ts
 import type { Messaging, SendResponse } from 'firebase-admin/messaging';
+
 import { loadConfig } from './config.js';
 import { prisma } from './prisma.js';
 
 export const tokensToPrune = (
   tokens: string[],
-  responses: Array<Pick<SendResponse, 'success'> & {
-    error?: { code?: string };
-  }>,
+  responses: Array<
+    Pick<SendResponse, 'success'> & {
+      error?: { code?: string };
+    }
+  >,
 ): string[] =>
   tokens.filter((_, index) => {
     const result = responses[index];
@@ -854,10 +864,12 @@ git commit -m "feat(api): add FCM Admin SDK send module with stale-token pruning
 ### Task 7: API — wire push send into the payment-reminder flow
 
 **Files:**
+
 - Modify: `apps/api/src/routes/bill-routes.ts`
 - Modify: `apps/api/src/phase1.integration.test.ts`
 
 **Interfaces:**
+
 - Consumes: `sendReminderPush` (Task 6), `prisma.pushSubscription` (Task 1).
 
 - [ ] **Step 1: Write the failing integration test**
@@ -865,39 +877,38 @@ git commit -m "feat(api): add FCM Admin SDK send module with stale-token pruning
 In `apps/api/src/phase1.integration.test.ts`, inside the `'notification controls, private repeat groups, and duplicate override are enforced'` test, insert this block immediately after the existing reminder assertions (after line 2031, before the `const duplicatePayload = {` line):
 
 ```ts
-
-    await prisma.pushSubscription.create({
-      data: { userId: customerAId, fcmToken: 'fcm-token-reminder-test' },
-    });
-    const secondReminderBill = await prisma.bill.create({
-      data: {
-        restaurantId,
-        createdById: sousId,
-        baseCost: 5000,
-        vat: 0,
-        shippingFee: 0,
-        totalCost: 5000,
-        participants: {
-          create: [
-            {
-              memberId: customerAId,
-              originCost: 5000,
-              allocatedVat: 0,
-              allocatedShipping: 0,
-              discountApplied: 0,
-              finalPrice: 5000,
-            },
-          ],
+await prisma.pushSubscription.create({
+  data: { userId: customerAId, fcmToken: 'fcm-token-reminder-test' },
+});
+const secondReminderBill = await prisma.bill.create({
+  data: {
+    restaurantId,
+    createdById: sousId,
+    baseCost: 5000,
+    vat: 0,
+    shippingFee: 0,
+    totalCost: 5000,
+    participants: {
+      create: [
+        {
+          memberId: customerAId,
+          originCost: 5000,
+          allocatedVat: 0,
+          allocatedShipping: 0,
+          discountApplied: 0,
+          finalPrice: 5000,
         },
-      },
-    });
-    const remindersWithPushSubscriber = await app.inject({
-      method: 'POST',
-      url: `/bills/${secondReminderBill.id}/reminders`,
-      headers: auth(sousToken),
-    });
-    assert.equal(remindersWithPushSubscriber.statusCode, 200);
-    assert.equal(remindersWithPushSubscriber.json().sent, 1);
+      ],
+    },
+  },
+});
+const remindersWithPushSubscriber = await app.inject({
+  method: 'POST',
+  url: `/bills/${secondReminderBill.id}/reminders`,
+  headers: auth(sousToken),
+});
+assert.equal(remindersWithPushSubscriber.statusCode, 200);
+assert.equal(remindersWithPushSubscriber.json().sent, 1);
 ```
 
 This proves the reminder endpoint still succeeds when a recipient has a `PushSubscription` row and `FIREBASE_PROJECT_ID` is unset (the CI/integration-test environment) — `sendReminderPush` must no-op safely rather than error.
@@ -918,22 +929,22 @@ import { sendReminderPush } from '../push-messaging.js';
 Then, inside the `/bills/:id/reminders` handler, after the `await prisma.$transaction(...)` block and before `return result;` (after line 973), add:
 
 ```ts
-      const subscriptions = await prisma.pushSubscription.findMany({
-        where: {
-          userId: { in: eligible.map((participant) => participant.memberId) },
-        },
-        select: { fcmToken: true },
-      });
-      if (subscriptions.length > 0) {
-        await sendReminderPush(
-          subscriptions.map((subscription) => subscription.fcmToken),
-          {
-            title: 'Payment reminder',
-            body: `Payment reminder for ${bill.restaurant.name}`,
-            url: `/bills/${bill.id}`,
-          },
-        );
-      }
+const subscriptions = await prisma.pushSubscription.findMany({
+  where: {
+    userId: { in: eligible.map((participant) => participant.memberId) },
+  },
+  select: { fcmToken: true },
+});
+if (subscriptions.length > 0) {
+  await sendReminderPush(
+    subscriptions.map((subscription) => subscription.fcmToken),
+    {
+      title: 'Payment reminder',
+      body: `Payment reminder for ${bill.restaurant.name}`,
+      url: `/bills/${bill.id}`,
+    },
+  );
+}
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**

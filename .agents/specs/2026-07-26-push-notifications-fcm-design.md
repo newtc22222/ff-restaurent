@@ -3,6 +3,7 @@
 Status: Approved
 Date: 2026-07-26
 Author: Claude (with Phi Vo)
+Implementation plan: `.agents/plans/2026-07-26-push-notifications-fcm.md`
 
 ## Context
 

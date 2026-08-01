@@ -1,12 +1,28 @@
 import type { Messaging, SendResponse } from 'firebase-admin/messaging';
-import { loadConfig } from './config/config.js';
-import { prisma } from './lib/prisma.js';
+
+import { loadConfig } from '../config/config.js';
+import { prisma } from '../lib/prisma.js';
+
+type PushPayload = { title: string; body: string; url: string };
+type PushResult = { sent: number; pruned: number };
+type PushLogger = { warn: (...args: unknown[]) => void };
+
+type ReminderPushDependencies = {
+  findTokens: (userIds: string[]) => Promise<string[]>;
+  send: (
+    tokens: string[],
+    payload: PushPayload,
+    logger?: PushLogger,
+  ) => Promise<PushResult>;
+};
 
 export const tokensToPrune = (
   tokens: string[],
-  responses: Array<Pick<SendResponse, 'success'> & {
-    error?: { code?: string };
-  }>,
+  responses: Array<
+    Pick<SendResponse, 'success'> & {
+      error?: { code?: string };
+    }
+  >,
 ): string[] =>
   tokens.filter((_, index) => {
     const result = responses[index];
@@ -33,8 +49,9 @@ const getMessagingClient = async (): Promise<Messaging | null> => {
 
 export const sendReminderPush = async (
   tokens: string[],
-  payload: { title: string; body: string; url: string },
-): Promise<{ sent: number; pruned: number }> => {
+  payload: PushPayload,
+  logger?: PushLogger,
+): Promise<PushResult> => {
   if (tokens.length === 0) return { sent: 0, pruned: 0 };
   try {
     const client = await getMessagingClient();
@@ -52,7 +69,36 @@ export const sendReminderPush = async (
     }
     return { sent: response.successCount, pruned: staleTokens.length };
   } catch (error) {
-    console.warn('Push send failed', error);
+    logger?.warn({ err: error, event: 'push_send_failed' }, 'Push send failed');
+    return { sent: 0, pruned: 0 };
+  }
+};
+
+const reminderPushDependencies: ReminderPushDependencies = {
+  findTokens: async (userIds) =>
+    (
+      await prisma.pushSubscription.findMany({
+        where: { userId: { in: userIds } },
+        select: { fcmToken: true },
+      })
+    ).map(({ fcmToken }) => fcmToken),
+  send: sendReminderPush,
+};
+
+export const sendReminderPushForUsers = async (
+  userIds: string[],
+  payload: PushPayload,
+  logger: PushLogger,
+  dependencies: ReminderPushDependencies = reminderPushDependencies,
+): Promise<PushResult> => {
+  try {
+    const tokens = await dependencies.findTokens(userIds);
+    return await dependencies.send(tokens, payload, logger);
+  } catch (error) {
+    logger.warn(
+      { err: error, event: 'push_fanout_failed' },
+      'Push fan-out failed',
+    );
     return { sent: 0, pruned: 0 };
   }
 };

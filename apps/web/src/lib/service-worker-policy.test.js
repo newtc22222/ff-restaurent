@@ -64,6 +64,43 @@ describe('push payload parsing', () => {
     });
   });
 
+  it('extracts the notification and target from an FCM message envelope', () => {
+    const event = {
+      data: {
+        json: () => ({
+          notification: {
+            title: 'Payment reminder',
+            body: 'Open FF RESTaurent to review your bill.',
+          },
+          data: { url: '/bills/abc' },
+        }),
+      },
+    };
+
+    expect(parsePushPayload(event)).toEqual({
+      title: 'Payment reminder',
+      body: 'Open FF RESTaurent to review your bill.',
+      url: '/bills/abc',
+    });
+  });
+
+  it('rejects external notification targets', () => {
+    const event = {
+      data: {
+        json: () => ({
+          title: 'Payment reminder',
+          url: 'https://attacker.example/bills/abc',
+        }),
+      },
+    };
+
+    expect(parsePushPayload(event)).toEqual({
+      title: 'Payment reminder',
+      body: '',
+      url: '/',
+    });
+  });
+
   it('falls back to defaults when the payload is missing or malformed', () => {
     expect(parsePushPayload({ data: null })).toEqual({
       title: 'FF RESTaurent',

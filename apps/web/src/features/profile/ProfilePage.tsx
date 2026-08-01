@@ -69,13 +69,17 @@ export default function ProfilePage() {
     setPushBusy(true);
     try {
       if (enabled) {
-        const fcmToken = await requestPushToken();
-        if (!fcmToken) {
+        const result = await requestPushToken();
+        if (result.status === 'denied') {
           toast.error(t('toast.pushPermissionDenied'));
           return;
         }
+        if (result.status !== 'registered') return;
         await mutate(
-          { intent: 'push-subscribe', payload: { fcmToken } },
+          {
+            intent: 'push-subscribe',
+            payload: { fcmToken: result.token },
+          },
           {
             fallback: t('toast.pushSubscribeFailed'),
             success: t('toast.pushSubscribeUpdated'),
@@ -365,7 +369,9 @@ export default function ProfilePage() {
                 type="checkbox"
                 checked={pushSubscriptionId !== null}
                 disabled={pushBusy}
-                onChange={(event) => void handlePushToggle(event.target.checked)}
+                onChange={(event) =>
+                  void handlePushToggle(event.target.checked)
+                }
               />
             </label>
           </section>
