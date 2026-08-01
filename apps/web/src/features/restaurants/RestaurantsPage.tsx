@@ -35,6 +35,7 @@ import RestaurantProfileFields, {
   emptyRestaurantProfile,
   isRestaurantProfileValid,
 } from './RestaurantProfileFields';
+import { platformLabel } from './platform-link-tokens';
 import {
   type CuisineMatch,
   readCuisineFilter,
@@ -128,7 +129,7 @@ export default function RestaurantsPage() {
     ),
   ).map((platform) => ({
     value: platform,
-    label: platform.replaceAll('_', ' '),
+    label: platformLabel(platform),
   }));
   const collectionOptions = page.collections.map((collection) => ({
     value: collection.id,

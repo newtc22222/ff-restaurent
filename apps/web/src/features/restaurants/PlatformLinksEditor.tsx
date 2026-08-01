@@ -1,30 +1,13 @@
 import { ChevronDown, ChevronUp, Link2, Plus, Trash2 } from 'lucide-react';
 
-import { RESTAURANT_PLATFORM_VALUES } from '@ff-restaurent/shared';
-
 import type { RestaurantPlatform, RestaurantPlatformLink } from '@/api/types';
 import { useI18n } from '@/app/providers/i18n';
 import Dropdown from '@/components/ui/Dropdown';
 
-const platforms: readonly RestaurantPlatform[] = RESTAURANT_PLATFORM_VALUES;
+import PlatformLinkBadge from './PlatformLinkBadge';
+import { platformLabel, supportedPlatformValues } from './platform-link-tokens';
 
-/**
- * Brand-cased display names. Typing this as a total Record means adding a
- * platform in @ff-restaurent/shared fails the build here until it has a label,
- * rather than silently rendering undefined.
- */
-const PLATFORM_LABELS: Record<RestaurantPlatform, string> = {
-  GRAB: 'Grab',
-  SHOPEE_FOOD: 'ShopeeFood',
-  BE_FOOD: 'beFood',
-  GOJEK: 'Gojek',
-  WEBSITE: 'Website',
-  FACEBOOK: 'Facebook',
-  OTHER: 'Other',
-};
-
-export const platformLabel = (platform: RestaurantPlatform) =>
-  PLATFORM_LABELS[platform];
+const platforms: readonly RestaurantPlatform[] = supportedPlatformValues;
 
 const normalizedUrl = (value: string) => {
   try {
@@ -100,6 +83,10 @@ export default function PlatformLinksEditor({
           className="space-y-2 rounded-lg border border-border bg-surface p-3"
         >
           <div className="flex gap-2">
+            <PlatformLinkBadge
+              platform={link.platform}
+              className="mt-7 shrink-0"
+            />
             <Dropdown
               fullWidth
               label={t('restaurants.platform')}
