@@ -10,7 +10,16 @@ import {
 } from './popular-cuisine-seed.js';
 
 test('popular Vietnam cuisine seed has deterministic unique catalog keys', () => {
-  assert.equal(popularVietnamCuisines.length, 21);
+  assert.equal(popularVietnamCuisines.length, 22);
+  assert.deepEqual(
+    popularVietnamCuisines.find(({ name }) => name === 'Drinks'),
+    {
+      name: 'Drinks',
+      nameKey: 'drinks',
+      type: 'Đồ uống',
+      description: 'Đồ uống, cà phê, trà và các món giải khát.',
+    },
+  );
   assert.equal(
     new Set(popularVietnamCuisines.map(({ nameKey }) => nameKey)).size,
     popularVietnamCuisines.length,
@@ -46,5 +55,5 @@ test('popular Vietnam cuisine seed inserts without overwriting duplicates', asyn
   assert.deepEqual(calls, [
     { data: popularVietnamCuisines, skipDuplicates: true },
   ]);
-  assert.deepEqual(result, { created: 18, skipped: 3, total: 21 });
+  assert.deepEqual(result, { created: 18, skipped: 4, total: 22 });
 });
