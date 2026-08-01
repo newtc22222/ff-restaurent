@@ -24,4 +24,10 @@ describe('push permission policy', () => {
     expect(pushRegistrationState(true, true, true, 'granted')).toBe('ready');
     expect(pushRegistrationState(true, true, true, 'default')).toBe('prompt');
   });
+
+  it('does not prompt during silent token synchronization', () => {
+    expect(pushRegistrationState(true, true, true, 'default', false)).toBe(
+      'unavailable',
+    );
+  });
 });

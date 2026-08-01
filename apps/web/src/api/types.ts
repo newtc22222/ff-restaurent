@@ -235,9 +235,42 @@ export type Stats = {
 export type Notification = {
   id: string;
   billId?: string | null;
+  category?: NotificationCategory;
+  targetUrl?: string | null;
+  actorId?: string | null;
+  deduplicationKey?: string | null;
+  data?: Record<string, unknown> | null;
   message: string;
+  inAppVisible?: boolean;
+  pushStatus?: NotificationDeliveryStatus;
+  pushAttemptedAt?: string | null;
+  pushSentAt?: string | null;
   readAt?: string | null;
   createdAt: string;
+};
+
+export type NotificationCategory =
+  | 'PAYMENT_REMINDER'
+  | 'RESTAURANT_CREATED'
+  | 'COLLECTION_PUBLISHED'
+  | 'MEAL_VOTE_CREATED'
+  | 'MEAL_VOTE_CLOSING'
+  | 'MEAL_VOTE_RESULT';
+
+export type NotificationDeliveryStatus =
+  'NOT_REQUESTED' | 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED';
+
+export type ProductNotificationCategory =
+  'RESTAURANT_CREATED' | 'COLLECTION_PUBLISHED';
+
+export type NotificationPreferences = {
+  paymentRemindersEnabled: boolean;
+  categories: Array<{
+    category: ProductNotificationCategory;
+    inAppEnabled: boolean;
+    pushEnabled: boolean;
+  }>;
+  pushSubscriptions: Array<{ id: string; locale: 'vi' | 'en' }>;
 };
 
 export type PasswordResetRequest = {

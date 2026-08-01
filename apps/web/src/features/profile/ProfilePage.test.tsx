@@ -187,7 +187,7 @@ describe('ProfilePage account forms', () => {
       expect(mutate).toHaveBeenCalledWith(
         {
           intent: 'push-subscribe',
-          payload: { fcmToken: 'fcm-token-abc' },
+          payload: { fcmToken: 'fcm-token-abc', locale: 'en' },
         },
         expect.objectContaining({
           success: 'Push notifications enabled.',
@@ -234,6 +234,51 @@ describe('ProfilePage account forms', () => {
     await vi.waitFor(() => {
       expect(mutate).not.toHaveBeenCalled();
       expect(toastError).not.toHaveBeenCalled();
+    });
+  });
+
+  it('registers the device before enabling a product push category', async () => {
+    requestPushToken.mockResolvedValue({
+      status: 'registered',
+      token: 'fcm-token-category',
+    });
+    render(
+      <QueryProvider>
+        <I18nProvider>
+          <ProfilePage />
+        </I18nProvider>
+      </QueryProvider>,
+    );
+
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'Push alert: New restaurants',
+      }),
+    );
+
+    await vi.waitFor(() => {
+      expect(mutate).toHaveBeenCalledWith(
+        {
+          intent: 'push-subscribe',
+          payload: { fcmToken: 'fcm-token-category', locale: 'en' },
+        },
+        expect.anything(),
+      );
+      expect(mutate).toHaveBeenCalledWith(
+        {
+          intent: 'notification-preferences',
+          payload: {
+            categories: [
+              {
+                category: 'RESTAURANT_CREATED',
+                inAppEnabled: true,
+                pushEnabled: true,
+              },
+            ],
+          },
+        },
+        expect.anything(),
+      );
     });
   });
 });

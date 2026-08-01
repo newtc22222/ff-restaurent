@@ -86,6 +86,13 @@ describe('appLoader', () => {
           return jsonResponse([]);
         if (url.endsWith('/notifications')) return jsonResponse([]);
         if (url.endsWith('/participant-groups')) return jsonResponse([]);
+        if (url.endsWith('/me/notification-preferences')) {
+          return jsonResponse({
+            paymentRemindersEnabled: true,
+            categories: [],
+            pushSubscriptions: [],
+          });
+        }
         return jsonResponse({}, 404);
       }),
     );

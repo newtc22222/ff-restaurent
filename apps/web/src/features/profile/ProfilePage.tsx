@@ -5,7 +5,11 @@ import { useNavigate } from 'react-router';
 
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 
-import type { PaymentQrImage } from '@/api/types';
+import type {
+  NotificationPreferences,
+  PaymentQrImage,
+  ProductNotificationCategory,
+} from '@/api/types';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import BackButton from '@/components/ui/BackButton';
@@ -25,8 +29,29 @@ import {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, refresh = async () => undefined } = useAppContext();
-  const { t } = useI18n();
+  const {
+    user,
+    notificationPreferences: loadedNotificationPreferences,
+    refresh = async () => undefined,
+  } = useAppContext();
+  const { locale, t } = useI18n();
+  const initialNotificationPreferences: NotificationPreferences =
+    loadedNotificationPreferences ?? {
+      paymentRemindersEnabled: user.paymentRemindersEnabled !== false,
+      categories: [
+        {
+          category: 'RESTAURANT_CREATED',
+          inAppEnabled: true,
+          pushEnabled: false,
+        },
+        {
+          category: 'COLLECTION_PUBLISHED',
+          inAppEnabled: true,
+          pushEnabled: false,
+        },
+      ],
+      pushSubscriptions: [],
+    };
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: user.name,
@@ -60,8 +85,11 @@ export default function ProfilePage() {
     removeAvatarMutation.isPending ||
     savePaymentQrMutation.isPending ||
     removePaymentQrMutation.isPending;
+  const [notificationPreferences, setNotificationPreferences] = useState(
+    initialNotificationPreferences,
+  );
   const [pushSubscriptionId, setPushSubscriptionId] = useState<string | null>(
-    null,
+    initialNotificationPreferences.pushSubscriptions[0]?.id ?? null,
   );
   const [pushBusy, setPushBusy] = useState(false);
 
@@ -78,7 +106,7 @@ export default function ProfilePage() {
         await mutate(
           {
             intent: 'push-subscribe',
-            payload: { fcmToken: result.token },
+            payload: { fcmToken: result.token, locale },
           },
           {
             fallback: t('toast.pushSubscribeFailed'),
@@ -103,6 +131,53 @@ export default function ProfilePage() {
     } finally {
       setPushBusy(false);
     }
+  };
+
+  const handleCategoryToggle = async (
+    category: ProductNotificationCategory,
+    channel: 'inAppEnabled' | 'pushEnabled',
+    enabled: boolean,
+  ) => {
+    if (channel === 'pushEnabled' && enabled) {
+      const result = await requestPushToken();
+      if (result.status === 'denied') {
+        toast.error(t('toast.pushPermissionDenied'));
+        return;
+      }
+      if (result.status !== 'registered') return;
+      await mutate(
+        {
+          intent: 'push-subscribe',
+          payload: { fcmToken: result.token, locale },
+        },
+        {
+          fallback: t('toast.pushSubscribeFailed'),
+          onSuccess: (data) =>
+            setPushSubscriptionId((data as { id: string }).id),
+        },
+      );
+    }
+    const current = notificationPreferences.categories.find(
+      (preference) => preference.category === category,
+    );
+    if (!current) return;
+    const next = { ...current, [channel]: enabled };
+    setNotificationPreferences((preferences) => ({
+      ...preferences,
+      categories: preferences.categories.map((preference) =>
+        preference.category === category ? next : preference,
+      ),
+    }));
+    await mutate(
+      {
+        intent: 'notification-preferences',
+        payload: { categories: [next] },
+      },
+      {
+        fallback: t('toast.notificationPreferencesFailed'),
+        success: t('toast.notificationPreferencesUpdated'),
+      },
+    );
   };
   const parsedPhone = parseVietnamMobilePhone(form.phone);
   const phoneError =
@@ -336,7 +411,7 @@ export default function ProfilePage() {
               {t('profile.notificationPreferences')}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              {t('profile.notificationPreferencesDescription')}
+              {t('notifications.preferencesDescription')}
             </p>
             <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-4">
               <span className="text-sm font-semibold text-ink">
@@ -344,21 +419,26 @@ export default function ProfilePage() {
               </span>
               <input
                 type="checkbox"
-                checked={user.paymentRemindersEnabled !== false}
-                onChange={(event) =>
+                checked={notificationPreferences.paymentRemindersEnabled}
+                onChange={(event) => {
+                  const enabled = event.target.checked;
+                  setNotificationPreferences((preferences) => ({
+                    ...preferences,
+                    paymentRemindersEnabled: enabled,
+                  }));
                   void mutate(
                     {
                       intent: 'notification-preferences',
                       payload: {
-                        paymentRemindersEnabled: event.target.checked,
+                        paymentRemindersEnabled: enabled,
                       },
                     },
                     {
                       fallback: t('toast.notificationPreferencesFailed'),
                       success: t('toast.notificationPreferencesUpdated'),
                     },
-                  )
-                }
+                  );
+                }}
               />
             </label>
             <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-4">
@@ -374,6 +454,55 @@ export default function ProfilePage() {
                 }
               />
             </label>
+            <div className="mt-4 space-y-3">
+              {notificationPreferences.categories.map((preference) => {
+                const label =
+                  preference.category === 'RESTAURANT_CREATED'
+                    ? t('notifications.restaurantCreatedPreference')
+                    : t('notifications.collectionPublishedPreference');
+                return (
+                  <div
+                    key={preference.category}
+                    className="rounded-lg border border-border p-4"
+                  >
+                    <p className="text-sm font-semibold text-ink">{label}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                        <input
+                          type="checkbox"
+                          aria-label={`${t('notifications.inAppChannel')}: ${label}`}
+                          checked={preference.inAppEnabled}
+                          onChange={(event) =>
+                            void handleCategoryToggle(
+                              preference.category,
+                              'inAppEnabled',
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        {t('notifications.inAppChannel')}
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                        <input
+                          type="checkbox"
+                          aria-label={`${t('notifications.pushChannel')}: ${label}`}
+                          checked={preference.pushEnabled}
+                          disabled={pushBusy}
+                          onChange={(event) =>
+                            void handleCategoryToggle(
+                              preference.category,
+                              'pushEnabled',
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        {t('notifications.pushChannel')}
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         </div>
 

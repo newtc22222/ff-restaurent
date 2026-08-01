@@ -8,6 +8,7 @@ export const pushRegistrationState = (
   notificationSupported: boolean,
   configured: boolean,
   permission: NotificationPermission,
+  allowPrompt = true,
 ): 'unavailable' | 'denied' | 'ready' | 'prompt' => {
   if (
     !canRequestPushPermission(serviceWorkerSupported, notificationSupported) ||
@@ -17,6 +18,7 @@ export const pushRegistrationState = (
   }
   if (permission === 'denied') return 'denied';
   if (permission === 'granted') return 'ready';
+  if (!allowPrompt) return 'unavailable';
   return 'prompt';
 };
 
@@ -25,7 +27,9 @@ export type PushTokenResult =
   | { status: 'denied' }
   | { status: 'unavailable' };
 
-export async function requestPushToken(): Promise<PushTokenResult> {
+export async function requestPushToken(
+  options: { prompt?: boolean } = {},
+): Promise<PushTokenResult> {
   const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -40,6 +44,7 @@ export async function requestPushToken(): Promise<PushTokenResult> {
     'Notification' in window,
     configured,
     'Notification' in window ? Notification.permission : 'default',
+    options.prompt ?? true,
   );
   if (state === 'unavailable') return { status: 'unavailable' };
   if (state === 'denied') return { status: 'denied' };

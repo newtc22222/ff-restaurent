@@ -29,7 +29,7 @@ import {
   validateParticipantIds,
   validatePaymentQr,
 } from '../services/bill-service.js';
-import { sendReminderPushForUsers } from '../services/push-messaging.js';
+import { deliverPaymentReminderPush } from '../services/notification-service.js';
 
 const canManageBill = (
   bill: { createdById: string },
@@ -639,13 +639,26 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         ).length,
         cooldownSeconds: REMINDER_COOLDOWN_MS / 1000,
       };
+      const reminderBucket = Math.floor(Date.now() / REMINDER_COOLDOWN_MS);
+      const deduplicationKey = `payment-reminder:${bill.id}:${reminderBucket}`;
       await prisma.$transaction(async (tx) => {
         await tx.notification.createMany({
           data: eligible.map((participant) => ({
             userId: participant.memberId,
             billId: bill.id,
+            category: 'PAYMENT_REMINDER',
+            targetUrl: `/bills/${bill.id}`,
+            actorId: request.currentUser.id,
+            deduplicationKey,
+            data: {
+              actorName: request.currentUser.name,
+              restaurantName: bill.restaurant.name,
+              finalPrice: participant.finalPrice,
+            },
             message: `Payment reminder for ${bill.restaurant.name}: ${participant.finalPrice} VND waiting.`,
+            pushStatus: 'PENDING',
           })),
+          skipDuplicates: true,
         });
         await tx.billAuditLog.create({
           data: {
@@ -656,13 +669,11 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           },
         });
       });
-      await sendReminderPushForUsers(
+      void deliverPaymentReminderPush(
         eligible.map((participant) => participant.memberId),
-        {
-          title: 'Payment reminder',
-          body: `Payment reminder for ${bill.restaurant.name}`,
-          url: `/bills/${bill.id}`,
-        },
+        bill.restaurant.name,
+        `/bills/${bill.id}`,
+        deduplicationKey,
         request.log,
       );
       return result;

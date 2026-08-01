@@ -17,6 +17,7 @@ import {
   toggleFavoriteShortcut,
   toggleRecommendedShortcut,
 } from '../services/collection-service.js';
+import { publishProductEvent } from '../services/notification-service.js';
 import {
   createRestaurant,
   getRestaurantDetail,
@@ -61,6 +62,21 @@ export const registerRestaurantRoutes = (app: FastifyInstance) => {
     const created = await createRestaurant(
       normalizeVietnamAddressSnapshot(body),
       request.currentUser,
+    );
+    void publishProductEvent(
+      {
+        category: 'RESTAURANT_CREATED',
+        actorId: request.currentUser.id,
+        actorName: request.currentUser.name,
+        targetUrl: `/restaurants/${created.id}`,
+        deduplicationKey: `restaurant-created:${created.id}`,
+        data: {
+          actorName: request.currentUser.name,
+          restaurantName: created.name,
+        },
+        fallbackMessage: `${request.currentUser.name} added ${created.name}.`,
+      },
+      request.log,
     );
     return reply.code(201).send(created);
   });
