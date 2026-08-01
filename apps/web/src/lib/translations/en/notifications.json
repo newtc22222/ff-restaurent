@@ -1,0 +1,10 @@
+{
+  "notifications.paymentReminder": "Payment reminder for {{restaurantName}}: {{finalPrice}} VND waiting.",
+  "notifications.restaurantCreated": "{{actorName}} added {{restaurantName}}.",
+  "notifications.collectionPublished": "{{actorName}} published {{collectionName}}.",
+  "notifications.preferencesDescription": "Choose which events you receive in the app or through push alerts.",
+  "notifications.restaurantCreatedPreference": "New restaurants",
+  "notifications.collectionPublishedPreference": "New public collections",
+  "notifications.inAppChannel": "In app",
+  "notifications.pushChannel": "Push alert"
+}

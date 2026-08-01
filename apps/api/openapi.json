@@ -4102,9 +4102,27 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "categories": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "category": {
+                          "enum": [
+                            "RESTAURANT_CREATED",
+                            "COLLECTION_PUBLISHED"
+                          ],
+                          "type": "string"
+                        },
+                        "inAppEnabled": { "type": "boolean" },
+                        "pushEnabled": { "type": "boolean" }
+                      },
+                      "required": ["category", "inAppEnabled", "pushEnabled"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
                   "paymentRemindersEnabled": { "type": "boolean" }
                 },
-                "required": ["paymentRemindersEnabled"],
                 "type": "object"
               }
             }

@@ -4225,7 +4225,13 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': {
-          paymentRemindersEnabled: boolean;
+          categories?: {
+            /** @enum {string} */
+            category: 'RESTAURANT_CREATED' | 'COLLECTION_PUBLISHED';
+            inAppEnabled: boolean;
+            pushEnabled: boolean;
+          }[];
+          paymentRemindersEnabled?: boolean;
         };
       };
     };

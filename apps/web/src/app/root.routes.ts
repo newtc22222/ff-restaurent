@@ -5,6 +5,7 @@ import type {
   Bill,
   CatalogPage,
   Notification,
+  NotificationPreferences,
   ParticipantGroup,
   PasswordResetRequest,
   RestaurantEntry,
@@ -41,6 +42,7 @@ export async function appLoader(): Promise<AppLoaderData> {
       fetchAllPages<RestaurantEntry>('/restaurants?archive=all&limit=100'),
       api.request<Notification[]>('/notifications'),
       api.request<ParticipantGroup[]>('/participant-groups'),
+      api.request<NotificationPreferences>('/me/notification-preferences'),
     ]);
     const user = await userPromise;
     const [sharedResults, usersResult, passwordResetRequestsResult] =
@@ -82,6 +84,7 @@ export async function appLoader(): Promise<AppLoaderData> {
       usersResult,
       sharedResults[2],
       sharedResults[3],
+      sharedResults[4],
     ] as const;
     const value = <T>(result: PromiseSettledResult<T>, fallback: T) =>
       result.status === 'fulfilled' ? result.value : fallback;
@@ -92,6 +95,22 @@ export async function appLoader(): Promise<AppLoaderData> {
       users: value(results[2], []),
       notifications: value(results[3], []),
       participantGroups: value(results[4], []),
+      notificationPreferences: value(results[5], {
+        paymentRemindersEnabled: user.paymentRemindersEnabled !== false,
+        categories: [
+          {
+            category: 'RESTAURANT_CREATED',
+            inAppEnabled: true,
+            pushEnabled: false,
+          },
+          {
+            category: 'COLLECTION_PUBLISHED',
+            inAppEnabled: true,
+            pushEnabled: false,
+          },
+        ],
+        pushSubscriptions: [],
+      }),
       passwordResetRequests: value(passwordResetRequestsResult, []),
       warning: [...results, passwordResetRequestsResult].some(
         (result) => result.status === 'rejected',

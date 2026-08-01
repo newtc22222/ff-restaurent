@@ -4,6 +4,8 @@ import { after, before, test } from 'node:test';
 import {
   ChefRole,
   CollectionSystemType,
+  NotificationCategory,
+  NotificationLocale,
   PaymentStatus,
   Prisma,
   RestaurantPlatform,
@@ -2385,6 +2387,34 @@ integrationTest(
     });
     assert.equal(optedOut.statusCode, 200);
     assert.equal(optedOut.json().paymentRemindersEnabled, false);
+    const productPreferences = await app.inject({
+      method: 'PATCH',
+      url: '/me/notification-preferences',
+      headers: auth(customerAToken),
+      payload: {
+        categories: [
+          {
+            category: 'RESTAURANT_CREATED',
+            inAppEnabled: false,
+            pushEnabled: true,
+          },
+        ],
+      },
+    });
+    assert.equal(productPreferences.statusCode, 200);
+    assert.deepEqual(
+      productPreferences
+        .json()
+        .categories.find(
+          (preference: { category: string }) =>
+            preference.category === 'RESTAURANT_CREATED',
+        ),
+      {
+        category: 'RESTAURANT_CREATED',
+        inAppEnabled: false,
+        pushEnabled: true,
+      },
+    );
 
     const reminderBill = await prisma.bill.create({
       data: {
@@ -2529,7 +2559,7 @@ integrationTest(
       method: 'POST',
       url: '/me/push-subscriptions',
       headers: auth(customerAToken),
-      payload: { fcmToken: 'fcm-token-integration-1' },
+      payload: { fcmToken: 'fcm-token-integration-1', locale: 'en' },
     });
     assert.equal(registered.statusCode, 200);
     const subscriptionId = registered.json().id;
@@ -2539,6 +2569,14 @@ integrationTest(
         where: { userId: customerAId, fcmToken: 'fcm-token-integration-1' },
       }),
       1,
+    );
+    assert.equal(
+      (
+        await prisma.pushSubscription.findUniqueOrThrow({
+          where: { fcmToken: 'fcm-token-integration-1' },
+        })
+      ).locale,
+      NotificationLocale.EN,
     );
 
     const reRegistered = await app.inject({
@@ -2580,5 +2618,171 @@ integrationTest(
       }),
       0,
     );
+  },
+);
+
+integrationTest(
+  'product events fan out once to active non-actors with structured targets',
+  async () => {
+    const sous = await prisma.user.findUniqueOrThrow({ where: { id: sousId } });
+    const sousToken = tokenFor(sousId, '8h', sous.sessionVersion);
+    await prisma.notificationPreference.deleteMany();
+    await prisma.notification.deleteMany({
+      where: {
+        category: {
+          in: [
+            NotificationCategory.RESTAURANT_CREATED,
+            NotificationCategory.COLLECTION_PUBLISHED,
+          ],
+        },
+      },
+    });
+    await prisma.user.update({
+      where: { id: customerBId },
+      data: { accountStatus: UserAccountStatus.BLOCKED },
+    });
+    const expectedAudience = await prisma.user.count({
+      where: {
+        id: { not: sousId },
+        accountStatus: UserAccountStatus.ACTIVE,
+      },
+    });
+    const waitForCount = async (
+      category: NotificationCategory,
+      deduplicationKey: string,
+      count: number,
+    ) => {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const current = await prisma.notification.count({
+          where: { category, deduplicationKey },
+        });
+        if (current === count) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.fail(`Timed out waiting for ${deduplicationKey}`);
+    };
+
+    const published = await app.inject({
+      method: 'POST',
+      url: '/collections',
+      headers: auth(sousToken),
+      payload: {
+        name: 'Published integration collection',
+        description: 'Visible to active members',
+        isPublic: true,
+      },
+    });
+    assert.equal(published.statusCode, 201);
+    const collectionKey = `collection-published:${published.json().id}`;
+    await waitForCount(
+      NotificationCategory.COLLECTION_PUBLISHED,
+      collectionKey,
+      expectedAudience,
+    );
+    assert.equal(
+      await prisma.notification.count({
+        where: { deduplicationKey: collectionKey, userId: sousId },
+      }),
+      0,
+    );
+    assert.equal(
+      await prisma.notification.count({
+        where: { deduplicationKey: collectionKey, userId: customerBId },
+      }),
+      0,
+    );
+    assert.equal(
+      await prisma.notification.count({
+        where: {
+          deduplicationKey: collectionKey,
+          targetUrl: `/collections/${published.json().id}`,
+        },
+      }),
+      expectedAudience,
+    );
+    const republished = await app.inject({
+      method: 'PUT',
+      url: `/collections/${published.json().id}`,
+      headers: auth(sousToken),
+      payload: { isPublic: true },
+    });
+    assert.equal(republished.statusCode, 200);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(
+      await prisma.notification.count({
+        where: { deduplicationKey: collectionKey },
+      }),
+      expectedAudience,
+    );
+
+    const cuisine = await prisma.cuisine.findFirstOrThrow();
+    await prisma.notificationPreference.create({
+      data: {
+        userId: customerAId,
+        category: NotificationCategory.RESTAURANT_CREATED,
+        inAppEnabled: false,
+        pushEnabled: true,
+      },
+    });
+    const restaurant = await app.inject({
+      method: 'POST',
+      url: '/restaurants',
+      headers: auth(sousToken),
+      payload: {
+        name: 'Event Integration Restaurant',
+        address: '81 Notification Street',
+        type: 'Restaurant',
+        cuisineIds: [cuisine.id],
+        primaryCuisineId: cuisine.id,
+      },
+    });
+    assert.equal(restaurant.statusCode, 201);
+    const restaurantKey = `restaurant-created:${restaurant.json().id}`;
+    await waitForCount(
+      NotificationCategory.RESTAURANT_CREATED,
+      restaurantKey,
+      expectedAudience,
+    );
+    assert.equal(
+      await prisma.notification.count({
+        where: {
+          deduplicationKey: restaurantKey,
+          userId: customerAId,
+          inAppVisible: false,
+        },
+      }),
+      1,
+    );
+    const customerA = await prisma.user.findUniqueOrThrow({
+      where: { id: customerAId },
+    });
+    const customerANotifications = await app.inject({
+      method: 'GET',
+      url: '/notifications',
+      headers: auth(tokenFor(customerAId, '8h', customerA.sessionVersion)),
+    });
+    assert.equal(customerANotifications.statusCode, 200);
+    assert.equal(
+      customerANotifications
+        .json()
+        .some(
+          (notification: { deduplicationKey?: string }) =>
+            notification.deduplicationKey === restaurantKey,
+        ),
+      false,
+    );
+    assert.equal(
+      await prisma.notification.count({
+        where: {
+          deduplicationKey: restaurantKey,
+          targetUrl: `/restaurants/${restaurant.json().id}`,
+        },
+      }),
+      expectedAudience,
+    );
+    await prisma.user.update({
+      where: { id: customerBId },
+      data: { accountStatus: UserAccountStatus.ACTIVE },
+    });
   },
 );

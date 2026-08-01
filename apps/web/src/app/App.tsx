@@ -25,8 +25,14 @@ import MobileNav from '@/components/layout/MobileNav';
 import Sidebar from '@/components/layout/Sidebar';
 import type { NavigationItem } from '@/components/layout/navigation';
 import ScrollArea from '@/components/ui/ScrollArea';
+import {
+  notificationMessage,
+  notificationTarget,
+} from '@/features/notifications/notification-message';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { isRootAdmin } from '@/lib/permissions';
+import { requestPushToken } from '@/lib/push';
+import { session } from '@/lib/session';
 
 import {
   type AppLoaderData,
@@ -36,7 +42,7 @@ import {
 import { useI18n } from './providers/i18n';
 
 function AppShellContent() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const navigate = useNavigate();
   const { user, notifications, warning, loading } = useAppContext();
   const { mutate } = useRouteMutation();
@@ -51,6 +57,25 @@ function AppShellContent() {
     if (!warning) warned.current = false;
   }, [t, warning]);
 
+  useEffect(() => {
+    void requestPushToken({ prompt: false }).then(async (result) => {
+      if (result.status !== 'registered') return;
+      try {
+        await session.api().request('/me/push-subscriptions', {
+          method: 'POST',
+          body: JSON.stringify({ fcmToken: result.token, locale }),
+        });
+      } catch {
+        return;
+      }
+    });
+  }, [locale]);
+
+  const localizedNotifications = notifications.map((notification) => ({
+    ...notification,
+    message: notificationMessage(notification, t),
+  }));
+
   const openNotification = async (notification: Notification) => {
     if (!notification.readAt) {
       await mutate(
@@ -61,7 +86,8 @@ function AppShellContent() {
         },
       );
     }
-    if (notification.billId) navigate(`/bills/${notification.billId}`);
+    const target = notificationTarget(notification);
+    if (target) navigate(target);
   };
 
   const markAllNotificationsRead = () =>
@@ -91,7 +117,7 @@ function AppShellContent() {
     <div className="flex h-screen flex-col overflow-hidden bg-bg font-sans text-ink">
       <AppHeader
         onProfile={() => navigate('/profile')}
-        notifications={notifications}
+        notifications={localizedNotifications}
         onOpenNotification={openNotification}
         onMarkAllNotificationsRead={markAllNotificationsRead}
       />
