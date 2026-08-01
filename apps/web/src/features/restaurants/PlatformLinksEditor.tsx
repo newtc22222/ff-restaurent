@@ -82,28 +82,30 @@ export default function PlatformLinksEditor({
           key={link.id ?? index}
           className="space-y-2 rounded-lg border border-border bg-surface p-3"
         >
-          <div className="flex gap-2">
-            <PlatformLinkBadge
-              platform={link.platform}
-              className="mt-7 shrink-0"
-            />
-            <Dropdown
-              fullWidth
-              label={t('restaurants.platform')}
-              ariaLabel={`${t('restaurants.platform')} ${index + 1}`}
-              value={link.platform}
-              onChange={(platform) =>
-                update(index, {
-                  platform: platform as RestaurantPlatform,
-                  label: platform === 'OTHER' ? link.label : null,
-                })
-              }
-              options={platforms.map((platform) => ({
-                value: platform,
-                label: platformLabel(platform),
-              }))}
-            />
-            <div className="flex shrink-0 gap-1">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end">
+              <PlatformLinkBadge
+                platform={link.platform}
+                className="self-start sm:mb-1"
+              />
+              <Dropdown
+                fullWidth
+                label={t('restaurants.platform')}
+                ariaLabel={`${t('restaurants.platform')} ${index + 1}`}
+                value={link.platform}
+                onChange={(platform) =>
+                  update(index, {
+                    platform: platform as RestaurantPlatform,
+                    label: platform === 'OTHER' ? link.label : null,
+                  })
+                }
+                options={platforms.map((platform) => ({
+                  value: platform,
+                  label: platformLabel(platform),
+                }))}
+              />
+            </div>
+            <div className="flex shrink-0 justify-end gap-1">
               <button
                 type="button"
                 aria-label={`${t('restaurants.moveUp')} ${index + 1}`}
