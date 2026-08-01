@@ -179,7 +179,7 @@ describe('ProfilePage account forms', () => {
     );
 
     const pushToggle = screen.getByRole('checkbox', {
-      name: 'Push notifications',
+      name: 'Push alerts',
     });
     fireEvent.click(pushToggle);
 
@@ -207,7 +207,7 @@ describe('ProfilePage account forms', () => {
     );
 
     const pushToggle = screen.getByRole('checkbox', {
-      name: 'Push notifications',
+      name: 'Push alerts',
     });
     fireEvent.click(pushToggle);
 
@@ -229,9 +229,7 @@ describe('ProfilePage account forms', () => {
       </QueryProvider>,
     );
 
-    fireEvent.click(
-      screen.getByRole('checkbox', { name: 'Push notifications' }),
-    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Push alerts' }));
 
     await vi.waitFor(() => {
       expect(mutate).not.toHaveBeenCalled();
