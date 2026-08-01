@@ -388,11 +388,6 @@ export type CollectionInput = {
   isPublic: boolean;
 };
 
-export const isCollectionPublicationTransition = (
-  currentIsPublic: boolean,
-  requestedIsPublic: boolean | undefined,
-) => !currentIsPublic && requestedIsPublic === true;
-
 export const createCollection = (body: CollectionInput, ownerId: string) =>
   prisma.collection.create({
     data: {
@@ -409,23 +404,45 @@ export const updateCollection = async (
   body: Partial<CollectionInput>,
   userId: string,
 ) => {
-  const current = await requireCustomOwner(id, userId);
-  const collection = await prisma.collection.update({
-    where: { id },
-    data: {
-      ...body,
-      ...(body.description !== undefined
-        ? { description: body.description || null }
-        : {}),
-    },
-    select: collectionSelect,
-  });
+  await requireCustomOwner(id, userId);
+  const data = {
+    ...body,
+    ...(body.description !== undefined
+      ? { description: body.description || null }
+      : {}),
+  };
+  if (body.isPublic === true) {
+    return prisma.$transaction(async (tx) => {
+      const transitioned = await tx.collection.updateMany({
+        where: { id, isPublic: false },
+        data,
+      });
+      if (transitioned.count === 1) {
+        return {
+          collection: await tx.collection.findUniqueOrThrow({
+            where: { id },
+            select: collectionSelect,
+          }),
+          becamePublic: true,
+        };
+      }
+      return {
+        collection: await tx.collection.update({
+          where: { id },
+          data,
+          select: collectionSelect,
+        }),
+        becamePublic: false,
+      };
+    });
+  }
   return {
-    collection,
-    becamePublic: isCollectionPublicationTransition(
-      current.isPublic,
-      body.isPublic,
-    ),
+    collection: await prisma.collection.update({
+      where: { id },
+      data,
+      select: collectionSelect,
+    }),
+    becamePublic: false,
   };
 };
 
