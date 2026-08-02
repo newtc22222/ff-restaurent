@@ -1,25 +1,24 @@
 import {
   Bell,
   ChevronDown,
+  Info,
   LogOut,
   MoreVertical,
+  Settings,
   UserCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { Notification } from '@/api/types';
-import { useAccent } from '@/app/providers/accent';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
-import { useTheme } from '@/app/providers/theme';
 import { roleLabel } from '@/lib/permissions';
 
-import AccentToggle from '../ui/AccentToggle';
 import BrandIcon from '../ui/BrandIcon';
 import ConfirmDialog from '../ui/ConfirmDialog';
-import LocaleToggle from '../ui/LocaleToggle';
+import InfoDialog from '../ui/InfoDialog';
 import ScrollArea from '../ui/ScrollArea';
-import ThemeToggle from '../ui/ThemeToggle';
+import SettingsDialog from '../ui/SettingsDialog';
 import UserAvatar from '../ui/UserAvatar';
 
 interface AppHeaderProps {
@@ -37,47 +36,49 @@ export default function AppHeader({
   onMarkAllNotificationsRead,
 }: AppHeaderProps) {
   const { user, logout } = useAppContext();
-  const { locale, setLocale, t } = useI18n();
-  const { theme, setTheme } = useTheme();
-  const { accent, setAccent } = useAccent();
+  const { t } = useI18n();
   const [showConfirm, setShowConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [dialogReturnFocus, setDialogReturnFocus] =
+    useState<HTMLElement | null>(null);
+  const desktopUserTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const unreadCount = notifications.filter((item) => !item.readAt).length;
-  const localeControlProps = {
-    locale,
-    setLocale,
-    label: t('nav.language'),
-    englishLabel: t('language.english'),
-    vietnameseLabel: t('language.vietnamese'),
+
+  const closeMenus = () => {
+    setShowMenu(false);
+    setShowUserMenu(false);
   };
-  const themeControlProps = {
-    theme,
-    setTheme,
-    label: t('nav.theme'),
-    lightLabel: t('theme.light'),
-    darkLabel: t('theme.dark'),
-    systemLabel: t('theme.system'),
-  };
-  const accentControlProps = {
-    accent,
-    setAccent,
-    label: t('theme.accent'),
-    saffronLabel: t('theme.accentSaffron'),
-    basilLabel: t('theme.accentBasil'),
-    chiliLabel: t('theme.accentChili'),
+
+  const getMenuReturnTarget = () => {
+    if (showUserMenu) return desktopUserTriggerRef.current;
+    if (showMenu) return mobileMenuTriggerRef.current;
+    return null;
   };
 
   const openProfile = () => {
-    setShowMenu(false);
-    setShowUserMenu(false);
+    closeMenus();
     onProfile?.();
   };
 
+  const openSettings = () => {
+    setDialogReturnFocus(getMenuReturnTarget());
+    closeMenus();
+    setShowSettings(true);
+  };
+
+  const openInfo = () => {
+    setDialogReturnFocus(getMenuReturnTarget());
+    closeMenus();
+    setShowInfo(true);
+  };
+
   const openSignOut = () => {
-    setShowMenu(false);
-    setShowUserMenu(false);
+    closeMenus();
     setShowConfirm(true);
   };
 
@@ -97,9 +98,6 @@ export default function AppHeader({
         <div className="hidden min-w-0 flex-1 md:block" />
 
         <div className="ml-auto hidden items-center gap-2 md:flex">
-          <LocaleToggle {...localeControlProps} />
-          <ThemeToggle {...themeControlProps} />
-          <AccentToggle {...accentControlProps} />
           {onOpenNotification && (
             <button
               type="button"
@@ -118,6 +116,7 @@ export default function AppHeader({
           )}
           <div className="relative">
             <button
+              ref={desktopUserTriggerRef}
               type="button"
               className="flex items-center gap-2 rounded-md px-2 py-1 text-compact text-slate-500 transition-colors hover:bg-muted hover:text-ink"
               onClick={() => {
@@ -167,6 +166,24 @@ export default function AppHeader({
                     <UserCircle size={15} className="text-slate-500" />
                     {t('profile.title')}
                   </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-compact font-medium text-ink transition-colors hover:bg-muted"
+                    onClick={openSettings}
+                  >
+                    <Settings size={15} className="text-slate-500" />
+                    {t('nav.settings')}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-compact font-medium text-ink transition-colors hover:bg-muted"
+                    onClick={openInfo}
+                  >
+                    <Info size={15} className="text-slate-500" />
+                    {t('nav.info')}
+                  </button>
                   <div className="my-1 border-t border-border" />
                   <button
                     type="button"
@@ -184,6 +201,7 @@ export default function AppHeader({
 
         <div className="relative ml-auto md:hidden">
           <button
+            ref={mobileMenuTriggerRef}
             type="button"
             className="flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-muted hover:text-ink"
             onClick={() => {
@@ -219,18 +237,22 @@ export default function AppHeader({
               </button>
 
               <div className="my-1 border-t border-border" />
-              <div className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium text-ink">
-                <span>{t('nav.language')}</span>
-                <LocaleToggle {...localeControlProps} />
-              </div>
-              <div className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium text-ink">
-                <span>{t('nav.theme')}</span>
-                <ThemeToggle {...themeControlProps} />
-              </div>
-              <div className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium text-ink">
-                <span>{t('theme.accent')}</span>
-                <AccentToggle {...accentControlProps} />
-              </div>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-muted"
+                onClick={openSettings}
+              >
+                <Settings size={18} className="text-slate-500" />
+                <span className="flex-1 text-left">{t('nav.settings')}</span>
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-muted"
+                onClick={openInfo}
+              >
+                <Info size={18} className="text-slate-500" />
+                <span className="flex-1 text-left">{t('nav.info')}</span>
+              </button>
               {onOpenNotification && (
                 <button
                   type="button"
@@ -344,6 +366,17 @@ export default function AppHeader({
           onCancel={() => setShowConfirm(false)}
         />
       )}
+
+      <SettingsDialog
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        returnFocusTo={dialogReturnFocus}
+      />
+      <InfoDialog
+        open={showInfo}
+        onClose={() => setShowInfo(false)}
+        returnFocusTo={dialogReturnFocus}
+      />
     </>
   );
 }

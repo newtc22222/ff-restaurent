@@ -40,6 +40,32 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('LoginPage', () => {
+  it('introduces the app in a footer that still exposes the locale control', () => {
+    vi.mocked(useFetcher).mockReturnValue({
+      state: 'idle',
+      data: undefined,
+      submit: vi.fn(),
+    } as never);
+
+    render(
+      <ThemeProvider>
+        <I18nProvider>
+          <LoginPage />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+
+    // Display preferences now live in the authenticated Settings dialog; only
+    // locale stays reachable before sign-in.
+    expect(screen.queryByRole('button', { name: /Theme:/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Accent:/ })).toBeNull();
+
+    const locale = screen.getByRole('button', { name: 'Language: English' });
+    const footer = locale.closest('footer');
+    expect(footer).toBeTruthy();
+    expect(footer!.textContent).toContain('FF RESTaurent helps');
+  });
+
   it('stacks demo roles on mobile and restores the desktop columns', () => {
     vi.mocked(useFetcher).mockReturnValue({
       state: 'idle',
