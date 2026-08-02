@@ -54,8 +54,11 @@ jobs:
           sudo chown -R "$USER" /cloudsql
           curl -o /tmp/cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.1/cloud-sql-proxy.linux.amd64
           chmod +x /tmp/cloud-sql-proxy
-          /tmp/cloud-sql-proxy --unix-socket /cloudsql ff-restaurent:asia-east1:ff-restaurent-db &
-          sleep 3
+          /tmp/cloud-sql-proxy --unix-socket /cloudsql ff-restaurent:asia-east1:ff-restaurent-db > /tmp/proxy.log 2>&1 &
+          sleep 5
+          cat /tmp/proxy.log || true
+          ls -la /cloudsql/ || true
+          ls -la /cloudsql/ff-restaurent:asia-east1:ff-restaurent-db/ || true
       - run: bash scripts/backup-restore-drill.sh
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
