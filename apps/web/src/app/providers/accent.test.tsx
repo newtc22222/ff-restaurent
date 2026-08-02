@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { AccentProvider, useAccent } from './accent';
+import { AccentProvider, initializeAccent, useAccent } from './accent';
 
 function AccentProbe() {
   const { accent, setAccent } = useAccent();
@@ -47,6 +47,14 @@ describe('AccentProvider', () => {
 
     expect(screen.getByTestId('accent').textContent).toBe('chili');
     expect(document.documentElement.dataset.accent).toBe('chili');
+  });
+
+  it('can apply the stored accent before the provider mounts', () => {
+    localStorage.setItem('ff-accent', 'basil');
+
+    initializeAccent();
+
+    expect(document.documentElement.dataset.accent).toBe('basil');
   });
 
   it('falls back to the default when the stored value is not an accent', () => {

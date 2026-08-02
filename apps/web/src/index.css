@@ -159,7 +159,7 @@ select {
 }
 
 .field {
-  @apply control-default rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition-colors focus:border-accent;
+  @apply control-default rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition-colors focus:border-ink;
 }
 
 .label {

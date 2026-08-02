@@ -22,6 +22,15 @@ const applyAccent = (accent: Accent) => {
   document.documentElement.dataset.accent = accent;
 };
 
+const getStoredAccent = (): Accent => {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return isAccent(stored) ? stored : DEFAULT_ACCENT;
+};
+
+export const initializeAccent = () => {
+  applyAccent(getStoredAccent());
+};
+
 interface AccentContextValue {
   accent: Accent;
   setAccent: (accent: Accent) => void;
@@ -30,10 +39,7 @@ interface AccentContextValue {
 const AccentContext = createContext<AccentContextValue | null>(null);
 
 export function AccentProvider({ children }: { children: ReactNode }) {
-  const [accent, setAccentState] = useState<Accent>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return isAccent(stored) ? stored : DEFAULT_ACCENT;
-  });
+  const [accent, setAccentState] = useState<Accent>(getStoredAccent);
 
   const setAccent = useCallback((newAccent: Accent) => {
     localStorage.setItem(STORAGE_KEY, newAccent);

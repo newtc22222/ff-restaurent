@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 
 import { API_URL } from './api/client';
-import { AccentProvider } from './app/providers/accent';
+import { AccentProvider, initializeAccent } from './app/providers/accent';
 import { I18nProvider } from './app/providers/i18n';
 import { QueryProvider } from './app/providers/query';
 import { ThemeProvider } from './app/providers/theme';
@@ -28,6 +28,8 @@ if (import.meta.env.PROD) {
     registerServiceWorker(),
   );
 }
+
+initializeAccent();
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
