@@ -403,3 +403,25 @@ The Phase 2D milestone now covers product-event notifications, push delivery,
 real-time in-app notification updates, and focused theme and interaction
 improvements. The Phase 3 milestone states that FF-46 is deferred there and
 will follow a separate plan. Re-fetch Linear before changing either milestone.
+
+## Final Production Release Execution Summary (2026-08-02)
+
+FF RESTaurent `v2.2.0` has been fully prepared, reviewed, promoted, deployed, verified, tagged, and published to production.
+
+- **Release Version**: `2.2.0`
+- **Release Tag**: `v2.2.0` (pointing to `origin/main` commit `3037c2c8a3481914e9e2a6ee1e8484f3d2e10902`)
+- **GitHub Release**: Published at [v2.2.0](https://github.com/newtc22222/ff-restaurent/releases/tag/v2.2.0)
+- **Wiki Release Notes**: Created at [Release-v2.2.0](Release-v2.2.0) and linked in `_Sidebar.md`
+- **Linear Bookkeeping**: Issue `FF-88` marked as `Done`. `FF-46` preserved in `Phase 3 — Advanced Automation` backlog.
+- **Firebase Environment**: All 5 web environment variables copied to GitHub `production` environment.
+- **Production Rollback Boundary**:
+  - API prior revision: `ff-restaurent-api-00014-pvt`
+  - Web prior revision: `ff-restaurent-web-00004-8mf`
+- **Deployed Production Services**:
+  - API service: `ff-restaurent-api-00015-xx2` ([https://ff-restaurent-api-sglcycpgla-de.a.run.app](https://ff-restaurent-api-sglcycpgla-de.a.run.app))
+  - Web service: `ff-restaurent-web-00005-l76` ([https://ff-restaurent-web-sglcycpgla-de.a.run.app](https://ff-restaurent-web-sglcycpgla-de.a.run.app))
+- **Production Verification Evidence**:
+  - Health & Readiness endpoints (`/health` & `/ready`): Returning 200 OK (`{"ok":true,"database":"ready"}`)
+  - GCP Deploy workflow: Passed (run `30755107802`)
+  - Post-deployment Phase 2 Contract Verification: Passed (run `30756080811`)
+  - Post-deployment Backup Restore Drill: Passed (run `30755342719`)
