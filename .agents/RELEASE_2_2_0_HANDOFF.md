@@ -425,4 +425,3 @@ FF RESTaurent `v2.2.0` has been fully prepared, reviewed, promoted, deployed, ve
   - GCP Deploy workflow: Passed (run `30755107802`)
   - Post-deployment Phase 2 Contract Verification: Passed (run `30756080811`)
   - Post-deployment Backup Restore Drill: Passed (run `30755342719`)
-
