@@ -45,6 +45,31 @@ test('deployment workflow blocks service deployment on the awaited release job',
   assert.match(workflow, /WEB_IMAGE=\$\{web_tag%:\*\}@\$\{web_digest\}/);
 });
 
+test('blocking release job seeds cuisines before post-migration maintenance', async () => {
+  const releaseJob = await read('apps/api/scripts/run-release-job.sh');
+  const migrate = releaseJob.indexOf('prisma:migrate:deploy');
+  const cuisines = releaseJob.indexOf('prisma:cuisines:seed');
+  const phones = releaseJob.indexOf('prisma:phones:backfill');
+  const root = releaseJob.indexOf('prisma:root:bootstrap');
+
+  assert.ok(migrate > 0);
+  assert.ok(cuisines > migrate);
+  assert.ok(phones > cuisines);
+  assert.ok(root > phones);
+});
+
+test('workflow migrates a legacy Firebase secret before setting a literal', async () => {
+  const workflow = await read('.github/workflows/gcp-deploy.yml');
+  const removeLegacySecret = workflow.indexOf(
+    '--remove-secrets FIREBASE_PROJECT_ID',
+  );
+  const apiDeploy = workflow.indexOf('gcloud run deploy "$API_SERVICE"');
+
+  assert.ok(removeLegacySecret > 0);
+  assert.ok(removeLegacySecret < apiDeploy);
+  assert.match(workflow, /secretKeyRef.*FIREBASE_PROJECT_ID/s);
+});
+
 test('workflow passes only public client configuration into the web build', async () => {
   const workflow = await read('.github/workflows/gcp-deploy.yml');
   const dockerfile = await read('apps/web/Dockerfile');

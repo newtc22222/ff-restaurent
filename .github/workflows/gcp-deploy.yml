@@ -216,6 +216,34 @@ jobs:
           test -n "$execution"
           echo "RELEASE_EXECUTION=$execution" >>"$GITHUB_ENV"
 
+      - name: Migrate legacy Firebase project ID secret
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          service_json="$(
+            gcloud run services describe "$API_SERVICE" \
+              --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" \
+              --format=json 2>/dev/null || true
+          )"
+          legacy_firebase_secret="$(
+            jq -r '
+              .spec.template.spec.containers[0].env[]?
+              | select(.valueFrom.secretKeyRef.name != null and .name == "FIREBASE_PROJECT_ID")
+              | .name
+            ' <<<"$service_json"
+          )"
+          if [[ "$legacy_firebase_secret" == FIREBASE_PROJECT_ID ]]; then
+            gcloud run services update "$API_SERVICE" \
+              --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" \
+              --remove-secrets FIREBASE_PROJECT_ID \
+              --quiet
+          fi
+
       - name: Deploy the private API service
         shell: bash
         env:
