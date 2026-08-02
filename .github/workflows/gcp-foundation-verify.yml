@@ -45,3 +45,68 @@ jobs:
               --format='value(metadata.name)' \
               | grep -Fx "$service"
           done
+      - name: Verify IAM policy matches provisioning script
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          script=scripts/provision-gcp-foundation.sh
+          runtime_service_account="ff-runtime@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          deploy_service_account="github-deployer@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          rc=0
+
+          # Diffs the script's declared IAM grants against what's actually live, in
+          # both directions. "Missing" catches accidental de-provisioning; "extra"
+          # catches exactly what happened before FF-56's provisioning script fell
+          # out of sync with a manual grant during the v2.2.0 release (PRs #99/#100,
+          # #106) -- an undeclared permission that only worked because someone
+          # granted it by hand and never folded it back into this script.
+          #
+          # Scope: project-level roles ($runtime_member/$deploy_member) and the
+          # deploy account's roles on the runtime service account. Deliberately
+          # excludes the workloadIdentityUser grants on three dynamically built
+          # WIF principals -- if federation drifted, the auth step earlier in
+          # this same job would already have failed before reaching here.
+          compare_roles() {
+            local label="$1" expected="$2" live="$3" missing extra
+            missing="$(comm -23 <(printf '%s\n' "$expected") <(printf '%s\n' "$live"))"
+            extra="$(comm -13 <(printf '%s\n' "$expected") <(printf '%s\n' "$live"))"
+            if [[ -z "$missing" && -z "$extra" ]]; then
+              echo "IAM in sync: ${label}"
+              return 0
+            fi
+            if [[ -n "$missing" ]]; then
+              echo "::error::${label}: declared in ${script} but missing from the live IAM policy:"
+              echo "$missing"
+            fi
+            if [[ -n "$extra" ]]; then
+              echo "::error::${label}: granted live but not declared in ${script} -- fold this back into the script:"
+              echo "$extra"
+            fi
+            return 1
+          }
+
+          runtime_project_expected="$(grep 'ensure_project_role.*"\$runtime_member"' "$script" | grep -oE 'roles/[^[:space:]]+' | sort -u)"
+          runtime_project_live="$(gcloud projects get-iam-policy "$GCP_PROJECT_ID" \
+            --flatten='bindings[].members' \
+            --filter="bindings.members:serviceAccount:${runtime_service_account}" \
+            --format='value(bindings.role)' | sort -u)"
+          compare_roles "project roles for ${runtime_service_account}" "$runtime_project_expected" "$runtime_project_live" || rc=1
+
+          deploy_project_expected="$(grep 'ensure_project_role.*"\$deploy_member"' "$script" | grep -oE 'roles/[^[:space:]]+' | sort -u)"
+          deploy_project_live="$(gcloud projects get-iam-policy "$GCP_PROJECT_ID" \
+            --flatten='bindings[].members' \
+            --filter="bindings.members:serviceAccount:${deploy_service_account}" \
+            --format='value(bindings.role)' | sort -u)"
+          compare_roles "project roles for ${deploy_service_account}" "$deploy_project_expected" "$deploy_project_live" || rc=1
+
+          runtime_sa_expected="$(grep 'ensure_service_account_role.*"\$RUNTIME_SERVICE_ACCOUNT".*"\$deploy_member"' "$script" | grep -oE 'roles/[^[:space:]]+' | sort -u)"
+          runtime_sa_live="$(gcloud iam service-accounts get-iam-policy "$runtime_service_account" \
+            --project "$GCP_PROJECT_ID" \
+            --flatten='bindings[].members' \
+            --filter="bindings.members:serviceAccount:${deploy_service_account}" \
+            --format='value(bindings.role)' | sort -u)"
+          compare_roles "${deploy_service_account} roles on ${runtime_service_account}" "$runtime_sa_expected" "$runtime_sa_live" || rc=1
+
+          exit "$rc"
