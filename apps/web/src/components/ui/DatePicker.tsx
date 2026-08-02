@@ -348,10 +348,10 @@ export default function DatePicker({
                   cellStyle += 'opacity-25 cursor-not-allowed text-slate-500';
                 } else if (selected) {
                   cellStyle +=
-                    'bg-ink text-white font-bold dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)] shadow-sm';
+                    'bg-accent-strong text-accent-on-strong font-bold shadow-sm';
                 } else if (today) {
                   cellStyle +=
-                    'font-bold text-saffron ring-1 ring-saffron hover:bg-muted';
+                    'font-bold text-accent ring-1 ring-accent hover:bg-muted';
                 } else if (!inMonth) {
                   cellStyle +=
                     'text-slate-500 opacity-40 hover:bg-muted hover:opacity-100';

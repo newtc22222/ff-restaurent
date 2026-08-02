@@ -59,7 +59,7 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Select the fixed deployment target
         id: deployment-target
@@ -216,6 +216,34 @@ jobs:
           test -n "$execution"
           echo "RELEASE_EXECUTION=$execution" >>"$GITHUB_ENV"
 
+      - name: Migrate legacy Firebase project ID secret
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          service_json="$(
+            gcloud run services describe "$API_SERVICE" \
+              --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" \
+              --format=json 2>/dev/null || true
+          )"
+          legacy_firebase_secret="$(
+            jq -r '
+              .spec.template.spec.containers[0].env[]?
+              | select(.valueFrom.secretKeyRef.name != null and .name == "FIREBASE_PROJECT_ID")
+              | .name
+            ' <<<"$service_json"
+          )"
+          if [[ "$legacy_firebase_secret" == FIREBASE_PROJECT_ID ]]; then
+            gcloud run services update "$API_SERVICE" \
+              --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" \
+              --remove-secrets FIREBASE_PROJECT_ID \
+              --quiet
+          fi
+
       - name: Deploy the private API service
         shell: bash
         env:
@@ -230,7 +258,7 @@ jobs:
             --service-account "$RUNTIME_SERVICE_ACCOUNT" \
             --set-cloudsql-instances "$CLOUD_SQL_CONNECTION" \
             --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest,JWT_SECRET=ff-jwt-secret:latest,REGISTRATION_INVITE_CODE=ff-registration-invite-code:latest,CORS_ORIGINS=${CORS_SECRET}:latest,SUPABASE_URL=ff-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=ff-supabase-service-role-key:latest" \
-            --set-env-vars "NODE_ENV=production,JWT_EXPIRES_IN=8h,SUPABASE_PUBLIC_BUCKET=ff-public-images,SUPABASE_QR_BUCKET=ff-payment-qr,SUPABASE_SIGNED_URL_TTL_SECONDS=900" \
+            --set-env-vars "NODE_ENV=production,JWT_EXPIRES_IN=8h,SUPABASE_PUBLIC_BUCKET=ff-public-images,SUPABASE_QR_BUCKET=ff-payment-qr,SUPABASE_SIGNED_URL_TTL_SECONDS=900,FIREBASE_PROJECT_ID=${GCP_PROJECT_ID}" \
             --port 8080 \
             --min 0 \
             --max 3 \
@@ -262,6 +290,11 @@ jobs:
         env:
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           GCP_REGION: ${{ vars.GCP_REGION }}
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_VAPID_KEY: ${{ vars.VITE_FIREBASE_VAPID_KEY }}
         run: |
           set -euo pipefail
           web_tag="${IMAGE_ROOT}/web:${GITHUB_SHA}"
@@ -269,6 +302,11 @@ jobs:
             --platform linux/amd64 \
             --file apps/web/Dockerfile \
             --build-arg "VITE_API_URL=${API_URL}" \
+            --build-arg "VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}" \
+            --build-arg "VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}" \
+            --build-arg "VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}" \
+            --build-arg "VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}" \
+            --build-arg "VITE_FIREBASE_VAPID_KEY=${VITE_FIREBASE_VAPID_KEY}" \
             --tag "$web_tag" \
             --push \
             .
@@ -347,7 +385,7 @@ jobs:
           } >>"$GITHUB_STEP_SUMMARY"
 
       - name: Upload sanitized deployment evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ff57-${{ steps.deployment-target.outputs.deploy_target }}-${{ github.sha }}
           path: |

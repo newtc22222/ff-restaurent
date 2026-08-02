@@ -10,6 +10,7 @@ import {
   clearRestaurantImage,
   clearUserAvatar,
   createQrImage,
+  deleteDiningAreaImage,
   deleteQrImage,
   listBillQrOptions,
   listOwnQrImages,
@@ -18,6 +19,8 @@ import {
   replaceQrImage,
   replaceRestaurantImage,
   replaceUserAvatar,
+  setDiningAreaDefaultImage,
+  uploadDiningAreaImage,
 } from '../services/media-service.js';
 
 /**
@@ -99,6 +102,50 @@ export const registerMediaRoutes = (app: FastifyInstance) => {
       },
     );
   }
+
+  app.post(
+    '/dining-areas/:id/images',
+    { preHandler: [requireAuthenticatedUser, requireSousChefOrHeadChef] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const result = await uploadDiningAreaImage(id, () =>
+        multipartFile(request),
+      );
+      if (!result)
+        return reply.code(404).send({ message: 'Dining Area not found' });
+      return reply.code(201).send(result);
+    },
+  );
+
+  app.patch(
+    '/dining-areas/:id/images/:imageId/default',
+    { preHandler: [requireAuthenticatedUser, requireSousChefOrHeadChef] },
+    async (request, reply) => {
+      const { id, imageId } = request.params as {
+        id: string;
+        imageId: string;
+      };
+      const result = await setDiningAreaDefaultImage(id, imageId);
+      if (!result)
+        return reply.code(404).send({ message: 'Dining Area image not found' });
+      return result;
+    },
+  );
+
+  app.delete(
+    '/dining-areas/:id/images/:imageId',
+    { preHandler: [requireAuthenticatedUser, requireSousChefOrHeadChef] },
+    async (request, reply) => {
+      const { id, imageId } = request.params as {
+        id: string;
+        imageId: string;
+      };
+      const result = await deleteDiningAreaImage(id, imageId);
+      if (!result)
+        return reply.code(404).send({ message: 'Dining Area image not found' });
+      return reply.code(204).send();
+    },
+  );
 
   app.get(
     '/me/payment-qr-images',

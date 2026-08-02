@@ -2,10 +2,11 @@ import {
   BarChart2,
   FolderHeart,
   LayoutDashboard,
-  type LucideIcon,
+  MapPinned,
   Store,
   UserRoundCheck,
   Users,
+  Utensils,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -14,14 +15,22 @@ import {
   Outlet,
   isRouteErrorResponse,
   useLoaderData,
+  useLocation,
   useNavigate,
   useRouteError,
 } from 'react-router';
 
 import type { Notification } from '@/api/types';
 import AppHeader from '@/components/layout/AppHeader';
+import MobileNav from '@/components/layout/MobileNav';
 import Sidebar from '@/components/layout/Sidebar';
+import type { NavigationItem } from '@/components/layout/navigation';
 import ScrollArea from '@/components/ui/ScrollArea';
+import {
+  notificationMessage,
+  notificationTarget,
+} from '@/features/notifications/notification-message';
+import { usePushSubscription } from '@/features/notifications/push-subscription.queries';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { isRootAdmin } from '@/lib/permissions';
 
@@ -33,23 +42,21 @@ import {
 import { useI18n } from './providers/i18n';
 
 function AppShellContent() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, notifications, warning, loading } = useAppContext();
   const { mutate } = useRouteMutation();
   const warned = useRef(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
-    typeof window === 'undefined'
-      ? false
-      : window.matchMedia('(max-width: 767px)').matches,
-  );
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  usePushSubscription(locale);
 
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 767px)');
-    const syncSidebar = () => setSidebarCollapsed(query.matches);
-    query.addEventListener('change', syncSidebar);
-    return () => query.removeEventListener('change', syncSidebar);
-  }, []);
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (warning && !warned.current) {
@@ -58,6 +65,11 @@ function AppShellContent() {
     }
     if (!warning) warned.current = false;
   }, [t, warning]);
+
+  const localizedNotifications = notifications.map((notification) => ({
+    ...notification,
+    message: notificationMessage(notification, t),
+  }));
 
   const openNotification = async (notification: Notification) => {
     if (!notification.readAt) {
@@ -69,7 +81,8 @@ function AppShellContent() {
         },
       );
     }
-    if (notification.billId) navigate(`/bills/${notification.billId}`);
+    const target = notificationTarget(notification);
+    if (target) navigate(target);
   };
 
   const markAllNotificationsRead = () =>
@@ -82,18 +95,16 @@ function AppShellContent() {
       },
     );
 
-  const nav: readonly (readonly [string, LucideIcon, string])[] = [
+  const nav: readonly NavigationItem[] = [
     ['/bills', LayoutDashboard, t('nav.bills')],
     ['/restaurants', Store, t('nav.restaurants')],
+    ['/cuisines', Utensils, t('nav.cuisines')],
+    ['/dining-areas', MapPinned, t('nav.diningAreas')],
     ['/collections', FolderHeart, t('nav.collections')],
     ['/participant-groups', UserRoundCheck, t('nav.participantGroups')],
     ['/stats', BarChart2, t('nav.stats')],
     ...(isRootAdmin(user)
-      ? ([['/admin', Users, t('nav.members')]] as [
-          string,
-          LucideIcon,
-          string,
-        ][])
+      ? ([['/admin', Users, t('nav.members')]] as NavigationItem[])
       : []),
   ];
 
@@ -101,25 +112,19 @@ function AppShellContent() {
     <div className="flex h-screen flex-col overflow-hidden bg-bg font-sans text-ink">
       <AppHeader
         onProfile={() => navigate('/profile')}
-        notifications={notifications}
+        notifications={localizedNotifications}
         onOpenNotification={openNotification}
         onMarkAllNotificationsRead={markAllNotificationsRead}
-        sidebarCollapsed={sidebarCollapsed}
-        onToggleSidebar={() => setSidebarCollapsed((current) => !current)}
       />
+      <MobileNav nav={nav} label={t('nav.primaryNavigation')} />
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <Sidebar
           nav={nav}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((current) => !current)}
-          onNavigate={() => {
-            if (window.matchMedia('(max-width: 767px)').matches) {
-              setSidebarCollapsed(true);
-            }
-          }}
         />
         <main className="min-h-0 flex-1 overflow-hidden py-3">
-          <ScrollArea className="h-full">
+          <ScrollArea ref={mainScrollRef} className="h-full">
             <div className="px-3 pb-3 sm:px-4 md:px-6 md:pb-6">
               <div className="mx-auto w-full max-w-[1500px]">
                 {loading && (

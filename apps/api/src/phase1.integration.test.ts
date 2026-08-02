@@ -4,6 +4,8 @@ import { after, before, test } from 'node:test';
 import {
   ChefRole,
   CollectionSystemType,
+  NotificationCategory,
+  NotificationLocale,
   PaymentStatus,
   Prisma,
   RestaurantPlatform,
@@ -16,6 +18,10 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
 import { prisma } from './lib/prisma.js';
 import { ensureDefaultCollections } from './services/collection-service.js';
+import {
+  getActiveNotificationStreamCount,
+  serializeNotificationCursor,
+} from './services/notification-stream.js';
 import {
   RootAdminTransferError,
   transferRootAdmin,
@@ -32,6 +38,7 @@ let customerAId: string;
 let customerBId: string;
 let restaurantId: string;
 let billId: string;
+let appOrigin: string;
 
 const tokenFor = (id: string, expiresIn = '8h', version?: number) =>
   app.jwt.sign(
@@ -45,6 +52,8 @@ before(async () => {
   process.env.JWT_SECRET ??=
     'integration-secret-that-is-at-least-32-characters';
   process.env.REGISTRATION_INVITE_CODE ??= 'integration-invite';
+  process.env.SUPABASE_URL ??= 'http://127.0.0.1:9';
+  process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'integration-service-role-key';
   app = await buildApp();
   await prisma.passwordResetRequest.deleteMany();
   await prisma.notification.deleteMany();
@@ -116,6 +125,10 @@ before(async () => {
       },
     })
   ).id;
+  await app.listen({ host: '127.0.0.1', port: 0 });
+  const address = app.server.address();
+  assert(address && typeof address !== 'string');
+  appOrigin = `http://127.0.0.1:${address.port}`;
 });
 
 after(async () => {
@@ -1176,6 +1189,89 @@ integrationTest(
     assert.equal(restaurant.json().cuisines[0].isPrimary, true);
     assert.equal(restaurant.json().cuisines[0].cuisine.name, 'Vegan');
     assert.equal(restaurant.json().diningArea.name, 'Downtown');
+
+    const firstAreaImage = await prisma.diningAreaImage.create({
+      data: {
+        diningAreaId: diningArea.json().id,
+        storagePath: 'dining-areas/integration/first.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 100,
+        sortOrder: 0,
+      },
+    });
+    const secondAreaImage = await prisma.diningAreaImage.create({
+      data: {
+        diningAreaId: diningArea.json().id,
+        storagePath: 'dining-areas/integration/second.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 200,
+        sortOrder: 1,
+      },
+    });
+    await prisma.diningArea.update({
+      where: { id: diningArea.json().id },
+      data: { defaultImageId: firstAreaImage.id },
+    });
+
+    const areaDetail = await app.inject({
+      method: 'GET',
+      url: `/dining-areas/${diningArea.json().id}`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(areaDetail.statusCode, 200);
+    assert.equal(areaDetail.json().images.length, 2);
+    assert.equal(areaDetail.json().defaultImage.id, firstAreaImage.id);
+    assert.equal(
+      areaDetail.json().restaurants.items[0].id,
+      restaurant.json().id,
+    );
+
+    const deniedDefaultUpdate = await app.inject({
+      method: 'PATCH',
+      url: `/dining-areas/${diningArea.json().id}/images/${secondAreaImage.id}/default`,
+      headers: auth(tokenFor(customerAId)),
+    });
+    assert.equal(deniedDefaultUpdate.statusCode, 403);
+
+    const defaultUpdate = await app.inject({
+      method: 'PATCH',
+      url: `/dining-areas/${diningArea.json().id}/images/${secondAreaImage.id}/default`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(defaultUpdate.statusCode, 200);
+    assert.equal(defaultUpdate.json().defaultImageId, secondAreaImage.id);
+
+    const deleteDefault = await app.inject({
+      method: 'DELETE',
+      url: `/dining-areas/${diningArea.json().id}/images/${secondAreaImage.id}`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(deleteDefault.statusCode, 204);
+    assert.equal(
+      (
+        await prisma.diningArea.findUniqueOrThrow({
+          where: { id: diningArea.json().id },
+          select: { defaultImageId: true },
+        })
+      ).defaultImageId,
+      firstAreaImage.id,
+    );
+
+    const deleteLastImage = await app.inject({
+      method: 'DELETE',
+      url: `/dining-areas/${diningArea.json().id}/images/${firstAreaImage.id}`,
+      headers: auth(tokenFor(sousId)),
+    });
+    assert.equal(deleteLastImage.statusCode, 204);
+    assert.equal(
+      (
+        await prisma.diningArea.findUniqueOrThrow({
+          where: { id: diningArea.json().id },
+          select: { defaultImageId: true },
+        })
+      ).defaultImageId,
+      null,
+    );
 
     const cuisineSearch = await app.inject({
       method: 'GET',
@@ -2300,6 +2396,34 @@ integrationTest(
     });
     assert.equal(optedOut.statusCode, 200);
     assert.equal(optedOut.json().paymentRemindersEnabled, false);
+    const productPreferences = await app.inject({
+      method: 'PATCH',
+      url: '/me/notification-preferences',
+      headers: auth(customerAToken),
+      payload: {
+        categories: [
+          {
+            category: 'RESTAURANT_CREATED',
+            inAppEnabled: false,
+            pushEnabled: true,
+          },
+        ],
+      },
+    });
+    assert.equal(productPreferences.statusCode, 200);
+    assert.deepEqual(
+      productPreferences
+        .json()
+        .categories.find(
+          (preference: { category: string }) =>
+            preference.category === 'RESTAURANT_CREATED',
+        ),
+      {
+        category: 'RESTAURANT_CREATED',
+        inAppEnabled: false,
+        pushEnabled: true,
+      },
+    );
 
     const reminderBill = await prisma.bill.create({
       data: {
@@ -2345,6 +2469,39 @@ integrationTest(
       }),
       0,
     );
+
+    await prisma.pushSubscription.create({
+      data: { userId: customerAId, fcmToken: 'fcm-token-reminder-test' },
+    });
+    const secondReminderBill = await prisma.bill.create({
+      data: {
+        restaurantId,
+        createdById: sousId,
+        baseCost: 5000,
+        vat: 0,
+        shippingFee: 0,
+        totalCost: 5000,
+        participants: {
+          create: [
+            {
+              memberId: customerAId,
+              originCost: 5000,
+              allocatedVat: 0,
+              allocatedShipping: 0,
+              discountApplied: 0,
+              finalPrice: 5000,
+            },
+          ],
+        },
+      },
+    });
+    const remindersWithPushSubscriber = await app.inject({
+      method: 'POST',
+      url: `/bills/${secondReminderBill.id}/reminders`,
+      headers: auth(sousToken),
+    });
+    assert.equal(remindersWithPushSubscriber.statusCode, 200);
+    assert.equal(remindersWithPushSubscriber.json().sent, 1);
 
     const duplicatePayload = {
       restaurantId,
@@ -2392,5 +2549,407 @@ integrationTest(
       payload: { ...duplicatePayload, allowDuplicate: true },
     });
     assert.equal(override.statusCode, 201);
+  },
+);
+
+integrationTest(
+  'push subscriptions are registered, upserted by token, and owner-scoped to delete',
+  async () => {
+    const freshTokenFor = async (id: string) => {
+      const user = await prisma.user.findUniqueOrThrow({ where: { id } });
+      return tokenFor(id, '8h', user.sessionVersion);
+    };
+    const [customerAToken, customerBToken] = await Promise.all([
+      freshTokenFor(customerAId),
+      freshTokenFor(customerBId),
+    ]);
+
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/me/push-subscriptions',
+      headers: auth(customerAToken),
+      payload: { fcmToken: 'fcm-token-integration-1', locale: 'en' },
+    });
+    assert.equal(registered.statusCode, 200);
+    const subscriptionId = registered.json().id;
+    assert.ok(subscriptionId);
+    assert.equal(
+      await prisma.pushSubscription.count({
+        where: { userId: customerAId, fcmToken: 'fcm-token-integration-1' },
+      }),
+      1,
+    );
+    assert.equal(
+      (
+        await prisma.pushSubscription.findUniqueOrThrow({
+          where: { fcmToken: 'fcm-token-integration-1' },
+        })
+      ).locale,
+      NotificationLocale.EN,
+    );
+
+    const reRegistered = await app.inject({
+      method: 'POST',
+      url: '/me/push-subscriptions',
+      headers: auth(customerAToken),
+      payload: { fcmToken: 'fcm-token-integration-1' },
+    });
+    assert.equal(reRegistered.statusCode, 200);
+    assert.equal(
+      await prisma.pushSubscription.count({
+        where: { fcmToken: 'fcm-token-integration-1' },
+      }),
+      1,
+    );
+
+    const foreignDelete = await app.inject({
+      method: 'DELETE',
+      url: `/me/push-subscriptions/${subscriptionId}`,
+      headers: auth(customerBToken),
+    });
+    assert.equal(foreignDelete.statusCode, 404);
+    assert.equal(
+      await prisma.pushSubscription.count({
+        where: { id: subscriptionId },
+      }),
+      1,
+    );
+
+    const ownerDelete = await app.inject({
+      method: 'DELETE',
+      url: `/me/push-subscriptions/${subscriptionId}`,
+      headers: auth(customerAToken),
+    });
+    assert.equal(ownerDelete.statusCode, 204);
+    assert.equal(
+      await prisma.pushSubscription.count({
+        where: { id: subscriptionId },
+      }),
+      0,
+    );
+  },
+);
+
+integrationTest(
+  'product events fan out once to active non-actors with structured targets',
+  async () => {
+    const sous = await prisma.user.findUniqueOrThrow({ where: { id: sousId } });
+    const sousToken = tokenFor(sousId, '8h', sous.sessionVersion);
+    await prisma.notificationPreference.deleteMany();
+    await prisma.notification.deleteMany({
+      where: {
+        category: {
+          in: [
+            NotificationCategory.RESTAURANT_CREATED,
+            NotificationCategory.COLLECTION_PUBLISHED,
+          ],
+        },
+      },
+    });
+    await prisma.user.update({
+      where: { id: customerBId },
+      data: { accountStatus: UserAccountStatus.BLOCKED },
+    });
+    const expectedAudience = await prisma.user.count({
+      where: {
+        id: { not: sousId },
+        accountStatus: UserAccountStatus.ACTIVE,
+      },
+    });
+    const waitForCount = async (
+      category: NotificationCategory,
+      deduplicationKey: string,
+      count: number,
+    ) => {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const current = await prisma.notification.count({
+          where: { category, deduplicationKey },
+        });
+        if (current === count) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.fail(`Timed out waiting for ${deduplicationKey}`);
+    };
+    const waitForCollectionCount = async (
+      collectionId: string,
+      count: number,
+    ) => {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const current = await prisma.notification.count({
+          where: {
+            category: NotificationCategory.COLLECTION_PUBLISHED,
+            deduplicationKey: {
+              startsWith: `collection-published:${collectionId}:`,
+            },
+          },
+        });
+        if (current >= count) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.fail(`Timed out waiting for Collection ${collectionId}`);
+    };
+
+    const published = await app.inject({
+      method: 'POST',
+      url: '/collections',
+      headers: auth(sousToken),
+      payload: {
+        name: 'Published integration collection',
+        description: 'Visible to active members',
+        isPublic: true,
+      },
+    });
+    assert.equal(published.statusCode, 201);
+    const collectionKey = `collection-published:${published.json().id}:${published.json().updatedAt}`;
+    await waitForCount(
+      NotificationCategory.COLLECTION_PUBLISHED,
+      collectionKey,
+      expectedAudience,
+    );
+    assert.equal(
+      await prisma.notification.count({
+        where: { deduplicationKey: collectionKey, userId: sousId },
+      }),
+      0,
+    );
+    assert.equal(
+      await prisma.notification.count({
+        where: { deduplicationKey: collectionKey, userId: customerBId },
+      }),
+      0,
+    );
+    assert.equal(
+      await prisma.notification.count({
+        where: {
+          deduplicationKey: collectionKey,
+          targetUrl: `/collections/${published.json().id}`,
+        },
+      }),
+      expectedAudience,
+    );
+    const repeatedPublication = await app.inject({
+      method: 'PUT',
+      url: `/collections/${published.json().id}`,
+      headers: auth(sousToken),
+      payload: { isPublic: true },
+    });
+    assert.equal(repeatedPublication.statusCode, 200);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(
+      await prisma.notification.count({
+        where: { deduplicationKey: collectionKey },
+      }),
+      expectedAudience,
+    );
+    const unpublished = await app.inject({
+      method: 'PUT',
+      url: `/collections/${published.json().id}`,
+      headers: auth(sousToken),
+      payload: { isPublic: false },
+    });
+    assert.equal(unpublished.statusCode, 200);
+    const republished = await Promise.all(
+      ['Concurrent publication A', 'Concurrent publication B'].map((name) =>
+        app.inject({
+          method: 'PUT',
+          url: `/collections/${published.json().id}`,
+          headers: auth(sousToken),
+          payload: { name, isPublic: true },
+        }),
+      ),
+    );
+    assert.deepEqual(
+      republished.map((response) => response.statusCode),
+      [200, 200],
+    );
+    await waitForCollectionCount(published.json().id, expectedAudience * 2);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(
+      await prisma.notification.count({
+        where: {
+          category: NotificationCategory.COLLECTION_PUBLISHED,
+          deduplicationKey: {
+            startsWith: `collection-published:${published.json().id}:`,
+          },
+        },
+      }),
+      expectedAudience * 2,
+    );
+
+    const cuisine = await prisma.cuisine.findFirstOrThrow();
+    await prisma.notificationPreference.create({
+      data: {
+        userId: customerAId,
+        category: NotificationCategory.RESTAURANT_CREATED,
+        inAppEnabled: false,
+        pushEnabled: true,
+      },
+    });
+    const restaurant = await app.inject({
+      method: 'POST',
+      url: '/restaurants',
+      headers: auth(sousToken),
+      payload: {
+        name: 'Event Integration Restaurant',
+        address: '81 Notification Street',
+        type: 'Restaurant',
+        cuisineIds: [cuisine.id],
+        primaryCuisineId: cuisine.id,
+      },
+    });
+    assert.equal(restaurant.statusCode, 201);
+    const restaurantKey = `restaurant-created:${restaurant.json().id}`;
+    await waitForCount(
+      NotificationCategory.RESTAURANT_CREATED,
+      restaurantKey,
+      expectedAudience,
+    );
+    assert.equal(
+      await prisma.notification.count({
+        where: {
+          deduplicationKey: restaurantKey,
+          userId: customerAId,
+          inAppVisible: false,
+        },
+      }),
+      1,
+    );
+    const customerA = await prisma.user.findUniqueOrThrow({
+      where: { id: customerAId },
+    });
+    const customerANotifications = await app.inject({
+      method: 'GET',
+      url: '/notifications',
+      headers: auth(tokenFor(customerAId, '8h', customerA.sessionVersion)),
+    });
+    assert.equal(customerANotifications.statusCode, 200);
+    assert.equal(
+      customerANotifications
+        .json()
+        .some(
+          (notification: { deduplicationKey?: string }) =>
+            notification.deduplicationKey === restaurantKey,
+        ),
+      false,
+    );
+    assert.equal(
+      await prisma.notification.count({
+        where: {
+          deduplicationKey: restaurantKey,
+          targetUrl: `/restaurants/${restaurant.json().id}`,
+        },
+      }),
+      expectedAudience,
+    );
+    await prisma.user.update({
+      where: { id: customerBId },
+      data: { accountStatus: UserAccountStatus.ACTIVE },
+    });
+  },
+);
+
+integrationTest(
+  'notification streams authenticate, preserve ownership, recover cursors, and clean up disconnects',
+  async () => {
+    const unauthenticated = await fetch(`${appOrigin}/notifications/stream`);
+    assert.equal(unauthenticated.status, 401);
+
+    const passwordHash = await bcrypt.hash('password123', 4);
+    const [owner, otherUser] = await Promise.all([
+      prisma.user.create({
+        data: {
+          username: `stream-owner-${Date.now()}`,
+          name: 'Stream Owner',
+          passwordHash,
+        },
+      }),
+      prisma.user.create({
+        data: {
+          username: `stream-other-${Date.now()}`,
+          name: 'Stream Other',
+          passwordHash,
+        },
+      }),
+    ]);
+
+    try {
+      const createdAt = new Date('2026-08-02T10:00:00.000Z');
+      const [baseline, expected, hidden, foreign] = await prisma.$transaction([
+        prisma.notification.create({
+          data: {
+            userId: owner.id,
+            message: 'Stream baseline',
+            createdAt,
+          },
+        }),
+        prisma.notification.create({
+          data: {
+            userId: owner.id,
+            message: 'Stream expected',
+            createdAt: new Date(createdAt.getTime() + 1),
+          },
+        }),
+        prisma.notification.create({
+          data: {
+            userId: owner.id,
+            message: 'Stream hidden',
+            inAppVisible: false,
+            createdAt: new Date(createdAt.getTime() + 2),
+          },
+        }),
+        prisma.notification.create({
+          data: {
+            userId: otherUser.id,
+            message: 'Stream foreign',
+            createdAt: new Date(createdAt.getTime() + 3),
+          },
+        }),
+      ]);
+      const controller = new AbortController();
+      const response = await fetch(`${appOrigin}/notifications/stream`, {
+        headers: {
+          Authorization: `Bearer ${tokenFor(owner.id)}`,
+          'Last-Event-ID': serializeNotificationCursor(baseline),
+        },
+        signal: controller.signal,
+      });
+      assert.equal(response.status, 200);
+      assert.match(
+        response.headers.get('content-type') ?? '',
+        /^text\/event-stream/,
+      );
+      assert(response.body);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let body = '';
+      const deadline = Date.now() + 5_000;
+      while (!body.includes(`"notificationId":"${expected.id}"`)) {
+        assert(Date.now() < deadline, 'notification stream timed out');
+        const chunk = await reader.read();
+        assert.equal(chunk.done, false);
+        body += decoder.decode(chunk.value, { stream: true });
+      }
+
+      assert.match(body, /event: ready/);
+      assert.match(body, /event: notification/);
+      assert.match(body, new RegExp(`"notificationId":"${expected.id}"`));
+      assert.doesNotMatch(body, new RegExp(hidden.id));
+      assert.doesNotMatch(body, new RegExp(foreign.id));
+      controller.abort();
+
+      const cleanupDeadline = Date.now() + 2_000;
+      while (
+        getActiveNotificationStreamCount() !== 0 &&
+        Date.now() < cleanupDeadline
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      assert.equal(getActiveNotificationStreamCount(), 0);
+    } finally {
+      await prisma.user.deleteMany({
+        where: { id: { in: [owner.id, otherUser.id] } },
+      });
+    }
   },
 );

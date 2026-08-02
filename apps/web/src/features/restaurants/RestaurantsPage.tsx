@@ -27,6 +27,7 @@ import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { canChef, isHead } from '@/lib/permissions';
 
+import RestaurantCard from './RestaurantCard';
 import RestaurantCatalogFields, {
   emptyRestaurantCatalogs,
 } from './RestaurantCatalogFields';
@@ -34,6 +35,7 @@ import RestaurantProfileFields, {
   emptyRestaurantProfile,
   isRestaurantProfileValid,
 } from './RestaurantProfileFields';
+import { platformLabel } from './platform-link-tokens';
 import {
   type CuisineMatch,
   readCuisineFilter,
@@ -127,7 +129,7 @@ export default function RestaurantsPage() {
     ),
   ).map((platform) => ({
     value: platform,
-    label: platform.replaceAll('_', ' '),
+    label: platformLabel(platform),
   }));
   const collectionOptions = page.collections.map((collection) => ({
     value: collection.id,
@@ -210,9 +212,9 @@ export default function RestaurantsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="min-w-0 space-y-4">
+      <div className="min-w-0 space-y-4">
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <SectionTitle
             title={t('restaurants.title')}
             subtitle={t('restaurants.subtitle')}
@@ -242,7 +244,7 @@ export default function RestaurantsPage() {
             ) : undefined
           }
         >
-          <div className="grid gap-2 md:grid-cols-3">
+          <div className="grid min-w-0 gap-2 md:grid-cols-3">
             <input
               className="field w-full"
               type="search"
@@ -279,7 +281,7 @@ export default function RestaurantsPage() {
               ]}
             />
           </div>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-4">
             <Dropdown
               label={t('restaurants.filterDiningArea')}
               value={filterDiningArea}
@@ -302,7 +304,7 @@ export default function RestaurantsPage() {
               allowClear
               clearLabel={t('bills.clearAll')}
             />
-            <div className="grid grid-cols-[1fr_auto] gap-2">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2">
               <Dropdown
                 label={t('restaurants.filterCuisine')}
                 value={filterCuisine}
@@ -355,43 +357,19 @@ export default function RestaurantsPage() {
             steps={[]}
           />
         )}
-        <div className="grid gap-3 md:grid-cols-2">
+        <div
+          className="grid min-w-0 gap-3 md:grid-cols-2"
+          data-testid="restaurants-grid"
+        >
           {restaurants.map((entry) => (
-            <article
+            <RestaurantCard
               key={entry.id}
-              className="ticket-edge panel cursor-pointer p-4 pt-5 transition-shadow hover:shadow-md"
-              onClick={() => navigate(`/restaurants/${entry.id}`)}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h3 className="truncate text-[15px] font-bold text-ink">
-                    {entry.name}
-                  </h3>
-                  <p className="ticket-figure mt-0.5 text-[13px] font-medium text-slate-500">
-                    {entry.type} · {entry.cuisineType}
-                  </p>
-                  <p className="mt-1.5 truncate text-sm">{entry.address}</p>
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {entry.isFavoritedByMe && (
-                  <span className="chip chip-badge chip-chili">
-                    ♥ {t('restaurants.favorite')}
-                  </span>
-                )}
-                {entry.isRecommended && (
-                  <span className="chip chip-badge chip-basil">
-                    {t('restaurants.recommended')}
-                  </span>
-                )}
-                {entry.status === 'ARCHIVED' && (
-                  <span className="chip chip-badge chip-muted">ARCHIVED</span>
-                )}
-              </div>
-            </article>
+              restaurant={entry}
+              onOpen={() => navigate(`/restaurants/${entry.id}`)}
+            />
           ))}
         </div>
-        <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="w-28">
             <Dropdown
               label={t('common.rows')}
@@ -404,10 +382,13 @@ export default function RestaurantsPage() {
               }))}
             />
           </div>
-          <div className="flex gap-2">
+          <div
+            className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:w-auto"
+            data-testid="restaurants-pagination-actions"
+          >
             <button
               type="button"
-              className="btn btn-soft"
+              className="btn btn-soft min-w-0 w-full sm:w-auto"
               disabled={
                 !page.pageInfo.hasPreviousPage || !page.pageInfo.startCursor
               }
@@ -420,7 +401,7 @@ export default function RestaurantsPage() {
             </button>
             <button
               type="button"
-              className="btn btn-soft"
+              className="btn btn-soft min-w-0 w-full sm:w-auto"
               disabled={!page.pageInfo.hasNextPage || !page.pageInfo.endCursor}
               onClick={() =>
                 page.pageInfo.endCursor &&

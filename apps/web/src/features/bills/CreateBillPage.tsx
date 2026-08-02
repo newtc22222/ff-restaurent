@@ -22,6 +22,7 @@ import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import DatePicker from '@/components/ui/DatePicker';
 import Dropdown from '@/components/ui/Dropdown';
+import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
 import SummaryLine from '@/components/ui/SummaryLine';
 import {
   billDetailPath,
@@ -115,6 +116,7 @@ export default function CreateBillPage() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [duplicateDetected, setDuplicateDetected] = useState(false);
+  const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
   const { mutate } = useRouteMutation();
   const paymentQrImagesQuery = usePaymentQrImages(
     canChef(user),
@@ -292,10 +294,10 @@ export default function CreateBillPage() {
         onSubmit={submit}
       >
         <div className="xl:col-span-3">
-          <h2 className="mb-1 text-[20px] font-bold text-ink">
+          <h2 className="mb-1 text-xl font-bold text-ink">
             {isEditing ? t('bills.editBill') : t('createBill.title')}
           </h2>
-          <p className="text-[13px] text-slate-500">
+          <p className="text-compact text-slate-500">
             {t('createBill.subtitle')}
           </p>
           {localError && (
@@ -308,8 +310,8 @@ export default function CreateBillPage() {
         <section className="rounded-xl border border-border bg-surface p-5 shadow-sm sm:p-6">
           <div>
             <div className="mb-5 border-b border-border py-3">
-              <h3 className="text-[15px] font-bold text-ink">Information</h3>
-              <p className="mt-0.5 text-[12px] text-slate-500">
+              <h3 className="text-sm font-bold text-ink">Information</h3>
+              <p className="mt-0.5 text-xs text-slate-500">
                 Restaurant, fees, discounts, and vouchers
               </p>
             </div>
@@ -558,8 +560,8 @@ export default function CreateBillPage() {
         <section className="rounded-xl border border-border bg-surface p-5 shadow-sm sm:p-6">
           <div>
             <div className="mb-5 border-b border-border py-3">
-              <h3 className="text-[15px] font-bold text-ink">Participants</h3>
-              <p className="mt-0.5 text-[12px] text-slate-500">
+              <h3 className="text-sm font-bold text-ink">Participants</h3>
+              <p className="mt-0.5 text-xs text-slate-500">
                 Payment destination, members, and their base amounts
               </p>
             </div>
@@ -597,16 +599,45 @@ export default function CreateBillPage() {
                   {t('common.retry')}
                 </button>
               )}
-              {paymentQrImageId && (
-                <img
-                  src={
-                    paymentQrImages.find((qr) => qr.id === paymentQrImageId)
-                      ?.imageUrl ?? editBill?.paymentQrImage?.imageUrl
-                  }
-                  alt="Selected payment QR"
-                  className="h-32 w-32 rounded-lg border border-border bg-white object-contain p-2"
-                />
-              )}
+              {paymentQrImageId &&
+                (() => {
+                  const selectedQr = paymentQrImages.find(
+                    (qr) => qr.id === paymentQrImageId,
+                  );
+                  const selectedQrUrl =
+                    selectedQr?.imageUrl ?? editBill?.paymentQrImage?.imageUrl;
+                  const selectedQrLabel =
+                    selectedQr?.label ??
+                    editBill?.paymentQrImage?.label ??
+                    t('createBill.selectedPaymentQr');
+                  return (
+                    <>
+                      <button
+                        type="button"
+                        className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        onClick={() => setQrPreviewOpen(true)}
+                      >
+                        <img
+                          src={selectedQrUrl}
+                          alt={t('createBill.selectedPaymentQr')}
+                          className="h-32 w-32 rounded-lg border border-border bg-white object-contain p-2"
+                        />
+                      </button>
+                      <ImagePreviewDialog
+                        open={qrPreviewOpen}
+                        onClose={() => setQrPreviewOpen(false)}
+                        src={selectedQrUrl}
+                        title={selectedQrLabel}
+                        alt={t('createBill.selectedPaymentQr')}
+                        onRetry={() => {
+                          void paymentQrImagesQuery.refetch();
+                        }}
+                        isSignedUrl
+                        imageClassName="bg-white p-3"
+                      />
+                    </>
+                  );
+                })()}
               {!paymentQrImageId && editBill?.paymentUrl && (
                 <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
                   This bill keeps its legacy payment link as read-only until a
@@ -647,7 +678,7 @@ export default function CreateBillPage() {
               </div>
               <div className="mb-2 flex items-center justify-between gap-3">
                 <span className="label">{t('createBill.participants')}</span>
-                <span className="text-[12px] text-slate-500">
+                <span className="text-xs text-slate-500">
                   {t('createBill.baseTotal')}:{' '}
                   <span className="font-semibold text-ink">
                     {totalBase > 0 ? money(totalBase) : '-'}
@@ -657,7 +688,7 @@ export default function CreateBillPage() {
 
               <div className="mb-3 flex flex-col gap-2">
                 {participants.length === 0 && (
-                  <p className="rounded-lg border border-dashed border-border py-3 text-center text-[13px] text-slate-400">
+                  <p className="rounded-lg border border-dashed border-border py-3 text-center text-compact text-slate-400">
                     {t('createBill.addMembers')}
                   </p>
                 )}
@@ -676,11 +707,11 @@ export default function CreateBillPage() {
                       className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-3"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-semibold text-ink">
+                        <p className="truncate text-compact font-semibold text-ink">
                           {memberLabel}
                         </p>
                         {calculated && (
-                          <p className="mt-0.5 text-[11px] text-slate-500">
+                          <p className="mt-0.5 text-2xs text-slate-500">
                             {money(calculated.finalPrice)} = base{' '}
                             {money(calculated.originCost)} + VAT{' '}
                             {money(calculated.allocatedVat)} + ship{' '}
@@ -692,7 +723,7 @@ export default function CreateBillPage() {
                       <div className="relative">
                         <CurrencyInput
                           aria-label={`Base amount for ${memberLabel}`}
-                          className="h-9 w-32 rounded-md border border-border bg-surface px-3 text-right text-[14px] text-ink outline-none transition-colors focus:border-ink"
+                          className="h-9 w-32 rounded-md border border-border bg-surface px-3 text-right text-sm text-ink outline-none transition-colors focus:border-ink"
                           value={
                             participant.originCost === 0
                               ? ''
@@ -730,7 +761,7 @@ export default function CreateBillPage() {
 
               {members.length > 0 && (
                 <div className="relative">
-                  <span className="mb-1.5 block text-[12px] font-medium text-slate-600 dark:text-slate-300">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">
                     Add participant
                   </span>
                   <Dropdown
@@ -767,7 +798,7 @@ export default function CreateBillPage() {
                       `${selected.length} member${selected.length === 1 ? '' : 's'} selected`
                     }
                   />
-                  <p className="mt-1.5 text-[11px] text-slate-500">
+                  <p className="mt-1.5 text-2xs text-slate-500">
                     {availableMembers.length} member
                     {availableMembers.length === 1 ? '' : 's'} available
                   </p>
@@ -780,8 +811,8 @@ export default function CreateBillPage() {
         <section className="rounded-xl border border-border bg-surface p-5 shadow-sm sm:p-6">
           <div>
             <div className="mb-3 border-b border-border py-3">
-              <h3 className="text-[15px] font-bold text-ink">Preview</h3>
-              <p className="mt-0.5 text-[12px] text-slate-500">
+              <h3 className="text-sm font-bold text-ink">Preview</h3>
+              <p className="mt-0.5 text-xs text-slate-500">
                 Total bill and submission readiness
               </p>
             </div>
@@ -808,10 +839,10 @@ export default function CreateBillPage() {
                 />
               )}
               <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
-                <span className="text-[13px] font-bold text-ink">
+                <span className="text-compact font-bold text-ink">
                   {t('createBill.grandTotal')}
                 </span>
-                <span className="text-[18px] font-bold text-ink">
+                <span className="text-lg font-bold text-ink">
                   {money(grandTotal)}
                 </span>
               </div>
@@ -836,7 +867,7 @@ export default function CreateBillPage() {
               {t('createBill.submit')} <ChevronRight size={16} />
             </button>
             {!isFormReady && (
-              <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">
+              <p className="mt-2 text-center text-2xs leading-relaxed text-slate-500">
                 Select a restaurant, add at least two members, and enter every
                 base amount to create the bill.
               </p>
@@ -853,7 +884,6 @@ export default function CreateBillPage() {
             setDuplicateDetected(false);
             submitBill(true);
           }}
-          t={t}
         />
       )}
     </div>

@@ -17,6 +17,18 @@ const mutate = vi.fn();
 const routerState = vi.hoisted(() => ({
   params: {} as { billId?: string },
 }));
+const { qrQueryState, qrRefetch } = vi.hoisted(() => ({
+  qrQueryState: {
+    data: [] as { id: string; imageUrl: string; label: string }[],
+    isPending: false,
+    isError: false,
+  },
+  qrRefetch: vi.fn(),
+}));
+
+vi.mock('@/features/profile/profile-media.queries', () => ({
+  usePaymentQrImages: () => ({ ...qrQueryState, refetch: qrRefetch }),
+}));
 
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>();
@@ -27,39 +39,6 @@ vi.mock('react-router', async (importOriginal) => {
     useSearchParams: () => [new URLSearchParams(), vi.fn()],
   };
 });
-
-vi.mock('@/components/ui/Dropdown', () => ({
-  default: ({
-    ariaLabel,
-    value = '',
-    values = [],
-    options,
-    multiple,
-    onChange,
-  }: any) => (
-    <select
-      aria-label={ariaLabel}
-      multiple={multiple}
-      value={multiple ? values : value}
-      onChange={(event) =>
-        onChange(
-          multiple
-            ? Array.from(event.currentTarget.selectedOptions).map(
-                (option) => option.value,
-              )
-            : event.currentTarget.value,
-        )
-      }
-    >
-      <option value="">Choose</option>
-      {options.map((option: any) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  ),
-}));
 
 vi.mock('@/hooks/useRouteMutation', () => ({
   useRouteMutation: () => ({ mutate }),
@@ -138,6 +117,33 @@ vi.mock('@/app/providers/app-context', () => ({
           },
         ],
       },
+      {
+        id: 'bill-with-qr',
+        restaurant: { id: 'restaurant-1' },
+        occurredOn: '2026-07-15',
+        vat: 0,
+        shippingFee: 0,
+        discounts: [],
+        vouchers: [],
+        adjustmentAllocation: 'PROPORTIONAL',
+        paymentQrImageId: null,
+        paymentQrImage: {
+          id: 'qr-1',
+          imageUrl: 'https://example.com/qr.png',
+          label: 'Chef QR',
+        },
+        participants: [
+          {
+            memberId: 'user-1',
+            member: {
+              id: 'user-1',
+              username: 'alice',
+              name: 'Alice',
+            },
+            originCost: 7000,
+          },
+        ],
+      },
     ],
     restaurants: [
       {
@@ -169,9 +175,16 @@ beforeEach(() => {
   localStorage.setItem('ff-locale', 'en');
   mutate.mockClear();
   routerState.params = {};
+  qrQueryState.data = [];
+  qrQueryState.isPending = false;
+  qrQueryState.isError = false;
+  qrRefetch.mockClear();
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('CreateBillPage repeat workflows', () => {
   it('keeps a blocked historical participant visible and removable while editing', () => {
@@ -184,25 +197,23 @@ describe('CreateBillPage repeat workflows', () => {
       </QueryProvider>,
     );
 
-    expect(screen.getAllByText('Blocked Bob (blocked account)')).toHaveLength(
-      2,
-    );
-    const participantPicker = screen.getByLabelText(
-      'Add participant',
-    ) as HTMLSelectElement;
+    expect(screen.getByText('Blocked Bob (blocked account)')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Add participant' }));
     expect(
-      Array.from(participantPicker.options).some(
-        (option) => option.text === 'Blocked Bob (blocked account)',
-      ),
-    ).toBe(true);
+      screen.getByRole('option', {
+        name: /Blocked Bob \(blocked account\)/,
+      }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByTestId('dropdown-backdrop'));
 
     fireEvent.click(screen.getAllByTitle('Remove')[0]!);
     expect(screen.queryByText('Blocked Bob (blocked account)')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Add participant' }));
     expect(
-      Array.from(participantPicker.options).some(
-        (option) => option.text === 'Blocked Bob (blocked account)',
-      ),
-    ).toBe(false);
+      screen.queryByRole('option', {
+        name: /Blocked Bob \(blocked account\)/,
+      }),
+    ).toBeNull();
   });
 
   it('applies an owner participant group without managing it inline', () => {
@@ -214,9 +225,8 @@ describe('CreateBillPage repeat workflows', () => {
       </QueryProvider>,
     );
 
-    fireEvent.change(screen.getByLabelText('Choose a group'), {
-      target: { value: 'group-1' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a group' }));
+    fireEvent.click(screen.getByRole('option', { name: /Lunch crew/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply group' }));
     expect(screen.getByLabelText('Base amount for Alice')).toBeTruthy();
     expect(screen.getByLabelText('Base amount for Bob')).toBeTruthy();
@@ -228,6 +238,11 @@ describe('CreateBillPage repeat workflows', () => {
   });
 
   it('requires explicit confirmation before overriding an exact duplicate', () => {
+    // The date picker defaults to "today" and this test needs July 15, 2026
+    // to be the visible, selectable month — pin the clock instead of
+    // depending on which month the suite happens to run in.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-07-20T04:00:00.000Z'));
     render(
       <QueryProvider>
         <I18nProvider>
@@ -235,17 +250,17 @@ describe('CreateBillPage repeat workflows', () => {
         </I18nProvider>
       </QueryProvider>,
     );
-    fireEvent.change(screen.getByLabelText('Restaurant / Eatery'), {
-      target: { value: 'restaurant-1' },
-    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Restaurant / Eatery' }),
+    );
+    fireEvent.click(screen.getByRole('option', { name: /Lunch Place/ }));
     fireEvent.click(screen.getByLabelText('Bill date'));
     const day15 = screen
       .getAllByRole('button', { name: /July 15.*2026/i })
       .find((btn) => !btn.hasAttribute('disabled'));
     if (day15) fireEvent.click(day15);
-    fireEvent.change(screen.getByLabelText('Choose a group'), {
-      target: { value: 'group-1' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a group' }));
+    fireEvent.click(screen.getByRole('option', { name: /Lunch crew/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply group' }));
     fireEvent.change(screen.getByLabelText('Base amount for Alice'), {
       target: { value: '6000' },
@@ -271,6 +286,24 @@ describe('CreateBillPage repeat workflows', () => {
     );
   });
 
+  it('opens the full-size preview dialog for the selected payment QR', () => {
+    routerState.params = { billId: 'bill-with-qr' };
+    render(
+      <QueryProvider>
+        <I18nProvider>
+          <CreateBillPage />
+        </I18nProvider>
+      </QueryProvider>,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Selected payment QR' }),
+    );
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByText('Chef QR')).toBeTruthy();
+  });
+
   it('resets a discount value when its type changes', () => {
     render(
       <QueryProvider>
@@ -284,9 +317,8 @@ describe('CreateBillPage repeat workflows', () => {
     const value = screen.getByLabelText('Discount 1 value');
     fireEvent.change(value, { target: { value: '500' } });
     expect((value as HTMLInputElement).value).toContain('500');
-    fireEvent.change(screen.getByLabelText('Discount 1 type'), {
-      target: { value: 'PERCENTAGE' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Discount 1 type' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Percent' }));
     expect((value as HTMLInputElement).value).toBe('');
   });
 });

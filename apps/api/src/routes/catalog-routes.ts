@@ -4,6 +4,7 @@ import {
   requireAuthenticatedUser,
   requireSousChefOrHeadChef,
 } from '../http/auth-guards.js';
+import { applyCatalogCache } from '../lib/http-cache.js';
 import {
   catalogQuerySchema,
   cuisineSchema,
@@ -11,17 +12,20 @@ import {
   diningAreaSchema,
   diningAreaUpdateSchema,
   normalizeVietnamAddressSnapshot,
+  restaurantListQuerySchema,
 } from '../schemas/index.js';
 import {
   createCuisine,
   createDiningArea,
   deleteCuisine,
   deleteDiningArea,
+  getDiningArea,
   listCuisines,
   listDiningAreas,
   updateCuisine,
   updateDiningArea,
 } from '../services/catalog-service.js';
+import { listRestaurants } from '../services/restaurant-service.js';
 
 /** Catalog routes: parsing and status codes; persistence in catalog-service. */
 export const registerCatalogRoutes = (app: FastifyInstance) => {
@@ -32,7 +36,11 @@ export const registerCatalogRoutes = (app: FastifyInstance) => {
   app.get(
     '/cuisines',
     { preHandler: requireAuthenticatedUser },
-    async (request) => listCuisines(catalogQuerySchema.parse(request.query)),
+    async (request, reply) => {
+      const page = await listCuisines(catalogQuerySchema.parse(request.query));
+      if (applyCatalogCache(request, reply, page)) return reply.send();
+      return page;
+    },
   );
 
   app.post('/cuisines', manage, async (request, reply) => {
@@ -54,7 +62,31 @@ export const registerCatalogRoutes = (app: FastifyInstance) => {
   app.get(
     '/dining-areas',
     { preHandler: requireAuthenticatedUser },
-    async (request) => listDiningAreas(catalogQuerySchema.parse(request.query)),
+    async (request, reply) => {
+      const page = await listDiningAreas(
+        catalogQuerySchema.parse(request.query),
+      );
+      if (applyCatalogCache(request, reply, page)) return reply.send();
+      return page;
+    },
+  );
+
+  app.get(
+    '/dining-areas/:id',
+    { preHandler: requireAuthenticatedUser },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const area = await getDiningArea(id);
+      const restaurants = await listRestaurants(
+        restaurantListQuerySchema.parse({
+          diningAreaId: id,
+          limit: 25,
+          sort: 'name-asc',
+        }),
+        request.currentUser,
+      );
+      return { ...area, restaurants };
+    },
   );
 
   app.post('/dining-areas', manage, async (request, reply) => {

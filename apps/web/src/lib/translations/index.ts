@@ -5,6 +5,7 @@ import enCollections from './en/collections.json';
 import enCommon from './en/common.json';
 import enErrors from './en/errors.json';
 import enGroups from './en/groups.json';
+import enNotifications from './en/notifications.json';
 import enRestaurants from './en/restaurants.json';
 import enStats from './en/stats.json';
 import enToast from './en/toast.json';
@@ -15,6 +16,7 @@ import viCollections from './vi/collections.json';
 import viCommon from './vi/common.json';
 import viErrors from './vi/errors.json';
 import viGroups from './vi/groups.json';
+import viNotifications from './vi/notifications.json';
 import viRestaurants from './vi/restaurants.json';
 import viStats from './vi/stats.json';
 import viToast from './vi/toast.json';
@@ -48,6 +50,7 @@ const vi = {
   ...viRestaurants,
   ...viCollections,
   ...viGroups,
+  ...viNotifications,
   ...viAdmin,
   ...viStats,
   ...viToast,
@@ -68,6 +71,8 @@ const bills: Record<keyof typeof viBills, string> = enBills;
 const restaurants: Record<keyof typeof viRestaurants, string> = enRestaurants;
 const collections: Record<keyof typeof viCollections, string> = enCollections;
 const groups: Record<keyof typeof viGroups, string> = enGroups;
+const notifications: Record<keyof typeof viNotifications, string> =
+  enNotifications;
 const admin: Record<keyof typeof viAdmin, string> = enAdmin;
 const stats: Record<keyof typeof viStats, string> = enStats;
 const toast: Record<keyof typeof viToast, string> = enToast;
@@ -80,6 +85,7 @@ const en: Record<TranslationKey, string> = {
   ...restaurants,
   ...collections,
   ...groups,
+  ...notifications,
   ...admin,
   ...stats,
   ...toast,

@@ -21,6 +21,29 @@ import {
   unshareCollection,
   updateCollection,
 } from '../services/collection-service.js';
+import { publishProductEvent } from '../services/notification-service.js';
+
+const publishCollection = (
+  collection: { id: string; name: string; updatedAt: Date },
+  actor: { id: string; name: string },
+  logger: Parameters<typeof publishProductEvent>[1],
+) => {
+  void publishProductEvent(
+    {
+      category: 'COLLECTION_PUBLISHED',
+      actorId: actor.id,
+      actorName: actor.name,
+      targetUrl: `/collections/${collection.id}`,
+      deduplicationKey: `collection-published:${collection.id}:${collection.updatedAt.toISOString()}`,
+      data: {
+        actorName: actor.name,
+        collectionName: collection.name,
+      },
+      fallbackMessage: `${actor.name} published ${collection.name}.`,
+    },
+    logger,
+  );
+};
 
 /**
  * Collection routes: parsing and status codes. Visibility, ownership, and
@@ -39,6 +62,9 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
   app.post('/collections', auth, async (request, reply) => {
     const body = collectionSchema.parse(request.body);
     const collection = await createCollection(body, request.currentUser.id);
+    if (collection.isPublic) {
+      publishCollection(collection, request.currentUser, request.log);
+    }
     return reply.code(201).send(collection);
   });
 
@@ -50,7 +76,15 @@ export const registerCollectionRoutes = (app: FastifyInstance) => {
   app.put('/collections/:id', auth, async (request) => {
     const { id } = request.params as { id: string };
     const body = collectionUpdateSchema.parse(request.body);
-    return updateCollection(id, body, request.currentUser.id);
+    const { collection, becamePublic } = await updateCollection(
+      id,
+      body,
+      request.currentUser.id,
+    );
+    if (becamePublic) {
+      publishCollection(collection, request.currentUser, request.log);
+    }
+    return collection;
   });
 
   app.delete('/collections/:id', auth, async (request, reply) => {

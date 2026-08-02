@@ -102,7 +102,20 @@
   "createBill.allocationEqual": "Split equally",
   "createBill.allocationEqualHint": "Give every member an equal adjustment share.",
   "createBill.blockedParticipant": "blocked account",
+  "createBill.selectedPaymentQr": "Selected payment QR",
   "duplicate.title": "Duplicate bill detected",
   "duplicate.message": "An active bill has the same date, restaurant, costs, adjustments, and participants. Create the duplicate anyway?",
-  "bills.paymentQr": "Payment QR image"
+  "bills.paymentQr": "Payment QR image",
+  "bills.adjustments": "Adjustments",
+  "bills.discount": "Discount",
+  "bills.voucher": "Voucher",
+  "bills.shareBreakdown": "Bill share breakdown",
+  "bills.openPaymentLink": "Open secure payment link",
+  "bills.base": "Base",
+  "bills.vat": "VAT",
+  "bills.shipping": "Shipping",
+  "bills.correctPaymentStatus": "Correct",
+  "bills.allPaid": "All members have paid",
+  "bills.copyDetail": "Copy screenshot",
+  "bills.copyScreenshot": "Copy screenshot"
 }

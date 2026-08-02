@@ -18,7 +18,7 @@ export default function StatCard({ title, data }: StatCardProps) {
   const total = Object.values(data).reduce((sum, value) => sum + value, 0);
 
   return (
-    <article className="panel p-4">
+    <article className="panel min-w-0 p-4">
       <h3 className="font-bold">{title}</h3>
       <div className="mt-4 space-y-3">
         {Object.entries(data).length === 0 && (
@@ -26,9 +26,11 @@ export default function StatCard({ title, data }: StatCardProps) {
         )}
         {Object.entries(data).map(([key, value]) => (
           <div key={key}>
-            <div className="mb-1 flex justify-between gap-3 text-sm">
-              <span>{key}</span>
-              <span className="font-semibold">{money(value)}</span>
+            <div className="mb-1 flex min-w-0 justify-between gap-3 text-sm">
+              <span className="min-w-0 flex-1 truncate">{key}</span>
+              <span className="ticket-figure shrink-0 font-semibold">
+                {money(value)}
+              </span>
             </div>
             <div className="h-2 rounded-full bg-muted">
               <div

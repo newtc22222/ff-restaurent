@@ -1,6 +1,6 @@
 {
   "name": "@ff-restaurent/api",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -30,13 +30,14 @@
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
-    "@ff-restaurent/shared": "2.1.0",
+    "@ff-restaurent/shared": "2.2.0",
     "@prisma/client": "^6.11.1",
     "@supabase/supabase-js": "^2.110.7",
     "bcryptjs": "^3.0.2",
     "fastify": "^5.4.0",
     "fastify-type-provider-zod": "^4.0.2",
     "file-type": "^20.5.0",
+    "firebase-admin": "^13.10.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

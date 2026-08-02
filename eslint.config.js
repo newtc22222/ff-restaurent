@@ -15,6 +15,8 @@ export default [
         projectService: true,
       },
       globals: {
+        // Injected by the define block in apps/web/vite.config.ts.
+        __APP_VERSION__: 'readonly',
         Buffer: 'readonly',
         Headers: 'readonly',
         Request: 'readonly',

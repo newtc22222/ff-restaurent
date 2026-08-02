@@ -1,0 +1,10 @@
+{
+  "notifications.paymentReminder": "Nhắc thanh toán cho {{restaurantName}}: còn chờ {{finalPrice}} VND.",
+  "notifications.restaurantCreated": "{{actorName}} đã thêm {{restaurantName}}.",
+  "notifications.collectionPublished": "{{actorName}} đã công khai {{collectionName}}.",
+  "notifications.preferencesDescription": "Chọn sự kiện bạn muốn nhận trong ứng dụng hoặc qua thông báo đẩy.",
+  "notifications.restaurantCreatedPreference": "Quán ăn mới",
+  "notifications.collectionPublishedPreference": "Bộ sưu tập công khai mới",
+  "notifications.inAppChannel": "Trong ứng dụng",
+  "notifications.pushChannel": "Thông báo đẩy"
+}

@@ -1,9 +1,11 @@
+import { toBlob } from 'html-to-image';
 import {
   Archive as ArchiveIcon,
   BellRing,
   CheckCircle2,
   CirclePlus,
   Clock,
+  Copy,
   Edit3,
   ExternalLink,
   History,
@@ -11,7 +13,8 @@ import {
   RotateCcw,
   WalletCards,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import {
   Navigate,
   useLoaderData,
@@ -27,6 +30,7 @@ import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { PIE_COLORS } from '@/lib/charts';
@@ -77,7 +81,7 @@ export default function BillDetailPage() {
   const [searchParams] = useSearchParams();
   const { billId } = useParams();
   const activity = useLoaderData<BillActivityEvent[]>();
-  const { user, bills } = useAppContext();
+  const { user, bills, refresh } = useAppContext();
   const { locale, t } = useI18n();
   const { mutate } = useRouteMutation();
   const [confirmAction, setConfirmAction] = useState<
@@ -87,6 +91,8 @@ export default function BillDetailPage() {
     memberId: string;
     current: 'PAID' | 'WAITING';
   } | null>(null);
+  const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
+  const billCaptureRef = useRef<HTMLDivElement>(null);
 
   const bill = bills.find((candidate) => candidate.id === billId);
   if (!bill) return <Navigate to="/bills" replace />;
@@ -105,6 +111,50 @@ export default function BillDetailPage() {
   const allPaid =
     bill.participants.length > 0 && paid === bill.participants.length;
   const canManage = canManageBill(bill, user);
+  const downloadBillScreenshot = (blob: Blob) => {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `bill-${bill.id}.png`;
+    anchor.click();
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+  };
+
+  const copyBillScreenshot = async () => {
+    try {
+      const node = billCaptureRef.current;
+      if (!node) throw new Error('Bill capture target is unavailable');
+      const blob = await toBlob(node, {
+        cacheBust: true,
+        pixelRatio: 2,
+        filter: (element) =>
+          !(
+            element instanceof HTMLElement &&
+            'billCaptureIgnore' in element.dataset
+          ),
+      });
+      if (!blob) throw new Error('Bill capture did not produce an image');
+      if (
+        typeof window.ClipboardItem === 'undefined' ||
+        !window.navigator.clipboard?.write
+      ) {
+        downloadBillScreenshot(blob);
+        toast.success(t('toast.billDownloaded'));
+        return;
+      }
+      try {
+        await window.navigator.clipboard.write([
+          new window.ClipboardItem({ 'image/png': blob }),
+        ]);
+        toast.success(t('toast.billCopied'));
+      } catch {
+        downloadBillScreenshot(blob);
+        toast.success(t('toast.billDownloaded'));
+      }
+    } catch {
+      toast.error(t('toast.billCopyFailed'));
+    }
+  };
   const pieData = bill.participants.map((p) => ({
     name: p.member.name.split(' ')[0],
     value: p.finalPrice,
@@ -154,39 +204,51 @@ export default function BillDetailPage() {
       <div className="mx-auto w-full max-w-6xl py-2">
         <BackButton onClick={onBack} label={t('bills.backToBills')} />
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] lg:items-start">
+        <div
+          ref={billCaptureRef}
+          data-bill-capture
+          className="mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:items-start"
+        >
           <div className="space-y-4">
             <section className="rounded-xl border border-border bg-surface p-6 shadow-sm">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <h2 className="truncate text-[22px] font-bold text-ink">
+                  <h2 className="truncate text-xl font-bold text-ink">
                     {bill.restaurant.name}
                   </h2>
-                  <p className="mt-0.5 text-[13px] text-slate-500">
+                  <p className="mt-0.5 text-compact text-slate-500">
                     {bill.restaurant.type} / {bill.restaurant.cuisineType} /
                     {t('bills.createdBy')} {bill.createdBy.name}
                   </p>
-                  <p className="mt-1 text-[13px] font-medium text-slate-500">
+                  <p className="mt-1 text-compact font-medium text-slate-500">
                     {t('bills.occurredOn')}:{' '}
                     {formatDateOnlyForLocale(bill.occurredOn, locale)}
                   </p>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[28px] font-bold leading-none text-ink">
+                <div className="flex shrink-0 flex-col items-end gap-2 text-right">
+                  <p className="text-xl font-bold leading-none text-ink">
                     {money(bill.totalCost)}
                   </p>
                   <span
-                    className={`mt-1 inline-block text-[11px] font-semibold uppercase tracking-wide ${
-                      allPaid ? 'text-emerald-500' : 'text-[#e9900c]'
+                    className={`text-2xs font-semibold uppercase tracking-wide ${
+                      allPaid ? 'text-basil' : 'text-saffron'
                     }`}
                   >
                     {allPaid ? t('bills.settled') : bill.status}
                   </span>
+                  <button
+                    type="button"
+                    className="btn btn-soft h-8 px-2.5 text-xs"
+                    data-bill-capture-ignore
+                    onClick={() => void copyBillScreenshot()}
+                  >
+                    <Copy size={13} /> {t('bills.copyScreenshot')}
+                  </button>
                 </div>
               </div>
 
               <div>
-                <div className="mb-1.5 flex justify-between text-[12px] text-slate-500">
+                <div className="mb-1.5 flex justify-between text-xs text-slate-500">
                   <span>
                     {paid} {t('bills.of')} {bill.participants.length}{' '}
                     {t('bills.paidCount')}
@@ -204,7 +266,7 @@ export default function BillDetailPage() {
 
             {(bill.discounts.length > 0 || bill.vouchers.length > 0) && (
               <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-                <h3 className="label mb-3">Adjustments</h3>
+                <h3 className="label mb-3">{t('bills.adjustments')}</h3>
                 <div className="space-y-2 text-sm">
                   {bill.discounts.map((discount, index) => (
                     <div
@@ -212,8 +274,9 @@ export default function BillDetailPage() {
                       className="flex justify-between"
                     >
                       <span>
-                        {discount.label || `Discount ${index + 1}`} (
-                        {discount.type})
+                        {discount.label ||
+                          `${t('bills.discount')} ${index + 1}`}{' '}
+                        ({discount.type})
                       </span>
                       <span className="font-semibold text-emerald-600">
                         −
@@ -225,7 +288,9 @@ export default function BillDetailPage() {
                   ))}
                   {bill.vouchers.map((voucher) => (
                     <div key={voucher.code} className="flex justify-between">
-                      <span>Voucher {voucher.code}</span>
+                      <span>
+                        {t('bills.voucher')} {voucher.code}
+                      </span>
                       <span className="font-semibold text-emerald-600">
                         −{money(voucher.value)}
                       </span>
@@ -237,7 +302,7 @@ export default function BillDetailPage() {
 
             {pieData.length > 1 && (
               <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-                <h3 className="label mb-3">Bill share breakdown</h3>
+                <h3 className="label mb-3">{t('bills.shareBreakdown')}</h3>
                 <div className="flex items-center justify-center">
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
@@ -265,7 +330,7 @@ export default function BillDetailPage() {
                   {pieData.map((d, i) => (
                     <div
                       key={d.name}
-                      className="flex items-center gap-1.5 text-[12px]"
+                      className="flex items-center gap-1.5 text-xs"
                     >
                       <div
                         className="h-2.5 w-2.5 rounded-full"
@@ -286,10 +351,26 @@ export default function BillDetailPage() {
                 <p className="label mb-3">
                   {t('bills.paymentQr')} · {bill.paymentQrImage.label}
                 </p>
-                <img
+                <button
+                  type="button"
+                  className="mx-auto block w-full max-w-56 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  onClick={() => setQrPreviewOpen(true)}
+                >
+                  <img
+                    src={bill.paymentQrImage.imageUrl}
+                    alt={bill.paymentQrImage.label}
+                    className="mx-auto aspect-square w-full max-w-56 rounded-lg bg-white object-contain p-2"
+                  />
+                </button>
+                <ImagePreviewDialog
+                  open={qrPreviewOpen}
+                  onClose={() => setQrPreviewOpen(false)}
                   src={bill.paymentQrImage.imageUrl}
+                  title={bill.paymentQrImage.label}
                   alt={bill.paymentQrImage.label}
-                  className="mx-auto aspect-square w-full max-w-56 rounded-lg bg-white object-contain p-2"
+                  onRetry={refresh}
+                  isSignedUrl
+                  imageClassName="bg-white p-3"
                 />
               </section>
             ) : bill.paymentUrl ? (
@@ -299,12 +380,15 @@ export default function BillDetailPage() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Open secure payment link <ExternalLink size={14} />
+                {t('bills.openPaymentLink')} <ExternalLink size={14} />
               </a>
             ) : null}
 
             {canManage && canChef(user) && (
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div
+                className="flex flex-col gap-3 sm:flex-row"
+                data-bill-capture-ignore
+              >
                 <button
                   className="btn btn-soft flex-1"
                   onClick={() =>
@@ -355,7 +439,7 @@ export default function BillDetailPage() {
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="truncate text-[14px] font-semibold text-ink">
+                        <p className="truncate text-sm font-semibold text-ink">
                           {participant.member.name}
                         </p>
                         {participant.memberId === user.id && (
@@ -364,20 +448,21 @@ export default function BillDetailPage() {
                           </span>
                         )}
                       </div>
-                      <p className="mt-0.5 text-[12px] text-slate-500">
-                        Base {money(participant.originCost)} / VAT{' '}
-                        {money(participant.allocatedVat)} / Ship{' '}
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {t('bills.base')} {money(participant.originCost)} /{' '}
+                        {t('bills.vat')} {money(participant.allocatedVat)} /{' '}
+                        {t('bills.shipping')}{' '}
                         {money(participant.allocatedShipping)}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-3 sm:justify-end">
                     <div className="text-right">
-                      <p className="text-[14px] font-bold">
+                      <p className="text-sm font-bold">
                         {money(participant.finalPrice)}
                       </p>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
                           participant.paymentStatus === 'PAID'
                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                             : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
@@ -395,7 +480,8 @@ export default function BillDetailPage() {
                     </div>
                     {(canManage || participant.memberId === user.id) && (
                       <button
-                        className="btn btn-soft h-8 px-3 text-[12px]"
+                        data-bill-capture-ignore
+                        className="btn btn-soft h-8 px-3 text-xs"
                         onClick={() =>
                           setPendingPayment({
                             memberId: participant.memberId,
@@ -405,7 +491,7 @@ export default function BillDetailPage() {
                       >
                         {participant.paymentStatus === 'WAITING'
                           ? t('bills.markPaid')
-                          : 'Correct'}
+                          : t('bills.correctPaymentStatus')}
                       </button>
                     )}
                   </div>
@@ -415,9 +501,10 @@ export default function BillDetailPage() {
 
             {canManage && canChef(user) && (
               <button
+                data-bill-capture-ignore
                 className="btn btn-soft w-full"
                 disabled={allPaid}
-                title={allPaid ? 'All members have paid' : undefined}
+                title={allPaid ? t('bills.allPaid') : undefined}
                 onClick={() =>
                   void mutate(
                     { intent: 'bill-reminders' },
@@ -432,7 +519,7 @@ export default function BillDetailPage() {
               </button>
             )}
 
-            <section className="panel overflow-hidden">
+            <section className="panel overflow-hidden" data-bill-capture-ignore>
               <div className="flex items-start gap-3 border-b border-border px-5 py-4">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-ink">
                   <History size={17} />
@@ -527,7 +614,6 @@ export default function BillDetailPage() {
             );
           }}
           onCancel={() => setConfirmAction(null)}
-          t={t}
         />
       )}
       {pendingPayment && (
@@ -551,7 +637,6 @@ export default function BillDetailPage() {
             );
           }}
           onCancel={() => setPendingPayment(null)}
-          t={t}
         />
       )}
     </>

@@ -1,5 +1,4 @@
 import {
-  ExternalLink,
   Globe2,
   LockKeyhole,
   Plus,
@@ -21,6 +20,8 @@ import FilterBar from '@/components/ui/FilterBar';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { canChef } from '@/lib/permissions';
+
+import RestaurantCard from '../restaurants/RestaurantCard';
 
 export default function CollectionDetailPage() {
   const { collection, restaurants, shares } =
@@ -225,7 +226,7 @@ export default function CollectionDetailPage() {
         )}
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,300px)]">
         <section className="space-y-3">
           <FilterBar label={t('common.filters')} controlsClassName="block">
             <input
@@ -271,68 +272,38 @@ export default function CollectionDetailPage() {
           )}
           <div className="grid gap-3 sm:grid-cols-2">
             {restaurants.items.map((restaurant) => (
-              <article key={restaurant.id} className="panel p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <button
-                    type="button"
-                    className="min-w-0 text-left"
-                    onClick={() => navigate(`/restaurants/${restaurant.id}`)}
-                  >
-                    <h3 className="truncate font-bold">{restaurant.name}</h3>
-                    <p className="mt-1 truncate text-sm text-slate-500">
-                      {restaurant.address}
-                    </p>
-                  </button>
-                  <div className="flex gap-1">
+              <RestaurantCard
+                key={restaurant.id}
+                restaurant={restaurant}
+                collectionType={collection.systemType}
+                onOpen={() => navigate(`/restaurants/${restaurant.id}`)}
+                actions={
+                  canManageRestaurants ? (
                     <button
                       type="button"
-                      className="grid h-8 w-8 place-items-center rounded-md text-slate-400 hover:bg-muted hover:text-ink"
-                      aria-label={t('collections.openRestaurant')}
-                      onClick={() => navigate(`/restaurants/${restaurant.id}`)}
+                      className="grid h-8 w-8 place-items-center rounded-md text-slate-400 hover:bg-muted hover:text-red-500"
+                      aria-label={t('collections.removeRestaurant')}
+                      onClick={() =>
+                        void mutate(
+                          {
+                            intent: 'remove-collection-restaurant',
+                            collectionId: collection.id,
+                            restaurantId: restaurant.id,
+                          },
+                          {
+                            fallback: t(
+                              'toast.collectionRestaurantRemoveFailed',
+                            ),
+                            success: t('toast.collectionRestaurantRemoved'),
+                          },
+                        )
+                      }
                     >
-                      <ExternalLink size={14} />
+                      <Trash2 size={14} />
                     </button>
-                    {canManageRestaurants && (
-                      <button
-                        type="button"
-                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-500"
-                        aria-label={t('collections.removeRestaurant')}
-                        onClick={() =>
-                          void mutate(
-                            {
-                              intent: 'remove-collection-restaurant',
-                              collectionId: collection.id,
-                              restaurantId: restaurant.id,
-                            },
-                            {
-                              fallback: t(
-                                'toast.collectionRestaurantRemoveFailed',
-                              ),
-                              success: t('toast.collectionRestaurantRemoved'),
-                            },
-                          )
-                        }
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {restaurant.cuisines?.map(({ cuisine, isPrimary }) => (
-                    <span
-                      key={cuisine.id}
-                      className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
-                        isPrimary
-                          ? 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
-                          : 'bg-muted text-slate-500'
-                      }`}
-                    >
-                      {cuisine.name}
-                    </span>
-                  ))}
-                </div>
-              </article>
+                  ) : undefined
+                }
+              />
             ))}
           </div>
           {restaurants.pageInfo.hasNextPage &&
@@ -448,7 +419,6 @@ export default function CollectionDetailPage() {
               },
             );
           }}
-          t={t}
         />
       )}
     </div>

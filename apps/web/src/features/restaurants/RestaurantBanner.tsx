@@ -7,12 +7,22 @@ export default function RestaurantBanner({
   url,
   logoUrl,
   overlay,
+  onBannerClick,
+  onLogoClick,
+  bannerAriaLabel,
+  logoAriaLabel,
 }: {
   name: string;
   url?: string | null;
   logoUrl?: string | null;
   /** Optional identity block (name/meta/badges) rendered over the banner gradient. */
   overlay?: ReactNode;
+  /** When provided, renders a transparent overlay button that opens a full-size banner preview. */
+  onBannerClick?: () => void;
+  /** When provided, makes the logo clickable to open a full-size logo preview. */
+  onLogoClick?: () => void;
+  bannerAriaLabel?: string;
+  logoAriaLabel?: string;
 }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [url]);
@@ -38,16 +48,38 @@ export default function RestaurantBanner({
           <span className="sr-only">Banner unavailable</span>
         </div>
       )}
+      {url && !failed && onBannerClick && (
+        <button
+          type="button"
+          className="absolute inset-0 z-[5] h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+          aria-label={bannerAriaLabel ?? `${name} banner`}
+          onClick={onBannerClick}
+        />
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/15 to-transparent" />
-      <div className="relative flex w-full items-end justify-between gap-3 p-4">
+      <div className="relative z-10 flex w-full items-end justify-between gap-3 p-4">
         <div className="flex items-end gap-3">
-          {logoUrl && (
-            <img
-              src={logoUrl}
-              alt={`${name} logo`}
-              className="h-16 w-16 shrink-0 rounded-xl border-2 border-white bg-white object-cover shadow-lg"
-            />
-          )}
+          {logoUrl &&
+            (onLogoClick ? (
+              <button
+                type="button"
+                className="shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                aria-label={logoAriaLabel ?? `${name} logo`}
+                onClick={onLogoClick}
+              >
+                <img
+                  src={logoUrl}
+                  alt={`${name} logo`}
+                  className="h-16 w-16 shrink-0 rounded-xl border-2 border-white bg-white object-cover shadow-lg"
+                />
+              </button>
+            ) : (
+              <img
+                src={logoUrl}
+                alt={`${name} logo`}
+                className="h-16 w-16 shrink-0 rounded-xl border-2 border-white bg-white object-cover shadow-lg"
+              />
+            ))}
           {overlay}
         </div>
       </div>

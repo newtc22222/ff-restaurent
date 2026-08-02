@@ -4,6 +4,7 @@ import type {
   CatalogPage,
   Cuisine,
   DiningArea,
+  DiningAreaDetailData,
   PaymentQrImage,
 } from './types';
 
@@ -35,6 +36,27 @@ export const restaurantCatalogEndpoints = {
     api.request<CatalogPage<DiningArea>>(
       catalogPath('dining-areas', search, cursor),
     ),
+};
+
+export const diningAreaEndpoints = {
+  detail: (api: ApiClient, id: string) =>
+    api.request<DiningAreaDetailData>(`/dining-areas/${id}`),
+  uploadImage: (api: ApiClient, id: string, file: File) => {
+    const body = new FormData();
+    body.append('file', file);
+    return api.request(`/dining-areas/${id}/images`, {
+      method: 'POST',
+      body,
+    });
+  },
+  setDefaultImage: (api: ApiClient, id: string, imageId: string) =>
+    api.request(`/dining-areas/${id}/images/${imageId}/default`, {
+      method: 'PATCH',
+    }),
+  removeImage: (api: ApiClient, id: string, imageId: string) =>
+    api.request(`/dining-areas/${id}/images/${imageId}`, {
+      method: 'DELETE',
+    }),
 };
 
 export const profileMediaEndpoints = {
@@ -71,6 +93,19 @@ export const profileMediaEndpoints = {
     }),
   removePaymentQr: (api: ApiClient, id: string) =>
     api.request(`/me/payment-qr-images/${id}`, { method: 'DELETE' }),
+};
+
+export const pushSubscriptionEndpoints = {
+  register: (
+    api: ApiClient,
+    payload: { fcmToken: string; locale: 'vi' | 'en' },
+  ) =>
+    api.request<{ id: string }>('/me/push-subscriptions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  remove: (api: ApiClient, id: string) =>
+    api.request(`/me/push-subscriptions/${id}`, { method: 'DELETE' }),
 };
 
 export const restaurantMediaEndpoints = {

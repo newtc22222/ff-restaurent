@@ -12,29 +12,6 @@ vi.mock('@/hooks/useRouteMutation', () => ({
   useRouteMutation: () => ({ mutate }),
 }));
 
-vi.mock('@/components/ui/Dropdown', () => ({
-  default: ({ ariaLabel, values, options, onChange }: any) => (
-    <select
-      aria-label={ariaLabel}
-      multiple
-      value={values}
-      onChange={(event) =>
-        onChange(
-          Array.from(event.currentTarget.selectedOptions).map(
-            (option: any) => option.value,
-          ),
-        )
-      }
-    >
-      {options.map((option: any) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  ),
-}));
-
 vi.mock('@/app/providers/app-context', () => ({
   useAppContext: () => ({
     user: { id: 'owner', username: 'owner', name: 'Owner' },
@@ -77,12 +54,10 @@ describe('ParticipantGroupsPage', () => {
     fireEvent.change(screen.getByLabelText('New group name'), {
       target: { value: 'Friday team' },
     });
-    const members = screen.getByLabelText(
-      'Choose members',
-    ) as HTMLSelectElement;
-    members.options[0]!.selected = true;
-    members.options[1]!.selected = true;
-    fireEvent.change(members);
+    fireEvent.click(screen.getByRole('button', { name: 'Choose members' }));
+    fireEvent.click(screen.getByRole('option', { name: /Alice/ }));
+    fireEvent.click(screen.getByRole('option', { name: /Bob/ }));
+    fireEvent.click(screen.getByTestId('dropdown-backdrop'));
     fireEvent.click(screen.getAllByRole('button', { name: 'Add group' })[1]!);
     expect(mutate).toHaveBeenCalledWith(
       {

@@ -35,11 +35,19 @@ import {
 } from '@/features/collections/collections.routes';
 import { statsLoader } from '@/features/stats/stats.routes';
 import { membersLoader } from '@/features/admin/admin.routes';
+import {
+  cuisinesLoader,
+  diningAreaLoader,
+  diningAreasLoader,
+} from '@/features/catalog/catalog.routes';
 
 export {
   appLoader,
   billActivityLoader,
   billsLoader,
+  cuisinesLoader,
+  diningAreaLoader,
+  diningAreasLoader,
   collectionDetailLoader,
   collectionsLoader,
   loginAction,
@@ -95,6 +103,26 @@ export const routes = [
             loader: restaurantsLoader,
             action: mutationAction,
             lazy: page(() => import('@/features/restaurants/RestaurantsPage')),
+          },
+          {
+            path: 'cuisines',
+            loader: cuisinesLoader,
+            action: mutationAction,
+            lazy: page(() => import('@/features/catalog/CuisinesPage')),
+          },
+          {
+            path: 'dining-areas',
+            loader: diningAreasLoader,
+            action: mutationAction,
+            lazy: page(() => import('@/features/catalog/DiningAreasPage')),
+          },
+          {
+            path: 'dining-areas/:diningAreaId',
+            loader: diningAreaLoader,
+            action: mutationAction,
+            lazy: page(
+              () => import('@/features/catalog/DiningAreaDetailPage'),
+            ),
           },
           {
             path: 'collections',

@@ -35,6 +35,7 @@ readonly REQUIRED_APIS=(
   billingbudgets.googleapis.com
   logging.googleapis.com
   monitoring.googleapis.com
+  fcm.googleapis.com
 )
 
 usage() {
@@ -480,6 +481,7 @@ apply_foundation() {
   ensure_service_account "$DEPLOY_SERVICE_ACCOUNT" 'FF RESTaurent GitHub deployer'
   ensure_project_role "$runtime_member" roles/cloudsql.client
   ensure_project_role "$runtime_member" roles/run.invoker
+  ensure_project_role "$runtime_member" roles/firebasecloudmessaging.admin
   ensure_project_role "$deploy_member" roles/run.admin
   ensure_project_role "$deploy_member" roles/run.invoker
   ensure_project_role "$deploy_member" roles/artifactregistry.writer

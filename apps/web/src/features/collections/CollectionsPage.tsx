@@ -66,9 +66,9 @@ export default function CollectionsPage() {
   const visibility = searchParams.get('visibility') ?? 'all';
 
   return (
-    <div className="space-y-4">
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="min-w-0 space-y-4">
+      <section className="min-w-0 space-y-4">
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <SectionTitle
             title={t('collections.title')}
             subtitle={t('collections.subtitle')}
@@ -114,7 +114,10 @@ export default function CollectionsPage() {
           />
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          data-testid="collections-grid"
+        >
           {page.items.map((collection) => {
             const Icon = collectionIcon(collection);
             const visibilityLabel = collection.isPublic
@@ -133,15 +136,19 @@ export default function CollectionsPage() {
               <button
                 key={collection.id}
                 type="button"
-                className="panel group min-h-44 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
+                className="panel group min-h-44 w-full min-w-0 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
                 onClick={() => navigate(`/collections/${collection.id}`)}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-300">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-300">
                     <Icon size={19} />
                   </span>
-                  <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500">
-                    <VisibilityIcon size={11} /> {visibilityLabel}
+                  <span
+                    className="flex min-w-0 items-center gap-1 text-2xs font-semibold text-slate-500"
+                    data-testid="collection-visibility"
+                  >
+                    <VisibilityIcon className="shrink-0" size={11} />
+                    <span className="truncate">{visibilityLabel}</span>
                   </span>
                 </div>
                 <h3 className="mt-4 truncate font-bold text-ink">

@@ -138,9 +138,9 @@ export default function BillsPage() {
     });
 
   return (
-    <div className="w-full">
+    <div className="min-w-0 w-full">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <h2 className="text-xl font-bold text-ink">{t('bills.title')}</h2>
           <p className="mt-1 text-sm text-slate-500">{t('bills.scopeNote')}</p>
         </div>
@@ -158,7 +158,7 @@ export default function BillsPage() {
                 type="button"
                 className={`grid h-8 w-9 place-items-center rounded-md transition-colors ${
                   layout === value
-                    ? 'bg-ink text-white dark:bg-slate-100 dark:text-slate-900'
+                    ? 'bg-accent-strong text-accent-on-strong'
                     : 'text-slate-500 hover:bg-muted hover:text-ink'
                 }`}
                 aria-label={t(label)}
@@ -171,7 +171,7 @@ export default function BillsPage() {
           </div>
           {canChef(user) && (
             <button
-              className="btn btn-primary h-10 px-4 text-[13px]"
+              className="btn btn-primary h-10 px-4 text-compact"
               onClick={() => navigate('/bills/new')}
             >
               <Plus size={14} /> {t('bills.createBill')}
@@ -371,7 +371,6 @@ export default function BillsPage() {
                   'restore',
                 )
               }
-              t={t}
             />
           ))}
         </div>
@@ -384,7 +383,6 @@ export default function BillsPage() {
               bill={bill}
               locale={locale}
               onView={() => viewBill(bill.id)}
-              t={t}
             />
           ))}
         </div>
@@ -394,11 +392,10 @@ export default function BillsPage() {
           bills={bills}
           locale={locale}
           onView={(bill) => viewBill(bill.id)}
-          t={t}
         />
       )}
 
-      <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-5 flex min-w-0 flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
         <Dropdown
           label={t('bills.rowsPerPage')}
           ariaLabel={t('bills.rowsPerPage')}
@@ -412,10 +409,13 @@ export default function BillsPage() {
           }))}
           fullWidth={false}
         />
-        <div className="flex gap-2">
+        <div
+          className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:w-auto"
+          data-testid="bills-pagination-actions"
+        >
           <button
             type="button"
-            className="btn btn-soft"
+            className="btn btn-soft min-w-0 w-full sm:w-auto"
             disabled={
               !page.pageInfo.hasPreviousPage || !page.pageInfo.startCursor
             }
@@ -428,7 +428,7 @@ export default function BillsPage() {
           </button>
           <button
             type="button"
-            className="btn btn-soft"
+            className="btn btn-soft min-w-0 w-full sm:w-auto"
             disabled={!page.pageInfo.hasNextPage || !page.pageInfo.endCursor}
             onClick={() =>
               page.pageInfo.endCursor &&
@@ -451,14 +451,12 @@ interface BillCardProps {
   onRemind: () => void;
   onArchive: () => void;
   onRestore: () => void;
-  t: (key: string) => string;
 }
 
 interface CompactBillProps {
   bill: Bill;
   locale: string;
   onView: () => void;
-  t: (key: string) => string;
 }
 
 function billPaymentSummary(bill: Bill) {
@@ -472,14 +470,15 @@ function billPaymentSummary(bill: Bill) {
   };
 }
 
-function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
+function BillListRow({ bill, locale, onView }: CompactBillProps) {
+  const { t } = useI18n();
   const summary = billPaymentSummary(bill);
   const occurredOn = formatDateOnlyForLocale(bill.occurredOn, locale);
 
   return (
     <button
       type="button"
-      className="panel flex w-full flex-col gap-3 p-4 text-left transition hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center"
+      className="panel flex w-full min-w-0 flex-col gap-3 p-4 text-left transition hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center"
       onClick={onView}
     >
       <div className="min-w-0 flex-1">
@@ -488,7 +487,7 @@ function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
             {bill.restaurant.name}
           </h3>
           <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+            className={`rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wide ${
               summary.allPaid
                 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                 : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
@@ -502,8 +501,10 @@ function BillListRow({ bill, locale, onView, t }: CompactBillProps) {
           {summary.total} {t('bills.paidCount')}
         </p>
       </div>
-      <div className="flex items-center justify-between gap-4 sm:justify-end">
-        <p className="text-base font-bold text-ink">{money(bill.totalCost)}</p>
+      <div className="flex min-w-0 items-center justify-between gap-4 sm:justify-end">
+        <p className="ticket-figure shrink-0 text-base font-bold text-ink">
+          {money(bill.totalCost)}
+        </p>
         <ChevronRight size={16} className="text-slate-400" aria-hidden="true" />
       </div>
     </button>
@@ -514,20 +515,19 @@ interface BillTableProps {
   bills: Bill[];
   locale: string;
   onView: (bill: Bill) => void;
-  t: (key: string) => string;
 }
 
-function BillTable({ bills, locale, onView, t }: BillTableProps) {
+function BillTable({ bills, locale, onView }: BillTableProps) {
+  const { t } = useI18n();
   return (
     <>
-      <div className="space-y-2 md:hidden">
+      <div className="space-y-2 md:hidden" data-testid="bill-mobile-table">
         {bills.map((bill) => (
           <BillListRow
             key={bill.id}
             bill={bill}
             locale={locale}
             onView={() => onView(bill)}
-            t={t}
           />
         ))}
       </div>
@@ -600,8 +600,8 @@ function BillCard({
   onRemind,
   onArchive,
   onRestore,
-  t,
 }: BillCardProps) {
+  const { t } = useI18n();
   const [confirmAction, setConfirmAction] = useState<
     'archive' | 'restore' | null
   >(null);
@@ -618,25 +618,25 @@ function BillCard({
       <article className="rounded-xl border border-border bg-surface p-5 transition-shadow hover:shadow-sm">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-[16px] font-bold text-ink">
+            <h3 className="truncate text-base font-bold text-ink">
               {bill.restaurant.name}
             </h3>
-            <p className="mt-0.5 text-[12px] text-slate-500">
+            <p className="mt-0.5 text-xs text-slate-500">
               {bill.restaurant.type} / {bill.restaurant.cuisineType} / by{' '}
               {bill.createdBy.name}
             </p>
-            <p className="mt-1 text-[12px] font-medium text-slate-500">
+            <p className="mt-1 text-xs font-medium text-slate-500">
               {t('bills.occurredOn')}:{' '}
               {formatDateOnlyForLocale(bill.occurredOn, locale)}
             </p>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-[20px] font-bold text-ink">
+            <p className="text-xl font-bold text-ink">
               {money(bill.totalCost)}
             </p>
             <span
-              className={`text-[11px] font-semibold uppercase tracking-wide ${
-                allPaid ? 'text-emerald-500' : 'text-[#e9900c]'
+              className={`text-2xs font-semibold uppercase tracking-wide ${
+                allPaid ? 'text-basil' : 'text-saffron'
               }`}
             >
               {allPaid ? t('bills.settled') : bill.status}
@@ -645,7 +645,7 @@ function BillCard({
         </div>
 
         <div className="mb-3">
-          <div className="mb-1 flex justify-between text-[12px] text-slate-500">
+          <div className="mb-1 flex justify-between text-xs text-slate-500">
             <span>
               {paid} {t('bills.of')} {total} {t('bills.paidCount')}
             </span>
@@ -667,14 +667,14 @@ function BillCard({
 
         <div className="flex gap-2 border-t border-muted pt-3">
           <button
-            className="btn btn-primary h-8 flex-1 px-3 text-[13px]"
+            className="btn btn-primary h-8 flex-1 px-3 text-compact"
             onClick={onView}
           >
             {t('bills.viewDetail')} <ChevronRight size={13} />
           </button>
           {canManage && canChef(user) && (
             <button
-              className="btn btn-soft h-8 px-3 text-[13px]"
+              className="btn btn-soft h-8 px-3 text-compact"
               onClick={onRemind}
             >
               {t('bills.remind')}
@@ -682,7 +682,7 @@ function BillCard({
           )}
           {isHead(user) && bill.status === 'ACTIVE' && (
             <button
-              className="btn btn-soft h-8 px-3 text-[13px]"
+              className="btn btn-soft h-8 px-3 text-compact"
               onClick={() => setConfirmAction('archive')}
             >
               {t('bills.archive')}
@@ -690,7 +690,7 @@ function BillCard({
           )}
           {isHead(user) && bill.status === 'ARCHIVED' && (
             <button
-              className="btn btn-soft h-8 px-3 text-[13px]"
+              className="btn btn-soft h-8 px-3 text-compact"
               onClick={() => setConfirmAction('restore')}
             >
               {t('bills.restore')}
@@ -715,7 +715,6 @@ function BillCard({
             confirmAction === 'archive' ? onArchive() : onRestore();
           }}
           onCancel={() => setConfirmAction(null)}
-          t={t}
         />
       )}
     </>
@@ -733,7 +732,7 @@ function PaymentChip({ participant }: PaymentChipProps) {
   const paid = participant.paymentStatus === 'PAID';
   return (
     <div
-      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium ${
+      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
         paid
           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
           : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'

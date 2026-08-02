@@ -31,11 +31,11 @@ export default function FilterBar({
 
   return (
     <section
-      className={cn('panel w-full space-y-3 p-3', className)}
+      className={cn('panel min-w-0 w-full space-y-3 p-3', className)}
       aria-labelledby={headingId}
       aria-busy={busy}
     >
-      <div className="flex items-center justify-between gap-2 px-1">
+      <div className="flex min-w-0 items-center justify-between gap-2 px-1">
         <h2 id={headingId} className="field-group-title">
           <SlidersHorizontal size={13} aria-hidden="true" />
           {label}

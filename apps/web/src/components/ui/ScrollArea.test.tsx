@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react';
+import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import ScrollArea from './ScrollArea';
@@ -9,7 +10,7 @@ afterEach(cleanup);
 describe('ScrollArea', () => {
   it.each([
     ['y', 'overflow-y-auto', 'overflow-x-hidden'],
-    ['x', 'overflow-x-auto', 'overflow-y-hidden'],
+    ['x', 'overflow-x-auto', ''],
     ['both', 'overflow-auto', ''],
   ] as const)(
     'maps the %s axis to native overflow classes',
@@ -44,5 +45,17 @@ describe('ScrollArea', () => {
       .getByText('Styled content')
       .closest('[data-scroll-area]');
     expect((area as HTMLElement).style.maxHeight).toBe('120px');
+  });
+
+  it('forwards ref to the native scrolling element', () => {
+    const ref = createRef<HTMLDivElement>();
+    render(
+      <ScrollArea ref={ref}>
+        <span>Ref content</span>
+      </ScrollArea>,
+    );
+
+    expect(ref.current).not.toBeNull();
+    expect(ref.current?.hasAttribute('data-scroll-area')).toBe(true);
   });
 });

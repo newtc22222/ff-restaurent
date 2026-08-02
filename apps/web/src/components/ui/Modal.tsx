@@ -10,6 +10,7 @@ interface ModalProps {
   children: ReactNode;
   onClose: () => void;
   size?: 'md' | 'lg';
+  returnFocusTo?: HTMLElement | null;
   /**
    * Whether clicking outside the modal content area on the backdrop closes the modal.
    * Defaults to false to prevent accidental loss of user input in create/edit forms.
@@ -23,6 +24,7 @@ export default function Modal({
   children,
   onClose,
   size = 'md',
+  returnFocusTo = null,
   closeOnClickOutside = false,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -32,9 +34,34 @@ export default function Modal({
 
   useEffect(() => {
     if (!open) return;
-    const previous = document.activeElement as HTMLElement | null;
+    const previous =
+      returnFocusTo ?? (document.activeElement as HTMLElement | null);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseRef.current();
+      if (event.key === 'Escape') {
+        onCloseRef.current();
+        return;
+      }
+      if (event.key === 'Tab' && dialogRef.current) {
+        const focusables = Array.from(
+          dialogRef.current.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (event.shiftKey && active === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && active === last) {
+          event.preventDefault();
+          first.focus();
+        } else if (!dialogRef.current.contains(active)) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     document.body.style.overflow = 'hidden';
@@ -49,7 +76,7 @@ export default function Modal({
       document.body.style.overflow = '';
       previous?.focus();
     };
-  }, [open]);
+  }, [open, returnFocusTo]);
 
   if (!open) return null;
   return createPortal(

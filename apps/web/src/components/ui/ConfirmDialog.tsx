@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useI18n } from '@/app/providers/i18n';
+
 interface ConfirmDialogProps {
   /**
    * Title text of the confirmation modal.
@@ -18,10 +20,6 @@ interface ConfirmDialogProps {
    * Callback fired when clicking cancel or outside the dialog.
    */
   onCancel: () => void;
-  /**
-   * Translation utility function.
-   */
-  t: (key: string) => string;
   pending?: boolean;
 }
 
@@ -33,9 +31,9 @@ export default function ConfirmDialog({
   message,
   onConfirm,
   onCancel,
-  t,
   pending = false,
 }: ConfirmDialogProps) {
+  const { t } = useI18n();
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCancelRef = useRef(onCancel);
   const titleId = useId();

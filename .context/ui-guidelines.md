@@ -87,7 +87,7 @@ Every guideline in this document includes an explicit severity tag:
 
 - `[MUST]` Render all modal dialogs (`Modal`, `ConfirmDialog`) into `document.body` via React `createPortal`.
 - `[MUST]` Include accessibility attributes on dialog panels: `role="dialog"`, `aria-modal="true"`, and `aria-labelledby={titleId}`.
-- `[MUST]` Implement focus management: focus the first interactive control inside the dialog upon opening, and restore focus to the previously active element upon closing.
+- `[MUST]` Implement focus management: focus the first interactive control inside the dialog upon opening, restore focus to the previously active element upon closing, and contain `Tab`/`Shift+Tab` cycling within the dialog's focusable elements (implemented once in `Modal.tsx`; every consumer of `Modal` inherits it).
 - `[MUST]` Add Escape key event listener (`event.key === 'Escape'`) to dismiss open dialogs (unless `pending` state is true).
 - `[MUST]` Lock document body scrolling when a modal is active (`document.body.style.overflow = 'hidden'`).
 
@@ -129,23 +129,24 @@ Every guideline in this document includes an explicit severity tag:
 
 Before creating a new UI component, developers and AI coding agents `[MUST]` consult [`.context/COMPONENTS.md`](file:///c:/Vault/Project/management-platform/ff-restaurent/.context/COMPONENTS.md) and reuse existing primitives:
 
-| Requirement                     | Existing Component to Use                                                                                                                                               |
-| :------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **VND Currency Input**          | `AmountInput` ([AmountInput.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/AmountInput.tsx))                                |
-| **Back Navigation Link**        | `BackButton` ([BackButton.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/BackButton.tsx))                                   |
-| **Brand Logo Box**              | `BrandIcon` ([BrandIcon.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/BrandIcon.tsx))                                      |
-| **Confirmation Alert Modal**    | `ConfirmDialog` ([ConfirmDialog.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ConfirmDialog.tsx))                          |
-| **Selection / Filter Dropdown** | `Dropdown` ([Dropdown.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/Dropdown.tsx))                                         |
-| **Zero-Data State View**        | `EmptyState` ([EmptyState.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/EmptyState.tsx))                                   |
-| **Filter Bar Container**        | `FilterBar` ([FilterBar.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/FilterBar.tsx))                                      |
-| **Image Upload & Preview**      | `ImagePicker` ([ImagePicker.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ImagePicker.tsx))                                |
-| **Language Toggle**             | `LocaleToggle` ([LocaleToggle.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/LocaleToggle.tsx))                             |
-| **General Modal Dialog**        | `Modal` ([Modal.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/Modal.tsx))                                                  |
-| **Custom Scroll Container**     | `ScrollArea` ([ScrollArea.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ScrollArea.tsx))                                   |
-| **Section Heading & Subtitle**  | `SectionTitle` ([SectionTitle.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/SectionTitle.tsx))                             |
-| **Category Spend Visualizer**   | `StatCard` ([StatCard.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/StatCard.tsx))                                         |
-| **Key-Value Summary Row**       | `SummaryLine` ([SummaryLine.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/SummaryLine.tsx))                                |
-| **Theme Toggle**                | `ThemeToggle` ([ThemeToggle.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ThemeToggle.tsx))                                |
-| **Notification Toast Host**     | `ToastHost` ([ToastHost.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ToastHost.tsx))                                      |
-| **Vietnamese Address Fields**   | `VietnamAddressFields` ([VietnamAddressFields.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/features/address/VietnamAddressFields.tsx))  |
-| **Platform Links Editor**       | `PlatformLinksEditor` ([PlatformLinksEditor.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/features/restaurants/PlatformLinksEditor.tsx)) |
+| Requirement                      | Existing Component to Use                                                                                                                                               |
+| :------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **VND Currency Input**           | `AmountInput` ([AmountInput.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/AmountInput.tsx))                                |
+| **Back Navigation Link**         | `BackButton` ([BackButton.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/BackButton.tsx))                                   |
+| **Brand Logo Box**               | `BrandIcon` ([BrandIcon.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/BrandIcon.tsx))                                      |
+| **Confirmation Alert Modal**     | `ConfirmDialog` ([ConfirmDialog.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ConfirmDialog.tsx))                          |
+| **Selection / Filter Dropdown**  | `Dropdown` ([Dropdown.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/Dropdown.tsx))                                         |
+| **Zero-Data State View**         | `EmptyState` ([EmptyState.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/EmptyState.tsx))                                   |
+| **Filter Bar Container**         | `FilterBar` ([FilterBar.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/FilterBar.tsx))                                      |
+| **Image Upload & Preview**       | `ImagePicker` ([ImagePicker.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ImagePicker.tsx))                                |
+| **Full-size Image / QR Preview** | `ImagePreviewDialog` ([ImagePreviewDialog.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ImagePreviewDialog.tsx))           |
+| **Language Toggle**              | `LocaleToggle` ([LocaleToggle.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/LocaleToggle.tsx))                             |
+| **General Modal Dialog**         | `Modal` ([Modal.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/Modal.tsx))                                                  |
+| **Custom Scroll Container**      | `ScrollArea` ([ScrollArea.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ScrollArea.tsx))                                   |
+| **Section Heading & Subtitle**   | `SectionTitle` ([SectionTitle.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/SectionTitle.tsx))                             |
+| **Category Spend Visualizer**    | `StatCard` ([StatCard.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/StatCard.tsx))                                         |
+| **Key-Value Summary Row**        | `SummaryLine` ([SummaryLine.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/SummaryLine.tsx))                                |
+| **Theme Toggle**                 | `ThemeToggle` ([ThemeToggle.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ThemeToggle.tsx))                                |
+| **Notification Toast Host**      | `ToastHost` ([ToastHost.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ToastHost.tsx))                                      |
+| **Vietnamese Address Fields**    | `VietnamAddressFields` ([VietnamAddressFields.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/features/address/VietnamAddressFields.tsx))  |
+| **Platform Links Editor**        | `PlatformLinksEditor` ([PlatformLinksEditor.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/features/restaurants/PlatformLinksEditor.tsx)) |

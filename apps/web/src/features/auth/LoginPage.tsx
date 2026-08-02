@@ -5,10 +5,8 @@ import { useFetcher } from 'react-router';
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 
 import { useI18n } from '@/app/providers/i18n';
-import { useTheme } from '@/app/providers/theme';
 import BrandIcon from '@/components/ui/BrandIcon';
 import LocaleToggle from '@/components/ui/LocaleToggle';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 import { resultErrorMessage } from '@/lib/result-messages';
 
 import { seededUsers } from './auth.constants';
@@ -19,7 +17,6 @@ type Mode = 'login' | 'register' | 'forgot-request' | 'forgot-reset';
 /** Sign-in, registration, and enumeration-safe password recovery. */
 export default function LoginPage() {
   const { locale, setLocale, t } = useI18n();
-  const { theme, setTheme } = useTheme();
   const fetcher = useFetcher<LoginActionData>();
   const [mode, setMode] = useState<Mode>('login');
   const showDemoUsers = import.meta.env.DEV;
@@ -132,28 +129,22 @@ export default function LoginPage() {
           : t('app.name');
 
   return (
-    <main className="grid min-h-screen place-items-center bg-bg px-4 py-10 font-sans">
-      <div className="w-full max-w-[440px]">
-        <div className="mb-4 flex items-center justify-end gap-2">
-          <LocaleToggle locale={locale} setLocale={setLocale} />
-          <ThemeToggle theme={theme} setTheme={setTheme} />
-        </div>
+    <main className="grid min-h-screen min-w-0 place-items-center bg-bg px-4 py-10 font-sans">
+      <div className="w-full min-w-0 max-w-[440px]">
         <form
-          className="rounded-xl border border-border bg-surface p-8 shadow-panel"
+          className="min-w-0 rounded-xl border border-border bg-surface p-8 shadow-panel"
           onSubmit={submit}
         >
           <div className="mb-7">
             <BrandIcon size={48} />
-            <h1 className="mt-3 text-[24px] font-bold leading-tight text-ink">
+            <h1 className="mt-3 text-xl font-bold leading-tight text-ink">
               {title}
             </h1>
             {mode === 'login' && (
-              <p className="mt-1 text-[14px] text-slate-500">
-                {t('app.tagline')}
-              </p>
+              <p className="mt-1 text-sm text-slate-500">{t('app.tagline')}</p>
             )}
             {mode.startsWith('forgot') && (
-              <p className="mt-1 text-[14px] text-slate-500">
+              <p className="mt-1 text-sm text-slate-500">
                 {t('auth.resetHelp')}
               </p>
             )}
@@ -197,12 +188,15 @@ export default function LoginPage() {
               {showDemoUsers && (
                 <div className="mb-4">
                   <div className="label mb-2">{t('auth.role')}</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div
+                    className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3"
+                    data-testid="demo-role-grid"
+                  >
                     {seededUsers.map(([seedId, labelKey]) => (
                       <button
                         key={seedId}
                         type="button"
-                        className={`btn px-2 ${activeSeed === seedId ? 'border border-ink bg-ink text-surface' : 'btn-soft'}`}
+                        className={`btn min-w-0 w-full whitespace-normal px-2 text-center ${activeSeed === seedId ? 'border border-accent-strong bg-accent-strong text-accent-on-strong' : 'btn-soft'}`}
                         onClick={() => setIdentifier(seedId)}
                       >
                         {t(labelKey)}
@@ -211,7 +205,7 @@ export default function LoginPage() {
                   </div>
                 </div>
               )}
-              <div className="text-center text-[13px] text-slate-500">
+              <div className="text-center text-compact text-slate-500">
                 {t('auth.noAccount')}{' '}
                 <button
                   type="button"
@@ -288,7 +282,7 @@ export default function LoginPage() {
               >
                 {busy ? t('auth.registering') : t('auth.register')}
               </button>
-              <div className="text-center text-[13px] text-slate-500">
+              <div className="text-center text-compact text-slate-500">
                 {t('auth.haveAccount')}{' '}
                 <button
                   type="button"
@@ -385,6 +379,23 @@ export default function LoginPage() {
             </>
           )}
         </form>
+
+        <footer className="mt-6 space-y-4">
+          <p className="text-xs leading-relaxed text-slate-500">
+            {t('app.description')}
+          </p>
+          {/* Locale stays reachable before sign-in: it is a device-local
+              preference, so there is no account to read it from yet. */}
+          <div className="flex justify-center">
+            <LocaleToggle
+              locale={locale}
+              setLocale={setLocale}
+              label={t('nav.language')}
+              englishLabel={t('language.english')}
+              vietnameseLabel={t('language.vietnamese')}
+            />
+          </div>
+        </footer>
       </div>
     </main>
   );

@@ -45,8 +45,34 @@ test('deployment workflow blocks service deployment on the awaited release job',
   assert.match(workflow, /WEB_IMAGE=\$\{web_tag%:\*\}@\$\{web_digest\}/);
 });
 
-test('workflow passes only the public API URL into the web build', async () => {
+test('blocking release job seeds cuisines before post-migration maintenance', async () => {
+  const releaseJob = await read('apps/api/scripts/run-release-job.sh');
+  const migrate = releaseJob.indexOf('prisma:migrate:deploy');
+  const cuisines = releaseJob.indexOf('prisma:cuisines:seed');
+  const phones = releaseJob.indexOf('prisma:phones:backfill');
+  const root = releaseJob.indexOf('prisma:root:bootstrap');
+
+  assert.ok(migrate > 0);
+  assert.ok(cuisines > migrate);
+  assert.ok(phones > cuisines);
+  assert.ok(root > phones);
+});
+
+test('workflow migrates a legacy Firebase secret before setting a literal', async () => {
   const workflow = await read('.github/workflows/gcp-deploy.yml');
+  const removeLegacySecret = workflow.indexOf(
+    '--remove-secrets FIREBASE_PROJECT_ID',
+  );
+  const apiDeploy = workflow.indexOf('gcloud run deploy "$API_SERVICE"');
+
+  assert.ok(removeLegacySecret > 0);
+  assert.ok(removeLegacySecret < apiDeploy);
+  assert.match(workflow, /secretKeyRef.*FIREBASE_PROJECT_ID/s);
+});
+
+test('workflow passes only public client configuration into the web build', async () => {
+  const workflow = await read('.github/workflows/gcp-deploy.yml');
+  const dockerfile = await read('apps/web/Dockerfile');
   const webBuildStart = workflow.indexOf(
     '- name: Build and push the web image',
   );
@@ -56,6 +82,24 @@ test('workflow passes only the public API URL into the web build', async () => {
   const webBuild = workflow.slice(webBuildStart, webDeployStart);
 
   assert.match(webBuild, /--build-arg "VITE_API_URL=\$\{API_URL\}"/);
+  for (const variable of [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_PROJECT_ID',
+    'VITE_FIREBASE_MESSAGING_SENDER_ID',
+    'VITE_FIREBASE_APP_ID',
+    'VITE_FIREBASE_VAPID_KEY',
+  ]) {
+    assert.match(
+      webBuild,
+      new RegExp(`${variable}: \\$\\{\\{ vars\\.${variable} \\}\\}`),
+    );
+    assert.match(
+      webBuild,
+      new RegExp(`--build-arg "${variable}=\\$\\{${variable}\\}"`),
+    );
+    assert.match(dockerfile, new RegExp(`ARG ${variable}`));
+    assert.match(dockerfile, new RegExp(`ENV ${variable}=\\$${variable}`));
+  }
   assert.doesNotMatch(
     webBuild,
     /JWT_SECRET|DATABASE_URL|REGISTRATION_INVITE_CODE|SUPABASE_SERVICE_ROLE_KEY/,
@@ -64,6 +108,18 @@ test('workflow passes only the public API URL into the web build', async () => {
     workflow,
     /DATABASE_URL=\$\{DATABASE_SECRET\}:latest.*JWT_SECRET=ff-jwt-secret:latest.*CORS_ORIGINS=\$\{CORS_SECRET\}:latest/s,
   );
+  assert.match(
+    workflow,
+    /--set-env-vars "[^"]*FIREBASE_PROJECT_ID=\$\{GCP_PROJECT_ID\}[^"]*"/,
+  );
+  assert.doesNotMatch(workflow, /--set-secrets "[^"]*FIREBASE_PROJECT_ID=/);
+});
+
+test('GCP foundation enables FCM and grants the runtime sender role', async () => {
+  const provision = await read('scripts/provision-gcp-foundation.sh');
+
+  assert.match(provision, /fcm\.googleapis\.com/);
+  assert.match(provision, /roles\/firebasecloudmessaging\.admin/);
 });
 
 test('deployment workflow supports staging deployment target for develop branch', async () => {
@@ -74,4 +130,12 @@ test('deployment workflow supports staging deployment target for develop branch'
   assert.match(workflow, /ff-restaurent-release-staging/);
   assert.match(workflow, /ff-staging-database-url/);
   assert.match(workflow, /ff-staging-cors-origins/);
+});
+
+test('deployment workflow uses Node 24-compatible artifact and Buildx actions', async () => {
+  const workflow = await read('.github/workflows/gcp-deploy.yml');
+  assert.match(workflow, /docker\/setup-buildx-action@v4/);
+  assert.match(workflow, /actions\/upload-artifact@v6/);
+  assert.doesNotMatch(workflow, /docker\/setup-buildx-action@v3/);
+  assert.doesNotMatch(workflow, /actions\/upload-artifact@v4/);
 });

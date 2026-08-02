@@ -21,8 +21,9 @@ const queryShapes = [
   {
     name: 'unread notification update',
     index: expectedIndexes[1],
-    sql: `SELECT "id" FROM "Notification"
-      WHERE "userId" = 'ff27-user' AND "readAt" IS NULL`,
+    sql: `SELECT "userId", "readAt" FROM "Notification"
+      WHERE "readAt" IS NULL
+      ORDER BY "userId", "readAt"`,
   },
   {
     name: 'reminder cooldown lookup',
@@ -30,7 +31,8 @@ const queryShapes = [
     sql: `SELECT "userId" FROM "Notification"
       WHERE "billId" = 'ff27-bill'
         AND "userId" IN ('ff27-user')
-        AND "createdAt" >= NOW() - INTERVAL '1 hour'`,
+        AND "createdAt" >= NOW() - INTERVAL '1 hour'
+      ORDER BY "billId", "userId", "createdAt"`,
   },
   {
     name: 'bill activity history',

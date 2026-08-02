@@ -3,6 +3,7 @@ import { type ActionFunctionArgs, data, redirect } from 'react-router';
 import { ApiError } from '@/api/client';
 import { adminIntents } from '@/features/admin/admin.routes';
 import { billIntents } from '@/features/bills/bills.routes';
+import { catalogIntents } from '@/features/catalog/catalog.routes';
 import { collectionIntents } from '@/features/collections/collections.routes';
 import { notificationIntents } from '@/features/notifications/notification.routes';
 import { participantGroupIntents } from '@/features/participant-groups/participant-groups.routes';
@@ -14,6 +15,7 @@ import type { IntentMap, MutationBody } from './mutation-types';
 
 const mutationIntents: IntentMap = {
   ...billIntents,
+  ...catalogIntents,
   ...restaurantIntents,
   ...collectionIntents,
   ...participantGroupIntents,

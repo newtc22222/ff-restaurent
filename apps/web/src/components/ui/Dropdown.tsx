@@ -225,7 +225,11 @@ export default function Dropdown(props: DropdownProps) {
 
   const onMenuKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
+      // Stop the native event from reaching a hosting Modal's own Escape
+      // listener (document-level, unaware of this portaled menu) — otherwise
+      // one Escape press closes the dropdown *and* the dialog behind it.
       event.preventDefault();
+      event.stopPropagation();
       close(true);
     } else if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -279,6 +283,7 @@ export default function Dropdown(props: DropdownProps) {
             if (!open) setOpen(true);
           } else if (event.key === 'Escape' && open) {
             event.preventDefault();
+            event.stopPropagation();
             close(true);
           }
         }}

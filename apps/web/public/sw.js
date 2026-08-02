@@ -72,3 +72,60 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(staticResponse(event.request));
   }
 });
+
+export const parsePushPayload = (event) => {
+  const fallback = { title: 'FF RESTaurent', body: '', url: '/' };
+  if (!event.data) return fallback;
+  try {
+    const data = event.data.json();
+    const notification = data.notification ?? data;
+    const metadata = data.data ?? data;
+    const rawUrl = metadata.url ?? fallback.url;
+    return {
+      title: notification.title ?? fallback.title,
+      body: notification.body ?? fallback.body,
+      url:
+        typeof rawUrl === 'string' &&
+        rawUrl.startsWith('/') &&
+        !rawUrl.startsWith('//')
+          ? rawUrl
+          : fallback.url,
+    };
+  } catch {
+    return fallback;
+  }
+};
+
+self.addEventListener('push', (event) => {
+  const { title, body, url } = parsePushPayload(event);
+  event.waitUntil(
+    self.registration.showNotification(title, { body, data: { url } }),
+  );
+});
+
+export const openNotificationTarget = async (
+  url,
+  clientManager = self.clients,
+) => {
+  const clients = await clientManager.matchAll({
+    type: 'window',
+    includeUncontrolled: true,
+  });
+  const existing =
+    clients.find((client) => client.focused) ??
+    clients.find((client) => client.visibilityState === 'visible') ??
+    clients[0];
+  if (!existing) return clientManager.openWindow(url);
+  try {
+    const navigated = await existing.navigate(url);
+    return await (navigated ?? existing).focus();
+  } catch {
+    return clientManager.openWindow(url);
+  }
+};
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url ?? '/';
+  event.waitUntil(openNotificationTarget(url));
+});

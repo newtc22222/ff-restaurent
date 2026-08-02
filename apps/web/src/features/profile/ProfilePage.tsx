@@ -5,13 +5,19 @@ import { useNavigate } from 'react-router';
 
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 
-import type { PaymentQrImage } from '@/api/types';
+import type {
+  NotificationPreferences,
+  PaymentQrImage,
+  ProductNotificationCategory,
+} from '@/api/types';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import ImagePicker from '@/components/ui/ImagePicker';
+import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
 import Modal from '@/components/ui/Modal';
+import { usePushSubscription } from '@/features/notifications/push-subscription.queries';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { canChef, roleLabel } from '@/lib/permissions';
 import { initials } from '@/lib/user-display';
@@ -23,8 +29,29 @@ import {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, refresh = async () => undefined } = useAppContext();
-  const { t } = useI18n();
+  const {
+    user,
+    notificationPreferences: loadedNotificationPreferences,
+    refresh = async () => undefined,
+  } = useAppContext();
+  const { locale, t } = useI18n();
+  const initialNotificationPreferences: NotificationPreferences =
+    loadedNotificationPreferences ?? {
+      paymentRemindersEnabled: user.paymentRemindersEnabled !== false,
+      categories: [
+        {
+          category: 'RESTAURANT_CREATED',
+          inAppEnabled: true,
+          pushEnabled: false,
+        },
+        {
+          category: 'COLLECTION_PUBLISHED',
+          inAppEnabled: true,
+          pushEnabled: false,
+        },
+      ],
+      pushSubscriptions: [],
+    };
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: user.name,
@@ -41,9 +68,12 @@ export default function ProfilePage() {
   const [qrLabel, setQrLabel] = useState('');
   const [qrFile, setQrFile] = useState<File | null>(null);
   const [deletingQr, setDeletingQr] = useState<PaymentQrImage | null>(null);
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
+  const [previewQrId, setPreviewQrId] = useState<string | null>(null);
   const { mutate } = useRouteMutation();
   const qrImagesQuery = usePaymentQrImages(canChef(user), user.id);
   const qrImages = qrImagesQuery.data ?? [];
+  const previewQr = qrImages.find((qr) => qr.id === previewQrId) ?? null;
   const {
     uploadAvatar: uploadAvatarMutation,
     removeAvatar: removeAvatarMutation,
@@ -55,6 +85,75 @@ export default function ProfilePage() {
     removeAvatarMutation.isPending ||
     savePaymentQrMutation.isPending ||
     removePaymentQrMutation.isPending;
+  const [notificationPreferences, setNotificationPreferences] = useState(
+    initialNotificationPreferences,
+  );
+  const {
+    subscriptionId: pushSubscriptionId,
+    register: registerPushSubscription,
+    remove: removePushSubscription,
+    busy: pushBusy,
+  } = usePushSubscription(locale);
+
+  const handlePushToggle = async (enabled: boolean) => {
+    try {
+      if (enabled) {
+        const result = await registerPushSubscription();
+        if (result.status === 'denied') {
+          toast.error(t('toast.pushPermissionDenied'));
+          return;
+        }
+        if (result.status !== 'registered') return;
+        toast.success(t('toast.pushSubscribeUpdated'));
+      } else if (pushSubscriptionId) {
+        await removePushSubscription();
+        toast.success(t('toast.pushUnsubscribeUpdated'));
+      }
+    } catch {
+      toast.error(t('toast.pushSubscribeFailed'));
+    }
+  };
+
+  const handleCategoryToggle = async (
+    category: ProductNotificationCategory,
+    channel: 'inAppEnabled' | 'pushEnabled',
+    enabled: boolean,
+  ) => {
+    if (channel === 'pushEnabled' && enabled) {
+      try {
+        const result = await registerPushSubscription();
+        if (result.status === 'denied') {
+          toast.error(t('toast.pushPermissionDenied'));
+          return;
+        }
+        if (result.status !== 'registered') return;
+      } catch {
+        toast.error(t('toast.pushSubscribeFailed'));
+        return;
+      }
+    }
+    const current = notificationPreferences.categories.find(
+      (preference) => preference.category === category,
+    );
+    if (!current) return;
+    const next = { ...current, [channel]: enabled };
+    setNotificationPreferences((preferences) => ({
+      ...preferences,
+      categories: preferences.categories.map((preference) =>
+        preference.category === category ? next : preference,
+      ),
+    }));
+    await mutate(
+      {
+        intent: 'notification-preferences',
+        payload: { categories: [next] },
+      },
+      {
+        fallback: t('toast.notificationPreferencesFailed'),
+        success: t('toast.notificationPreferencesUpdated'),
+      },
+    );
+  };
   const parsedPhone = parseVietnamMobilePhone(form.phone);
   const phoneError =
     form.phone.trim() && !parsedPhone.success
@@ -180,26 +279,33 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <section className="panel p-6">
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#e9900c] text-[24px] font-bold text-white">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-saffron text-xl font-bold text-white">
                 {user.avatarUrl ? (
-                  <img
-                    className="h-full w-full object-cover"
-                    src={user.avatarUrl}
-                    alt=""
-                  />
+                  <button
+                    type="button"
+                    className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                    aria-label={t('profile.viewAvatar')}
+                    onClick={() => setAvatarPreviewOpen(true)}
+                  >
+                    <img
+                      className="h-full w-full object-cover"
+                      src={user.avatarUrl}
+                      alt=""
+                    />
+                  </button>
                 ) : (
                   initials(user.name)
                 )}
               </div>
               <div className="min-w-0">
-                <h2 className="truncate text-[20px] font-bold text-ink">
+                <h2 className="truncate text-xl font-bold text-ink">
                   {user.name}
                 </h2>
-                <p className="text-[13px] text-slate-500">
+                <p className="text-compact text-slate-500">
                   @{user.username} / {roleLabel(user, t)}
                 </p>
                 {user.phone && (
-                  <p className="text-[13px] text-slate-500">{user.phone}</p>
+                  <p className="text-compact text-slate-500">{user.phone}</p>
                 )}
               </div>
             </div>
@@ -280,7 +386,7 @@ export default function ProfilePage() {
               {t('profile.notificationPreferences')}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              {t('profile.notificationPreferencesDescription')}
+              {t('notifications.preferencesDescription')}
             </p>
             <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-4">
               <span className="text-sm font-semibold text-ink">
@@ -288,23 +394,90 @@ export default function ProfilePage() {
               </span>
               <input
                 type="checkbox"
-                checked={user.paymentRemindersEnabled !== false}
-                onChange={(event) =>
+                checked={notificationPreferences.paymentRemindersEnabled}
+                onChange={(event) => {
+                  const enabled = event.target.checked;
+                  setNotificationPreferences((preferences) => ({
+                    ...preferences,
+                    paymentRemindersEnabled: enabled,
+                  }));
                   void mutate(
                     {
                       intent: 'notification-preferences',
                       payload: {
-                        paymentRemindersEnabled: event.target.checked,
+                        paymentRemindersEnabled: enabled,
                       },
                     },
                     {
                       fallback: t('toast.notificationPreferencesFailed'),
                       success: t('toast.notificationPreferencesUpdated'),
                     },
-                  )
+                  );
+                }}
+              />
+            </label>
+            <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-4">
+              <span className="text-sm font-semibold text-ink">
+                {t('profile.pushNotifications')}
+              </span>
+              <input
+                type="checkbox"
+                checked={pushSubscriptionId !== null}
+                disabled={pushBusy}
+                onChange={(event) =>
+                  void handlePushToggle(event.target.checked)
                 }
               />
             </label>
+            <div className="mt-4 space-y-3">
+              {notificationPreferences.categories.map((preference) => {
+                const label =
+                  preference.category === 'RESTAURANT_CREATED'
+                    ? t('notifications.restaurantCreatedPreference')
+                    : t('notifications.collectionPublishedPreference');
+                return (
+                  <div
+                    key={preference.category}
+                    className="rounded-lg border border-border p-4"
+                  >
+                    <p className="text-sm font-semibold text-ink">{label}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                        <input
+                          type="checkbox"
+                          aria-label={`${t('notifications.inAppChannel')}: ${label}`}
+                          checked={preference.inAppEnabled}
+                          onChange={(event) =>
+                            void handleCategoryToggle(
+                              preference.category,
+                              'inAppEnabled',
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        {t('notifications.inAppChannel')}
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                        <input
+                          type="checkbox"
+                          aria-label={`${t('notifications.pushChannel')}: ${label}`}
+                          checked={preference.pushEnabled}
+                          disabled={pushBusy}
+                          onChange={(event) =>
+                            void handleCategoryToggle(
+                              preference.category,
+                              'pushEnabled',
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        {t('notifications.pushChannel')}
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         </div>
 
@@ -348,11 +521,17 @@ export default function ProfilePage() {
                     key={qr.id}
                     className="rounded-lg border border-border p-3"
                   >
-                    <img
-                      src={qr.imageUrl}
-                      alt={qr.label}
-                      className="aspect-square w-full rounded-md bg-white object-contain"
-                    />
+                    <button
+                      type="button"
+                      className="block w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      onClick={() => setPreviewQrId(qr.id)}
+                    >
+                      <img
+                        src={qr.imageUrl}
+                        alt={qr.label}
+                        className="aspect-square w-full rounded-md bg-white object-contain"
+                      />
+                    </button>
                     <p className="mt-2 truncate text-sm font-semibold text-ink">
                       {qr.label}
                     </p>
@@ -505,9 +684,28 @@ export default function ProfilePage() {
           pending={mediaBusy}
           onCancel={() => setDeletingQr(null)}
           onConfirm={() => void removeQr()}
-          t={t}
         />
       )}
+
+      <ImagePreviewDialog
+        open={avatarPreviewOpen}
+        onClose={() => setAvatarPreviewOpen(false)}
+        src={user.avatarUrl}
+        title={`${user.name} — ${t('profile.avatar')}`}
+        alt={t('profile.avatar')}
+      />
+      <ImagePreviewDialog
+        open={previewQr !== null}
+        onClose={() => setPreviewQrId(null)}
+        src={previewQr?.imageUrl}
+        title={previewQr?.label ?? ''}
+        alt={previewQr?.label ?? ''}
+        onRetry={() => {
+          void qrImagesQuery.refetch();
+        }}
+        isSignedUrl
+        imageClassName="bg-white p-3"
+      />
     </div>
   );
 }

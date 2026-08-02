@@ -61,13 +61,12 @@ This document serves as the authoritative component registry for the **FF RESTau
 - **Framework System**: React web component
 - **Source File**: [ConfirmDialog.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ConfirmDialog.tsx)
 - **Export**: `default export ConfirmDialog`
-- **Description**: Accessible modal confirmation dialog rendered at `document.body` via `createPortal`. Implements `.overlay-backdrop`, `role="dialog"`, `aria-modal="true"`, focus management, Escape key listener, and confirm/cancel action buttons.
+- **Description**: Accessible modal confirmation dialog rendered at `document.body` via `createPortal`. Implements `.overlay-backdrop`, `role="dialog"`, `aria-modal="true"`, focus management, Escape key listener, locally translated labels from `useI18n`, and confirm/cancel action buttons.
 - **Props**:
   - `title`: `string`
   - `message`: `string`
   - `onConfirm`: `() => void`
   - `onCancel`: `() => void`
-  - `t`: `(key: string) => string`
   - `pending?`: `boolean` (default: `false`)
 - **Equivalent in Other Frameworks**: N/A in repository.
 
@@ -138,6 +137,25 @@ This document serves as the authoritative component registry for the **FF RESTau
   - `maxSizeMb`: `number`
   - `onFile`: `(file: File | null) => void`
   - `onRemove?`: `() => void`
+- **Equivalent in Other Frameworks**: N/A in repository.
+
+---
+
+### ImagePreviewDialog
+
+- **Framework System**: React web component
+- **Source File**: [ImagePreviewDialog.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/ui/ImagePreviewDialog.tsx)
+- **Export**: `default export ImagePreviewDialog`
+- **Description**: Reusable full-size preview dialog for managed images and payment QR codes, built on `Modal` (`size="lg"`, `closeOnClickOutside`). Preserves aspect ratio via `object-contain`, shows a loading spinner and a resilient error state with retry. For signed/expiring QR URLs (`isSignedUrl`), auto-retries once via `onRetry` (re-running the caller's existing data fetch to obtain a fresh signed URL) before falling back to a manual-retry terminal error state; for non-expiring public-bucket images, retry simply remounts the same URL.
+- **Props**:
+  - `open`: `boolean`
+  - `onClose`: `() => void`
+  - `src`: `string | null | undefined`
+  - `title`: `string`
+  - `alt`: `string`
+  - `onRetry?`: `() => void | Promise<void>`
+  - `isSignedUrl?`: `boolean`
+  - `imageClassName?`: `string`
 - **Equivalent in Other Frameworks**: N/A in repository.
 
 ---
@@ -266,8 +284,19 @@ This document serves as the authoritative component registry for the **FF RESTau
   - `notifications?`: `Notification[]`
   - `onOpenNotification?`: `(notification: Notification) => void`
   - `onMarkAllNotificationsRead?`: `() => void`
-  - `sidebarCollapsed?`: `boolean`
-  - `onToggleSidebar?`: `() => void`
+- **Equivalent in Other Frameworks**: N/A in repository.
+
+---
+
+### MobileNav
+
+- **Framework System**: React web component
+- **Source File**: [MobileNav.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/layout/MobileNav.tsx)
+- **Export**: `default export MobileNav`
+- **Description**: Mobile-only, horizontally scrollable navigation strip that renders every role-authorized route and keeps the active route visible.
+- **Props**:
+  - `nav`: `readonly NavigationItem[]`
+  - `label`: `string`
 - **Equivalent in Other Frameworks**: N/A in repository.
 
 ---
@@ -277,12 +306,11 @@ This document serves as the authoritative component registry for the **FF RESTau
 - **Framework System**: React web component
 - **Source File**: [Sidebar.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/components/layout/Sidebar.tsx)
 - **Export**: `default export Sidebar`
-- **Description**: Expandable desktop sidebar and mobile navigation drawer using `.overlay-subtle` backdrop.
+- **Description**: Expandable desktop-only sidebar navigation.
 - **Props**:
-  - `nav`: `readonly (readonly [string, LucideIcon, string])[]`
+  - `nav`: `readonly NavigationItem[]`
   - `collapsed`: `boolean`
   - `onToggle`: `() => void`
-  - `onNavigate`: `() => void`
 - **Equivalent in Other Frameworks**: N/A in repository.
 
 ---
@@ -300,8 +328,15 @@ This document serves as the authoritative component registry for the **FF RESTau
 
 - **Framework System**: React web component
 - **Source File**: [PlatformLinksEditor.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/features/restaurants/PlatformLinksEditor.tsx)
-- **Export**: `default export PlatformLinksEditor`, `platformLabel`, `arePlatformLinksValid`
+- **Export**: `default export PlatformLinksEditor`, `arePlatformLinksValid`
 - **Description**: Interactive list editor for reordering, adding, and validating external restaurant delivery platform links (Grab, ShopeeFood, Gojek, Website, etc.).
+
+### PlatformLinkBadge
+
+- **Framework System**: React web component
+- **Source File**: [PlatformLinkBadge.tsx](file:///c:/Vault/Project/management-platform/ff-restaurent/apps/web/src/features/restaurants/PlatformLinkBadge.tsx)
+- **Export**: `default export PlatformLinkBadge`
+- **Description**: Reusable themed badge for normalized restaurant platform links, using the canonical light/dark platform token mapping.
 
 ### RestaurantBanner
 

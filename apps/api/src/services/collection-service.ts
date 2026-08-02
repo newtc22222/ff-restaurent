@@ -405,16 +405,45 @@ export const updateCollection = async (
   userId: string,
 ) => {
   await requireCustomOwner(id, userId);
-  return prisma.collection.update({
-    where: { id },
-    data: {
-      ...body,
-      ...(body.description !== undefined
-        ? { description: body.description || null }
-        : {}),
-    },
-    select: collectionSelect,
-  });
+  const data = {
+    ...body,
+    ...(body.description !== undefined
+      ? { description: body.description || null }
+      : {}),
+  };
+  if (body.isPublic === true) {
+    return prisma.$transaction(async (tx) => {
+      const transitioned = await tx.collection.updateMany({
+        where: { id, isPublic: false },
+        data,
+      });
+      if (transitioned.count === 1) {
+        return {
+          collection: await tx.collection.findUniqueOrThrow({
+            where: { id },
+            select: collectionSelect,
+          }),
+          becamePublic: true,
+        };
+      }
+      return {
+        collection: await tx.collection.update({
+          where: { id },
+          data,
+          select: collectionSelect,
+        }),
+        becamePublic: false,
+      };
+    });
+  }
+  return {
+    collection: await prisma.collection.update({
+      where: { id },
+      data,
+      select: collectionSelect,
+    }),
+    becamePublic: false,
+  };
 };
 
 export const deleteCollection = async (id: string, userId: string) => {
