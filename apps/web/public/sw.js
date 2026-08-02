@@ -118,9 +118,9 @@ export const openNotificationTarget = async (
   if (!existing) return clientManager.openWindow(url);
   try {
     const navigated = await existing.navigate(url);
-    return (navigated ?? existing).focus();
+    return await (navigated ?? existing).focus();
   } catch {
-    return existing.focus();
+    return clientManager.openWindow(url);
   }
 };
 

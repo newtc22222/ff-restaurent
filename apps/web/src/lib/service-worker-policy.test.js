@@ -200,4 +200,43 @@ describe('notification click target', () => {
     expect(client.focus).toHaveBeenCalledOnce();
     expect(clientManager.openWindow).not.toHaveBeenCalled();
   });
+
+  it('opens the target when the existing window cannot be navigated', async () => {
+    const client = {
+      focused: true,
+      visibilityState: 'visible',
+      navigate: vi.fn().mockRejectedValue(new Error('window closed')),
+      focus: vi.fn(),
+    };
+    const clientManager = {
+      matchAll: vi.fn().mockResolvedValue([client]),
+      openWindow: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await openNotificationTarget('/bills/abc', clientManager);
+
+    expect(client.focus).not.toHaveBeenCalled();
+    expect(clientManager.openWindow).toHaveBeenCalledWith('/bills/abc');
+  });
+
+  it('opens the target when the navigated window cannot be focused', async () => {
+    const navigatedClient = {
+      focus: vi.fn().mockRejectedValue(new Error('window closed')),
+    };
+    const client = {
+      focused: true,
+      visibilityState: 'visible',
+      navigate: vi.fn().mockResolvedValue(navigatedClient),
+      focus: vi.fn(),
+    };
+    const clientManager = {
+      matchAll: vi.fn().mockResolvedValue([client]),
+      openWindow: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await openNotificationTarget('/bills/abc', clientManager);
+
+    expect(navigatedClient.focus).toHaveBeenCalledOnce();
+    expect(clientManager.openWindow).toHaveBeenCalledWith('/bills/abc');
+  });
 });
