@@ -10,6 +10,7 @@ interface ModalProps {
   children: ReactNode;
   onClose: () => void;
   size?: 'md' | 'lg';
+  returnFocusTo?: HTMLElement | null;
   /**
    * Whether clicking outside the modal content area on the backdrop closes the modal.
    * Defaults to false to prevent accidental loss of user input in create/edit forms.
@@ -23,6 +24,7 @@ export default function Modal({
   children,
   onClose,
   size = 'md',
+  returnFocusTo = null,
   closeOnClickOutside = false,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -32,7 +34,8 @@ export default function Modal({
 
   useEffect(() => {
     if (!open) return;
-    const previous = document.activeElement as HTMLElement | null;
+    const previous =
+      returnFocusTo ?? (document.activeElement as HTMLElement | null);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onCloseRef.current();
@@ -73,7 +76,7 @@ export default function Modal({
       document.body.style.overflow = '';
       previous?.focus();
     };
-  }, [open]);
+  }, [open, returnFocusTo]);
 
   if (!open) return null;
   return createPortal(
