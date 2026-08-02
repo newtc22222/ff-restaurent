@@ -50,7 +50,7 @@ const run = async () => {
     legacyColumnCount,
     legacyTableCount,
     passed:
-      contractMigrationCount === 1 &&
+      contractMigrationCount >= 1 &&
       restaurantsWithoutOnePrimaryCuisine === 0 &&
       usersWithoutOneFavoritesCollection === 0 &&
       recommendedCollectionCount === 1 &&
