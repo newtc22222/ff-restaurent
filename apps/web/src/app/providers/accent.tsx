@@ -3,7 +3,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
 } from 'react';
@@ -47,7 +47,7 @@ export function AccentProvider({ children }: { children: ReactNode }) {
     applyAccent(newAccent);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     applyAccent(accent);
   }, [accent]);
 
