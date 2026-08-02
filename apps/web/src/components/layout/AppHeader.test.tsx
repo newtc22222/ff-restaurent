@@ -30,6 +30,8 @@ vi.mock('@/app/providers/i18n', () => ({
         'language.english': 'English',
         'nav.theme': 'Theme',
         'theme.light': 'Light',
+        'theme.accent': 'Accent',
+        'theme.accentSaffron': 'Saffron',
         'nav.notifications': 'Notifications',
         'notifications.markAllRead': 'Mark all read',
         'auth.cancel': 'Cancel',
@@ -39,6 +41,10 @@ vi.mock('@/app/providers/i18n', () => ({
 
 vi.mock('@/app/providers/theme', () => ({
   useTheme: () => ({ theme: 'light', setTheme: vi.fn() }),
+}));
+
+vi.mock('@/app/providers/accent', () => ({
+  useAccent: () => ({ accent: 'saffron', setAccent: vi.fn() }),
 }));
 
 afterEach(cleanup);
@@ -54,13 +60,17 @@ describe('AppHeader notification controls', () => {
     const themeIndex = buttons.findIndex((button) =>
       button.getAttribute('aria-label')?.startsWith('Theme:'),
     );
+    const accentIndex = buttons.findIndex((button) =>
+      button.getAttribute('aria-label')?.startsWith('Accent:'),
+    );
     const notificationIndex = buttons.findIndex(
       (button) => button.getAttribute('aria-label') === 'Notifications',
     );
 
     expect(localeIndex).toBeGreaterThanOrEqual(0);
     expect(themeIndex).toBeGreaterThan(localeIndex);
-    expect(notificationIndex).toBeGreaterThan(themeIndex);
+    expect(accentIndex).toBeGreaterThan(themeIndex);
+    expect(notificationIndex).toBeGreaterThan(accentIndex);
   });
 
   it('places notifications below the theme control in the mobile menu', () => {

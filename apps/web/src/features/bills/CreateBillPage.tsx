@@ -614,7 +614,7 @@ export default function CreateBillPage() {
                     <>
                       <button
                         type="button"
-                        className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron"
+                        className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         onClick={() => setQrPreviewOpen(true)}
                       >
                         <img

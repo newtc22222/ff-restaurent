@@ -51,9 +51,9 @@ export default function MobileNav({ nav, label }: MobileNavProps) {
             ref={path === activePath ? activeLinkRef : undefined}
             to={path}
             className={({ isActive }) =>
-              `flex control-default shrink-0 items-center gap-2 rounded-md px-3 text-compact font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron focus-visible:ring-offset-2 ${
+              `flex control-default shrink-0 items-center gap-2 rounded-md px-3 text-compact font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                 isActive
-                  ? 'bg-ink text-bg'
+                  ? 'bg-accent-strong text-accent-on-strong'
                   : 'text-slate-500 hover:bg-muted hover:text-ink'
               }`
             }

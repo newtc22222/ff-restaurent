@@ -8,11 +8,13 @@ import {
 import { useState } from 'react';
 
 import type { Notification } from '@/api/types';
+import { useAccent } from '@/app/providers/accent';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import { useTheme } from '@/app/providers/theme';
 import { roleLabel } from '@/lib/permissions';
 
+import AccentToggle from '../ui/AccentToggle';
 import BrandIcon from '../ui/BrandIcon';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import LocaleToggle from '../ui/LocaleToggle';
@@ -37,6 +39,7 @@ export default function AppHeader({
   const { user, logout } = useAppContext();
   const { locale, setLocale, t } = useI18n();
   const { theme, setTheme } = useTheme();
+  const { accent, setAccent } = useAccent();
   const [showConfirm, setShowConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -56,6 +59,14 @@ export default function AppHeader({
     lightLabel: t('theme.light'),
     darkLabel: t('theme.dark'),
     systemLabel: t('theme.system'),
+  };
+  const accentControlProps = {
+    accent,
+    setAccent,
+    label: t('theme.accent'),
+    saffronLabel: t('theme.accentSaffron'),
+    basilLabel: t('theme.accentBasil'),
+    chiliLabel: t('theme.accentChili'),
   };
 
   const openProfile = () => {
@@ -88,6 +99,7 @@ export default function AppHeader({
         <div className="ml-auto hidden items-center gap-2 md:flex">
           <LocaleToggle {...localeControlProps} />
           <ThemeToggle {...themeControlProps} />
+          <AccentToggle {...accentControlProps} />
           {onOpenNotification && (
             <button
               type="button"
@@ -214,6 +226,10 @@ export default function AppHeader({
               <div className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium text-ink">
                 <span>{t('nav.theme')}</span>
                 <ThemeToggle {...themeControlProps} />
+              </div>
+              <div className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium text-ink">
+                <span>{t('theme.accent')}</span>
+                <AccentToggle {...accentControlProps} />
               </div>
               {onOpenNotification && (
                 <button

@@ -50,7 +50,7 @@ export default function Sidebar({ nav, collapsed, onToggle }: SidebarProps) {
                 collapsed ? 'justify-center px-2' : 'gap-3 px-3'
               } ${
                 isActive
-                  ? 'bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]'
+                  ? 'bg-accent-strong text-accent-on-strong'
                   : 'text-slate-500 hover:bg-muted hover:text-ink'
               }`
             }
