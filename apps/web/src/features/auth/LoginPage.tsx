@@ -5,10 +5,8 @@ import { useFetcher } from 'react-router';
 import { parseVietnamMobilePhone } from '@ff-restaurent/shared';
 
 import { useI18n } from '@/app/providers/i18n';
-import { useTheme } from '@/app/providers/theme';
 import BrandIcon from '@/components/ui/BrandIcon';
 import LocaleToggle from '@/components/ui/LocaleToggle';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 import { resultErrorMessage } from '@/lib/result-messages';
 
 import { seededUsers } from './auth.constants';
@@ -19,7 +17,6 @@ type Mode = 'login' | 'register' | 'forgot-request' | 'forgot-reset';
 /** Sign-in, registration, and enumeration-safe password recovery. */
 export default function LoginPage() {
   const { locale, setLocale, t } = useI18n();
-  const { theme, setTheme } = useTheme();
   const fetcher = useFetcher<LoginActionData>();
   const [mode, setMode] = useState<Mode>('login');
   const showDemoUsers = import.meta.env.DEV;
@@ -134,10 +131,6 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-screen min-w-0 place-items-center bg-bg px-4 py-10 font-sans">
       <div className="w-full min-w-0 max-w-[440px]">
-        <div className="mb-4 flex items-center justify-end gap-2">
-          <LocaleToggle locale={locale} setLocale={setLocale} />
-          <ThemeToggle theme={theme} setTheme={setTheme} />
-        </div>
         <form
           className="min-w-0 rounded-xl border border-border bg-surface p-8 shadow-panel"
           onSubmit={submit}
@@ -386,6 +379,23 @@ export default function LoginPage() {
             </>
           )}
         </form>
+
+        <footer className="mt-6 space-y-4">
+          <p className="text-xs leading-relaxed text-slate-500">
+            {t('app.description')}
+          </p>
+          {/* Locale stays reachable before sign-in: it is a device-local
+              preference, so there is no account to read it from yet. */}
+          <div className="flex justify-center">
+            <LocaleToggle
+              locale={locale}
+              setLocale={setLocale}
+              label={t('nav.language')}
+              englishLabel={t('language.english')}
+              vietnameseLabel={t('language.vietnamese')}
+            />
+          </div>
+        </footer>
       </div>
     </main>
   );
