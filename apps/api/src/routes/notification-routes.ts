@@ -8,6 +8,16 @@ import {
   pushSubscriptionSchema,
 } from '../schemas/index.js';
 import { PRODUCT_NOTIFICATION_CATEGORIES } from '../services/notification-service.js';
+import { streamNotificationEvents } from '../services/notification-stream.js';
+
+const eventFrame = (event: string, data: unknown, id?: string) =>
+  [
+    `event: ${event}`,
+    ...(id ? [`id: ${id}`] : []),
+    `data: ${JSON.stringify(data)}`,
+    '',
+    '',
+  ].join('\n');
 
 const getNotificationPreferences = async (userId: string) => {
   const [user, overrides, subscriptions] = await Promise.all([
@@ -46,6 +56,62 @@ const getNotificationPreferences = async (userId: string) => {
  * Notification routes are user-scoped: each user only reads their own reminders.
  */
 export const registerNotificationRoutes = (app: FastifyInstance) => {
+  app.get(
+    '/notifications/stream',
+    {
+      preHandler: requireAuthenticatedUser,
+      schema: { produces: ['text/event-stream'] },
+    },
+    async (request, reply) => {
+      const controller = new AbortController();
+      const close = () => controller.abort();
+      request.raw.once('aborted', close);
+      reply.raw.once('close', close);
+      reply.hijack();
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+      reply.raw.flushHeaders();
+
+      const write = (value: string) => {
+        if (!reply.raw.destroyed && !reply.raw.writableEnded) {
+          reply.raw.write(value);
+        }
+      };
+      const lastEventId = request.headers['last-event-id'];
+      try {
+        await streamNotificationEvents({
+          userId: request.currentUser.id,
+          lastEventId: Array.isArray(lastEventId)
+            ? lastEventId[0]
+            : lastEventId,
+          signal: controller.signal,
+          handlers: {
+            ready: (cursor) =>
+              write(eventFrame('ready', {}, cursor ?? undefined)),
+            notification: (event) =>
+              write(eventFrame('notification', event, event.cursor)),
+            heartbeat: () => write(': heartbeat\n\n'),
+          },
+        });
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          request.log.warn(
+            { err: error, event: 'notification_stream_failed' },
+            'Notification stream failed',
+          );
+        }
+      } finally {
+        request.raw.off('aborted', close);
+        reply.raw.off('close', close);
+        if (!reply.raw.destroyed && !reply.raw.writableEnded) reply.raw.end();
+      }
+    },
+  );
+
   app.get(
     '/notifications',
     { preHandler: requireAuthenticatedUser },

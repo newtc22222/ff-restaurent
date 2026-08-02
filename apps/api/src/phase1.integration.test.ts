@@ -19,6 +19,10 @@ import { buildApp } from './app.js';
 import { prisma } from './lib/prisma.js';
 import { ensureDefaultCollections } from './services/collection-service.js';
 import {
+  getActiveNotificationStreamCount,
+  serializeNotificationCursor,
+} from './services/notification-stream.js';
+import {
   RootAdminTransferError,
   transferRootAdmin,
 } from './services/root-admin-service.js';
@@ -34,6 +38,7 @@ let customerAId: string;
 let customerBId: string;
 let restaurantId: string;
 let billId: string;
+let appOrigin: string;
 
 const tokenFor = (id: string, expiresIn = '8h', version?: number) =>
   app.jwt.sign(
@@ -120,6 +125,10 @@ before(async () => {
       },
     })
   ).id;
+  await app.listen({ host: '127.0.0.1', port: 0 });
+  const address = app.server.address();
+  assert(address && typeof address !== 'string');
+  appOrigin = `http://127.0.0.1:${address.port}`;
 });
 
 after(async () => {
@@ -2836,5 +2845,111 @@ integrationTest(
       where: { id: customerBId },
       data: { accountStatus: UserAccountStatus.ACTIVE },
     });
+  },
+);
+
+integrationTest(
+  'notification streams authenticate, preserve ownership, recover cursors, and clean up disconnects',
+  async () => {
+    const unauthenticated = await fetch(`${appOrigin}/notifications/stream`);
+    assert.equal(unauthenticated.status, 401);
+
+    const passwordHash = await bcrypt.hash('password123', 4);
+    const [owner, otherUser] = await Promise.all([
+      prisma.user.create({
+        data: {
+          username: `stream-owner-${Date.now()}`,
+          name: 'Stream Owner',
+          passwordHash,
+        },
+      }),
+      prisma.user.create({
+        data: {
+          username: `stream-other-${Date.now()}`,
+          name: 'Stream Other',
+          passwordHash,
+        },
+      }),
+    ]);
+
+    try {
+      const createdAt = new Date('2026-08-02T10:00:00.000Z');
+      const [baseline, expected, hidden, foreign] = await prisma.$transaction([
+        prisma.notification.create({
+          data: {
+            userId: owner.id,
+            message: 'Stream baseline',
+            createdAt,
+          },
+        }),
+        prisma.notification.create({
+          data: {
+            userId: owner.id,
+            message: 'Stream expected',
+            createdAt: new Date(createdAt.getTime() + 1),
+          },
+        }),
+        prisma.notification.create({
+          data: {
+            userId: owner.id,
+            message: 'Stream hidden',
+            inAppVisible: false,
+            createdAt: new Date(createdAt.getTime() + 2),
+          },
+        }),
+        prisma.notification.create({
+          data: {
+            userId: otherUser.id,
+            message: 'Stream foreign',
+            createdAt: new Date(createdAt.getTime() + 3),
+          },
+        }),
+      ]);
+      const controller = new AbortController();
+      const response = await fetch(`${appOrigin}/notifications/stream`, {
+        headers: {
+          Authorization: `Bearer ${tokenFor(owner.id)}`,
+          'Last-Event-ID': serializeNotificationCursor(baseline),
+        },
+        signal: controller.signal,
+      });
+      assert.equal(response.status, 200);
+      assert.match(
+        response.headers.get('content-type') ?? '',
+        /^text\/event-stream/,
+      );
+      assert(response.body);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let body = '';
+      const deadline = Date.now() + 5_000;
+      while (!body.includes(`"notificationId":"${expected.id}"`)) {
+        assert(Date.now() < deadline, 'notification stream timed out');
+        const chunk = await reader.read();
+        assert.equal(chunk.done, false);
+        body += decoder.decode(chunk.value, { stream: true });
+      }
+
+      assert.match(body, /event: ready/);
+      assert.match(body, /event: notification/);
+      assert.match(body, new RegExp(`"notificationId":"${expected.id}"`));
+      assert.doesNotMatch(body, new RegExp(hidden.id));
+      assert.doesNotMatch(body, new RegExp(foreign.id));
+      controller.abort();
+
+      const cleanupDeadline = Date.now() + 2_000;
+      while (
+        getActiveNotificationStreamCount() !== 0 &&
+        Date.now() < cleanupDeadline
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      assert.equal(getActiveNotificationStreamCount(), 0);
+    } finally {
+      await prisma.user.deleteMany({
+        where: { id: { in: [owner.id, otherUser.id] } },
+      });
+    }
   },
 );

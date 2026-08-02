@@ -4918,6 +4918,56 @@
         "security": [{ "bearerAuth": [] }]
       }
     },
+    "/notifications/stream": {
+      "get": {
+        "operationId": "getNotificationsStream",
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": { "schema": { "type": "string" } }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "text/event-stream": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
     "/participant-groups": {
       "get": {
         "operationId": "getParticipant-groups",

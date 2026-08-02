@@ -163,6 +163,7 @@ const successResponses: Record<string, Record<string, ZodTypeAny>> = {
   'PUT /bills/:id': { '200': billResponseSchema },
   'PATCH /bills/:id/archive': { '200': billResponseSchema },
   'PATCH /bills/:id/restore': { '200': billResponseSchema },
+  'GET /notifications/stream': { '200': z.string() },
 };
 
 const publicRoutes = new Set([
