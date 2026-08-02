@@ -486,6 +486,11 @@ apply_foundation() {
   ensure_project_role "$deploy_member" roles/run.invoker
   ensure_project_role "$deploy_member" roles/artifactregistry.writer
   ensure_project_role "$deploy_member" roles/cloudsql.viewer
+  # cloudsql.instances.connect (needed by the Cloud SQL Auth Proxy in
+  # phase2-production-data.yml and backup-restore-drill.yml) isn't in
+  # cloudsql.viewer. Declared here to match what's already live-granted on
+  # the project so re-provisioning doesn't silently drop it.
+  ensure_project_role "$deploy_member" roles/cloudsql.client
   ensure_service_account_role "$RUNTIME_SERVICE_ACCOUNT" "$deploy_member" roles/iam.serviceAccountUser
   ensure_service_account_role "$RUNTIME_SERVICE_ACCOUNT" "$deploy_member" roles/iam.serviceAccountTokenCreator
 
