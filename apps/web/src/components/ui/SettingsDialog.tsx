@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { useAccent } from '@/app/providers/accent';
 import { useI18n } from '@/app/providers/i18n';
 import { useTheme } from '@/app/providers/theme';
@@ -17,7 +19,7 @@ function SettingRow({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
