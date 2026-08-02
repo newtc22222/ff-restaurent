@@ -103,16 +103,29 @@ self.addEventListener('push', (event) => {
   );
 });
 
+export const openNotificationTarget = async (
+  url,
+  clientManager = self.clients,
+) => {
+  const clients = await clientManager.matchAll({
+    type: 'window',
+    includeUncontrolled: true,
+  });
+  const existing =
+    clients.find((client) => client.focused) ??
+    clients.find((client) => client.visibilityState === 'visible') ??
+    clients[0];
+  if (!existing) return clientManager.openWindow(url);
+  try {
+    const navigated = await existing.navigate(url);
+    return await (navigated ?? existing).focus();
+  } catch {
+    return clientManager.openWindow(url);
+  }
+};
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = event.notification.data?.url ?? '/';
-  event.waitUntil(
-    self.clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clients) => {
-        const existing = clients.find((client) => client.url.includes(url));
-        if (existing) return existing.focus();
-        return self.clients.openWindow(url);
-      }),
-  );
+  event.waitUntil(openNotificationTarget(url));
 });
