@@ -35,6 +35,7 @@ PATH="$TMP:$PATH" \
   sh "$SUBJECT" >"$TMP/success.out" 2>"$TMP/success.err"
 cat >"$TMP/expected.log" <<'EOF'
 run prisma:migrate:deploy
+run prisma:cuisines:seed
 run prisma:phones:backfill
 run prisma:root:bootstrap
 EOF
@@ -53,6 +54,7 @@ if PATH="$TMP:$PATH" sh "$SUBJECT" >"$TMP/failure.out" 2>"$TMP/failure.err"; the
 fi
 cat >"$TMP/failure-expected.log" <<'EOF'
 run prisma:migrate:deploy
+run prisma:cuisines:seed
 run prisma:phones:backfill
 EOF
 cmp "$TMP/failure-expected.log" "$FF57_MOCK_LOG" ||
