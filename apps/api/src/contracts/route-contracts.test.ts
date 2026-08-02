@@ -33,7 +33,10 @@ test('every application operation exposes runtime responses and a stable operati
     }
   }
 
-  assert.equal(operationCount, 88);
+  assert.equal(operationCount, 89);
+  const streamResponse = document.paths?.['/notifications/stream']?.get
+    ?.responses?.['200'] as { content?: Record<string, unknown> } | undefined;
+  assert.ok(streamResponse?.content?.['text/event-stream']);
   assert.deepEqual(Object.keys(document.components?.schemas ?? {}).sort(), [
     'AdjustmentAllocation',
     'AdjustmentType',

@@ -779,6 +779,22 @@ export interface paths {
     patch: operations['patchNotificationsRead-all'];
     trace?: never;
   };
+  '/notifications/stream': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['getNotificationsStream'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/participant-groups': {
     parameters: {
       query?: never;
@@ -4969,6 +4985,63 @@ export interface operations {
           } & {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  getNotificationsStream: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Default Response */
+      '2XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'text/event-stream': unknown;
+        };
+      };
+      /** @description Default Response */
+      '4XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'text/event-stream': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Default Response */
+      '5XX': {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'text/event-stream': {
+            code?: string;
+            message: string;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Default Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'text/event-stream': string;
         };
       };
     };
