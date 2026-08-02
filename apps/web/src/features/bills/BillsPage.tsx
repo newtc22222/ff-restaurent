@@ -158,7 +158,7 @@ export default function BillsPage() {
                 type="button"
                 className={`grid h-8 w-9 place-items-center rounded-md transition-colors ${
                   layout === value
-                    ? 'bg-ink text-white dark:bg-slate-100 dark:text-slate-900'
+                    ? 'bg-accent-strong text-accent-on-strong'
                     : 'text-slate-500 hover:bg-muted hover:text-ink'
                 }`}
                 aria-label={t(label)}

@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 
 import { API_URL } from './api/client';
+import { AccentProvider } from './app/providers/accent';
 import { I18nProvider } from './app/providers/i18n';
 import { QueryProvider } from './app/providers/query';
 import { ThemeProvider } from './app/providers/theme';
@@ -31,12 +32,14 @@ if (import.meta.env.PROD) {
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>
-      <QueryProvider>
-        <I18nProvider>
-          <ToastHost />
-          <RouterProvider router={router} />
-        </I18nProvider>
-      </QueryProvider>
+      <AccentProvider>
+        <QueryProvider>
+          <I18nProvider>
+            <ToastHost />
+            <RouterProvider router={router} />
+          </I18nProvider>
+        </QueryProvider>
+      </AccentProvider>
     </ThemeProvider>
   </React.StrictMode>,
 );

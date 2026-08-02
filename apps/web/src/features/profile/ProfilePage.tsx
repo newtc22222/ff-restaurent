@@ -283,7 +283,7 @@ export default function ProfilePage() {
                 {user.avatarUrl ? (
                   <button
                     type="button"
-                    className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-saffron"
+                    className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                     aria-label={t('profile.viewAvatar')}
                     onClick={() => setAvatarPreviewOpen(true)}
                   >
@@ -523,7 +523,7 @@ export default function ProfilePage() {
                   >
                     <button
                       type="button"
-                      className="block w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron"
+                      className="block w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       onClick={() => setPreviewQrId(qr.id)}
                     >
                       <img

@@ -13,6 +13,10 @@ export default {
         basil: 'hsl(151 45% 32%)',
         chili: 'hsl(6 78% 52%)',
         success: 'var(--color-success)',
+        accent: 'var(--color-accent)',
+        'accent-strong': 'var(--color-accent-strong)',
+        'accent-on-strong': 'var(--color-accent-on-strong)',
+        'accent-soft': 'var(--color-accent-soft)',
       },
       fontSize: {
         '2xs': ['0.6875rem', { lineHeight: '1rem' }],

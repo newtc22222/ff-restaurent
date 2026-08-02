@@ -353,7 +353,7 @@ export default function BillDetailPage() {
                 </p>
                 <button
                   type="button"
-                  className="mx-auto block w-full max-w-56 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron"
+                  className="mx-auto block w-full max-w-56 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   onClick={() => setQrPreviewOpen(true)}
                 >
                   <img

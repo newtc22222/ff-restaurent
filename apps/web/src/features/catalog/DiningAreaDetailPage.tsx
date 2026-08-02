@@ -178,7 +178,7 @@ export default function DiningAreaDetailPage() {
                 >
                   <button
                     type="button"
-                    className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-saffron"
+                    className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                     onClick={() =>
                       setPreviewImage({ imageUrl: image.imageUrl, index })
                     }

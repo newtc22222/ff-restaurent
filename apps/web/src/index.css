@@ -9,6 +9,10 @@
   --color-surface: #ffffff;
   --color-bg: #faf8f5;
   --color-success: hsl(151 55% 42%);
+  --color-accent: hsl(36 90% 48%);
+  --color-accent-strong: hsl(30 75% 30%);
+  --color-accent-on-strong: #ffffff;
+  --color-accent-soft: hsl(36 90% 48% / 14%);
   --color-platform-grab-bg: hsl(30 90% 92%);
   --color-platform-grab-text: hsl(24 80% 35%);
   --color-platform-grab-dark-bg: hsl(30 80% 32% / 35%);
@@ -59,8 +63,59 @@
   --color-surface: hsl(220 15% 13%);
   --color-bg: hsl(220 15% 9%);
   --color-success: hsl(151 50% 50%);
+  --color-accent: hsl(36 90% 55%);
+  --color-accent-strong: hsl(36 90% 55%);
+  --color-accent-on-strong: hsl(220 15% 9%);
+  --color-accent-soft: hsl(36 90% 55% / 20%);
   --scrollbar-thumb: rgb(148 163 184 / 55%);
   --scrollbar-thumb-hover: rgb(203 213 225 / 72%);
+}
+
+/* User-selectable accent presets, keyed off data-accent on <html> (see
+   app/providers/accent.tsx). --color-accent is the vivid brand value used for
+   rings and thin marks; --color-accent-strong is the darker, AA-safe fill used
+   behind --color-accent-on-strong text. Light mode fills dark and writes white;
+   dark mode inverts, matching how .btn-primary already flips. */
+:root[data-accent='saffron'] {
+  --color-accent: hsl(36 90% 48%);
+  --color-accent-strong: hsl(30 75% 30%);
+  --color-accent-on-strong: #ffffff;
+  --color-accent-soft: hsl(36 90% 48% / 14%);
+}
+
+:root[data-accent='basil'] {
+  --color-accent: hsl(151 45% 32%);
+  --color-accent-strong: hsl(151 55% 22%);
+  --color-accent-on-strong: #ffffff;
+  --color-accent-soft: hsl(151 45% 32% / 14%);
+}
+
+:root[data-accent='chili'] {
+  --color-accent: hsl(6 78% 52%);
+  --color-accent-strong: hsl(6 70% 38%);
+  --color-accent-on-strong: #ffffff;
+  --color-accent-soft: hsl(6 78% 52% / 14%);
+}
+
+:root.dark[data-accent='saffron'] {
+  --color-accent: hsl(36 90% 55%);
+  --color-accent-strong: hsl(36 90% 55%);
+  --color-accent-on-strong: hsl(220 15% 9%);
+  --color-accent-soft: hsl(36 90% 55% / 20%);
+}
+
+:root.dark[data-accent='basil'] {
+  --color-accent: hsl(151 50% 45%);
+  --color-accent-strong: hsl(151 50% 45%);
+  --color-accent-on-strong: hsl(220 15% 9%);
+  --color-accent-soft: hsl(151 50% 45% / 20%);
+}
+
+:root.dark[data-accent='chili'] {
+  --color-accent: hsl(6 78% 55%);
+  --color-accent-strong: hsl(6 78% 55%);
+  --color-accent-on-strong: hsl(220 15% 9%);
+  --color-accent-soft: hsl(6 78% 55% / 22%);
 }
 
 body {
@@ -100,7 +155,7 @@ select {
 }
 
 .field {
-  @apply control-default rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition-colors focus:border-ink;
+  @apply control-default rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition-colors focus:border-accent;
 }
 
 .label {
@@ -116,11 +171,7 @@ select {
 }
 
 .btn-primary {
-  @apply bg-ink text-white hover:opacity-90;
-}
-
-.dark .btn-primary {
-  @apply bg-[hsl(210,20%,92%)] text-[hsl(220,15%,9%)] hover:opacity-90;
+  @apply bg-accent-strong text-accent-on-strong hover:opacity-90;
 }
 
 .btn-soft {

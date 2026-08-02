@@ -2,6 +2,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import AccentToggle from './AccentToggle';
 import LocaleToggle from './LocaleToggle';
 import ThemeToggle from './ThemeToggle';
 
@@ -41,5 +42,24 @@ describe('header selectors', () => {
     expect(screen.getAllByRole('option')).toHaveLength(3);
     fireEvent.click(screen.getByRole('option', { name: 'Dark' }));
     expect(setTheme).toHaveBeenCalledWith('dark');
+  });
+
+  it('lets the user explicitly choose an accent color', () => {
+    const setAccent = vi.fn();
+    render(
+      <AccentToggle
+        accent="saffron"
+        setAccent={setAccent}
+        label="Accent"
+        saffronLabel="Saffron"
+        basilLabel="Basil"
+        chiliLabel="Chili"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accent: Saffron' }));
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+    fireEvent.click(screen.getByRole('option', { name: 'Basil' }));
+    expect(setAccent).toHaveBeenCalledWith('basil');
   });
 });

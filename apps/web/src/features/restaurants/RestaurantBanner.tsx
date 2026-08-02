@@ -51,7 +51,7 @@ export default function RestaurantBanner({
       {url && !failed && onBannerClick && (
         <button
           type="button"
-          className="absolute inset-0 z-[5] h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-saffron"
+          className="absolute inset-0 z-[5] h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
           aria-label={bannerAriaLabel ?? `${name} banner`}
           onClick={onBannerClick}
         />
@@ -63,7 +63,7 @@ export default function RestaurantBanner({
             (onLogoClick ? (
               <button
                 type="button"
-                className="shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron"
+                className="shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 aria-label={logoAriaLabel ?? `${name} logo`}
                 onClick={onLogoClick}
               >
