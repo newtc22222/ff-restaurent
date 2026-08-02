@@ -16,6 +16,10 @@ import type {
   RestaurantEntry,
   User,
 } from '@/api/types';
+import {
+  useNotificationStream,
+  useNotifications,
+} from '@/features/notifications/notification.queries';
 import { session } from '@/lib/session';
 
 export interface AppLoaderData {
@@ -47,6 +51,8 @@ export function AppProvider({
 }) {
   const navigate = useNavigate();
   const { revalidate, state: revalidationState } = useRevalidator();
+  const notifications = useNotifications(data.user.id, data.notifications);
+  useNotificationStream(data.user.id);
   const loading = revalidationState !== 'idle';
   const refresh = useCallback(async () => {
     await revalidate();
@@ -56,8 +62,14 @@ export function AppProvider({
     navigate('/login', { replace: true });
   }, [navigate]);
   const value = useMemo<AppContextValue>(
-    () => ({ ...data, loading, refresh, logout }),
-    [data, loading, refresh, logout],
+    () => ({
+      ...data,
+      notifications: notifications.data,
+      loading,
+      refresh,
+      logout,
+    }),
+    [data, loading, notifications.data, refresh, logout],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
