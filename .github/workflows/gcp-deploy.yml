@@ -229,8 +229,8 @@ jobs:
             --image "$API_IMAGE" \
             --service-account "$RUNTIME_SERVICE_ACCOUNT" \
             --set-cloudsql-instances "$CLOUD_SQL_CONNECTION" \
-            --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest,JWT_SECRET=ff-jwt-secret:latest,REGISTRATION_INVITE_CODE=ff-registration-invite-code:latest,CORS_ORIGINS=${CORS_SECRET}:latest,SUPABASE_URL=ff-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=ff-supabase-service-role-key:latest,FIREBASE_PROJECT_ID=ff-firebase-project-id:latest" \
-            --set-env-vars "NODE_ENV=production,JWT_EXPIRES_IN=8h,SUPABASE_PUBLIC_BUCKET=ff-public-images,SUPABASE_QR_BUCKET=ff-payment-qr,SUPABASE_SIGNED_URL_TTL_SECONDS=900" \
+            --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest,JWT_SECRET=ff-jwt-secret:latest,REGISTRATION_INVITE_CODE=ff-registration-invite-code:latest,CORS_ORIGINS=${CORS_SECRET}:latest,SUPABASE_URL=ff-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=ff-supabase-service-role-key:latest" \
+            --set-env-vars "NODE_ENV=production,JWT_EXPIRES_IN=8h,SUPABASE_PUBLIC_BUCKET=ff-public-images,SUPABASE_QR_BUCKET=ff-payment-qr,SUPABASE_SIGNED_URL_TTL_SECONDS=900,FIREBASE_PROJECT_ID=${GCP_PROJECT_ID}" \
             --port 8080 \
             --min 0 \
             --max 3 \

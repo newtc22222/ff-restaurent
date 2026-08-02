@@ -83,7 +83,11 @@ test('workflow passes only public client configuration into the web build', asyn
     workflow,
     /DATABASE_URL=\$\{DATABASE_SECRET\}:latest.*JWT_SECRET=ff-jwt-secret:latest.*CORS_ORIGINS=\$\{CORS_SECRET\}:latest/s,
   );
-  assert.match(workflow, /FIREBASE_PROJECT_ID=ff-firebase-project-id:latest/);
+  assert.match(
+    workflow,
+    /--set-env-vars "[^"]*FIREBASE_PROJECT_ID=\$\{GCP_PROJECT_ID\}[^"]*"/,
+  );
+  assert.doesNotMatch(workflow, /--set-secrets "[^"]*FIREBASE_PROJECT_ID=/);
 });
 
 test('GCP foundation enables FCM and grants the runtime sender role', async () => {
