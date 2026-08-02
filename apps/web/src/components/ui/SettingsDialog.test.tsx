@@ -82,4 +82,20 @@ describe('SettingsDialog', () => {
 
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('closes only the open dropdown on Escape, leaving the dialog open', () => {
+    const onClose = vi.fn();
+    renderSettings(onClose);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accent: Saffron' }));
+    expect(screen.getByRole('listbox')).toBeTruthy();
+
+    // A real keypress lands on the portaled menu and bubbles from there, not
+    // from `document` directly — this is what previously reached Modal's own
+    // document-level Escape listener and closed the dialog behind it too.
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

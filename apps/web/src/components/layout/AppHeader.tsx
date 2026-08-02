@@ -10,12 +10,10 @@ import {
 import { useRef, useState } from 'react';
 
 import type { Notification } from '@/api/types';
-import { useAccent } from '@/app/providers/accent';
 import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import { roleLabel } from '@/lib/permissions';
 
-import AccentToggle from '../ui/AccentToggle';
 import BrandIcon from '../ui/BrandIcon';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import InfoDialog from '../ui/InfoDialog';
@@ -60,14 +58,6 @@ export default function AppHeader({
     if (showUserMenu) return desktopUserTriggerRef.current;
     if (showMenu) return mobileMenuTriggerRef.current;
     return null;
-  };
-  const accentControlProps = {
-    accent,
-    setAccent,
-    label: t('theme.accent'),
-    saffronLabel: t('theme.accentSaffron'),
-    basilLabel: t('theme.accentBasil'),
-    chiliLabel: t('theme.accentChili'),
   };
 
   const openProfile = () => {
