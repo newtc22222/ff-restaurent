@@ -7,7 +7,7 @@ import {
   Settings,
   UserCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { Notification } from '@/api/types';
 import { useAppContext } from '@/app/providers/app-context';
@@ -43,11 +43,21 @@ export default function AppHeader({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [dialogReturnFocus, setDialogReturnFocus] =
+    useState<HTMLElement | null>(null);
+  const desktopUserTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const unreadCount = notifications.filter((item) => !item.readAt).length;
 
   const closeMenus = () => {
     setShowMenu(false);
     setShowUserMenu(false);
+  };
+
+  const getMenuReturnTarget = () => {
+    if (showUserMenu) return desktopUserTriggerRef.current;
+    if (showMenu) return mobileMenuTriggerRef.current;
+    return null;
   };
 
   const openProfile = () => {
@@ -56,11 +66,13 @@ export default function AppHeader({
   };
 
   const openSettings = () => {
+    setDialogReturnFocus(getMenuReturnTarget());
     closeMenus();
     setShowSettings(true);
   };
 
   const openInfo = () => {
+    setDialogReturnFocus(getMenuReturnTarget());
     closeMenus();
     setShowInfo(true);
   };
@@ -104,6 +116,7 @@ export default function AppHeader({
           )}
           <div className="relative">
             <button
+              ref={desktopUserTriggerRef}
               type="button"
               className="flex items-center gap-2 rounded-md px-2 py-1 text-compact text-slate-500 transition-colors hover:bg-muted hover:text-ink"
               onClick={() => {
@@ -188,6 +201,7 @@ export default function AppHeader({
 
         <div className="relative ml-auto md:hidden">
           <button
+            ref={mobileMenuTriggerRef}
             type="button"
             className="flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-muted hover:text-ink"
             onClick={() => {
@@ -356,8 +370,13 @@ export default function AppHeader({
       <SettingsDialog
         open={showSettings}
         onClose={() => setShowSettings(false)}
+        returnFocusTo={dialogReturnFocus}
       />
-      <InfoDialog open={showInfo} onClose={() => setShowInfo(false)} />
+      <InfoDialog
+        open={showInfo}
+        onClose={() => setShowInfo(false)}
+        returnFocusTo={dialogReturnFocus}
+      />
     </>
   );
 }

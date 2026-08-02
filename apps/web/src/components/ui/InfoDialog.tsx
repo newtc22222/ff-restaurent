@@ -6,10 +6,15 @@ import Modal from './Modal';
 interface InfoDialogProps {
   open: boolean;
   onClose: () => void;
+  returnFocusTo?: HTMLElement | null;
 }
 
 /** What this app is, plus the shipped build version. */
-export default function InfoDialog({ open, onClose }: InfoDialogProps) {
+export default function InfoDialog({
+  open,
+  onClose,
+  returnFocusTo = null,
+}: InfoDialogProps) {
   const { t } = useI18n();
 
   return (
@@ -17,6 +22,7 @@ export default function InfoDialog({ open, onClose }: InfoDialogProps) {
       open={open}
       title={t('info.title')}
       onClose={onClose}
+      returnFocusTo={returnFocusTo}
       closeOnClickOutside
     >
       <div className="space-y-4">

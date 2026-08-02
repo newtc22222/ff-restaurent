@@ -12,6 +12,7 @@ import ThemeToggle from './ThemeToggle';
 interface SettingsDialogProps {
   open: boolean;
   onClose: () => void;
+  returnFocusTo?: HTMLElement | null;
 }
 
 function SettingRow({
@@ -33,7 +34,11 @@ function SettingRow({
  * Device-local display preferences. Account-level settings (notification
  * preferences) stay on the profile page so synced and local state don't mix.
  */
-export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
+export default function SettingsDialog({
+  open,
+  onClose,
+  returnFocusTo = null,
+}: SettingsDialogProps) {
   const { locale, setLocale, t } = useI18n();
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
@@ -43,6 +48,7 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
       open={open}
       title={t('settings.title')}
       onClose={onClose}
+      returnFocusTo={returnFocusTo}
       closeOnClickOutside
     >
       <div className="space-y-4">

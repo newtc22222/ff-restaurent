@@ -96,6 +96,36 @@ describe('AppHeader notification controls', () => {
     expect(screen.getByRole('dialog')).toBeTruthy();
   });
 
+  it('returns focus to the desktop user trigger after closing settings', () => {
+    render(<AppHeader onOpenNotification={vi.fn()} />);
+
+    const userTrigger = screen.getByRole('button', { name: /Member, / });
+    fireEvent.click(userTrigger);
+    const settingsItem = screen.getByRole('menuitem', { name: 'Settings' });
+    settingsItem.focus();
+    fireEvent.click(settingsItem);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(document.activeElement).toBe(userTrigger);
+  });
+
+  it('returns focus to the mobile menu trigger after closing info', () => {
+    render(<AppHeader onOpenNotification={vi.fn()} />);
+
+    const menuTrigger = screen.getByRole('button', { name: 'Menu' });
+    fireEvent.click(menuTrigger);
+    const infoItem = screen
+      .getAllByRole('button', { name: 'About this app' })
+      .at(-1)!;
+    infoItem.focus();
+    fireEvent.click(infoItem);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(document.activeElement).toBe(menuTrigger);
+  });
+
   it('places notifications below settings and info in the mobile menu', () => {
     render(<AppHeader onOpenNotification={vi.fn()} />);
 
