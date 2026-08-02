@@ -10,8 +10,8 @@
   --color-bg: #faf8f5;
   --color-success: hsl(151 55% 42%);
   --color-accent: hsl(36 90% 48%);
-  --color-accent-strong: hsl(30 75% 30%);
-  --color-accent-on-strong: #ffffff;
+  --color-accent-strong: hsl(36 90% 48%);
+  --color-accent-on-strong: hsl(220 15% 9%);
   --color-accent-soft: hsl(36 90% 48% / 14%);
   --color-platform-grab-bg: hsl(30 90% 92%);
   --color-platform-grab-text: hsl(24 80% 35%);
@@ -73,13 +73,17 @@
 
 /* User-selectable accent presets, keyed off data-accent on <html> (see
    app/providers/accent.tsx). --color-accent is the vivid brand value used for
-   rings and thin marks; --color-accent-strong is the darker, AA-safe fill used
-   behind --color-accent-on-strong text. Light mode fills dark and writes white;
-   dark mode inverts, matching how .btn-primary already flips. */
+   rings and thin marks; --color-accent-strong is the AA-safe fill used behind
+   --color-accent-on-strong text.
+
+   Basil and chili darken for light mode and write white. Saffron stays vivid
+   and writes near-black instead: darkening orange enough to carry white text
+   turns it brown, which fought both the saffron ticket-edges and the picker's
+   own swatch. Every pairing here clears WCAG AA. */
 :root[data-accent='saffron'] {
   --color-accent: hsl(36 90% 48%);
-  --color-accent-strong: hsl(30 75% 30%);
-  --color-accent-on-strong: #ffffff;
+  --color-accent-strong: hsl(36 90% 48%);
+  --color-accent-on-strong: hsl(220 15% 9%);
   --color-accent-soft: hsl(36 90% 48% / 14%);
 }
 
