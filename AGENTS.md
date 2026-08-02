@@ -3,6 +3,13 @@
 This file gives coding agents the current repository-specific guidance for FF
 RESTaurent.
 
+> [!IMPORTANT]
+> The current release candidate is the pending Phase 2C/2D `v2.2.0` promotion.
+> Before release, production, GCP, Firebase, or roadmap work, read
+> `.agents/RELEASE_2_2_0_HANDOFF.md`. Its refreshed release boundary supersedes
+> the older current-stage statements below; the project rules and shipped data
+> contracts in this file still apply.
+
 ## Current project stage
 
 Phase 2 is complete and FF RESTaurent `v1.1.0` is published. Read
