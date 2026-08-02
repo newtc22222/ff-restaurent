@@ -30,6 +30,7 @@ type NotificationStreamOptions = {
 
 const POLL_INTERVAL_MS = 2_000;
 const HEARTBEAT_INTERVAL_MS = 15_000;
+const MAX_STREAM_LIFETIME_MS = 60_000;
 const BATCH_SIZE = 100;
 
 export const serializeNotificationCursor = (cursor: NotificationCursor) =>
@@ -104,6 +105,7 @@ export const streamNotificationEvents = async (
   if (options.signal.aborted) return;
   activeNotificationStreams += 1;
   try {
+    const startedAt = dependencies.now();
     const recoveredCursor = parseNotificationCursor(options.lastEventId);
     let currentCursor =
       recoveredCursor ?? (await dependencies.latest(options.userId));
@@ -117,6 +119,8 @@ export const streamNotificationEvents = async (
         options.userId,
         currentCursor,
       );
+      const now = dependencies.now();
+      if (now - startedAt >= MAX_STREAM_LIFETIME_MS) break;
       for (const notification of notifications) {
         if (options.signal.aborted) break;
         currentCursor = notification;
@@ -127,7 +131,6 @@ export const streamNotificationEvents = async (
       }
       if (options.signal.aborted) break;
 
-      const now = dependencies.now();
       if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS) {
         options.handlers.heartbeat();
         lastHeartbeatAt = now;

@@ -23,8 +23,10 @@ type StreamResponse = {
 type NotificationStreamDependencies = {
   fetcher: (input: string, init: RequestInit) => Promise<StreamResponse>;
   wait: (milliseconds: number, signal: AbortSignal) => Promise<void>;
+  now?: () => number;
 };
 
+const HEALTHY_CONNECTION_MS = 30_000;
 const reconnectDelay = (attempt: number) =>
   Math.min(1_000 * 2 ** attempt, 30_000);
 
@@ -48,6 +50,7 @@ const abortableWait = (milliseconds: number, signal: AbortSignal) =>
 const defaultDependencies: NotificationStreamDependencies = {
   fetcher: fetch,
   wait: abortableWait,
+  now: Date.now,
 };
 
 const readEventStream = async (
@@ -110,8 +113,10 @@ export const connectNotificationStream = async (
 ) => {
   let cursor: string | null = null;
   let attempt = 0;
+  const now = dependencies.now ?? Date.now;
 
   while (!options.signal.aborted) {
+    let connectedAt: number | null = null;
     try {
       const headers: Record<string, string> = {
         Accept: 'text/event-stream',
@@ -126,7 +131,7 @@ export const connectNotificationStream = async (
       if (!response.ok) throw new Error('Notification stream unavailable');
       if (!response.body) return;
 
-      attempt = 0;
+      connectedAt = now();
       await options.onConnected();
       cursor = await readEventStream(response.body, cursor, options);
       if (options.signal.aborted) return;
@@ -137,6 +142,10 @@ export const connectNotificationStream = async (
       ) {
         return;
       }
+    }
+
+    if (connectedAt !== null && now() - connectedAt >= HEALTHY_CONNECTION_MS) {
+      attempt = 0;
     }
 
     const delay = reconnectDelay(attempt);

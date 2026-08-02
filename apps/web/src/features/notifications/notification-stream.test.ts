@@ -102,6 +102,63 @@ describe('connectNotificationStream', () => {
     expect(delays).toEqual([1_000, 2_000, 4_000, 8_000, 16_000, 30_000]);
   });
 
+  it('preserves exponential backoff across short-lived successful streams', async () => {
+    const controller = new AbortController();
+    const delays: number[] = [];
+    const wait = vi.fn(async (milliseconds: number) => {
+      delays.push(milliseconds);
+      if (delays.length === 3) controller.abort();
+    });
+
+    await connectNotificationStream(
+      {
+        token: 'jwt-token',
+        signal: controller.signal,
+        onConnected: vi.fn(),
+        onNotification: vi.fn(),
+      },
+      {
+        fetcher: vi
+          .fn()
+          .mockResolvedValue(response('event: ready\ndata: {}\n\n')),
+        wait,
+      },
+    );
+
+    expect(delays).toEqual([1_000, 2_000, 4_000]);
+  });
+
+  it('resets reconnect backoff after a healthy stream lifetime', async () => {
+    const controller = new AbortController();
+    const delays: number[] = [];
+    let connections = 0;
+    let now = 0;
+
+    await connectNotificationStream(
+      {
+        token: 'jwt-token',
+        signal: controller.signal,
+        onConnected: () => {
+          connections += 1;
+          if (connections === 2) now = 30_000;
+        },
+        onNotification: vi.fn(),
+      },
+      {
+        fetcher: vi
+          .fn()
+          .mockResolvedValue(response('event: ready\ndata: {}\n\n')),
+        wait: async (milliseconds) => {
+          delays.push(milliseconds);
+          if (delays.length === 2) controller.abort();
+        },
+        now: () => now,
+      },
+    );
+
+    expect(delays).toEqual([1_000, 1_000]);
+  });
+
   it('silently retains the snapshot when streaming is unsupported', async () => {
     await expect(
       connectNotificationStream(

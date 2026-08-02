@@ -201,3 +201,28 @@ test('notification streams send heartbeat frames while idle', async () => {
 
   assert.equal(heartbeats, 1);
 });
+
+test('notification streams end after a bounded lifetime so sessions reauthenticate', async () => {
+  let now = 0;
+
+  await streamNotificationEvents(
+    {
+      userId: 'user-1',
+      signal: new AbortController().signal,
+      handlers: {
+        ready: () => undefined,
+        notification: () => undefined,
+        heartbeat: () => undefined,
+      },
+    },
+    {
+      latest: async () => null,
+      after: async () => {
+        now = 60_000;
+        return [];
+      },
+      delay: async () => assert.fail('expired streams must not keep polling'),
+      now: () => now,
+    },
+  );
+});
