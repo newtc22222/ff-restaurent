@@ -1,6 +1,6 @@
 {
   "name": "@ff-restaurent/web",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -11,7 +11,7 @@
     "lint": "eslint src --ext ts,tsx"
   },
   "dependencies": {
-    "@ff-restaurent/shared": "2.1.0",
+    "@ff-restaurent/shared": "2.2.0",
     "@tanstack/react-query": "^5.101.4",
     "@vitejs/plugin-react": "^4.6.0",
     "clsx": "^2.1.1",
