@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: phase-2-contract-verification
@@ -20,12 +21,27 @@ jobs:
       PHASE2_CONTRACT_REPORT_PATH: ${{ github.workspace }}/artifacts/phase2-contract.json
     steps:
       - uses: actions/checkout@v6
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Start Cloud SQL Proxy
+        run: |
+          sudo mkdir -p /cloudsql
+          sudo chown -R "$USER" /cloudsql
+          curl -o /tmp/cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.1/cloud-sql-proxy.linux.amd64
+          chmod +x /tmp/cloud-sql-proxy
+          /tmp/cloud-sql-proxy --unix-socket /cloudsql ff-restaurent:asia-east1:ff-restaurent-db &
+          sleep 3
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run prisma:generate -w @ff-restaurent/api
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
       - name: Verify normalized contract and removed schema
         run: npm run prisma:phase2:contract:verify -w @ff-restaurent/api
       - name: Capture release boundary
