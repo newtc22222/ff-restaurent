@@ -42,13 +42,18 @@
     "typescript": "^5.8.3"
   },
   "overrides": {
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "js-yaml": "^4.3.1",
+    "uuid": "^11.1.1"
   },
   "allowScripts": {
+    "@firebase/util@1.12.1": false,
     "@prisma/client@6.19.3": true,
     "@prisma/engines@6.19.3": true,
     "esbuild@0.28.1": true,
-    "prisma@6.19.3": true
+    "prisma@6.19.3": true,
+    "protobufjs@7.6.5": false,
+    "unrs-resolver@1.12.2": true
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,md,css}": "prettier --write"

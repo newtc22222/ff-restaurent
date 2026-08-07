@@ -71,7 +71,9 @@ const registerCorePlugins = async (app: FastifyInstance) => {
       schemas: openApiComponentSchemas,
     }),
   });
-  await app.register(swaggerUi, { routePrefix: '/api/docs' });
+  if (!config.isProduction) {
+    await app.register(swaggerUi, { routePrefix: '/api/docs' });
+  }
 };
 
 const registerRoutes = (app: FastifyInstance) => {
