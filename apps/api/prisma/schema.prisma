@@ -101,6 +101,7 @@ model User {
   billsCreated                 Bill[]                   @relation("BillCreator")
   restaurants                  RestaurantEntry[]        @relation("RestaurantCreator")
   participants                 BillParticipant[]
+  sponsoredParticipants        BillParticipant[]         @relation("BillParticipantSponsor")
   notifications                Notification[]
   notificationsActed           Notification[]           @relation("NotificationActor")
   notificationPreferences      NotificationPreference[]
@@ -327,12 +328,15 @@ model BillParticipant {
   finalPrice        Int
   paymentStatus     PaymentStatus @default(WAITING)
   paidAt            DateTime?
+  sponsoredById     String?
   bill              Bill          @relation(fields: [billId], references: [id], onDelete: Cascade)
   member            User          @relation(fields: [memberId], references: [id])
+  sponsoredBy       User?         @relation("BillParticipantSponsor", fields: [sponsoredById], references: [id], onDelete: SetNull)
 
   @@id([billId, memberId])
   @@index([memberId, paymentStatus, billId])
   @@index([paymentStatus, billId])
+  @@index([sponsoredById, billId])
 }
 
 model Feedback {

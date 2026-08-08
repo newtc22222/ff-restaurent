@@ -117,5 +117,16 @@
   "bills.correctPaymentStatus": "Correct",
   "bills.allPaid": "All members have paid",
   "bills.copyDetail": "Copy screenshot",
-  "bills.copyScreenshot": "Copy screenshot"
+  "bills.copyScreenshot": "Copy screenshot",
+  "bills.sponsoredBy": "Paid by",
+  "bills.sponsorMembers": "Sponsor members",
+  "bills.sponsorTitle": "Sponsor members",
+  "bills.sponsorDescription": "Choose one or more waiting members. Their shares will be recorded as paid by you.",
+  "bills.sponsorSelectMembers": "Select members",
+  "bills.sponsorSelected": "selected",
+  "bills.sponsorTotal": "Sponsored total",
+  "bills.sponsorSubmitting": "Confirming...",
+  "bills.sponsorConfirm": "Confirm sponsorship",
+  "activity.sponsorshipCreated": "Members sponsored",
+  "activity.paidFor": "Paid for"
 }

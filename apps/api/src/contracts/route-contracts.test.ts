@@ -33,7 +33,7 @@ test('every application operation exposes runtime responses and a stable operati
     }
   }
 
-  assert.equal(operationCount, 89);
+  assert.equal(operationCount, 90);
   const streamResponse = document.paths?.['/notifications/stream']?.get
     ?.responses?.['200'] as { content?: Record<string, unknown> } | undefined;
   assert.ok(streamResponse?.content?.['text/event-stream']);

@@ -107,4 +107,9 @@ export const billIntents = {
         }),
       },
     ),
+  sponsor: ({ api, body, params }: IntentContext) =>
+    api.request(`/bills/${params.billId}/sponsorships`, {
+      method: 'POST',
+      body: JSON.stringify({ memberIds: body.memberIds }),
+    }),
 } satisfies IntentMap;

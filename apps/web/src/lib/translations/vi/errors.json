@@ -37,5 +37,10 @@
   "error.passwordReuseForbidden": "Mật khẩu mới phải khác mật khẩu hiện tại.",
   "error.passwordResetInvalid": "Mã đặt lại không hợp lệ hoặc đã hết hạn.",
   "error.passwordResetConflict": "Yêu cầu vừa thay đổi. Hãy làm mới và thử lại.",
-  "error.rootResetRequiresOperator": "Khôi phục Root Admin phải dùng lệnh dành cho vận hành."
+  "error.rootResetRequiresOperator": "Khôi phục Root Admin phải dùng lệnh dành cho vận hành.",
+  "error.sponsorMemberRequired": "Chỉ thành viên trong hóa đơn mới có thể thanh toán thay.",
+  "error.sponsorSelfNotAllowed": "Bạn không thể thanh toán thay cho chính mình.",
+  "error.invalidSponsorTargets": "Một hoặc nhiều thành viên được chọn không thuộc hóa đơn.",
+  "error.sponsorTargetNotWaiting": "Một hoặc nhiều thành viên đã được thanh toán hoặc đang thay đổi.",
+  "error.sponsorTargetChanged": "Trạng thái thành viên đã thay đổi. Vui lòng làm mới và thử lại."
 }

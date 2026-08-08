@@ -87,5 +87,7 @@
   "toast.diningAreaDefaultImageUpdated": "Đã cập nhật ảnh mặc định.",
   "toast.diningAreaDefaultImageFailed": "Không thể cập nhật ảnh mặc định.",
   "toast.diningAreaImageRemoved": "Đã xóa ảnh khu vực ăn uống.",
-  "toast.diningAreaImageRemoveFailed": "Không thể xóa ảnh khu vực ăn uống."
+  "toast.diningAreaImageRemoveFailed": "Không thể xóa ảnh khu vực ăn uống.",
+  "toast.sponsorCreated": "Đã thanh toán thay cho thành viên.",
+  "toast.sponsorFailed": "Không thể thanh toán thay cho thành viên."
 }

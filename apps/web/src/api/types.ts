@@ -197,6 +197,7 @@ export type BillActivityAction =
   | 'CREATED'
   | 'UPDATED'
   | 'PAYMENT_STATUS_CHANGED'
+  | 'SPONSORSHIP_CREATED'
   | 'REMINDERS_SENT'
   | 'ARCHIVED'
   | 'RESTORED';
@@ -211,6 +212,8 @@ export type BillActivityEvent = {
     memberName?: string;
     fromStatus?: PaymentStatus;
     toStatus?: PaymentStatus;
+    memberNames?: string[];
+    amountCents?: number;
     sent?: number;
     skipped?: number;
   };

@@ -10,7 +10,11 @@ import {
 } from '../http/auth-guards.js';
 import { prisma } from '../lib/prisma.js';
 import { isHeadChef, isSousChefOrAbove } from '../lib/roles.js';
-import { billListQuerySchema, paymentStatusSchema } from '../schemas/index.js';
+import {
+  billListQuerySchema,
+  paymentStatusSchema,
+  sponsorshipSchema,
+} from '../schemas/index.js';
 import {
   billActivityActorSelect,
   buildBillActivityTimeline,
@@ -47,6 +51,8 @@ const canViewBill = (
   bill.participants.some(
     (participant) => participant.memberId === request.currentUser.id,
   );
+
+class SponsorshipConflictError extends Error {}
 
 /**
  * Bill routes keep shared bill math close to bill persistence and permissions.
@@ -545,6 +551,7 @@ export const registerBillRoutes = (app: FastifyInstance) => {
           data: {
             paymentStatus: body.status,
             paidAt: body.status === PaymentStatus.PAID ? new Date() : null,
+            sponsoredById: null,
           },
         });
         if (result.count !== 1) return null;
@@ -584,6 +591,125 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         status: body.status,
       });
       return updated;
+    },
+  );
+
+  app.post(
+    '/bills/:id/sponsorships',
+    { preHandler: requireAuthenticatedUser },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const body = sponsorshipSchema.parse(request.body);
+      const bill = await prisma.bill.findUnique({
+        where: { id },
+        select: {
+          participants: {
+            select: {
+              memberId: true,
+              finalPrice: true,
+              paymentStatus: true,
+              sponsoredById: true,
+            },
+          },
+        },
+      });
+      if (!bill) return reply.code(404).send({ message: 'Bill not found' });
+      if (
+        !bill.participants.some(
+          (participant) => participant.memberId === request.currentUser.id,
+        )
+      ) {
+        return reply.code(403).send({
+          code: 'SPONSOR_MEMBER_REQUIRED',
+          message: 'Only a bill member can sponsor other members',
+        });
+      }
+      if (body.memberIds.includes(request.currentUser.id)) {
+        return reply.code(400).send({
+          code: 'SPONSOR_SELF_NOT_ALLOWED',
+          message: 'A member cannot sponsor their own bill share',
+        });
+      }
+      const targets = bill.participants.filter((participant) =>
+        body.memberIds.includes(participant.memberId),
+      );
+      if (targets.length !== body.memberIds.length) {
+        return reply.code(400).send({
+          code: 'INVALID_SPONSOR_TARGETS',
+          message: 'One or more sponsor targets are not bill members',
+        });
+      }
+      if (
+        targets.some(
+          (participant) =>
+            participant.paymentStatus !== PaymentStatus.WAITING ||
+            participant.sponsoredById !== null,
+        )
+      ) {
+        return reply.code(409).send({
+          code: 'SPONSOR_TARGET_NOT_WAITING',
+          message: 'One or more sponsor targets are no longer waiting',
+        });
+      }
+
+      const amountCents = targets.reduce(
+        (total, participant) => total + participant.finalPrice,
+        0,
+      );
+      const updated = await prisma
+        .$transaction(async (tx) => {
+          const result = await tx.billParticipant.updateMany({
+            where: {
+              billId: id,
+              memberId: { in: body.memberIds },
+              paymentStatus: PaymentStatus.WAITING,
+              sponsoredById: null,
+            },
+            data: {
+              paymentStatus: PaymentStatus.PAID,
+              paidAt: new Date(),
+              sponsoredById: request.currentUser.id,
+            },
+          });
+          if (result.count !== body.memberIds.length) {
+            throw new SponsorshipConflictError();
+          }
+          await tx.billAuditLog.create({
+            data: {
+              billId: id,
+              userId: request.currentUser.id,
+              action: 'SPONSORSHIP_CREATED',
+              before: { paymentStatus: PaymentStatus.WAITING },
+              after: {
+                sponsorId: request.currentUser.id,
+                memberIds: body.memberIds,
+                amountCents,
+              },
+            },
+          });
+          return tx.bill.findUniqueOrThrow({
+            where: { id },
+            include: buildBillResponseInclude(request.currentUser.id),
+          });
+        })
+        .catch((error: unknown) => {
+          if (error instanceof SponsorshipConflictError) return null;
+          throw error;
+        });
+      if (!updated) {
+        return reply.code(409).send({
+          code: 'SPONSOR_TARGET_CHANGED',
+          message: 'One or more sponsor targets changed; refresh and try again',
+        });
+      }
+      request.log.info({
+        event: 'bill_sponsored',
+        billId: id,
+        sponsorId: request.currentUser.id,
+        memberIds: body.memberIds,
+        amountCents,
+      });
+      return serializeBill(updated, request.currentUser.id);
     },
   );
 

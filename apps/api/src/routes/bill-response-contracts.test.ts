@@ -32,6 +32,10 @@ test('bill list, detail, create, edit, archive, and restore responses select onl
     billResponseInclude.participants.include.member.select,
     publicUserSelect,
   );
+  assert.strictEqual(
+    billResponseInclude.participants.include.sponsoredBy.select,
+    publicUserSelect,
+  );
   assertPublicUserContract(billResponseInclude.createdBy.select);
   assertPublicUserContract(
     billResponseInclude.participants.include.member.select,
@@ -40,6 +44,10 @@ test('bill list, detail, create, edit, archive, and restore responses select onl
 
 test('payment update responses select only public participant users', () => {
   assert.strictEqual(paymentResponseInclude.member.select, publicUserSelect);
+  assert.strictEqual(
+    paymentResponseInclude.sponsoredBy.select,
+    publicUserSelect,
+  );
   assertPublicUserContract(paymentResponseInclude.member.select);
 });
 

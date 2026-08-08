@@ -8,6 +8,7 @@ import {
   Copy,
   Edit3,
   ExternalLink,
+  HandCoins,
   History,
   PencilLine,
   RotateCcw,
@@ -30,7 +31,9 @@ import { useAppContext } from '@/app/providers/app-context';
 import { useI18n } from '@/app/providers/i18n';
 import BackButton from '@/components/ui/BackButton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import Dropdown from '@/components/ui/Dropdown';
 import ImagePreviewDialog from '@/components/ui/ImagePreviewDialog';
+import Modal from '@/components/ui/Modal';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useRouteMutation } from '@/hooks/useRouteMutation';
 import { PIE_COLORS } from '@/lib/charts';
@@ -48,6 +51,8 @@ const activityIcon = (action: BillActivityAction) => {
       return PencilLine;
     case 'PAYMENT_STATUS_CHANGED':
       return WalletCards;
+    case 'SPONSORSHIP_CREATED':
+      return HandCoins;
     case 'REMINDERS_SENT':
       return BellRing;
     case 'ARCHIVED':
@@ -60,6 +65,7 @@ const activityIcon = (action: BillActivityAction) => {
 const activityTone = (action: BillActivityAction) => {
   switch (action) {
     case 'PAYMENT_STATUS_CHANGED':
+    case 'SPONSORSHIP_CREATED':
       return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300';
     case 'REMINDERS_SENT':
       return 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300';
@@ -83,7 +89,7 @@ export default function BillDetailPage() {
   const activity = useLoaderData<BillActivityEvent[]>();
   const { user, bills, refresh } = useAppContext();
   const { locale, t } = useI18n();
-  const { mutate } = useRouteMutation();
+  const { fetcher, mutate } = useRouteMutation();
   const [confirmAction, setConfirmAction] = useState<
     'archive' | 'restore' | null
   >(null);
@@ -92,6 +98,8 @@ export default function BillDetailPage() {
     current: 'PAID' | 'WAITING';
   } | null>(null);
   const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
+  const [sponsorOpen, setSponsorOpen] = useState(false);
+  const [sponsorMemberIds, setSponsorMemberIds] = useState<string[]>([]);
   const billCaptureRef = useRef<HTMLDivElement>(null);
 
   const bill = bills.find((candidate) => candidate.id === billId);
@@ -111,6 +119,20 @@ export default function BillDetailPage() {
   const allPaid =
     bill.participants.length > 0 && paid === bill.participants.length;
   const canManage = canManageBill(bill, user);
+  const isBillMember = bill.participants.some(
+    (participant) => participant.memberId === user.id,
+  );
+  const sponsorCandidates = isBillMember
+    ? bill.participants.filter(
+        (participant) =>
+          participant.memberId !== user.id &&
+          participant.paymentStatus === 'WAITING',
+      )
+    : [];
+  const sponsorTotal = sponsorCandidates
+    .filter((participant) => sponsorMemberIds.includes(participant.memberId))
+    .reduce((total, participant) => total + participant.finalPrice, 0);
+  const sponsorPending = fetcher.state !== 'idle';
   const downloadBillScreenshot = (blob: Blob) => {
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -168,6 +190,7 @@ export default function BillDetailPage() {
       CREATED: 'activity.created',
       UPDATED: 'activity.updated',
       PAYMENT_STATUS_CHANGED: 'activity.paymentChanged',
+      SPONSORSHIP_CREATED: 'activity.sponsorshipCreated',
       REMINDERS_SENT: 'activity.remindersSent',
       ARCHIVED: 'activity.archived',
       RESTORED: 'activity.restored',
@@ -192,6 +215,14 @@ export default function BillDetailPage() {
       const from = paymentLabel(event.details?.fromStatus);
       const to = paymentLabel(event.details?.toStatus);
       return from && to ? `${member}: ${from} → ${to}` : member;
+    }
+    if (event.action === 'SPONSORSHIP_CREATED') {
+      const members = event.details?.memberNames?.join(', ');
+      const amount =
+        event.details?.amountCents === undefined
+          ? ''
+          : ` · ${money(event.details.amountCents)}`;
+      return `${t('activity.paidFor')}: ${members ?? t('activity.participant')}${amount}`;
     }
     if (event.action === 'REMINDERS_SENT') {
       return `${event.details?.sent ?? 0} ${t('activity.sent')} · ${event.details?.skipped ?? 0} ${t('activity.skipped')}`;
@@ -477,6 +508,12 @@ export default function BillDetailPage() {
                           ? t('bills.paid')
                           : t('bills.waiting')}
                       </span>
+                      {participant.sponsoredBy && (
+                        <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+                          {t('bills.sponsoredBy')}{' '}
+                          {participant.sponsoredBy.name}
+                        </p>
+                      )}
                     </div>
                     {(canManage || participant.memberId === user.id) && (
                       <button
@@ -498,6 +535,19 @@ export default function BillDetailPage() {
                 </div>
               ))}
             </section>
+
+            {sponsorCandidates.length > 0 && (
+              <button
+                data-bill-capture-ignore
+                className="btn btn-soft w-full"
+                onClick={() => {
+                  setSponsorMemberIds([]);
+                  setSponsorOpen(true);
+                }}
+              >
+                <HandCoins size={15} /> {t('bills.sponsorMembers')}
+              </button>
+            )}
 
             {canManage && canChef(user) && (
               <button
@@ -639,6 +689,66 @@ export default function BillDetailPage() {
           onCancel={() => setPendingPayment(null)}
         />
       )}
+      <Modal
+        open={sponsorOpen}
+        title={t('bills.sponsorTitle')}
+        onClose={() => {
+          if (!sponsorPending) setSponsorOpen(false);
+        }}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {t('bills.sponsorDescription')}
+          </p>
+          <Dropdown
+            label={t('bills.sponsorSelectMembers')}
+            ariaLabel={t('bills.sponsorSelectMembers')}
+            options={sponsorCandidates.map((participant) => ({
+              value: participant.memberId,
+              label: participant.member.name,
+              description: money(participant.finalPrice),
+              searchText: `${participant.member.name} ${participant.member.username}`,
+            }))}
+            multiple
+            searchable
+            searchPlaceholder={t('bills.searchMembers')}
+            emptyMessage={t('bills.noFilterResults')}
+            values={sponsorMemberIds}
+            onChange={setSponsorMemberIds}
+            formatSelection={(selected) =>
+              `${selected.length} ${t('bills.sponsorSelected')}`
+            }
+          />
+          <div className="rounded-lg bg-muted px-4 py-3">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-slate-500">{t('bills.sponsorTotal')}</span>
+              <span className="font-bold text-ink">{money(sponsorTotal)}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary w-full"
+            disabled={sponsorMemberIds.length === 0 || sponsorPending}
+            onClick={() => {
+              void mutate(
+                { intent: 'sponsor', memberIds: sponsorMemberIds },
+                {
+                  fallback: t('toast.sponsorFailed'),
+                  success: t('toast.sponsorCreated'),
+                  onSuccess: () => {
+                    setSponsorMemberIds([]);
+                    setSponsorOpen(false);
+                  },
+                },
+              );
+            }}
+          >
+            {sponsorPending
+              ? t('bills.sponsorSubmitting')
+              : t('bills.sponsorConfirm')}
+          </button>
+        </div>
+      </Modal>
     </>
   );
 }
