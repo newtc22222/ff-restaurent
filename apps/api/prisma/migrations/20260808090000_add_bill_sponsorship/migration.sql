@@ -1,7 +1,7 @@
 ALTER TABLE "BillParticipant"
 ADD COLUMN "sponsoredById" TEXT;
 
-CREATE INDEX "BillParticipant_sponsoredById_billId_idx"
+CREATE INDEX CONCURRENTLY "BillParticipant_sponsoredById_billId_idx"
 ON "BillParticipant"("sponsoredById", "billId");
 
 ALTER TABLE "BillParticipant"
