@@ -24,7 +24,17 @@ import {
   useParams,
   useSearchParams,
 } from 'react-router';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import {
+  Bar,
+  BarChart,
+  BarShapeProps,
+  CartesianGrid,
+  Rectangle,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 import type { BillActivityAction, BillActivityEvent } from '@/api/types';
 import { useAppContext } from '@/app/providers/app-context';
@@ -177,7 +187,7 @@ export default function BillDetailPage() {
       toast.error(t('toast.billCopyFailed'));
     }
   };
-  const pieData = bill.participants.map((p) => ({
+  const breakdownData = bill.participants.map((p) => ({
     name: p.member.name.split(' ')[0],
     value: p.finalPrice,
   }));
@@ -331,34 +341,47 @@ export default function BillDetailPage() {
               </section>
             )}
 
-            {pieData.length > 1 && (
+            {breakdownData.length > 1 && (
               <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
                 <h3 className="label mb-3">{t('bills.shareBreakdown')}</h3>
                 <div className="flex items-center justify-center">
                   <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
-                        {pieData.map((_, index) => (
-                          <Cell
-                            key={index}
-                            fill={PIE_COLORS[index % PIE_COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
+                    <BarChart
+                      data={breakdownData}
+                      layout="vertical"
+                      margin={{ left: 10, right: 10, top: 5, bottom: 5 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--color-border)"
+                      />
+                      <YAxis
+                        dataKey="name"
+                        tick={{ fontSize: 11 }}
+                        type="category"
+                      />
+                      <XAxis
+                        type="number"
+                        tickFormatter={(value: number) =>
+                          `${Math.round(value / 1000)}k`
+                        }
+                      />
                       <Tooltip formatter={(value) => money(Number(value))} />
-                    </PieChart>
+                      <Bar
+                        dataKey="value"
+                        radius={[0, 4, 4, 0]}
+                        shape={(props: BarShapeProps) => (
+                          <Rectangle
+                            {...props}
+                            fill={PIE_COLORS[props.index % PIE_COLORS.length]}
+                          />
+                        )}
+                      />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
                 <div className="mt-2 flex flex-wrap justify-center gap-3">
-                  {pieData.map((d, i) => (
+                  {breakdownData.map((d, i) => (
                     <div
                       key={d.name}
                       className="flex items-center gap-1.5 text-xs"
@@ -370,7 +393,9 @@ export default function BillDetailPage() {
                         }}
                       />
                       <span className="font-medium">{d.name}</span>
-                      <span className="text-slate-500">{money(d.value)}</span>
+                      <span className="text-slate-500">
+                        {((d.value / bill.totalCost) * 100).toFixed(2)}%
+                      </span>
                     </div>
                   ))}
                 </div>
