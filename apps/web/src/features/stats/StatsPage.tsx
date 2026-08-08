@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CircleDollarSign,
   Clock3,
+  HandCoins,
   WalletCards,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -87,6 +88,7 @@ export default function StatsPage() {
 
   const paymentData = [
     { name: t('stats.paid'), value: stats.totals.paid },
+    { name: t('stats.sponsoredForMe'), value: stats.totals.sponsoredForMe },
     { name: t('stats.waiting'), value: stats.totals.waiting },
   ].filter((item) => item.value > 0);
   const cuisineData = Object.entries(stats.byCuisineType)
@@ -101,7 +103,8 @@ export default function StatsPage() {
   const freqCuisine = Object.entries(stats.frequencyByCuisine ?? {}).sort(
     (a, b) => b[1] - a[1],
   );
-  const hasData = stats.totals.totalObligation > 0;
+  const hasData =
+    stats.totals.totalObligation > 0 || stats.totals.sponsoredByMe > 0;
 
   return (
     <div className="min-w-0 space-y-5">
@@ -161,6 +164,21 @@ export default function StatsPage() {
             </div>
           </div>
         </article>
+        {stats.totals.sponsoredForMe > 0 && (
+          <article className="panel flex min-w-0 items-center gap-3 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success text-white">
+              <HandCoins size={19} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm text-slate-500">
+                {t('stats.sponsoredForMe')}
+              </div>
+              <div className="truncate text-xl font-bold">
+                {money(stats.totals.sponsoredForMe)}
+              </div>
+            </div>
+          </article>
+        )}
         <article className="panel flex min-w-0 items-center gap-3 p-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-saffron text-white">
             <Clock3 size={19} />
@@ -185,6 +203,21 @@ export default function StatsPage() {
             </div>
           </div>
         </article>
+        {stats.totals.sponsoredByMe > 0 && (
+          <article className="panel flex min-w-0 items-center gap-3 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-basil text-white">
+              <HandCoins size={19} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm text-slate-500">
+                {t('stats.sponsoredByMe')}
+              </div>
+              <div className="truncate text-xl font-bold">
+                {money(stats.totals.sponsoredByMe)}
+              </div>
+            </div>
+          </article>
+        )}
       </div>
 
       {!hasData ? (

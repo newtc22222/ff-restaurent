@@ -1658,6 +1658,17 @@ integrationTest(
     assert.equal(selfSponsor.statusCode, 400);
     assert.equal(selfSponsor.json().code, 'SPONSOR_SELF_NOT_ALLOWED');
 
+    const beforeSponsorStatsA = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=yearly',
+      headers: auth(tokenFor(customerAId)),
+    });
+    const beforeSponsorStatsB = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=yearly',
+      headers: auth(tokenFor(customerBId)),
+    });
+
     const sponsored = await app.inject({
       method: 'POST',
       url: `/bills/${sponsorBillId}/sponsorships`,
@@ -1682,6 +1693,52 @@ integrationTest(
         where: { billId: sponsorBillId, action: 'SPONSORSHIP_CREATED' },
       }),
       1,
+    );
+
+    // Sponsored shares must count toward the sponsor's sponsoredByMe total and
+    // the sponsored member's sponsoredForMe total, not either party's own
+    // "paid" total — otherwise personal stats misrepresent who actually spent.
+    const afterSponsorStatsA = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=yearly',
+      headers: auth(tokenFor(customerAId)),
+    });
+    const afterSponsorStatsB = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=yearly',
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(afterSponsorStatsA.statusCode, 200);
+    assert.equal(afterSponsorStatsB.statusCode, 200);
+    assert.equal(
+      afterSponsorStatsA.json().totals.sponsoredByMe -
+        beforeSponsorStatsA.json().totals.sponsoredByMe,
+      6600,
+    );
+    assert.equal(
+      afterSponsorStatsA.json().totals.paid -
+        beforeSponsorStatsA.json().totals.paid,
+      0,
+    );
+    assert.equal(
+      afterSponsorStatsB.json().totals.sponsoredForMe -
+        beforeSponsorStatsB.json().totals.sponsoredForMe,
+      3300,
+    );
+    assert.equal(
+      afterSponsorStatsB.json().totals.paid -
+        beforeSponsorStatsB.json().totals.paid,
+      0,
+    );
+    assert.equal(
+      afterSponsorStatsB.json().totals.waiting -
+        beforeSponsorStatsB.json().totals.waiting,
+      -3300,
+    );
+    assert.equal(
+      afterSponsorStatsB.json().totals.totalObligation -
+        beforeSponsorStatsB.json().totals.totalObligation,
+      0,
     );
 
     const duplicateSponsor = await app.inject({

@@ -85,6 +85,10 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
       const frequencyByRestaurant: Record<string, number> = {};
       const frequencyByCuisine: Record<string, number> = {};
 
+      let paid = 0;
+      let sponsoredForMe = 0;
+      let waiting = 0;
+
       for (const participant of participants) {
         const primaryCuisine =
           participant.bill.restaurant.cuisines[0]?.cuisine.name ??
@@ -113,14 +117,41 @@ export const registerStatsRoutes = (app: FastifyInstance) => {
           (frequencyByRestaurant[participant.bill.restaurant.name] ?? 0) + 1;
         frequencyByCuisine[primaryCuisine] =
           (frequencyByCuisine[primaryCuisine] ?? 0) + 1;
+
+        if (participant.paymentStatus === PaymentStatus.PAID) {
+          if (participant.sponsoredById)
+            sponsoredForMe += participant.finalPrice;
+          else paid += participant.finalPrice;
+        } else if (participant.paymentStatus === PaymentStatus.WAITING) {
+          waiting += participant.finalPrice;
+        }
       }
 
-      const paid = byPaymentStatus[PaymentStatus.PAID] ?? 0;
-      const waiting = byPaymentStatus[PaymentStatus.WAITING] ?? 0;
-      const totalObligation = paid + waiting;
+      const sponsoredParticipants = await prisma.billParticipant.findMany({
+        where: {
+          sponsoredById: request.currentUser.id,
+          bill: {
+            occurredOn: { gte: start, lt: end },
+            status: EntryStatus.ACTIVE,
+          },
+        },
+        select: { finalPrice: true },
+      });
+      const sponsoredByMe = sponsoredParticipants.reduce(
+        (total, participant) => total + participant.finalPrice,
+        0,
+      );
+
+      const totalObligation = paid + sponsoredForMe + waiting;
 
       return {
-        totals: { paid, waiting, totalObligation },
+        totals: {
+          paid,
+          sponsoredForMe,
+          sponsoredByMe,
+          waiting,
+          totalObligation,
+        },
         total: totalObligation,
         byPaymentStatus,
         byCuisineType,

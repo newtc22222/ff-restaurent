@@ -8,6 +8,8 @@
   "stats.applyRange": "Apply",
   "stats.invalidRange": "The end date must be on or after the start date.",
   "stats.paid": "Paid",
+  "stats.sponsoredForMe": "Sponsored for me",
+  "stats.sponsoredByMe": "Sponsored by me",
   "stats.waiting": "Waiting",
   "stats.totalObligation": "Total obligation",
   "stats.totalPeriod": "Total in selected period",

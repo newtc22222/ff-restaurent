@@ -223,6 +223,8 @@ export type BillActivityEvent = {
 export type Stats = {
   totals: {
     paid: number;
+    sponsoredForMe: number;
+    sponsoredByMe: number;
     waiting: number;
     totalObligation: number;
   };
