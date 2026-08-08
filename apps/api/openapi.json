@@ -100,6 +100,34 @@
                 },
                 "paymentStatus": {
                   "$ref": "#/components/schemas/PaymentStatus"
+                },
+                "sponsoredBy": {
+                  "additionalProperties": true,
+                  "nullable": true,
+                  "properties": {
+                    "avatarUrl": { "nullable": true, "type": "string" },
+                    "chefRole": {
+                      "anyOf": [{ "$ref": "#/components/schemas/ChefRole" }],
+                      "nullable": true
+                    },
+                    "createdAt": { "format": "date-time", "type": "string" },
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "phone": { "nullable": true, "type": "string" },
+                    "systemRole": {
+                      "anyOf": [{ "$ref": "#/components/schemas/SystemRole" }],
+                      "nullable": true
+                    },
+                    "username": { "type": "string" }
+                  },
+                  "required": [
+                    "id",
+                    "username",
+                    "name",
+                    "chefRole",
+                    "systemRole"
+                  ],
+                  "type": "object"
                 }
               },
               "required": [
@@ -1879,6 +1907,86 @@
             "schema": { "minLength": 1, "type": "string" }
           }
         ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Bill" }
+              }
+            },
+            "description": "Default Response"
+          },
+          "2XX": {
+            "content": { "application/json": { "schema": {} } },
+            "description": "Default Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/bills/{id}/sponsorships": {
+      "post": {
+        "operationId": "postBillsByIdSponsorships",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "minLength": 1, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "memberIds": {
+                    "items": { "minLength": 1, "type": "string" },
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                },
+                "required": ["memberIds"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

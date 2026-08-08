@@ -23,7 +23,10 @@ export const buildBillResponseInclude = (userId: string) => ({
   restaurant: { select: buildPublicRestaurantSelect(userId) },
   createdBy: { select: publicUserSelect },
   participants: {
-    include: { member: { select: publicUserSelect } },
+    include: {
+      member: { select: publicUserSelect },
+      sponsoredBy: { select: publicUserSelect },
+    },
     orderBy: { member: { name: 'asc' as const } },
   },
   paymentQrImage: {
@@ -38,6 +41,7 @@ export const buildBillResponseInclude = (userId: string) => ({
 
 export const paymentResponseInclude = {
   member: { select: publicUserSelect },
+  sponsoredBy: { select: publicUserSelect },
   bill: true,
 };
 

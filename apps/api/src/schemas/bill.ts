@@ -68,3 +68,18 @@ export const paymentStatusSchema = z.object({
   status: z.enum(PAYMENT_STATUS_VALUES),
   expectedStatus: z.enum(PAYMENT_STATUS_VALUES),
 });
+
+export const sponsorshipSchema = z.object({
+  memberIds: z
+    .array(z.string().min(1))
+    .min(1)
+    .max(100)
+    .superRefine((memberIds, context) => {
+      if (new Set(memberIds).size !== memberIds.length) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Sponsor targets must be unique',
+        });
+      }
+    }),
+});

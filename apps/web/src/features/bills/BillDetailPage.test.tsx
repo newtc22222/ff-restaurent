@@ -29,6 +29,7 @@ const user = {
   id: 'chef-1',
   username: 'chef',
   name: 'Chef',
+  avatarUrl: null,
   chefRole: 'SOUS_CHEF',
   systemRole: null,
   roles: ['CUSTOMER', 'SOUS_CHEF'],
@@ -70,6 +71,7 @@ const bill = {
       allocatedShipping: 0,
       finalPrice: 100_000,
       paymentStatus: 'WAITING',
+      sponsoredBy: null,
     },
   ],
 };
@@ -101,8 +103,13 @@ vi.mock('@/app/providers/app-context', () => ({
   }),
 }));
 
+const routeMutation = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  fetcher: { state: 'idle' as const },
+}));
+
 vi.mock('@/hooks/useRouteMutation', () => ({
-  useRouteMutation: () => ({ mutate: vi.fn() }),
+  useRouteMutation: () => routeMutation,
 }));
 
 const renderPage = () =>
@@ -124,6 +131,7 @@ afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
   bill.paymentQrImage = null;
+  bill.participants.length = 1;
   Object.defineProperty(window.navigator, 'clipboard', {
     configurable: true,
     value: undefined,
@@ -190,6 +198,40 @@ describe('BillDetailPage member breakdown identity', () => {
   it('renders participant avatar and localized You marker for the current user', () => {
     renderPage();
     expect(screen.getByText('You')).toBeTruthy();
+  });
+
+  it('opens the sponsor dialog for one or more waiting members', () => {
+    bill.participants.push({
+      memberId: 'member-2',
+      member: {
+        ...user,
+        id: 'member-2',
+        username: 'member-two',
+        name: 'Member Two',
+      },
+      originCost: 20_000,
+      allocatedVat: 0,
+      allocatedShipping: 0,
+      finalPrice: 20_000,
+      paymentStatus: 'WAITING',
+      sponsoredBy: null,
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Sponsor members' }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Select members' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select members' }));
+    fireEvent.click(screen.getByRole('option', { name: /Member Two/ }));
+    expect(screen.getAllByText(/20\.000/).length).toBeGreaterThan(0);
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Confirm sponsorship',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
   });
 });
 

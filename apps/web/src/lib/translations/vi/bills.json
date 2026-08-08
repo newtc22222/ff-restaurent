@@ -117,5 +117,16 @@
   "bills.vat": "VAT",
   "bills.shipping": "Phí vận chuyển",
   "bills.correctPaymentStatus": "Điều chỉnh",
-  "bills.allPaid": "Tất cả thành viên đã thanh toán"
+  "bills.allPaid": "Tất cả thành viên đã thanh toán",
+  "bills.sponsoredBy": "Được thanh toán bởi",
+  "bills.sponsorMembers": "Thanh toán thay",
+  "bills.sponsorTitle": "Thanh toán thay thành viên",
+  "bills.sponsorDescription": "Chọn một hoặc nhiều thành viên đang chờ thanh toán. Phần của họ sẽ được ghi nhận là đã thanh toán bởi bạn.",
+  "bills.sponsorSelectMembers": "Chọn thành viên",
+  "bills.sponsorSelected": "đã chọn",
+  "bills.sponsorTotal": "Tổng thanh toán thay",
+  "bills.sponsorSubmitting": "Đang xác nhận...",
+  "bills.sponsorConfirm": "Xác nhận thanh toán thay",
+  "activity.sponsorshipCreated": "Đã thanh toán thay",
+  "activity.paidFor": "Đã thanh toán cho"
 }

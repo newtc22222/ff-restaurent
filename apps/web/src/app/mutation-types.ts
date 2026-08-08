@@ -8,6 +8,7 @@ export type MutationBody = {
   memberId?: string;
   status?: string;
   expectedStatus?: string;
+  memberIds?: string[];
   restaurantId?: string;
   collectionId?: string;
   collectionIds?: string[];

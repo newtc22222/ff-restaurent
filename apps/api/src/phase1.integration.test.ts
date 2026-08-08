@@ -1621,6 +1621,144 @@ integrationTest(
       2,
     );
 
+    const sponsorBill = await app.inject({
+      method: 'POST',
+      url: '/bills',
+      headers: auth(tokenFor(sousId)),
+      payload: {
+        restaurantId,
+        baseCost: 9000,
+        vat: 900,
+        shippingFee: 0,
+        participants: [
+          { memberId: customerAId, originCost: 3000 },
+          { memberId: customerBId, originCost: 3000 },
+          { memberId: sousId, originCost: 3000 },
+        ],
+      },
+    });
+    assert.equal(sponsorBill.statusCode, 201);
+    const sponsorBillId = sponsorBill.json().id;
+
+    const managerCannotSponsor = await app.inject({
+      method: 'POST',
+      url: `/bills/${sponsorBillId}/sponsorships`,
+      headers: auth(tokenFor(headId)),
+      payload: { memberIds: [customerBId] },
+    });
+    assert.equal(managerCannotSponsor.statusCode, 403);
+    assert.equal(managerCannotSponsor.json().code, 'SPONSOR_MEMBER_REQUIRED');
+
+    const selfSponsor = await app.inject({
+      method: 'POST',
+      url: `/bills/${sponsorBillId}/sponsorships`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { memberIds: [customerAId] },
+    });
+    assert.equal(selfSponsor.statusCode, 400);
+    assert.equal(selfSponsor.json().code, 'SPONSOR_SELF_NOT_ALLOWED');
+
+    const beforeSponsorStatsA = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=yearly',
+      headers: auth(tokenFor(customerAId)),
+    });
+    const beforeSponsorStatsB = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=yearly',
+      headers: auth(tokenFor(customerBId)),
+    });
+
+    const sponsored = await app.inject({
+      method: 'POST',
+      url: `/bills/${sponsorBillId}/sponsorships`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { memberIds: [customerBId, sousId] },
+    });
+    assert.equal(sponsored.statusCode, 200);
+    assert.ok(
+      sponsored
+        .json()
+        .participants.filter((item: { memberId: string }) =>
+          [customerBId, sousId].includes(item.memberId),
+        )
+        .every(
+          (item: { paymentStatus: string; sponsoredBy: { id: string } }) =>
+            item.paymentStatus === PaymentStatus.PAID &&
+            item.sponsoredBy.id === customerAId,
+        ),
+    );
+    assert.equal(
+      await prisma.billAuditLog.count({
+        where: { billId: sponsorBillId, action: 'SPONSORSHIP_CREATED' },
+      }),
+      1,
+    );
+
+    // Sponsored shares must count toward the sponsor's sponsoredByMe total and
+    // the sponsored member's sponsoredForMe total, not either party's own
+    // "paid" total — otherwise personal stats misrepresent who actually spent.
+    const afterSponsorStatsA = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=yearly',
+      headers: auth(tokenFor(customerAId)),
+    });
+    const afterSponsorStatsB = await app.inject({
+      method: 'GET',
+      url: '/stats/me?range=yearly',
+      headers: auth(tokenFor(customerBId)),
+    });
+    assert.equal(afterSponsorStatsA.statusCode, 200);
+    assert.equal(afterSponsorStatsB.statusCode, 200);
+    assert.equal(
+      afterSponsorStatsA.json().totals.sponsoredByMe -
+        beforeSponsorStatsA.json().totals.sponsoredByMe,
+      6600,
+    );
+    assert.equal(
+      afterSponsorStatsA.json().totals.paid -
+        beforeSponsorStatsA.json().totals.paid,
+      0,
+    );
+    assert.equal(
+      afterSponsorStatsB.json().totals.sponsoredForMe -
+        beforeSponsorStatsB.json().totals.sponsoredForMe,
+      3300,
+    );
+    assert.equal(
+      afterSponsorStatsB.json().totals.paid -
+        beforeSponsorStatsB.json().totals.paid,
+      0,
+    );
+    assert.equal(
+      afterSponsorStatsB.json().totals.waiting -
+        beforeSponsorStatsB.json().totals.waiting,
+      -3300,
+    );
+    assert.equal(
+      afterSponsorStatsB.json().totals.totalObligation -
+        beforeSponsorStatsB.json().totals.totalObligation,
+      0,
+    );
+
+    const duplicateSponsor = await app.inject({
+      method: 'POST',
+      url: `/bills/${sponsorBillId}/sponsorships`,
+      headers: auth(tokenFor(customerAId)),
+      payload: { memberIds: [customerBId] },
+    });
+    assert.equal(duplicateSponsor.statusCode, 409);
+    assert.equal(duplicateSponsor.json().code, 'SPONSOR_TARGET_NOT_WAITING');
+
+    const correctedSponsor = await app.inject({
+      method: 'PATCH',
+      url: `/bills/${sponsorBillId}/participants/${customerBId}/payment`,
+      headers: auth(tokenFor(sousId)),
+      payload: { expectedStatus: 'PAID', status: 'WAITING' },
+    });
+    assert.equal(correctedSponsor.statusCode, 200);
+    assert.equal(correctedSponsor.json().sponsoredBy, null);
+
     const foreignNotification = await prisma.notification.create({
       data: { userId: customerBId, billId, message: 'Private reminder' },
     });

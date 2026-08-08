@@ -87,5 +87,7 @@
   "toast.diningAreaDefaultImageUpdated": "Default Dining Area image updated.",
   "toast.diningAreaDefaultImageFailed": "Could not update the default image.",
   "toast.diningAreaImageRemoved": "Dining Area image removed.",
-  "toast.diningAreaImageRemoveFailed": "Could not remove the Dining Area image."
+  "toast.diningAreaImageRemoveFailed": "Could not remove the Dining Area image.",
+  "toast.sponsorCreated": "Payment sponsored for selected members.",
+  "toast.sponsorFailed": "Could not sponsor payment for the selected members."
 }

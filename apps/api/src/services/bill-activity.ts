@@ -24,6 +24,8 @@ export type BillActivityDetails = {
   memberName?: string;
   fromStatus?: string;
   toStatus?: string;
+  memberNames?: string[];
+  amountCents?: number;
   sent?: number;
   skipped?: number;
 };
@@ -117,12 +119,29 @@ const activityDetails = (
       skipped: typeof log.after.skipped === 'number' ? log.after.skipped : 0,
     };
   }
+  if (log.action === 'SPONSORSHIP_CREATED' && isJsonObject(log.after)) {
+    const memberIds = Array.isArray(log.after.memberIds)
+      ? log.after.memberIds.filter(
+          (memberId): memberId is string => typeof memberId === 'string',
+        )
+      : [];
+    return {
+      memberNames: memberIds.map(
+        (memberId) => participantNames.get(memberId) ?? memberId,
+      ),
+      amountCents:
+        typeof log.after.amountCents === 'number'
+          ? log.after.amountCents
+          : undefined,
+    };
+  }
   return undefined;
 };
 
 const visibleActivityActions = new Set([
   'UPDATED',
   'PAYMENT_STATUS_CHANGED',
+  'SPONSORSHIP_CREATED',
   'REMINDERS_SENT',
   'ARCHIVED',
   'RESTORED',

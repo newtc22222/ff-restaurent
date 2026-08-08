@@ -1,19 +1,10 @@
-import {
-  BarChart2,
-  CalendarDays,
-  CircleDollarSign,
-  Clock3,
-  WalletCards,
-} from 'lucide-react';
+import { BarChart2, CalendarDays } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLoaderData, useSearchParams } from 'react-router';
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -27,8 +18,8 @@ import Dropdown from '@/components/ui/Dropdown';
 import EmptyState from '@/components/ui/EmptyState';
 import SectionTitle from '@/components/ui/SectionTitle';
 import StatCard from '@/components/ui/StatCard';
-import { PIE_COLORS } from '@/lib/charts';
 import { money } from '@/lib/currency';
+import { formatDateOnlyForLocale } from '@/lib/date-only';
 
 type StatsRange = 'weekly' | 'monthly' | 'yearly' | 'custom';
 
@@ -50,7 +41,7 @@ const defaultCustomDates = () => {
 export default function StatsPage() {
   const stats = useLoaderData<Stats>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const requestedRange = searchParams.get('range');
   const range: StatsRange = ['weekly', 'monthly', 'yearly', 'custom'].includes(
     requestedRange ?? '',
@@ -85,10 +76,22 @@ export default function StatsPage() {
     if (!customRangeInvalid) setSearchParams({ range: 'custom', from, to });
   };
 
-  const paymentData = [
-    { name: t('stats.paid'), value: stats.totals.paid },
-    { name: t('stats.waiting'), value: stats.totals.waiting },
-  ].filter((item) => item.value > 0);
+  const totalObligation = stats.totals.totalObligation;
+  const segmentPct = (value: number) =>
+    totalObligation ? (value / totalObligation) * 100 : 0;
+  const paidPct = segmentPct(stats.totals.paid);
+  const sponsoredForMePct = segmentPct(stats.totals.sponsoredForMe);
+  const waitingPct = segmentPct(stats.totals.waiting);
+
+  const appliedFrom = searchParams.get('from');
+  const appliedTo = searchParams.get('to');
+  const periodLabel =
+    range === 'custom'
+      ? appliedFrom && appliedTo
+        ? `${formatDateOnlyForLocale(appliedFrom, locale)} – ${formatDateOnlyForLocale(appliedTo, locale)}`
+        : ''
+      : t(`stats.${range}`);
+
   const cuisineData = Object.entries(stats.byCuisineType)
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
@@ -101,7 +104,8 @@ export default function StatsPage() {
   const freqCuisine = Object.entries(stats.frequencyByCuisine ?? {}).sort(
     (a, b) => b[1] - a[1],
   );
-  const hasData = stats.totals.totalObligation > 0;
+  const hasData =
+    stats.totals.totalObligation > 0 || stats.totals.sponsoredByMe > 0;
 
   return (
     <div className="min-w-0 space-y-5">
@@ -149,43 +153,122 @@ export default function StatsPage() {
         )}
       </section>
 
-      <div className="grid min-w-0 gap-3 sm:grid-cols-3">
-        <article className="panel flex min-w-0 items-center gap-3 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-basil text-white">
-            <WalletCards size={19} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm text-slate-500">{t('stats.paid')}</div>
-            <div className="truncate text-xl font-bold">
+      <section className="panel relative min-w-0 overflow-visible p-5 sm:p-6">
+        <span
+          className="ticket-perforation ticket-perforation-top"
+          aria-hidden="true"
+        />
+        <span
+          className="ticket-perforation ticket-perforation-bottom"
+          aria-hidden="true"
+        />
+
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="title-mark" aria-hidden="true" />
+          <span className="label">{t('stats.statementLabel')}</span>
+          {periodLabel && (
+            <span className="ml-auto text-2xs text-slate-500">
+              {periodLabel}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2 text-sm">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full bg-basil"
+              aria-hidden="true"
+            />
+            <span className="truncate">{t('stats.paid')}</span>
+            <span
+              className="min-w-[0.75rem] flex-1 border-b border-dotted border-border"
+              aria-hidden="true"
+            />
+            <span className="ticket-figure shrink-0 font-mono">
               {money(stats.totals.paid)}
+            </span>
+          </div>
+
+          {stats.totals.sponsoredForMe > 0 && (
+            <div className="flex items-center gap-2 text-sm">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-success"
+                aria-hidden="true"
+              />
+              <span className="truncate">{t('stats.sponsoredForMe')}</span>
+              <span
+                className="min-w-[0.75rem] flex-1 border-b border-dotted border-border"
+                aria-hidden="true"
+              />
+              <span className="ticket-figure shrink-0 font-mono">
+                {money(stats.totals.sponsoredForMe)}
+              </span>
             </div>
-          </div>
-        </article>
-        <article className="panel flex min-w-0 items-center gap-3 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-saffron text-white">
-            <Clock3 size={19} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm text-slate-500">{t('stats.waiting')}</div>
-            <div className="truncate text-xl font-bold">
+          )}
+
+          <div className="flex items-center gap-2 text-sm">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full bg-saffron"
+              aria-hidden="true"
+            />
+            <span className="truncate">{t('stats.waiting')}</span>
+            <span
+              className="min-w-[0.75rem] flex-1 border-b border-dotted border-border"
+              aria-hidden="true"
+            />
+            <span className="ticket-figure shrink-0 font-mono">
               {money(stats.totals.waiting)}
-            </div>
+            </span>
           </div>
-        </article>
-        <article className="panel flex min-w-0 items-center gap-3 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink text-white dark:bg-[hsl(210,20%,92%)] dark:text-[hsl(220,15%,9%)]">
-            <CircleDollarSign size={19} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm text-slate-500">
-              {t('stats.totalObligation')}
+        </div>
+
+        <div className="mt-3 flex items-center gap-2 border-t-2 border-ink/15 pt-3 dark:border-white/15">
+          <span className="truncate text-base font-bold">
+            {t('stats.totalObligation')}
+          </span>
+          <span
+            className="min-w-[0.75rem] flex-1 border-b border-dotted border-border"
+            aria-hidden="true"
+          />
+          <span className="ticket-figure shrink-0 font-mono text-xl font-bold">
+            {money(stats.totals.totalObligation)}
+          </span>
+        </div>
+
+        <div
+          className="mt-3 flex h-2 overflow-hidden rounded-full bg-muted"
+          aria-hidden="true"
+        >
+          <div
+            className="h-full bg-basil transition-all duration-500"
+            style={{ width: `${paidPct}%` }}
+          />
+          <div
+            className="h-full bg-success transition-all duration-500"
+            style={{ width: `${sponsoredForMePct}%` }}
+          />
+          <div
+            className="h-full bg-saffron transition-all duration-500"
+            style={{ width: `${waitingPct}%` }}
+          />
+        </div>
+
+        {stats.totals.sponsoredByMe > 0 && (
+          <>
+            <div className="ticket-perforation-break my-4" aria-hidden="true" />
+            <div className="flex items-center gap-2 text-sm">
+              <span className="truncate">{t('stats.sponsoredByMe')}</span>
+              <span
+                className="min-w-[0.75rem] flex-1 border-b border-dotted border-border"
+                aria-hidden="true"
+              />
+              <span className="ticket-figure shrink-0 font-mono">
+                {money(stats.totals.sponsoredByMe)}
+              </span>
             </div>
-            <div className="truncate text-xl font-bold">
-              {money(stats.totals.totalObligation)}
-            </div>
-          </div>
-        </article>
-      </div>
+          </>
+        )}
+      </section>
 
       {!hasData ? (
         <div className="panel p-5">
@@ -202,53 +285,9 @@ export default function StatsPage() {
         </div>
       ) : (
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
-          {paymentData.length > 0 && (
-            <article className="panel min-w-0 p-4">
-              <h3 className="mb-3 font-bold">{t('stats.paymentStatus')}</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={paymentData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={45}
-                    outerRadius={75}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {paymentData.map((_, index) => (
-                      <Cell
-                        key={index}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => money(Number(value))} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="mt-2 flex flex-wrap justify-center gap-3">
-                {paymentData.map((item, index) => (
-                  <div
-                    key={item.name}
-                    className="flex items-center gap-1.5 text-xs"
-                  >
-                    <div
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{
-                        background: PIE_COLORS[index % PIE_COLORS.length],
-                      }}
-                    />
-                    <span className="font-medium">{item.name}</span>
-                    <span className="text-slate-500">{money(item.value)}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          )}
-
           {cuisineData.length > 0 && (
-            <article className="panel min-w-0 p-4">
-              <h3 className="mb-3 font-bold">{t('stats.cuisineType')}</h3>
+            <article className="panel min-w-0 p-4 md:col-span-2">
+              <h3 className="label mb-3">{t('stats.cuisineType')}</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart
                   data={cuisineData}
@@ -272,7 +311,11 @@ export default function StatsPage() {
                     width={55}
                   />
                   <Tooltip formatter={(value) => money(Number(value))} />
-                  <Bar dataKey="value" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                  <Bar
+                    dataKey="value"
+                    fill="var(--color-accent)"
+                    radius={[0, 4, 4, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </article>
@@ -280,7 +323,7 @@ export default function StatsPage() {
 
           {periodData.length > 0 && (
             <article className="panel min-w-0 p-4 md:col-span-2">
-              <h3 className="mb-3 font-bold">{t('stats.spendingTrend')}</h3>
+              <h3 className="label mb-3">{t('stats.spendingTrend')}</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart
                   data={periodData}
@@ -297,7 +340,11 @@ export default function StatsPage() {
                     }
                   />
                   <Tooltip formatter={(value) => money(Number(value))} />
-                  <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="value"
+                    fill="var(--color-accent)"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </article>
@@ -305,9 +352,7 @@ export default function StatsPage() {
 
           {freqRestaurant.length > 0 && (
             <article className="panel min-w-0 p-4">
-              <h3 className="mb-3 font-bold">
-                {t('stats.frequencyRestaurant')}
-              </h3>
+              <h3 className="label mb-3">{t('stats.frequencyRestaurant')}</h3>
               <div className="space-y-2">
                 {freqRestaurant.slice(0, 8).map(([name, count]) => (
                   <div
@@ -327,7 +372,7 @@ export default function StatsPage() {
 
           {freqCuisine.length > 0 && (
             <article className="panel min-w-0 p-4">
-              <h3 className="mb-3 font-bold">{t('stats.frequencyCuisine')}</h3>
+              <h3 className="label mb-3">{t('stats.frequencyCuisine')}</h3>
               <div className="space-y-2">
                 {freqCuisine.slice(0, 8).map(([name, count]) => (
                   <div

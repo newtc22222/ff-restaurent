@@ -218,6 +218,67 @@ select {
   vertical-align: middle;
 }
 
+/* Receipt-style perforated edges for the stats "Statement" panel. The strip's
+   own background is the page background (--color-bg), so it "disappears"
+   outside the card and reveals page-color punch-holes exactly at the card
+   boundary. A single radial-gradient circle is tiled as a mask via
+   mask-size + mask-repeat: repeat-x — this is NOT repeating-radial-gradient(),
+   which repeats concentric rings outward from one center and cannot produce a
+   tiled row of independent dots. Inset left/right by the panel's own
+   border-radius (rounded-xl = 12px) so dots don't clip against the corner
+   arc. Both strips poke half outside the card (top/bottom negative offset) to
+   straddle the boundary — .panel has no overflow:hidden, so this is safe. */
+.ticket-perforation {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 12px;
+  background: var(--color-bg);
+  -webkit-mask-image: radial-gradient(
+    circle at center,
+    #000 2.5px,
+    transparent 2.6px
+  );
+  mask-image: radial-gradient(circle at center, #000 2.5px, transparent 2.6px);
+  -webkit-mask-size: 10px 10px;
+  mask-size: 10px 10px;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-position: center;
+  mask-position: center;
+  pointer-events: none;
+}
+
+.ticket-perforation-top {
+  top: -6px;
+}
+
+.ticket-perforation-bottom {
+  bottom: -6px;
+}
+
+/* Lighter inline perforation break before the "Sponsored by me" row — not
+   pinned to the panel edge, smaller dots + reduced opacity read as a subtler
+   tear than the bold edge perforation. */
+.ticket-perforation-break {
+  height: 8px;
+  background: var(--color-bg);
+  opacity: 0.6;
+  -webkit-mask-image: radial-gradient(
+    circle at center,
+    #000 2px,
+    transparent 2.1px
+  );
+  mask-image: radial-gradient(circle at center, #000 2px, transparent 2.1px);
+  -webkit-mask-size: 8px 8px;
+  mask-size: 8px 8px;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-position: center;
+  mask-position: center;
+  pointer-events: none;
+}
+
 .chip {
   @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
 }

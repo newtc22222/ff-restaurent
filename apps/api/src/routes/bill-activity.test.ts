@@ -92,3 +92,36 @@ test('bill activity ignores unsupported internal audit actions', () => {
     ['CREATED'],
   );
 });
+
+test('bill activity summarizes a batch sponsorship without exposing audit payloads', () => {
+  const target = { id: 'user-2', username: 'target', name: 'Target User' };
+  const timeline = buildBillActivityTimeline({
+    id: 'bill-1',
+    createdAt: new Date('2026-07-15T01:00:00.000Z'),
+    createdBy: actor,
+    participants: [
+      { memberId: actor.id, member: actor },
+      { memberId: target.id, member: target },
+    ],
+    auditLogs: [
+      {
+        id: 'sponsor-1',
+        action: 'SPONSORSHIP_CREATED',
+        before: { paymentStatus: 'WAITING' },
+        after: {
+          sponsorId: actor.id,
+          memberIds: [target.id],
+          amountCents: 125000,
+        },
+        createdAt: new Date('2026-07-15T02:00:00.000Z'),
+        user: actor,
+      },
+    ],
+  });
+
+  assert.deepEqual(timeline[0]?.details, {
+    memberNames: [target.name],
+    amountCents: 125000,
+  });
+  assert.equal(JSON.stringify(timeline).includes('sponsorId'), false);
+});

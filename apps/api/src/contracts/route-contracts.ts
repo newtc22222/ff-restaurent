@@ -34,6 +34,7 @@ import {
   restaurantSchema,
   restaurantUpdateSchema,
   rootAdminTransferSchema,
+  sponsorshipSchema,
   statsQuerySchema,
   userAccountStatusSchema,
   userResponseSchema,
@@ -87,6 +88,7 @@ const requestContracts: Record<string, RequestContract> = {
   'PATCH /bills/:id/participants/:memberId/payment': {
     body: paymentStatusSchema,
   },
+  'POST /bills/:id/sponsorships': { body: sponsorshipSchema },
   'PATCH /me/notification-preferences': {
     body: notificationPreferenceSchema,
   },
@@ -163,6 +165,7 @@ const successResponses: Record<string, Record<string, ZodTypeAny>> = {
   'PUT /bills/:id': { '200': billResponseSchema },
   'PATCH /bills/:id/archive': { '200': billResponseSchema },
   'PATCH /bills/:id/restore': { '200': billResponseSchema },
+  'POST /bills/:id/sponsorships': { '200': billResponseSchema },
   'GET /notifications/stream': { '200': z.string() },
 };
 

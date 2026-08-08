@@ -196,6 +196,7 @@ export const billParticipantResponseSchema = z
     finalPrice: z.number().int(),
     paymentStatus: paymentStatusResponseSchema,
     paidAt: serializedDateSchema.nullable().optional(),
+    sponsoredBy: publicUserResponseSchema.nullable().optional(),
   })
   .passthrough();
 
