@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ff-restaurent-static-v1.1';
+const CACHE_NAME = 'ff-restaurent-static-__APP_VERSION__';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
