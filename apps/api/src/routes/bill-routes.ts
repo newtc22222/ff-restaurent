@@ -652,13 +652,9 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         });
       }
 
-      const amountCents = targets.reduce(
-        (total, participant) => total + participant.finalPrice,
-        0,
-      );
-      const updated = await prisma
+      const result = await prisma
         .$transaction(async (tx) => {
-          const result = await tx.billParticipant.updateMany({
+          const updateResult = await tx.billParticipant.updateMany({
             where: {
               billId: id,
               memberId: { in: body.memberIds },
@@ -671,9 +667,20 @@ export const registerBillRoutes = (app: FastifyInstance) => {
               sponsoredById: request.currentUser.id,
             },
           });
-          if (result.count !== body.memberIds.length) {
+          if (updateResult.count !== body.memberIds.length) {
             throw new SponsorshipConflictError();
           }
+          // The updateMany above row-locks these participants for the rest
+          // of the transaction, so this read reflects their final allocation
+          // even if a concurrent bill edit was racing to change finalPrice.
+          const sponsored = await tx.billParticipant.findMany({
+            where: { billId: id, memberId: { in: body.memberIds } },
+            select: { finalPrice: true },
+          });
+          const amountCents = sponsored.reduce(
+            (total, participant) => total + participant.finalPrice,
+            0,
+          );
           await tx.billAuditLog.create({
             data: {
               billId: id,
@@ -687,16 +694,17 @@ export const registerBillRoutes = (app: FastifyInstance) => {
               },
             },
           });
-          return tx.bill.findUniqueOrThrow({
+          const bill = await tx.bill.findUniqueOrThrow({
             where: { id },
             include: buildBillResponseInclude(request.currentUser.id),
           });
+          return { bill, amountCents };
         })
         .catch((error: unknown) => {
           if (error instanceof SponsorshipConflictError) return null;
           throw error;
         });
-      if (!updated) {
+      if (!result) {
         return reply.code(409).send({
           code: 'SPONSOR_TARGET_CHANGED',
           message: 'One or more sponsor targets changed; refresh and try again',
@@ -707,9 +715,9 @@ export const registerBillRoutes = (app: FastifyInstance) => {
         billId: id,
         sponsorId: request.currentUser.id,
         memberIds: body.memberIds,
-        amountCents,
+        amountCents: result.amountCents,
       });
-      return serializeBill(updated, request.currentUser.id);
+      return serializeBill(result.bill, request.currentUser.id);
     },
   );
 
